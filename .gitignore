@@ -3,3 +3,5 @@
 repo/
 vendor/
 .flatpak-builder
+cargo-sources.json
+flatpak-cargo-generator.py

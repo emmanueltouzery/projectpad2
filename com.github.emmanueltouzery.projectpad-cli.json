@@ -1,0 +1,42 @@
+{
+  "app-id": "com.github.emmanueltouzery.projectpad-cli",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "19.08",
+  "sdk": "org.freedesktop.Sdk",
+  "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
+  "command": "projectpad-cli",
+  "finish-args": [
+    "--share=ipc",
+    "--socket=fallback-x11",
+    "--socket=wayland",
+    "--device=dri",
+    "--filesystem=home",
+    "--share=network",
+    "--talk-name=org.freedesktop.secrets"
+  ],
+  "build-options": {
+    "append-path": "/usr/lib/sdk/rust-stable/bin",
+    "env": {
+      "CARGO_HOME": "/run/build/projectpad-cli/cargo"
+    }
+  },
+  "modules": [
+    {
+      "name": "projectpad-cli",
+      "buildsystem": "simple",
+      "build-commands": [
+        "pwd",
+        "cargo --offline fetch --manifest-path Cargo.toml --verbose",
+        "cargo --offline build --release --verbose",
+        "install -Dm755 ./target/release/projectpad-cli -t /app/bin/"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "./"
+        },
+        "cargo-sources.json"
+      ]
+    }
+  ]
+}

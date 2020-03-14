@@ -4,6 +4,7 @@ use skim::prelude::*;
 
 struct MyItem {
     inner: String,
+    command: String,
 }
 
 impl SkimItem for MyItem {
@@ -41,7 +42,10 @@ pub fn main() {
         .unwrap_or_else(|| Vec::new());
 
     for item in selected_items.iter() {
-        print!("{}{}", item.output(), "\n");
+        // this pattern from the skim apidocs for SkimItem, and also
+        // https://stackoverflow.com/a/26128001/516188
+        let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
+        print!("{}", myitem.command);
     }
 }
 
@@ -51,6 +55,7 @@ struct ServerPoi {
     server_desc: String,
     server_poi_desc: String,
     server_env: String,
+    server_poi_text: String,
 }
 
 fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
@@ -63,7 +68,8 @@ fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
 
     let mut stmt = conn
         .prepare(
-            r#"SELECT project.name, server.desc, server_point_of_interest.desc, server.environment from server_point_of_interest
+            r#"SELECT project.name, server.desc, server_point_of_interest.desc,
+                     server.environment, server_point_of_interest.text from server_point_of_interest
                  join server on server.id = server_point_of_interest.server_id
                  join project on project.id = server.project_id
                  order by project.name"#,
@@ -76,6 +82,7 @@ fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
                 server_desc: row.get(1).unwrap(),
                 server_poi_desc: row.get(2).unwrap(),
                 server_env: row.get(3).unwrap(),
+                server_poi_text: row.get(4).unwrap(),
             })
         })
         .unwrap();
@@ -89,6 +96,7 @@ fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
                 + &poi.server_desc
                 + " ▶ "
                 + &poi.server_poi_desc,
+            command: poi.server_poi_text,
         }));
     }
 }

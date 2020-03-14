@@ -46,8 +46,11 @@ pub fn main() {
 }
 
 #[derive(Debug)]
-struct Project {
-    name: String,
+struct ServerPoi {
+    project_name: String,
+    server_desc: String,
+    server_poi_desc: String,
+    server_env: String,
 }
 
 fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
@@ -58,17 +61,34 @@ fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
     conn.pragma_update(None, "key", &kr.get_password().unwrap())
         .unwrap();
 
-    let mut stmt = conn.prepare("SELECT name from project").unwrap();
-    let project_iter = stmt
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT project.name, server.desc, server_point_of_interest.desc, server.environment from server_point_of_interest
+                 join server on server.id = server_point_of_interest.server_id
+                 join project on project.id = server.project_id
+                 order by project.name"#,
+        )
+        .unwrap();
+    let server_poi_iter = stmt
         .query_map(params![], |row| {
-            Ok(Project {
-                name: row.get(0).unwrap(),
+            Ok(ServerPoi {
+                project_name: row.get(0).unwrap(),
+                server_desc: row.get(1).unwrap(),
+                server_poi_desc: row.get(2).unwrap(),
+                server_env: row.get(3).unwrap(),
             })
         })
         .unwrap();
-    for project in project_iter {
+    for server_poi in server_poi_iter {
+        let poi = server_poi.unwrap();
         let _ = tx_sender.send(Arc::new(MyItem {
-            inner: project.unwrap().name,
+            inner: poi.project_name
+                + " "
+                + &poi.server_env
+                + " ▶ "
+                + &poi.server_desc
+                + " ▶ "
+                + &poi.server_poi_desc,
         }));
     }
 }

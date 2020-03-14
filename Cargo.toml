@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 keyring = "0.8.0"
+skim = "0.8.0"
 
 [dependencies.rusqlite]
 version = "0.21.0"

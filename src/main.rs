@@ -1,16 +1,60 @@
 use rusqlite::{params, Connection};
+extern crate skim;
+use skim::prelude::*;
+
+struct MyItem {
+    inner: String,
+}
+
+impl SkimItem for MyItem {
+    fn display(&self) -> Cow<AnsiString> {
+        Cow::Owned(self.inner.as_str().into())
+    }
+
+    fn text(&self) -> Cow<str> {
+        Cow::Borrowed(&self.inner)
+    }
+
+    fn preview(&self) -> ItemPreview {
+        if self.inner.starts_with("color") {
+            ItemPreview::AnsiText(format!("\x1b[31mhello:\x1b[m\n{}", self.inner))
+        } else {
+            ItemPreview::Text(format!("hello:\n{}", self.inner))
+        }
+    }
+}
+
+pub fn main() {
+    let options = SkimOptionsBuilder::default()
+        .height(Some("50%"))
+        .multi(true)
+        .preview(Some("")) // preview should be specified to enable preview window
+        .build()
+        .unwrap();
+
+    let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
+
+    std::thread::spawn(move || load_projects(tx_item));
+
+    let selected_items = Skim::run_with(&options, Some(rx_item))
+        .map(|out| out.selected_items)
+        .unwrap_or_else(|| Vec::new());
+
+    for item in selected_items.iter() {
+        print!("{}{}", item.output(), "\n");
+    }
+}
 
 #[derive(Debug)]
 struct Project {
     name: String,
 }
 
-fn main() {
+fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
     let service = "projectpad-cli";
     let conn = Connection::open("/home/emmanuel/.projectpad/projectpad.db").unwrap();
     let kr = keyring::Keyring::new(&service, &service);
     // kr.set_password("mc");
-    // conn.execute("PRAGMA key=?1", params![kr.get_password().unwrap()])
     conn.pragma_update(None, "key", &kr.get_password().unwrap())
         .unwrap();
 
@@ -23,6 +67,8 @@ fn main() {
         })
         .unwrap();
     for project in project_iter {
-        println!("Found project: {:?}", project.unwrap());
+        let _ = tx_sender.send(Arc::new(MyItem {
+            inner: project.unwrap().name,
+        }));
     }
 }

@@ -657,6 +657,7 @@ name = "projectpad-cli"
 version = "0.1.0"
 dependencies = [
  "keyring 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.67 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusqlite 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "skim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

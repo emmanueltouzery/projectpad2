@@ -45,7 +45,21 @@ pub fn main() {
         // this pattern from the skim apidocs for SkimItem, and also
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
-        print!("{}", myitem.command);
+        // https://unix.stackexchange.com/questions/213799/can-bash-write-to-its-own-input-stream/213821#213821
+        unsafe {
+            for byte in myitem.command.bytes() {
+                libc::ioctl(libc::STDIN_FILENO, libc::TIOCSTI, &byte);
+            }
+        }
+
+        // this code requires tmux. the ioctl is considered unsafe by some,
+        // the tmux way could become more portable in the future possible?
+        //
+        // std::process::Command::new("tmux")
+        //     .arg("send-key")
+        //     .arg(&myitem.command)
+        //     .status()
+        //     .unwrap();
     }
 }
 

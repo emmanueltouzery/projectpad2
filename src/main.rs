@@ -1,5 +1,7 @@
 use rusqlite::{params, Connection};
 extern crate skim;
+use clipboard_ext::prelude::*;
+use clipboard_ext::x11_fork::ClipboardContext;
 use skim::prelude::*;
 
 struct MyItem {
@@ -45,22 +47,33 @@ pub fn main() {
         // this pattern from the skim apidocs for SkimItem, and also
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
-        // https://unix.stackexchange.com/questions/213799/can-bash-write-to-its-own-input-stream/213821#213821
-        unsafe {
-            for byte in myitem.command.bytes() {
-                libc::ioctl(libc::STDIN_FILENO, libc::TIOCSTI, &byte);
-            }
-        }
 
-        // this code requires tmux. the ioctl is considered unsafe by some,
-        // the tmux way could become more portable in the future possible?
-        //
-        // std::process::Command::new("tmux")
-        //     .arg("send-key")
-        //     .arg(&myitem.command)
-        //     .status()
-        //     .unwrap();
+        write_command_line_to_terminal(&myitem.command);
+        copy_command_to_clipboard(&myitem.command);
     }
+}
+
+fn copy_command_to_clipboard(command_line: &str) {
+    let mut ctx = ClipboardContext::new().unwrap();
+    ctx.set_contents(command_line.into()).unwrap();
+}
+
+fn write_command_line_to_terminal(command_line: &str) {
+    // https://unix.stackexchange.com/questions/213799/can-bash-write-to-its-own-input-stream/213821#213821
+    unsafe {
+        for byte in command_line.bytes() {
+            libc::ioctl(libc::STDIN_FILENO, libc::TIOCSTI, &byte);
+        }
+    }
+
+    // this code requires tmux. the ioctl is considered unsafe by some,
+    // the tmux way could become more portable in the future possible?
+    //
+    // std::process::Command::new("tmux")
+    //     .arg("send-key")
+    //     .arg(&myitem.command)
+    //     .status()
+    //     .unwrap();
 }
 
 #[derive(Debug)]

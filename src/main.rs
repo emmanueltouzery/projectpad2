@@ -5,24 +5,24 @@ pub mod config;
 mod database;
 
 pub struct MyItem {
-    inner: String,
-    command: String,
+    display: String,
+    inner: database::ItemOfInterest,
 }
 
 impl SkimItem for MyItem {
     fn display(&self) -> Cow<AnsiString> {
-        Cow::Owned(self.inner.as_str().into())
+        Cow::Owned(self.display.as_str().into())
     }
 
     fn text(&self) -> Cow<str> {
-        Cow::Borrowed(&self.inner)
+        Cow::Borrowed(&self.display)
     }
 
     fn preview(&self) -> ItemPreview {
-        if self.inner.starts_with("color") {
-            ItemPreview::AnsiText(format!("\x1b[31mhello:\x1b[m\n{}", self.inner))
+        if self.display.starts_with("color") {
+            ItemPreview::AnsiText(format!("\x1b[31mhello:\x1b[m\n{}", self.display))
         } else {
-            ItemPreview::Text(format!("hello:\n{}", self.inner))
+            ItemPreview::Text(format!("hello:\n{}", self.display))
         }
     }
 }
@@ -51,8 +51,9 @@ pub fn main() {
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
-        write_command_line_to_terminal(&myitem.command);
-        copy_command_to_clipboard(&myitem.command);
+        let val = database::get_value(&myitem.inner);
+        write_command_line_to_terminal(&val);
+        copy_command_to_clipboard(&val);
         if !query.is_empty() {
             config::write_history(&history, &query, 100).unwrap();
         }

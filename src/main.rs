@@ -1,11 +1,10 @@
-use rusqlite::{params, Connection};
-extern crate skim;
 use clipboard_ext::prelude::*;
 use clipboard_ext::x11_fork::ClipboardContext;
 use skim::prelude::*;
-mod config;
+pub mod config;
+mod database;
 
-struct MyItem {
+pub struct MyItem {
     inner: String,
     command: String,
 }
@@ -41,7 +40,7 @@ pub fn main() {
 
     let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
 
-    std::thread::spawn(move || load_projects(tx_item));
+    std::thread::spawn(move || load_items(tx_item));
 
     let (selected_items, query) = Skim::run_with(&options, Some(rx_item))
         .map(|out| (out.selected_items, out.query))
@@ -83,54 +82,9 @@ fn write_command_line_to_terminal(command_line: &str) {
     //     .unwrap();
 }
 
-#[derive(Debug)]
-struct ServerPoi {
-    project_name: String,
-    server_desc: String,
-    server_poi_desc: String,
-    server_env: String,
-    server_poi_text: String,
-}
-
-fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
+fn load_items(item_sender: Sender<Arc<dyn SkimItem>>) {
     let service = "projectpad-cli";
-    let conn = Connection::open(config::database_path()).unwrap(); // TODO react better if no DB
     let kr = keyring::Keyring::new(&service, &service);
     // kr.set_password("mc");
-    conn.pragma_update(None, "key", &kr.get_password().unwrap())
-        .unwrap();
-
-    let mut stmt = conn
-        .prepare(
-            r#"SELECT project.name, server.desc, server_point_of_interest.desc,
-                     server.environment, server_point_of_interest.text from server_point_of_interest
-                 join server on server.id = server_point_of_interest.server_id
-                 join project on project.id = server.project_id
-                 order by project.name"#,
-        )
-        .unwrap();
-    let server_poi_iter = stmt
-        .query_map(params![], |row| {
-            Ok(ServerPoi {
-                project_name: row.get(0).unwrap(),
-                server_desc: row.get(1).unwrap(),
-                server_poi_desc: row.get(2).unwrap(),
-                server_env: row.get(3).unwrap(),
-                server_poi_text: row.get(4).unwrap(),
-            })
-        })
-        .unwrap();
-    for server_poi in server_poi_iter {
-        let poi = server_poi.unwrap();
-        let _ = tx_sender.send(Arc::new(MyItem {
-            inner: poi.project_name
-                + " "
-                + &poi.server_env
-                + " ▶ "
-                + &poi.server_desc
-                + " ▶ "
-                + &poi.server_poi_desc,
-            command: poi.server_poi_text,
-        }));
-    }
+    database::load_items(&kr.get_password().unwrap(), &item_sender);
 }

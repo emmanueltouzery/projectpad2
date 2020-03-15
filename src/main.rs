@@ -3,6 +3,7 @@ extern crate skim;
 use clipboard_ext::prelude::*;
 use clipboard_ext::x11_fork::ClipboardContext;
 use skim::prelude::*;
+mod config;
 
 struct MyItem {
     inner: String,
@@ -28,10 +29,13 @@ impl SkimItem for MyItem {
 }
 
 pub fn main() {
+    let history = config::read_history().unwrap_or(vec![]);
     let options = SkimOptionsBuilder::default()
+        .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
         .height(Some("50%"))
         .multi(true)
         .preview(Some("")) // preview should be specified to enable preview window
+        .query_history(&history)
         .build()
         .unwrap();
 
@@ -39,9 +43,9 @@ pub fn main() {
 
     std::thread::spawn(move || load_projects(tx_item));
 
-    let selected_items = Skim::run_with(&options, Some(rx_item))
-        .map(|out| out.selected_items)
-        .unwrap_or_else(|| Vec::new());
+    let (selected_items, query) = Skim::run_with(&options, Some(rx_item))
+        .map(|out| (out.selected_items, out.query))
+        .unwrap_or_else(|| (Vec::new(), "".to_string()));
 
     for item in selected_items.iter() {
         // this pattern from the skim apidocs for SkimItem, and also
@@ -50,6 +54,9 @@ pub fn main() {
 
         write_command_line_to_terminal(&myitem.command);
         copy_command_to_clipboard(&myitem.command);
+        if !query.is_empty() {
+            config::write_history(&history, &query, 100).unwrap();
+        }
     }
 }
 
@@ -87,7 +94,7 @@ struct ServerPoi {
 
 fn load_projects(tx_sender: Sender<Arc<dyn SkimItem>>) {
     let service = "projectpad-cli";
-    let conn = Connection::open("/home/emmanuel/.projectpad/projectpad.db").unwrap();
+    let conn = Connection::open(config::database_path()).unwrap(); // TODO react better if no DB
     let kr = keyring::Keyring::new(&service, &service);
     // kr.set_password("mc");
     conn.pragma_update(None, "key", &kr.get_password().unwrap())

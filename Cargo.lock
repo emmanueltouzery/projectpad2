@@ -755,10 +755,11 @@ name = "projectpad-cli"
 version = "0.1.0"
 dependencies = [
  "clipboard-ext 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dirs 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "keyring 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.67 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusqlite 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "skim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "skim 0.8.0 (git+https://github.com/lotabout/skim)",
 ]
 
 [[package]]
@@ -1040,7 +1041,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "skim"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/lotabout/skim#a13bd4b1bff401b520c8566f5feffbf50c801169"
 dependencies = [
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1375,7 +1376,7 @@ dependencies = [
 "checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 "checksum sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "27044adfd2e1f077f649f59deb9490d3941d674002f7d062870a60ebe9bd47a0"
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
-"checksum skim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8404a9d08293699e1bd62f9194e71af814086c8495b6833133da87cf0b22227b"
+"checksum skim 0.8.0 (git+https://github.com/lotabout/skim)" = "<none>"
 "checksum strsim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 "checksum strsim 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
 "checksum subtle 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"

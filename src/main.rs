@@ -1,6 +1,7 @@
 use clipboard_ext::prelude::*;
 use clipboard_ext::x11_fork::ClipboardContext;
 use skim::prelude::*;
+use std::process::Command;
 pub mod config;
 mod database;
 
@@ -31,6 +32,7 @@ pub fn main() {
     let history = config::read_history().unwrap_or(vec![]);
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
+        .expect(Some("ctrl-j,ctrl-k".to_string()))
         .height(Some("50%"))
         .multi(true)
         .preview(Some("")) // preview should be specified to enable preview window
@@ -42,21 +44,38 @@ pub fn main() {
 
     std::thread::spawn(move || load_items(tx_item));
 
-    let (selected_items, query) = Skim::run_with(&options, Some(rx_item))
-        .map(|out| (out.selected_items, out.query))
-        .unwrap_or_else(|| (Vec::new(), "".to_string()));
+    let (selected_items, query, accept_key) = Skim::run_with(&options, Some(rx_item))
+        .map(|out| (out.selected_items, out.query, out.accept_key))
+        .unwrap_or_else(|| (Vec::new(), "".to_string(), Some("other".to_string())));
 
-    for item in selected_items.iter() {
+    if let Some(item) = selected_items.iter().next() {
         // this pattern from the skim apidocs for SkimItem, and also
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
         let val = database::get_value(&myitem.inner);
-        write_command_line_to_terminal(&val);
-        copy_command_to_clipboard(&val);
+        match accept_key.as_ref().map(|s| s.as_str()) {
+            Some("ctrl-j") => write_command_line_to_terminal(&val),
+            Some("ctrl-k") => copy_command_to_clipboard(&val),
+            _ => run_command(&val),
+        }
         if !query.is_empty() {
             config::write_history(&history, &query, 100).unwrap();
         }
+    }
+}
+
+fn run_command(command_line: &str) {
+    let cl_elts: Vec<&str> = command_line.split(" ").collect();
+    if cl_elts.len() > 0 {
+        Command::new(cl_elts[0])
+            .args(cl_elts.iter().skip(1))
+            .spawn()
+            .map(|_| ())
+            .unwrap_or_else(|e| {
+                println!("Error launching process: {}", e);
+                ()
+            });
     }
 }
 

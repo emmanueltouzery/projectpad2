@@ -30,7 +30,7 @@ impl SkimItem for MyItem {
 }
 
 pub fn main() {
-    let history = config::read_history().unwrap_or(vec![]);
+    let history = config::read_history().unwrap_or_else(|_| vec![]);
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
         .expect(Some("ctrl-j,ctrl-k".to_string()))
@@ -55,7 +55,7 @@ pub fn main() {
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
         let val = database::get_value(&myitem.inner);
-        match accept_key.as_ref().map(|s| s.as_str()) {
+        match accept_key.as_deref() {
             Some("ctrl-j") => write_command_line_to_terminal(&val),
             Some("ctrl-k") => copy_command_to_clipboard(&val),
             _ => run_command(
@@ -79,7 +79,7 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
         println!("Couldn't parse the command: {}: {}", command_line, e);
         Vec::new()
     });
-    if cl_elts.len() > 0 {
+    if !cl_elts.is_empty() {
         Command::new(cl_elts[0].clone())
             .args(cl_elts.iter().skip(1))
             .current_dir(cur_dir)
@@ -87,7 +87,6 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
             .map(|_| ())
             .unwrap_or_else(|e| {
                 println!("Error launching process: {}", e);
-                ()
             });
     }
 }

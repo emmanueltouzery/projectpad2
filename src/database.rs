@@ -106,7 +106,7 @@ fn render_optional_field(field: Option<&String>) -> String {
 }
 
 fn get_value_server(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    if let [addr, port] = item.item_text.split(":").collect::<Vec<&str>>()[..] {
+    if let [addr, port] = item.item_text.split(':').collect::<Vec<&str>>()[..] {
         Cow::Owned(format!(
             "ssh -p {} {}@{}",
             port,

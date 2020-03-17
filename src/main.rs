@@ -66,11 +66,14 @@ pub fn main() {
 }
 
 fn run_command(command_line: &str) {
-    let cl_elts: Vec<&str> = command_line.split(" ").collect();
+    let cl_elts = shell_words::split(command_line).unwrap_or_else(|e| {
+        println!("Couldn't parse the command: {}: {}", command_line, e);
+        Vec::new()
+    });
     if cl_elts.len() > 0 {
-        Command::new(cl_elts[0])
+        Command::new(cl_elts[0].clone())
             .args(cl_elts.iter().skip(1))
-            .spawn()
+            .status()
             .map(|_| ())
             .unwrap_or_else(|e| {
                 println!("Error launching process: {}", e);

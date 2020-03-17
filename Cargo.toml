@@ -8,12 +8,13 @@ edition = "2018"
 
 [dependencies]
 keyring = "0.8.0"
+libc = "0.2.67"
+dirs = "2.0.2"
+shell-words = "0.1.0"
 
 # need a newer version of skim than the latest published
 # on crates.io as of now, to get command history support.
 skim = { git = "https://github.com/lotabout/skim", commit = "a13bd4b1bff401b520c8566f5feffbf50c801169" }
-libc = "0.2.67"
-dirs = "2.0.2"
 
 # the clipboard situation on rust is a little messy..
 # there is clipboard, with no wayland support and no

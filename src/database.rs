@@ -69,7 +69,9 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
                 _ => None,
             };
             let path: Option<String> = row.get(9).unwrap();
-            let poi_info = path.map(|p| PoiInfo { path: p.into() });
+            let poi_info = path
+                .filter(|p| !p.is_empty())
+                .map(|p| PoiInfo { path: p.into() });
             Ok(ItemOfInterest {
                 id: row.get(0).unwrap(),
                 sql_table: row.get(1).unwrap(),

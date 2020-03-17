@@ -3,6 +3,7 @@ use clipboard_ext::x11_fork::ClipboardContext;
 use skim::prelude::*;
 use std::process::Command;
 pub mod config;
+use std::path::PathBuf;
 mod database;
 
 pub struct MyItem {
@@ -57,7 +58,15 @@ pub fn main() {
         match accept_key.as_ref().map(|s| s.as_str()) {
             Some("ctrl-j") => write_command_line_to_terminal(&val),
             Some("ctrl-k") => copy_command_to_clipboard(&val),
-            _ => run_command(&val),
+            _ => run_command(
+                &val,
+                &myitem
+                    .inner
+                    .poi_info
+                    .as_ref()
+                    .map(|p| p.path.clone())
+                    .unwrap_or_else(|| dirs::home_dir().unwrap()),
+            ),
         }
         if !query.is_empty() {
             config::write_history(&history, &query, 100).unwrap();
@@ -65,7 +74,7 @@ pub fn main() {
     }
 }
 
-fn run_command(command_line: &str) {
+fn run_command(command_line: &str, cur_dir: &PathBuf) {
     let cl_elts = shell_words::split(command_line).unwrap_or_else(|e| {
         println!("Couldn't parse the command: {}: {}", command_line, e);
         Vec::new()
@@ -73,6 +82,7 @@ fn run_command(command_line: &str) {
     if cl_elts.len() > 0 {
         Command::new(cl_elts[0].clone())
             .args(cl_elts.iter().skip(1))
+            .current_dir(cur_dir)
             .status()
             .map(|_| ())
             .unwrap_or_else(|e| {

@@ -35,8 +35,8 @@ pub fn main() {
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
         .expect(Some("ctrl-j,ctrl-k".to_string()))
         .height(Some("50%"))
-        .multi(true)
-        .preview(Some("")) // preview should be specified to enable preview window
+        // .multi(true)
+        // .preview(Some("")) // preview should be specified to enable preview window
         .query_history(&history)
         .build()
         .unwrap();

@@ -10,19 +10,22 @@ pub struct ItemOfInterest {
     env: String,
     item_type: String,
     server_desc: String,
+    server_username: String,
     poi_desc: Option<String>,
     item_text: String,
 }
 
 const SERVER_POIS_QUERY: &str = r#"SELECT server_point_of_interest.id, 'server_point_of_interest',
                      project.name, server.desc, server_point_of_interest.desc,
-                     server.environment, server_point_of_interest.text, server_point_of_interest.interest_type
+                     server.environment, server_point_of_interest.text, server_point_of_interest.interest_type,
+                     server.username
                  from server_point_of_interest
                  join server on server.id = server_point_of_interest.server_id
                  join project on project.id = server.project_id"#;
 
 const SERVERS_QUERY: &str = r#"SELECT server.id, 'server', project.name, server.desc, NULL,
-                     server.environment, server.ip, server.type || ' ' || server.access_type
+                     server.environment, server.ip, server.type || ' ' || server.access_type,
+                     server.username
                  from server
                  join project on project.id = server.project_id"#;
 
@@ -46,6 +49,7 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
                 env: row.get(5).unwrap(),
                 item_text: row.get(6).unwrap(),
                 item_type: row.get(7).unwrap(),
+                server_username: row.get(8).unwrap(),
             })
         })
         .unwrap();
@@ -71,7 +75,7 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
 
 fn get_value_server(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     if let [addr, port] = item.item_text.split(":").collect::<Vec<&str>>()[..] {
-        Cow::Owned(format!("ssh -p {} {}", port, addr))
+        Cow::Owned(format!("ssh -p {} {}@{}", port, item.server_username, addr))
     } else {
         Cow::Borrowed(&item.item_text)
     }

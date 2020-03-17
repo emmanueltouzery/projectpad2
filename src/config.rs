@@ -32,6 +32,10 @@ pub fn write_history(
     latest: &str,
     limit: usize,
 ) -> Result<(), std::io::Error> {
+    if orig_history.last().map(|l| l.as_str()) == Some(latest) {
+        // no point of having at the end of the history 5x the same command...
+        return Ok(());
+    }
     let additional_lines = if latest.trim().is_empty() { 0 } else { 1 };
     let start_index = if orig_history.len() + additional_lines > limit {
         orig_history.len() + additional_lines - limit

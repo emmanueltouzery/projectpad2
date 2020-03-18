@@ -80,6 +80,7 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
         Vec::new()
     });
     if !cl_elts.is_empty() {
+        println!("Running {}...", command_line);
         Command::new(cl_elts[0].clone())
             .args(cl_elts.iter().skip(1))
             .current_dir(cur_dir)

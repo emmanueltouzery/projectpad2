@@ -60,10 +60,9 @@ pub fn main() {
             Some("ctrl-k") => copy_command_to_clipboard(&val),
             _ => run_command(
                 &val,
-                &myitem
-                    .inner
-                    .poi_info
-                    .as_ref()
+                &Some(&myitem.inner)
+                    .filter(|p| p.server_info.is_none()) // remote paths are not relevant!
+                    .and_then(|i| i.poi_info.as_ref())
                     .map(|p| p.path.clone())
                     .unwrap_or_else(|| dirs::home_dir().unwrap()),
             ),
@@ -80,7 +79,7 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
         Vec::new()
     });
     if !cl_elts.is_empty() {
-        println!("Running {}...", command_line);
+        println!("Running {} in folder {:?}...", command_line, cur_dir);
         Command::new(cl_elts[0].clone())
             .args(cl_elts.iter().skip(1))
             .current_dir(cur_dir)

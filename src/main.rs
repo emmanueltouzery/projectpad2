@@ -22,11 +22,19 @@ impl SkimItem for MyItem {
     }
 
     fn preview(&self) -> ItemPreview {
-        if self.display.starts_with("color") {
-            ItemPreview::AnsiText(format!("\x1b[31mhello:\x1b[m\n{}", self.display))
-        } else {
-            ItemPreview::Text(format!("hello:\n{}", self.display))
-        }
+        ItemPreview::Text(
+            actions::get_value(&self.inner)
+                .into_iter()
+                .map(|a| a.desc)
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into(),
+        )
+        // if self.display.starts_with("color") {
+        //     ItemPreview::AnsiText(format!("\x1b[31mhello:\x1b[m\n{}", self.display))
+        // } else {
+        //     ItemPreview::Text(format!("hello:\n{}", self.display))
+        // }
     }
 }
 
@@ -37,7 +45,8 @@ pub fn main() {
         .expect(Some("ctrl-j,ctrl-k".to_string()))
         .height(Some("50%"))
         // .multi(true)
-        // .preview(Some("")) // preview should be specified to enable preview window
+        .preview(Some("")) // preview should be specified to enable preview window
+        .preview_window(Some("up:2"))
         .query_history(&history)
         .build()
         .unwrap();
@@ -55,7 +64,9 @@ pub fn main() {
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
-        let val = actions::get_value(&myitem.inner);
+        let val_actions = actions::get_value(&myitem.inner);
+        let val_fn = &val_actions.first().unwrap().get_string;
+        let val = val_fn(&myitem.inner);
         match accept_key.as_deref() {
             Some("ctrl-j") => write_command_line_to_terminal(&val),
             Some("ctrl-k") => copy_command_to_clipboard(&val),

@@ -67,15 +67,31 @@ fn get_value_ssh_cd_in_folder(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     }
 }
 
-pub fn get_value(item: &ItemOfInterest) -> Cow<str> {
+pub struct Action {
+    pub desc: String,
+    pub get_string: Box<dyn Fn(&ItemOfInterest) -> Cow<str>>,
+}
+
+impl Action {
+    fn new(desc: String, get_string: Box<dyn Fn(&ItemOfInterest) -> Cow<str>>) -> Action {
+        Action { desc, get_string }
+    }
+}
+
+pub fn get_value(item: &ItemOfInterest) -> Vec<Action> {
     match item {
-        i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => {
-            get_value_ssh_log_file(item)
-        }
-        i if i.item_type == ItemType::PoiApplication && is_ssh_access(i) => {
-            get_value_ssh_cd_in_folder(item)
-        }
-        i if i.sql_table.as_str() == "server" && is_ssh_access(i) => get_value_server_ssh(item),
-        _ => Cow::Borrowed(&item.item_text),
+        i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => vec![Action::new(
+            "tail log file".to_string(),
+            Box::new(get_value_ssh_log_file),
+        )],
+        i if i.item_type == ItemType::PoiApplication && is_ssh_access(i) => vec![Action::new(
+            "ssh in that folder".to_string(),
+            Box::new(get_value_ssh_cd_in_folder),
+        )],
+        i if i.sql_table.as_str() == "server" && is_ssh_access(i) => vec![Action::new(
+            "ssh on the server".to_string(),
+            Box::new(get_value_server_ssh),
+        )],
+        _ => Vec::new(),
     }
 }

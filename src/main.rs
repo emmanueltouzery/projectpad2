@@ -80,6 +80,10 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
         Vec::new()
     });
     if !cl_elts.is_empty() {
+        // the reason for the println is that some commands need
+        // some time before they print out any output -- for instance
+        // ssh on a far, slow server. With this println we give some
+        // feedback to the user.
         println!("Running {} in folder {:?}...", command_line, cur_dir);
         Command::new(cl_elts[0].clone())
             .args(cl_elts.iter().skip(1))

@@ -54,10 +54,26 @@ fn get_value_ssh_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     }
 }
 
+// https://serverfault.com/a/738797/176574
+fn get_value_ssh_cd_in_folder(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    if let Some(ssh_command) = try_prepare_ssh_command(item) {
+        Cow::Owned(format!(
+            "{} -t \"cd {}; exec \\$SHELL --login\"",
+            ssh_command,
+            item.poi_info.as_ref().unwrap().path.to_str().unwrap()
+        ))
+    } else {
+        Cow::Borrowed(&item.item_text)
+    }
+}
+
 pub fn get_value(item: &ItemOfInterest) -> Cow<str> {
     match item {
         i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => {
             get_value_ssh_log_file(item)
+        }
+        i if i.item_type == ItemType::PoiApplication && is_ssh_access(i) => {
+            get_value_ssh_cd_in_folder(item)
         }
         i if i.sql_table.as_str() == "server" && is_ssh_access(i) => get_value_server_ssh(item),
         _ => Cow::Borrowed(&item.item_text),

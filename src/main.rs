@@ -12,6 +12,8 @@ pub struct MyItem {
     inner: database::ItemOfInterest,
 }
 
+const SHORTCUT_KEYS: [&str; 2] = ["J", "K"];
+
 impl SkimItem for MyItem {
     fn display(&self) -> Cow<AnsiString> {
         Cow::Owned(self.display.as_str().into())
@@ -22,14 +24,18 @@ impl SkimItem for MyItem {
     }
 
     fn preview(&self) -> ItemPreview {
-        ItemPreview::Text(
-            actions::get_value(&self.inner)
-                .into_iter()
-                .map(|a| a.desc)
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into(),
-        )
+        let action = actions::get_value(&self.inner)
+            .into_iter()
+            .enumerate()
+            .map(|(idx, a)| format!("[{}] {}", SHORTCUT_KEYS[idx], a.desc))
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        ItemPreview::Text(if action.is_empty() {
+            action
+        } else {
+            "[ctrl]: run, [alt]: copy, [ctrl-shift]: print to terminal, ".to_string() + &action
+        })
         // if self.display.starts_with("color") {
         //     ItemPreview::AnsiText(format!("\x1b[31mhello:\x1b[m\n{}", self.display))
         // } else {

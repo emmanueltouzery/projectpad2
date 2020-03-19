@@ -28,6 +28,14 @@ pub enum ItemType {
     SrvReporting,
 }
 
+#[derive(Debug, EnumString, Display, PartialEq)]
+pub enum EnvironmentType {
+    EnvDevelopment,
+    EnvUat,
+    EnvStage,
+    EnvProd,
+}
+
 // i want to convert string->enum
 // https://www.reddit.com/r/rust/comments/7vxmmy/macro_for_generating_string_enum_parser/
 // serde could be an option but it seems overkill...
@@ -45,6 +53,7 @@ macro_rules! from_sql_from_str(
 
 from_sql_from_str!(ItemType);
 from_sql_from_str!(SrvAccessType);
+from_sql_from_str!(EnvironmentType);
 
 #[derive(Debug)]
 pub struct ServerInfo {
@@ -64,7 +73,7 @@ pub struct ItemOfInterest {
     pub id: i32,
     pub sql_table: String,
     pub project_name: String,
-    pub env: Option<String>,
+    pub env: Option<EnvironmentType>,
     pub item_type: ItemType,
     pub poi_desc: Option<String>,
     pub item_text: String,

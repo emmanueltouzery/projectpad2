@@ -4,6 +4,7 @@ use skim::prelude::*;
 use std::process::Command;
 pub mod config;
 use std::path::PathBuf;
+mod actions;
 mod database;
 
 pub struct MyItem {
@@ -54,7 +55,7 @@ pub fn main() {
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
-        let val = database::get_value(&myitem.inner);
+        let val = actions::get_value(&myitem.inner);
         match accept_key.as_deref() {
             Some("ctrl-j") => write_command_line_to_terminal(&val),
             Some("ctrl-k") => copy_command_to_clipboard(&val),

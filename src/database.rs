@@ -1,7 +1,6 @@
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::{params, Connection};
 use skim::prelude::*;
-use std::borrow::Cow;
 use std::path::PathBuf;
 use std::str::FromStr;
 use strum_macros::{Display, EnumString};
@@ -49,10 +48,10 @@ from_sql_from_str!(SrvAccessType);
 
 #[derive(Debug)]
 pub struct ServerInfo {
-    server_desc: String,
-    server_username: String,
-    server_ip: String,
-    server_access_type: SrvAccessType,
+    pub server_desc: String,
+    pub server_username: String,
+    pub server_ip: String,
+    pub server_access_type: SrvAccessType,
 }
 
 #[derive(Debug)]
@@ -62,13 +61,13 @@ pub struct PoiInfo {
 
 #[derive(Debug)]
 pub struct ItemOfInterest {
-    id: i32,
-    sql_table: String,
-    project_name: String,
-    env: Option<String>,
-    item_type: ItemType,
-    poi_desc: Option<String>,
-    item_text: String,
+    pub id: i32,
+    pub sql_table: String,
+    pub project_name: String,
+    pub env: Option<String>,
+    pub item_type: ItemType,
+    pub poi_desc: Option<String>,
+    pub item_text: String,
     pub server_info: Option<ServerInfo>,
     pub poi_info: Option<PoiInfo>,
 }
@@ -159,67 +158,4 @@ fn render_optional_field<S: std::fmt::Display>(field: Option<S>) -> String {
         .as_ref()
         .map(|d| format!(" ▶ {}", d))
         .unwrap_or_else(|| "".to_string())
-}
-
-fn try_prepare_ssh_command(item: &ItemOfInterest) -> Option<String> {
-    // TODO must be a cleaner way to express this...
-    if let Some([addr, port]) = match item
-        .server_info
-        .as_ref()
-        .unwrap()
-        .server_ip
-        .split(':')
-        .collect::<Vec<&str>>()[..]
-    {
-        [addr, port] => Some([addr, port]),
-        [addr] => Some([addr, "22"]),
-        _ => None,
-    } {
-        Some(format!(
-            "ssh -p {} {}@{}",
-            port,
-            item.server_info.as_ref().unwrap().server_username,
-            addr
-        ))
-    } else {
-        None
-    }
-}
-
-fn get_value_server_ssh(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    if let Some(ssh_command) = try_prepare_ssh_command(item) {
-        Cow::Owned(ssh_command)
-    } else {
-        Cow::Borrowed(&item.item_text)
-    }
-}
-
-fn is_ssh_access(item: &ItemOfInterest) -> bool {
-    match &item.server_info {
-        Some(srv) => srv.server_access_type == SrvAccessType::SrvAccessSsh,
-        None => false,
-    }
-}
-
-fn get_value_ssh_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    if let Some(ssh_command) = try_prepare_ssh_command(item) {
-        Cow::Owned(format!(
-            "{} \"{}{}\"",
-            ssh_command,
-            "tail -f ",
-            item.poi_info.as_ref().unwrap().path.to_str().unwrap()
-        ))
-    } else {
-        Cow::Borrowed(&item.item_text)
-    }
-}
-
-pub fn get_value(item: &ItemOfInterest) -> Cow<str> {
-    match item {
-        i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => {
-            get_value_ssh_log_file(item)
-        }
-        i if i.sql_table.as_str() == "server" && is_ssh_access(i) => get_value_server_ssh(item),
-        _ => Cow::Borrowed(&item.item_text),
-    }
 }

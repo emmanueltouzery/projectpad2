@@ -127,6 +127,14 @@ fn get_value_text(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     Cow::Borrowed(&item.item_text)
 }
 
+fn get_value_ssh_run_on_ssh(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
+        Cow::Owned(format!("{} -t \"{}\"", ssh_command, &item.item_text))
+    } else {
+        Cow::Borrowed(&item.item_text)
+    }
+}
+
 pub struct Action {
     pub desc: String,
     pub get_string: Box<dyn Fn(&ItemOfInterest) -> Cow<str>>,
@@ -159,6 +167,14 @@ pub fn get_value(item: &ItemOfInterest) -> Vec<Action> {
             vec![Action::new(
                 "run command".to_string(),
                 Box::new(get_value_text),
+            )]
+        }
+        i if [ItemType::PoiCommandToRun, ItemType::PoiCommandTerminal].contains(&i.item_type)
+            && is_ssh_access(i) =>
+        {
+            vec![Action::new(
+                "run command on server".to_string(),
+                Box::new(get_value_ssh_run_on_ssh),
             )]
         }
         i if i.item_type == ItemType::PoiConfigFile && is_ssh_access(i) => vec![

@@ -87,11 +87,10 @@ pub fn main() {
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
-        println!("{:?}", accept_key);
         let action_idx = SHORTCUT_KEYS
             .iter()
             .position(|v| accept_key.as_ref().unwrap().ends_with(v))
-            .unwrap();
+            .unwrap_or(0);
         let val_actions = actions::get_value(&myitem.inner);
         let effective_action_idx = std::cmp::min(action_idx, val_actions.len() - 1);
         let val_fn = &val_actions.get(effective_action_idx).unwrap().get_string;

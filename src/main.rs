@@ -12,7 +12,7 @@ pub struct MyItem {
     inner: database::ItemOfInterest,
 }
 
-const SHORTCUT_KEYS: [&str; 2] = ["J", "K"];
+const SHORTCUT_KEYS: [&str; 3] = ["j", "k", "l"];
 
 impl SkimItem for MyItem {
     fn display(&self) -> Cow<AnsiString> {
@@ -36,7 +36,7 @@ impl SkimItem for MyItem {
         } else {
             // action desc left-aligned, but shortcuts right-aligned.
             let w = get_terminal_width();
-            let shortcuts_desc = "[ctrl]: run, [alt]: copy, [ctrl-shift]: paste to prompt";
+            let shortcuts_desc = "[ctrl]: run, [alt]: copy, [ctrl-alt]: paste to prompt";
             let right_align_spacing =
                 w as i32 - action.len() as i32 - shortcuts_desc.len() as i32 - 5;
             let spacing_effective = if right_align_spacing > 0 {
@@ -63,7 +63,9 @@ pub fn main() {
     let history = config::read_history().unwrap_or_else(|_| vec![]);
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
-        .expect(Some("ctrl-j,ctrl-k".to_string()))
+        .expect(Some(
+            "ctrl-j,ctrl-k,ctrl-l,alt-j,alt-k,alt-l,ctrl-alt-j,ctrl-alt-k,ctrl-alt-l".to_string(),
+        ))
         .height(Some("50%"))
         // .multi(true)
         .preview(Some("")) // preview should be specified to enable preview window
@@ -85,12 +87,18 @@ pub fn main() {
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
+        println!("{:?}", accept_key);
+        let action_idx = SHORTCUT_KEYS
+            .iter()
+            .position(|v| accept_key.as_ref().unwrap().ends_with(v))
+            .unwrap();
         let val_actions = actions::get_value(&myitem.inner);
-        let val_fn = &val_actions.first().unwrap().get_string;
+        let effective_action_idx = std::cmp::min(action_idx, val_actions.len() - 1);
+        let val_fn = &val_actions.get(effective_action_idx).unwrap().get_string;
         let val = val_fn(&myitem.inner);
         match accept_key.as_deref() {
-            Some("ctrl-j") => write_command_line_to_terminal(&val),
-            Some("ctrl-k") => copy_command_to_clipboard(&val),
+            Some(i) if i.contains("ctrl-alt-") => write_command_line_to_terminal(&val),
+            Some(i) if i.contains("alt-") => copy_command_to_clipboard(&val),
             _ => run_command(
                 &val,
                 &Some(&myitem.inner)

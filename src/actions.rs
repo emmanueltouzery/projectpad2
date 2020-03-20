@@ -1,7 +1,15 @@
 use crate::database::{ItemOfInterest, ItemType, SrvAccessType};
 use std::borrow::Cow;
 
-fn try_prepare_ssh_command(item: &ItemOfInterest) -> Option<String> {
+enum SshCommandType {
+    Ssh,
+    Scp,
+}
+
+fn try_prepare_ssh_command(
+    item: &ItemOfInterest,
+    ssh_command_type: SshCommandType,
+) -> Option<String> {
     // TODO must be a cleaner way to express this...
     if let Some([addr, port]) = match item
         .server_info
@@ -15,19 +23,27 @@ fn try_prepare_ssh_command(item: &ItemOfInterest) -> Option<String> {
         [addr] => Some([addr, "22"]),
         _ => None,
     } {
-        Some(format!(
-            "ssh -p {} {}@{}",
-            port,
-            item.server_info.as_ref().unwrap().server_username,
-            addr
-        ))
+        Some(match ssh_command_type {
+            SshCommandType::Ssh => format!(
+                "ssh -p {} {}@{}",
+                port,
+                item.server_info.as_ref().unwrap().server_username,
+                addr
+            ),
+            SshCommandType::Scp => format!(
+                "scp -P {} {}@{}",
+                port,
+                item.server_info.as_ref().unwrap().server_username,
+                addr
+            ),
+        })
     } else {
         None
     }
 }
 
 fn get_value_server_ssh(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    if let Some(ssh_command) = try_prepare_ssh_command(item) {
+    if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
         Cow::Owned(ssh_command)
     } else {
         Cow::Borrowed(&item.item_text)
@@ -41,12 +57,32 @@ fn is_ssh_access(item: &ItemOfInterest) -> bool {
     }
 }
 
-fn get_value_ssh_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    if let Some(ssh_command) = try_prepare_ssh_command(item) {
+fn get_value_action_log_file(item: &ItemOfInterest, action: String) -> std::borrow::Cow<str> {
+    if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
         Cow::Owned(format!(
-            "{} \"{}{}\"",
+            "{} \"{} {}\"",
             ssh_command,
-            "tail -f ",
+            action,
+            item.poi_info.as_ref().unwrap().path.to_str().unwrap()
+        ))
+    } else {
+        Cow::Borrowed(&item.item_text)
+    }
+}
+
+fn get_value_tail_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    get_value_action_log_file(item, "tail -f".to_string())
+}
+
+fn get_value_less_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    get_value_action_log_file(item, "less".to_string())
+}
+
+fn get_value_fetch_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    if let Some(scp_command) = try_prepare_ssh_command(item, SshCommandType::Scp) {
+        Cow::Owned(format!(
+            "{}:{} ~/Downloads",
+            scp_command,
             item.poi_info.as_ref().unwrap().path.to_str().unwrap()
         ))
     } else {
@@ -56,7 +92,7 @@ fn get_value_ssh_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
 
 // https://serverfault.com/a/738797/176574
 fn get_value_ssh_cd_in_folder(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    if let Some(ssh_command) = try_prepare_ssh_command(item) {
+    if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
         Cow::Owned(format!(
             "{} -t \"cd {}; exec \\$SHELL --login\"",
             ssh_command,
@@ -84,10 +120,20 @@ impl Action {
 
 pub fn get_value(item: &ItemOfInterest) -> Vec<Action> {
     match item {
-        i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => vec![Action::new(
-            "tail log file".to_string(),
-            Box::new(get_value_ssh_log_file),
-        )],
+        i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => vec![
+            Action::new(
+                "tail log file".to_string(),
+                Box::new(get_value_tail_log_file),
+            ),
+            Action::new(
+                "less log file".to_string(),
+                Box::new(get_value_less_log_file),
+            ),
+            Action::new(
+                "fetch log file".to_string(),
+                Box::new(get_value_fetch_log_file),
+            ),
+        ],
         i if i.item_type == ItemType::PoiApplication && is_ssh_access(i) => vec![Action::new(
             "ssh in that folder".to_string(),
             Box::new(get_value_ssh_cd_in_folder),

@@ -67,6 +67,10 @@ fn get_value_ssh_cd_in_folder(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     }
 }
 
+fn get_value_text(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    Cow::Borrowed(&item.item_text)
+}
+
 pub struct Action {
     pub desc: String,
     pub get_string: Box<dyn Fn(&ItemOfInterest) -> Cow<str>>,
@@ -92,6 +96,14 @@ pub fn get_value(item: &ItemOfInterest) -> Vec<Action> {
             "ssh on the server".to_string(),
             Box::new(get_value_server_ssh),
         )],
+        i if [ItemType::PoiCommandToRun, ItemType::PoiCommandTerminal].contains(&i.item_type)
+            && !is_ssh_access(i) =>
+        {
+            vec![Action::new(
+                "run command".to_string(),
+                Box::new(get_value_text),
+            )]
+        }
         _ => Vec::new(),
     }
 }

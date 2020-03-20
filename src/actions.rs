@@ -57,11 +57,26 @@ fn is_ssh_access(item: &ItemOfInterest) -> bool {
     }
 }
 
-fn get_value_action_log_file(item: &ItemOfInterest, action: String) -> std::borrow::Cow<str> {
+#[derive(PartialEq)]
+enum ForcePseudoTTY {
+    Yes,
+    No,
+}
+
+fn get_value_action_file(
+    item: &ItemOfInterest,
+    force_pseudo: ForcePseudoTTY,
+    action: String,
+) -> std::borrow::Cow<str> {
     if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
         Cow::Owned(format!(
-            "{} \"{} {}\"",
+            "{} {}\"{} {}\"",
             ssh_command,
+            if force_pseudo == ForcePseudoTTY::Yes {
+                "-t "
+            } else {
+                ""
+            },
             action,
             item.poi_info.as_ref().unwrap().path.to_str().unwrap()
         ))
@@ -70,20 +85,25 @@ fn get_value_action_log_file(item: &ItemOfInterest, action: String) -> std::borr
     }
 }
 
-fn get_value_tail_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_log_file(item, "tail -f".to_string())
+fn get_value_edit_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    get_value_action_file(item, ForcePseudoTTY::Yes, "vim".to_string())
 }
 
-fn get_value_less_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_log_file(item, "less".to_string())
+fn get_value_tail_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    get_value_action_file(item, ForcePseudoTTY::No, "tail -f".to_string())
 }
 
-fn get_value_fetch_log_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+fn get_value_less_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    get_value_action_file(item, ForcePseudoTTY::Yes, "less".to_string())
+}
+
+fn get_value_fetch_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     if let Some(scp_command) = try_prepare_ssh_command(item, SshCommandType::Scp) {
         Cow::Owned(format!(
-            "{}:{} ~/Downloads",
+            "{}:{} {}",
             scp_command,
-            item.poi_info.as_ref().unwrap().path.to_str().unwrap()
+            item.poi_info.as_ref().unwrap().path.to_str().unwrap(),
+            dirs::download_dir().unwrap().to_str().unwrap()
         ))
     } else {
         Cow::Borrowed(&item.item_text)
@@ -121,18 +141,9 @@ impl Action {
 pub fn get_value(item: &ItemOfInterest) -> Vec<Action> {
     match item {
         i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => vec![
-            Action::new(
-                "tail log file".to_string(),
-                Box::new(get_value_tail_log_file),
-            ),
-            Action::new(
-                "less log file".to_string(),
-                Box::new(get_value_less_log_file),
-            ),
-            Action::new(
-                "fetch log file".to_string(),
-                Box::new(get_value_fetch_log_file),
-            ),
+            Action::new("tail log file".to_string(), Box::new(get_value_tail_file)),
+            Action::new("less log file".to_string(), Box::new(get_value_less_file)),
+            Action::new("fetch log file".to_string(), Box::new(get_value_fetch_file)),
         ],
         i if i.item_type == ItemType::PoiApplication && is_ssh_access(i) => vec![Action::new(
             "ssh in that folder".to_string(),
@@ -150,6 +161,20 @@ pub fn get_value(item: &ItemOfInterest) -> Vec<Action> {
                 Box::new(get_value_text),
             )]
         }
+        i if i.item_type == ItemType::PoiConfigFile && is_ssh_access(i) => vec![
+            Action::new(
+                "edit config file".to_string(),
+                Box::new(get_value_edit_file),
+            ),
+            Action::new(
+                "less config file".to_string(),
+                Box::new(get_value_less_file),
+            ),
+            Action::new(
+                "fetch config file".to_string(),
+                Box::new(get_value_fetch_file),
+            ),
+        ],
         _ => Vec::new(),
     }
 }

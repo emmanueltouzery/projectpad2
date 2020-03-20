@@ -34,7 +34,22 @@ impl SkimItem for MyItem {
         ItemPreview::Text(if action.is_empty() {
             action
         } else {
-            "[ctrl]: run, [alt]: copy, [ctrl-shift]: print to terminal, ".to_string() + &action
+            // action desc left-aligned, but shortcuts right-aligned.
+            let w = get_terminal_width();
+            let shortcuts_desc = "[ctrl]: run, [alt]: copy, [ctrl-shift]: paste to prompt";
+            let right_align_spacing =
+                w as i32 - action.len() as i32 - shortcuts_desc.len() as i32 - 5;
+            let spacing_effective = if right_align_spacing > 0 {
+                right_align_spacing as usize
+            } else {
+                1
+            };
+            format!(
+                "{}{}{}",
+                action,
+                " ".repeat(spacing_effective),
+                shortcuts_desc
+            )
         })
         // if self.display.starts_with("color") {
         //     ItemPreview::AnsiText(format!("\x1b[31mhello:\x1b[m\n{}", self.display))
@@ -116,6 +131,27 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
 fn copy_command_to_clipboard(command_line: &str) {
     let mut ctx = ClipboardContext::new().unwrap();
     ctx.set_contents(command_line.into()).unwrap();
+}
+
+#[repr(C)]
+struct WinSize {
+    row: u16,
+    col: u16,
+    x_pixel: u16,
+    y_pixel: u16,
+}
+
+fn get_terminal_width() -> u16 {
+    let ws = WinSize {
+        row: 0,
+        col: 0,
+        x_pixel: 0,
+        y_pixel: 0,
+    };
+    unsafe {
+        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &ws);
+    }
+    ws.col
 }
 
 fn write_command_line_to_terminal(command_line: &str) {

@@ -153,7 +153,7 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
     }
 }
 
-fn render_row(cols_spec: &Vec<usize>, item: &ItemOfInterest) -> String {
+fn render_row(cols_spec: &[usize], item: &ItemOfInterest) -> String {
     let mut col1 = item.project_name.clone();
     col1.truncate(cols_spec[0]);
     let mut col2 = item
@@ -182,7 +182,7 @@ fn render_row(cols_spec: &Vec<usize>, item: &ItemOfInterest) -> String {
     let mut col6 = item
         .poi_desc
         .as_ref()
-        .map(|x| x.clone())
+        .cloned()
         .unwrap_or_else(|| "".to_string());
     col6.truncate(cols_spec[5]);
     format!(

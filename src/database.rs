@@ -143,7 +143,7 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
             })
         })
         .unwrap();
-    let cols_spec = vec![7, 3, 12, 40, 17, 45];
+    let cols_spec = vec![7, 3, 12, 40, 10, 50];
     for server_poi in server_poi_iter {
         let poi = server_poi.unwrap();
         let _ = item_sender.send(Arc::new(crate::MyItem {
@@ -175,8 +175,9 @@ fn render_row(cols_spec: &Vec<usize>, item: &ItemOfInterest) -> String {
     let mut col5 = item
         .server_info
         .as_ref()
-        .map(|si| si.server_access_type.to_string())
-        .unwrap_or_else(|| "-".to_string());
+        .map(|si| render_access_type(&si.server_access_type))
+        .unwrap_or_else(|| "-")
+        .to_string();
     col5.truncate(cols_spec[4]);
     let mut col6 = item
         .poi_desc
@@ -207,6 +208,15 @@ fn display_env(env: &EnvironmentType) -> &'static str {
         EnvironmentType::EnvUat => "Uat",
         EnvironmentType::EnvStage => "Stg",
         EnvironmentType::EnvProd => "Prd",
+    }
+}
+
+fn render_access_type(access: &SrvAccessType) -> &'static str {
+    match access {
+        SrvAccessType::SrvAccessSsh => "ssh",
+        SrvAccessType::SrvAccessRdp => "RDP",
+        SrvAccessType::SrvAccessWww => "www",
+        SrvAccessType::SrvAccessSshTunnel => "ssh tunnel",
     }
 }
 

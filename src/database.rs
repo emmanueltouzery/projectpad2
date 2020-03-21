@@ -143,28 +143,101 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
             })
         })
         .unwrap();
+    let cols_spec = vec![7, 3, 12, 40, 17, 45];
     for server_poi in server_poi_iter {
         let poi = server_poi.unwrap();
         let _ = item_sender.send(Arc::new(crate::MyItem {
-            display: poi.project_name.clone()
-                + &render_optional_field(poi.env.as_ref())
-                + " ▶ "
-                + &poi.item_type.to_string()
-                + &render_optional_field(poi.server_info.as_ref().map(|si| &si.server_desc))
-                + &render_optional_field(
-                    poi.server_info
-                        .as_ref()
-                        .map(|si| si.server_access_type.to_string()),
-                )
-                + &render_optional_field(poi.poi_desc.as_ref()),
+            display: render_row(&cols_spec, &poi),
             inner: poi,
         }));
     }
 }
 
-fn render_optional_field<S: std::fmt::Display>(field: Option<S>) -> String {
-    field
+fn render_row(cols_spec: &Vec<usize>, item: &ItemOfInterest) -> String {
+    let mut col1 = item.project_name.clone();
+    col1.truncate(cols_spec[0]);
+    let mut col2 = item
+        .env
         .as_ref()
-        .map(|d| format!(" ▶ {}", d))
-        .unwrap_or_else(|| "".to_string())
+        .map(display_env)
+        .unwrap_or("-")
+        .to_string();
+    col2.truncate(cols_spec[1]);
+    let mut col3 =
+        render_type_emoji(&item.item_type).to_string() + " " + render_item_type(&item.item_type);
+    col3.truncate(cols_spec[2]);
+    let mut col4 = item
+        .server_info
+        .as_ref()
+        .map(|si| si.server_desc.clone())
+        .unwrap_or_else(|| "-".to_string());
+    col4.truncate(cols_spec[3]);
+    let mut col5 = item
+        .server_info
+        .as_ref()
+        .map(|si| si.server_access_type.to_string())
+        .unwrap_or_else(|| "-".to_string());
+    col5.truncate(cols_spec[4]);
+    let mut col6 = item
+        .poi_desc
+        .as_ref()
+        .map(|x| x.clone())
+        .unwrap_or_else(|| "".to_string());
+    col6.truncate(cols_spec[5]);
+    format!(
+        "{:<w1$} {:<w2$} {:<w3$} {:<w4$} {:<w5$} {:<w6$}",
+        col1,
+        col2,
+        col3,
+        col4,
+        col5,
+        col6,
+        w1 = cols_spec[0],
+        w2 = cols_spec[1],
+        w3 = cols_spec[2],
+        w4 = cols_spec[3],
+        w5 = cols_spec[4],
+        w6 = cols_spec[5],
+    )
+}
+
+fn display_env(env: &EnvironmentType) -> &'static str {
+    match env {
+        EnvironmentType::EnvDevelopment => "Dev",
+        EnvironmentType::EnvUat => "Uat",
+        EnvironmentType::EnvStage => "Stg",
+        EnvironmentType::EnvProd => "Prd",
+    }
+}
+
+fn render_item_type(item_type: &ItemType) -> &'static str {
+    match item_type {
+        ItemType::PoiCommandToRun => "Command",
+        ItemType::PoiCommandTerminal => "Command",
+        ItemType::PoiConfigFile => "Config",
+        ItemType::PoiLogFile => "Log",
+        ItemType::PoiApplication => "App",
+        ItemType::PoiBackupArchive => "Backup",
+        ItemType::SrvApplication => "App",
+        ItemType::SrvDatabase => "DB",
+        ItemType::SrvHttpOrProxy => "HttpOrProxy",
+        ItemType::SrvReporting => "Reporting",
+        ItemType::SrvMonitoring => "Monitoring",
+    }
+}
+
+fn render_type_emoji(item_type: &ItemType) -> &'static str {
+    match item_type {
+        ItemType::PoiCommandToRun => "🚀",    // ⚙ 🖥
+        ItemType::PoiCommandTerminal => "🚀", // ⚙ 🖥
+        ItemType::PoiConfigFile => "🔧",      // 🗄
+        ItemType::PoiLogFile => "📼",
+        ItemType::PoiApplication => "📂",
+        ItemType::PoiBackupArchive => "💾", // 📦
+        ItemType::SrvApplication => "🏭",
+        ItemType::SrvDatabase => "💽",
+        ItemType::SrvHttpOrProxy => "🌐",
+        ItemType::SrvReporting => "📰",
+        ItemType::SrvMonitoring => "📈", //🌡
+    }
 }

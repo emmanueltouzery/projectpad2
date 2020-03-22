@@ -123,6 +123,13 @@ fn get_value_ssh_cd_in_folder(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     }
 }
 
+fn get_value_cd_in_folder(item: &ItemOfInterest) -> std::borrow::Cow<str> {
+    Cow::Owned(format!(
+        "cd {}",
+        item.poi_info.as_ref().unwrap().path.to_str().unwrap()
+    ))
+}
+
 fn get_value_text(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     Cow::Borrowed(&item.item_text)
 }
@@ -135,14 +142,30 @@ fn get_value_ssh_run_on_ssh(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     }
 }
 
+#[derive(PartialEq)]
+pub enum AllowedAction {
+    Run,
+    CopyToClipboard,
+    CopyToPrompt,
+}
+
 pub struct Action {
     pub desc: String,
     pub get_string: Box<dyn Fn(&ItemOfInterest) -> Cow<str>>,
+    pub allowed_actions: Vec<AllowedAction>,
 }
 
 impl Action {
     fn new(desc: String, get_string: Box<dyn Fn(&ItemOfInterest) -> Cow<str>>) -> Action {
-        Action { desc, get_string }
+        Action {
+            desc,
+            get_string,
+            allowed_actions: vec![
+                AllowedAction::Run,
+                AllowedAction::CopyToClipboard,
+                AllowedAction::CopyToPrompt,
+            ],
+        }
     }
 }
 
@@ -157,6 +180,12 @@ pub fn get_value(item: &ItemOfInterest) -> Vec<Action> {
             "ssh in that folder".to_string(),
             Box::new(get_value_ssh_cd_in_folder),
         )],
+        i if i.item_type == ItemType::PoiApplication && i.server_info.is_none() => vec![Action {
+            desc: "cd in that folder".to_string(),
+            get_string: Box::new(get_value_cd_in_folder),
+            // cannot change the folder of the parent shell
+            allowed_actions: vec![AllowedAction::CopyToClipboard, AllowedAction::CopyToPrompt],
+        }],
         i if i.sql_table.as_str() == "server" && is_ssh_access(i) => vec![Action::new(
             "ssh on the server".to_string(),
             Box::new(get_value_server_ssh),

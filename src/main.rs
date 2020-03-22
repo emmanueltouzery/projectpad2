@@ -3,6 +3,7 @@ use clipboard_ext::x11_fork::ClipboardContext;
 use skim::prelude::*;
 use std::process::Command;
 pub mod config;
+use actions::AllowedAction;
 use std::path::PathBuf;
 mod actions;
 mod database;
@@ -93,11 +94,17 @@ pub fn main() {
             .unwrap_or(0);
         let val_actions = actions::get_value(&myitem.inner);
         let effective_action_idx = std::cmp::min(action_idx, val_actions.len() - 1);
-        let val_fn = &val_actions.get(effective_action_idx).unwrap().get_string;
-        let val = val_fn(&myitem.inner);
+        let val_action = val_actions.get(effective_action_idx).unwrap();
+        let val = (val_action.get_string)(&myitem.inner);
         match accept_key.as_deref() {
-            Some(i) if i.contains("ctrl-alt-") => write_command_line_to_terminal(&val),
-            Some(i) if i.contains("alt-") => copy_command_to_clipboard(&val),
+            Some(i) if i.starts_with("alt-") => copy_command_to_clipboard(&val),
+            Some(i)
+                if i.starts_with("ctrl-alt-")
+                    // copy to command-line if run is not allowed for that action
+                    || !val_action.allowed_actions.contains(&AllowedAction::Run) =>
+            {
+                write_command_line_to_terminal(&val)
+            }
             _ => run_command(
                 &val,
                 &Some(&myitem.inner)

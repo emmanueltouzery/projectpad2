@@ -81,13 +81,15 @@ pub struct ItemOfInterest {
     pub poi_info: Option<PoiInfo>,
 }
 
+// for now exclude RDP & WWW
 const SERVER_POIS_QUERY: &str = r#"SELECT server_point_of_interest.id, 'server_point_of_interest',
                      project.name, server.desc, server_point_of_interest.desc,
                      server.environment, server_point_of_interest.text, server_point_of_interest.interest_type,
                      server.username, server_point_of_interest.path, server.access_type, server.ip
                  from server_point_of_interest
                  join server on server.id = server_point_of_interest.server_id
-                 join project on project.id = server.project_id"#;
+                 join project on project.id = server.project_id
+                 where server.access_type not in ('SrvAccessRdp', 'SrvAccessWww')"#;
 
 const PROJECT_POIS_QUERY: &str = r#"SELECT project_point_of_interest.id, 'project_point_of_interest',
                      project.name, NULL, project_point_of_interest.desc,
@@ -96,11 +98,13 @@ const PROJECT_POIS_QUERY: &str = r#"SELECT project_point_of_interest.id, 'projec
                  from project_point_of_interest
                  join project on project.id = project_point_of_interest.project_id"#;
 
+// for now exclude RDP & WWW
 const SERVERS_QUERY: &str = r#"SELECT server.id, 'server', project.name, server.desc, NULL,
                      server.environment, server.ip, server.type,
                      server.username, NULL, server.access_type, server.ip
                  from server
-                 join project on project.id = server.project_id"#;
+                 join project on project.id = server.project_id
+                 where server.access_type not in ('SrvAccessRdp', 'SrvAccessWww')"#;
 
 pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
     let conn = Connection::open(crate::config::database_path()).unwrap(); // TODO react better if no DB

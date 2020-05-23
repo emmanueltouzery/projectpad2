@@ -1,2 +1,2 @@
-mod project_list;
+mod project_badge;
 pub mod win;

@@ -1245,6 +1245,7 @@ dependencies = [
 name = "projectpad"
 version = "0.1.0"
 dependencies = [
+ "cairo-rs",
  "gtk",
  "relm",
  "relm-derive",

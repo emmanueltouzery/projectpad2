@@ -1,4 +1,4 @@
-use super::project_list::ProjectList;
+use super::project_badge::ProjectBadge;
 use gtk::prelude::*;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
@@ -40,7 +40,12 @@ impl Widget for Win {
     view! {
         gtk::Window {
             gtk::Box {
-                ProjectList(self.model.projects.clone())
+                ProjectBadge(self.model.projects.first().unwrap().clone()) {
+                    child: {
+                        fill: true,
+                        expand: true,
+                    },
+                }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
         }

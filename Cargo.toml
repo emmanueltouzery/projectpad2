@@ -1,33 +1,6 @@
-[package]
-name = "projectpad-cli"
-version = "0.1.0"
-authors = ["Emmanuel Touzery <etouzery@gmail.com>"]
-edition = "2018"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-keyring = "0.8.0"
-libc = "0.2.67"
-dirs = "2.0.2"
-shell-words = "0.1.0"
-strum = "0.18.0"
-strum_macros = "0.18.0"
-
-# need a newer version of skim than the latest published
-# on crates.io as of now, to get command history support.
-skim = { git = "https://github.com/lotabout/skim", rev = "a13bd4b1bff401b520c8566f5feffbf50c801169" }
-
-# the clipboard situation on rust is a little messy..
-# there is clipboard, with no wayland support and no
-# support for keeping the clipboard contents after the
-# process exits. https://github.com/aweinstock314/rust-clipboard/issues/61
-# there is copypasta, with wayland support but also
-# the same issue of clearing after exit.
-# clipboard-ext has no wayland support but at least
-# doesn't clear the clipboard after exit on x11..
-clipboard-ext = "0.2.0"
-
-[dependencies.rusqlite]
-version = "0.21.0"
-features = ["sqlcipher"]
+members = [
+    "projectpad-cli",
+    "projectpad"
+]

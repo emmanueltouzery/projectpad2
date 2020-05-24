@@ -13,6 +13,7 @@ pub enum Msg {
 pub struct Model {
     project: Project,
     draw_handler: DrawHandler<DrawingArea>,
+    font_size_for_width: Option<(i32, f64)>, // cache the computed font size
 }
 
 #[widget]
@@ -25,10 +26,11 @@ impl Widget for ProjectBadge {
         Model {
             project,
             draw_handler: DrawHandler::new().expect("draw handler"),
+            font_size_for_width: None,
         }
     }
 
-    fn compute_font_size(context: &cairo::Context, width: f64) {
+    fn compute_font_size(context: &cairo::Context, width: f64) -> f64 {
         let mut size = 5.0;
         context.set_font_size(size);
         while context.text_extents("HU").width < width {
@@ -36,6 +38,7 @@ impl Widget for ProjectBadge {
             context.set_font_size(size);
             size += 1.0;
         }
+        size
     }
 
     fn update(&mut self, event: Msg) {
@@ -43,7 +46,17 @@ impl Widget for ProjectBadge {
             Msg::UpdateDrawBuffer => {
                 let context = self.model.draw_handler.get_context();
                 let allocation = self.drawing_area.get_allocation();
-                Self::compute_font_size(&context, allocation.width as f64 * 0.75); // TODO not for every drawing!!
+                match self.model.font_size_for_width {
+                    Some((w, font_size)) if w == allocation.width => {
+                        context.set_font_size(font_size)
+                    }
+                    _ => {
+                        self.model.font_size_for_width = Some((
+                            allocation.width,
+                            Self::compute_font_size(&context, allocation.width as f64 * 0.75),
+                        ));
+                    }
+                }
                 context.set_antialias(cairo::Antialias::Best);
 
                 context.set_source_rgb(1.0, 1.0, 1.0);

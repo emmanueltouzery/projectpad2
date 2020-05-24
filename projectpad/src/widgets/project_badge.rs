@@ -46,6 +46,10 @@ impl Widget for ProjectBadge {
                 Self::compute_font_size(&context, allocation.width as f64 * 0.75); // TODO not for every drawing!!
                 context.set_antialias(cairo::Antialias::Best);
 
+                context.set_source_rgb(1.0, 1.0, 1.0);
+                context.rectangle(0.0, 0.0, allocation.width.into(), allocation.height.into());
+                context.fill();
+
                 context.set_source_rgb(0.0, 0.0, 0.0);
                 context.arc(
                     (allocation.width / 2).into(),

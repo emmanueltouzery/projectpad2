@@ -34,7 +34,6 @@ impl Widget for ProjectBadge {
         let mut size = 5.0;
         context.set_font_size(size);
         while context.text_extents("HU").width < width {
-            println!("Trying font size {}", size);
             context.set_font_size(size);
             size += 1.0;
         }
@@ -79,7 +78,7 @@ impl Widget for ProjectBadge {
                     (allocation.width / 2) as f64
                         - text_extents.width / 2.0
                         - text_extents.x_bearing,
-                    (allocation.height / 2) as f64
+                    (allocation.width / 2) as f64
                         - text_extents.y_bearing
                         - text_extents.height / 2.0,
                 );

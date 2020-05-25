@@ -21,6 +21,7 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
+        println!("badge init_view called");
         self.model.draw_handler.init(&self.drawing_area);
         self.drawing_area
             .add_events(gdk::EventMask::BUTTON_PRESS_MASK);
@@ -50,6 +51,7 @@ impl Widget for ProjectBadge {
             Msg::UpdateDrawBuffer => {
                 let context = self.model.draw_handler.get_context();
                 let allocation = self.drawing_area.get_allocation();
+                println!("drawing badge, allocation: {:?}", allocation);
                 match self.model.font_size_for_width {
                     Some((w, font_size)) if w == allocation.width => {
                         context.set_font_size(font_size)
@@ -82,7 +84,8 @@ impl Widget for ProjectBadge {
                 context.fill();
 
                 context.set_source_rgb(1.0, 1.0, 1.0);
-                let text_extents = context.text_extents("HU");
+                let contents = &self.model.project.name[..2];
+                let text_extents = context.text_extents(contents);
                 context.move_to(
                     (allocation.width / 2) as f64
                         - text_extents.width / 2.0
@@ -91,7 +94,7 @@ impl Widget for ProjectBadge {
                         - text_extents.y_bearing
                         - text_extents.height / 2.0,
                 );
-                context.text_path("HU");
+                context.text_path(contents);
                 context.fill();
             }
             Msg::Click => {

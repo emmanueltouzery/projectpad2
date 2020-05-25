@@ -1,6 +1,6 @@
-use super::project_badge::ProjectBadge;
+use super::project_list::ProjectList;
 use gtk::prelude::*;
-use relm::{Component, Widget};
+use relm::Widget;
 use relm_derive::{widget, Msg};
 
 #[derive(Msg)]
@@ -10,7 +10,7 @@ pub enum Msg {
 
 #[derive(Clone)]
 pub struct Project {
-    name: String,
+    pub name: String,
 }
 
 impl Project {
@@ -40,7 +40,8 @@ impl Widget for Win {
     view! {
         gtk::Window {
             gtk::Box {
-                ProjectBadge(self.model.projects.first().unwrap().clone()) {
+                // ProjectBadge(self.model.projects.first().unwrap().clone()) {
+                ProjectList(self.model.projects.clone()) {
                     child: {
                         fill: true,
                         expand: true,

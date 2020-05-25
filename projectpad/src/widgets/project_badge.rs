@@ -8,18 +8,22 @@ use std::f64::consts::PI;
 #[derive(Msg)]
 pub enum Msg {
     UpdateDrawBuffer,
+    Click,
 }
 
 pub struct Model {
     project: Project,
     draw_handler: DrawHandler<DrawingArea>,
     font_size_for_width: Option<(i32, f64)>, // cache the computed font size
+    is_active: bool,
 }
 
 #[widget]
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
         self.model.draw_handler.init(&self.drawing_area);
+        self.drawing_area
+            .add_events(gdk::EventMask::BUTTON_PRESS_MASK);
     }
 
     fn model(relm: &relm::Relm<Self>, project: Project) -> Model {
@@ -27,6 +31,7 @@ impl Widget for ProjectBadge {
             project,
             draw_handler: DrawHandler::new().expect("draw handler"),
             font_size_for_width: None,
+            is_active: false,
         }
     }
 
@@ -62,7 +67,11 @@ impl Widget for ProjectBadge {
                 context.rectangle(0.0, 0.0, allocation.width.into(), allocation.height.into());
                 context.fill();
 
-                context.set_source_rgb(0.0, 0.0, 0.0);
+                if self.model.is_active {
+                    context.set_source_rgb(0.5, 0.5, 0.5);
+                } else {
+                    context.set_source_rgb(0.0, 0.0, 0.0);
+                }
                 context.arc(
                     (allocation.width / 2).into(),
                     (allocation.width / 2).into(),
@@ -85,6 +94,9 @@ impl Widget for ProjectBadge {
                 context.text_path("HU");
                 context.fill();
             }
+            Msg::Click => {
+                self.model.is_active = true;
+            }
         }
     }
 
@@ -92,6 +104,7 @@ impl Widget for ProjectBadge {
         #[name="drawing_area"]
         gtk::DrawingArea {
             draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
+            button_press_event(_, _) => (Msg::Click, Inhibit(false)),
         }
     }
 }

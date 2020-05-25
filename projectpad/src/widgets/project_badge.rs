@@ -22,6 +22,7 @@ pub struct Model {
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
         println!("badge init_view called");
+        self.drawing_area.set_size_request(100, 100);
         self.model.draw_handler.init(&self.drawing_area);
         self.drawing_area
             .add_events(gdk::EventMask::BUTTON_PRESS_MASK);

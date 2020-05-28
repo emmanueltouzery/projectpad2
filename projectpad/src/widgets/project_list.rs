@@ -14,7 +14,6 @@ pub enum Msg {
 pub struct Model {
     relm: relm::Relm<ProjectList>,
     projects: Vec<Project>,
-    selected_project: Option<Project>,
     // need to keep hold of the children widgets
     children_widgets: Vec<Component<ProjectBadge>>,
 }
@@ -31,19 +30,13 @@ impl Widget for ProjectList {
         Model {
             relm: relm.clone(),
             projects,
-            selected_project: None,
             children_widgets: vec![],
         }
     }
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::ProjectActivated(ref project) => {
-                if self.model.selected_project.as_ref() != Some(project) {
-                    println!("{:?}", project);
-                    self.model.selected_project = Some(project.clone());
-                }
-            }
+            Msg::ProjectActivated(ref _project) => {}
         }
     }
 

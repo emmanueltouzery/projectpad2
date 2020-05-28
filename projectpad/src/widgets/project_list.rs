@@ -41,10 +41,6 @@ impl Widget for ProjectList {
             Msg::ProjectActivated(ref project) => {
                 if self.model.selected_project.as_ref() != Some(project) {
                     println!("{:?}", project);
-                    for w in &self.model.children_widgets {
-                        w.stream()
-                            .emit(ProjectBadgeMsg::ActiveProjectChanged(project.clone()));
-                    }
                     self.model.selected_project = Some(project.clone());
                 }
             }
@@ -65,6 +61,11 @@ impl Widget for ProjectList {
                 self.model.relm,
                 Msg::ProjectActivated(project.clone())
             );
+            let relm = &self.model.relm;
+            relm::connect!(
+                relm@Msg::ProjectActivated(ref project),
+                child,
+                ProjectBadgeMsg::ActiveProjectChanged(project.clone()));
             self.model.children_widgets.push(child);
         }
     }

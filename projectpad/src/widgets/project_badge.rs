@@ -9,9 +9,11 @@ use std::f64::consts::PI;
 pub enum Msg {
     UpdateDrawBuffer,
     Click,
+    Activate(Project),
 }
 
 pub struct Model {
+    relm: relm::Relm<ProjectBadge>,
     project: Project,
     draw_handler: DrawHandler<DrawingArea>,
     font_size_for_width: Option<(i32, f64)>, // cache the computed font size
@@ -30,6 +32,7 @@ impl Widget for ProjectBadge {
 
     fn model(relm: &relm::Relm<Self>, project: Project) -> Model {
         Model {
+            relm: relm.clone(),
             project,
             draw_handler: DrawHandler::new().expect("draw handler"),
             font_size_for_width: None,
@@ -52,7 +55,7 @@ impl Widget for ProjectBadge {
             Msg::UpdateDrawBuffer => {
                 let context = self.model.draw_handler.get_context();
                 let allocation = self.drawing_area.get_allocation();
-                println!("drawing badge, allocation: {:?}", allocation);
+                // println!("drawing badge, allocation: {:?}", allocation);
                 match self.model.font_size_for_width {
                     Some((w, font_size)) if w == allocation.width => {
                         context.set_font_size(font_size)
@@ -100,6 +103,13 @@ impl Widget for ProjectBadge {
             }
             Msg::Click => {
                 self.model.is_active = true;
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::Activate(self.model.project.clone()));
+            }
+            Msg::Activate(_) => {
+                // meant for my parent, not me
             }
         }
     }

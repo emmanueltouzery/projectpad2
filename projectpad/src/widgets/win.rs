@@ -8,7 +8,7 @@ pub enum Msg {
     Quit,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Project {
     pub name: String,
 }

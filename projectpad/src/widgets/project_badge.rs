@@ -10,6 +10,7 @@ pub enum Msg {
     UpdateDrawBuffer,
     Click,
     Activate(Project),
+    ActiveProjectChanged(Project),
 }
 
 pub struct Model {
@@ -102,7 +103,6 @@ impl Widget for ProjectBadge {
                 context.fill();
             }
             Msg::Click => {
-                self.model.is_active = true;
                 self.model
                     .relm
                     .stream()
@@ -110,6 +110,9 @@ impl Widget for ProjectBadge {
             }
             Msg::Activate(_) => {
                 // meant for my parent, not me
+            }
+            Msg::ActiveProjectChanged(p) => {
+                self.model.is_active = p == self.model.project;
             }
         }
     }

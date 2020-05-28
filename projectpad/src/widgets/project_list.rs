@@ -39,7 +39,14 @@ impl Widget for ProjectList {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ProjectActivated(ref project) => {
-                println!("{:?}", project);
+                if self.model.selected_project.as_ref() != Some(project) {
+                    println!("{:?}", project);
+                    for w in &self.model.children_widgets {
+                        w.stream()
+                            .emit(ProjectBadgeMsg::ActiveProjectChanged(project.clone()));
+                    }
+                    self.model.selected_project = Some(project.clone());
+                }
             }
         }
     }

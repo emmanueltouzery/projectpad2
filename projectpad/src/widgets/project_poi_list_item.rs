@@ -20,8 +20,12 @@ impl Widget for ProjectPoiListItem {
 
     view! {
         gtk::Box {
+            spacing: 10,
             gtk::Label {
                 text: &self.model.project_poi.name
+            },
+            gtk::Label {
+                text: &self.model.project_poi.address
             }
         }
     }

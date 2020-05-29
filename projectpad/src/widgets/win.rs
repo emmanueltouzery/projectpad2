@@ -21,13 +21,35 @@ impl Project {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ServerType {
+    Application,
+    Database,
+    HttpServerOrProxy,
+    Monitoring,
+    Reporting,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProjectPoi {
     pub name: String,
+    pub address: String,
+    pub username: String,
+    pub server_type: ServerType,
 }
 
 impl ProjectPoi {
-    fn new<S: Into<String>>(name: S) -> ProjectPoi {
-        ProjectPoi { name: name.into() }
+    fn new<S: Into<String>>(
+        name: S,
+        address: S,
+        username: S,
+        server_type: ServerType,
+    ) -> ProjectPoi {
+        ProjectPoi {
+            name: name.into(),
+            address: address.into(),
+            username: username.into(),
+            server_type,
+        }
     }
 }
 
@@ -43,7 +65,10 @@ impl Widget for Win {
         Model {
             projects: vec![Project::new("Hubli"), Project::new("Dan")],
             cur_project: Some(Project::new("Hubli")),
-            project_items: vec![ProjectPoi::new("AFCp"), ProjectPoi::new("AFC SQL")],
+            project_items: vec![
+                ProjectPoi::new("AFCp", "117.23.13.13", "razvoj", ServerType::Application),
+                ProjectPoi::new("AFC SQL", "34.23.43.53", "razvoj", ServerType::Database),
+            ],
         }
     }
 
@@ -58,13 +83,13 @@ impl Widget for Win {
             gtk::Box {
                 // ProjectBadge(self.model.projects.first().unwrap().clone()) {
                 ProjectList(self.model.projects.clone()) {
+                    property_width_request: 60,
+                },
+                ProjectItemsList((self.model.cur_project.clone(), self.model.project_items.clone())) {
                     child: {
                         fill: true,
                         expand: true,
                     },
-                },
-                ProjectItemsList((self.model.cur_project.clone(), self.model.project_items.clone())) {
-
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),

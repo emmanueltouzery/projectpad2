@@ -1,3 +1,4 @@
+use super::project_items_list::ProjectItemsList;
 use super::project_list::ProjectList;
 use gtk::prelude::*;
 use relm::Widget;
@@ -19,8 +20,21 @@ impl Project {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProjectPoi {
+    pub name: String,
+}
+
+impl ProjectPoi {
+    fn new<S: Into<String>>(name: S) -> ProjectPoi {
+        ProjectPoi { name: name.into() }
+    }
+}
+
 pub struct Model {
     projects: Vec<Project>,
+    cur_project: Option<Project>,
+    project_items: Vec<ProjectPoi>,
 }
 
 #[widget]
@@ -28,6 +42,8 @@ impl Widget for Win {
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         Model {
             projects: vec![Project::new("Hubli"), Project::new("Dan")],
+            cur_project: Some(Project::new("Hubli")),
+            project_items: vec![ProjectPoi::new("AFCp"), ProjectPoi::new("AFC SQL")],
         }
     }
 
@@ -46,6 +62,9 @@ impl Widget for Win {
                         fill: true,
                         expand: true,
                     },
+                },
+                ProjectItemsList((self.model.cur_project.clone(), self.model.project_items.clone())) {
+
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),

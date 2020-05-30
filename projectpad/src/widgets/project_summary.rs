@@ -1,5 +1,5 @@
-use super::win::Project;
 use gtk::prelude::*;
+use projectpadsql::models::Project;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 

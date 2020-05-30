@@ -2,8 +2,10 @@ use super::project_items_list::ProjectItemsList;
 use super::project_list::ProjectList;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_summary::ProjectSummary;
+use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use gtk::prelude::*;
+use projectpadsql::models::Project;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
@@ -12,17 +14,6 @@ const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
 #[derive(Msg)]
 pub enum Msg {
     Quit,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Project {
-    pub name: String,
-}
-
-impl Project {
-    fn new<S: Into<String>>(name: S) -> Project {
-        Project { name: name.into() }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -88,14 +79,17 @@ impl Widget for Win {
     }
 
     fn model(relm: &relm::Relm<Self>, db_conn: SqliteConnection) -> Model {
+        use projectpadsql::schema::project::dsl::*;
+        let prjs = project.load::<Project>(&db_conn).unwrap();
+        println!("{:?}", prjs);
         let project_items = vec![
             ProjectPoi::new("AFCp", "117.23.13.13", "razvoj", ServerType::Application),
             ProjectPoi::new("AFC SQL", "34.23.43.53", "razvoj", ServerType::Database),
         ];
         Model {
             db_conn,
-            projects: vec![Project::new("Hubli"), Project::new("Dan")],
-            cur_project: Some(Project::new("Hubli")),
+            cur_project: prjs.first().cloned(),
+            projects: prjs,
             cur_project_item: project_items.first().cloned(),
             project_items,
             project_poi_items: vec![

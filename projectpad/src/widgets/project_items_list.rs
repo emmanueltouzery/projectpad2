@@ -1,6 +1,7 @@
 use super::project_poi_list_item::ProjectPoiListItem;
-use super::win::{Project, ProjectPoi};
+use super::win::ProjectPoi;
 use gtk::prelude::*;
+use projectpadsql::models::Project;
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 

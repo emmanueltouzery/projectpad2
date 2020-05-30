@@ -1,11 +1,12 @@
 use diesel::prelude::*;
 
-#[derive(Queryable)]
-pub struct Table {
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct Project {
     pub id: i32,
     pub name: String,
-    pub has_dev: String,
-    pub has_uat: String,
-    pub has_stage: String,
-    pub has_prod: String,
+    pub icon: Vec<u8>,
+    pub has_dev: bool,
+    pub has_uat: bool,
+    pub has_stage: bool,
+    pub has_prod: bool,
 }

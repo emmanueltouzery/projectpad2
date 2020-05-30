@@ -1,6 +1,6 @@
-use super::win::Project;
 use gtk::prelude::*;
 use gtk::DrawingArea;
+use projectpadsql::models::Project;
 use relm::{DrawHandler, Widget};
 use relm_derive::{widget, Msg};
 use std::f64::consts::PI;

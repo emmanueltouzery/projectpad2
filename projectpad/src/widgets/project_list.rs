@@ -1,7 +1,7 @@
 use super::project_badge::Msg as ProjectBadgeMsg;
 use super::project_badge::ProjectBadge;
-use super::win::Project;
 use gtk::prelude::*;
+use projectpadsql::models::Project;
 use relm::ContainerWidget;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};

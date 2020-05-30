@@ -2,7 +2,7 @@ use diesel::prelude::*;
 
 // https://gitter.im/diesel-rs/diesel?at=5d420302b0bf183ea3785273
 table! {
-    projects {
+    project {
         id -> Int4,
         name -> Varchar,
         icon -> Binary,

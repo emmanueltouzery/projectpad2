@@ -4,21 +4,9 @@ use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 
-fn config_path() -> PathBuf {
-    let mut path = dirs::home_dir().expect("Failed to get the home folder");
-    path.push(".projectpad");
-    path
-}
-
 fn history_file_path() -> PathBuf {
-    let mut path = config_path();
+    let mut path = projectpadsql::config_path();
     path.push("cli-history");
-    path
-}
-
-pub fn database_path() -> PathBuf {
-    let mut path = config_path();
-    path.push("projectpad.db");
     path
 }
 

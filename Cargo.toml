@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "projectpadsql",
     "projectpad-cli",
     "projectpad"
 ]

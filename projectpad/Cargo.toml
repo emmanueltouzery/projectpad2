@@ -10,3 +10,5 @@ relm-derive = "0.19.0"
 gtk = "0.8.1"
 cairo-rs = "0.8.1"
 gdk = "0.12.1"
+projectpadsql = { path = "../projectpadsql" }
+diesel = {version = "1.4.4", features= ["sqlite"]}

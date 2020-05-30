@@ -107,7 +107,7 @@ const SERVERS_QUERY: &str = r#"SELECT server.id, 'server', project.name, server.
                  where server.access_type not in ('SrvAccessRdp', 'SrvAccessWww')"#;
 
 pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
-    let conn = Connection::open(crate::config::database_path()).unwrap(); // TODO react better if no DB
+    let conn = Connection::open(projectpadsql::database_path()).unwrap(); // TODO react better if no DB
     conn.pragma_update(None, "key", &db_pass).unwrap();
     let mut stmt = conn
         .prepare(&format!(

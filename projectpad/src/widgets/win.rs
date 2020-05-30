@@ -2,6 +2,7 @@ use super::project_items_list::ProjectItemsList;
 use super::project_list::ProjectList;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_summary::ProjectSummary;
+use diesel::sqlite::SqliteConnection;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -70,6 +71,7 @@ impl ProjectPoiItem {
 }
 
 pub struct Model {
+    db_conn: SqliteConnection,
     projects: Vec<Project>,
     cur_project: Option<Project>,
     project_items: Vec<ProjectPoi>,
@@ -85,12 +87,13 @@ impl Widget for Win {
         }
     }
 
-    fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
+    fn model(relm: &relm::Relm<Self>, db_conn: SqliteConnection) -> Model {
         let project_items = vec![
             ProjectPoi::new("AFCp", "117.23.13.13", "razvoj", ServerType::Application),
             ProjectPoi::new("AFC SQL", "34.23.43.53", "razvoj", ServerType::Database),
         ];
         Model {
+            db_conn,
             projects: vec![Project::new("Hubli"), Project::new("Dan")],
             cur_project: Some(Project::new("Hubli")),
             cur_project_item: project_items.first().cloned(),

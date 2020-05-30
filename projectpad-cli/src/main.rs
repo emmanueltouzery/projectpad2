@@ -187,8 +187,8 @@ fn write_command_line_to_terminal(command_line: &str) {
 }
 
 fn load_items(item_sender: Sender<Arc<dyn SkimItem>>) {
-    let service = "projectpad-cli";
-    let kr = keyring::Keyring::new(&service, &service);
-    // kr.set_password("mc");
-    database::load_items(&kr.get_password().unwrap(), &item_sender);
+    database::load_items(
+        &projectpadsql::get_pass_from_keyring().unwrap(),
+        &item_sender,
+    );
 }

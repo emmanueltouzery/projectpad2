@@ -493,6 +493,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "diesel"
+version = "1.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33d7ca63eb2efea87a7f56a283acc49e2ce4b2bd54adf7465dc1d81fef13d8fc"
+dependencies = [
+ "byteorder",
+ "diesel_derives",
+ "libsqlite3-sys",
+]
+
+[[package]]
+name = "diesel_derives"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45f5098f628d02a7a0f68ddba586fb61e80edec3bdc1be3b921f4ceec60858d3"
+dependencies = [
+ "proc-macro2 1.0.15",
+ "quote 1.0.6",
+ "syn 1.0.23",
+]
+
+[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1246,8 +1268,10 @@ name = "projectpad"
 version = "0.1.0"
 dependencies = [
  "cairo-rs",
+ "diesel",
  "gdk",
  "gtk",
+ "projectpadsql",
  "relm",
  "relm-derive",
 ]
@@ -1258,13 +1282,23 @@ version = "0.1.0"
 dependencies = [
  "clipboard-ext",
  "dirs",
- "keyring",
  "libc",
+ "projectpadsql",
  "rusqlite",
  "shell-words",
  "skim",
  "strum",
  "strum_macros",
+]
+
+[[package]]
+name = "projectpadsql"
+version = "0.0.1"
+dependencies = [
+ "diesel",
+ "dirs",
+ "keyring",
+ "libsqlite3-sys",
 ]
 
 [[package]]

@@ -62,9 +62,11 @@ impl Widget for ProjectList {
     }
 
     view! {
-        #[name="project_list"]
-        gtk::Box {
-            orientation: gtk::Orientation::Vertical
+        gtk::ScrolledWindow {
+            #[name="project_list"]
+            gtk::Box {
+                orientation: gtk::Orientation::Vertical
+            }
         }
     }
 }

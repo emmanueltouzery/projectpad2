@@ -15,6 +15,9 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectPoiContents {
     fn init_view(&mut self) {
+        self.contents_list
+            .get_style_context()
+            .add_class("item_list");
         self.update_contents_list();
     }
 

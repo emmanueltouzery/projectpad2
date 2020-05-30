@@ -1,0 +1,7 @@
+.item_list {
+  background-color: @theme_bg_color;
+}
+
+.items_frame {
+  background-color: @theme_base_color;
+}

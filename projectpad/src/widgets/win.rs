@@ -5,6 +5,8 @@ use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
+const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
+
 #[derive(Msg)]
 pub enum Msg {
     Quit,
@@ -76,6 +78,12 @@ pub struct Model {
 
 #[widget]
 impl Widget for Win {
+    fn init_view(&mut self) {
+        if let Err(err) = self.load_style() {
+            println!("Error loading the CSS: {}", err);
+        }
+    }
+
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         let project_items = vec![
             ProjectPoi::new("AFCp", "117.23.13.13", "razvoj", ServerType::Application),
@@ -100,7 +108,20 @@ impl Widget for Win {
         }
     }
 
+    fn load_style(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let screen = self.window.get_screen().unwrap();
+        let css = gtk::CssProvider::new();
+        css.load_from_data(CSS_DATA)?;
+        gtk::StyleContext::add_provider_for_screen(
+            &screen,
+            &css,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+        Ok(())
+    }
+
     view! {
+        #[name="window"]
         gtk::Window {
             property_default_width: 1000,
             property_default_height: 650,

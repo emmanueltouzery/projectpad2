@@ -73,7 +73,7 @@ impl Widget for ProjectBadge {
     }
 
     fn draw_label(context: &cairo::Context, allocation_width: i32, contents: &str) {
-        context.set_source_rgb(1.0, 1.0, 1.0);
+        // context.set_source_rgb(1.0, 1.0, 1.0);
         let text_extents = context.text_extents(contents);
         context.move_to(
             (allocation_width / 2) as f64 - text_extents.width / 2.0 - text_extents.x_bearing,
@@ -118,7 +118,7 @@ impl Widget for ProjectBadge {
                     0.0,
                     2.0 * PI,
                 );
-                context.fill();
+                context.stroke();
 
                 // https://developer.gnome.org/gtkmm-tutorial/stable/sec-draw-images.html.en
                 match &self.model.project.icon {

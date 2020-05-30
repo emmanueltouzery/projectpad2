@@ -80,7 +80,7 @@ impl Widget for Win {
 
     fn model(relm: &relm::Relm<Self>, db_conn: SqliteConnection) -> Model {
         use projectpadsql::schema::project::dsl::*;
-        let prjs = project.load::<Project>(&db_conn).unwrap();
+        let prjs = project.order(name.asc()).load::<Project>(&db_conn).unwrap();
         println!("{:?}", prjs);
         let project_items = vec![
             ProjectPoi::new("AFCp", "117.23.13.13", "razvoj", ServerType::Application),

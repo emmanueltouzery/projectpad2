@@ -1,6 +1,7 @@
 use super::project_items_list::ProjectItemsList;
 use super::project_list::ProjectList;
 use super::project_poi_contents::ProjectPoiContents;
+use super::project_summary::ProjectSummary;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -130,8 +131,12 @@ impl Widget for Win {
                 ProjectList(self.model.projects.clone()) {
                     property_width_request: 60,
                 },
-                ProjectItemsList((self.model.cur_project.clone(), self.model.project_items.clone())) {
-                    property_width_request: 260,
+                gtk::Box {
+                    orientation: gtk::Orientation::Vertical,
+                    ProjectSummary(self.model.cur_project.clone()),
+                    ProjectItemsList((self.model.cur_project.clone(), self.model.project_items.clone())) {
+                        property_width_request: 260,
+                    },
                 },
                 ProjectPoiContents(self.model.cur_project_item.clone(), self.model.project_poi_items.clone()) {
                     child: {

@@ -21,8 +21,6 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectList {
     fn init_view(&mut self) {
-        // ???
-        self.project_list.get_style_context().add_class("item_list");
         self.update_projects_list();
     }
 

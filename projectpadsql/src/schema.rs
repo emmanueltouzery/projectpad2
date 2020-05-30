@@ -5,7 +5,7 @@ table! {
     project {
         id -> Int4,
         name -> Varchar,
-        icon -> Binary,
+        icon -> Nullable<Binary>,
         has_dev -> Bool,
         has_uat -> Bool,
         has_stage -> Bool,

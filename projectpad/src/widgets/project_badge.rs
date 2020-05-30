@@ -51,6 +51,38 @@ impl Widget for ProjectBadge {
         size
     }
 
+    fn draw_icon(context: &cairo::Context, allocation_width: i32, icon: &[u8]) {
+        match cairo::ImageSurface::create_from_png(&mut icon.clone()).ok() {
+            Some(surface) => {
+                let w = surface.get_width() as f64;
+                let h = surface.get_height() as f64;
+                let ratio = f64::min(60.0 / w, 60.0 / h);
+                context.scale(ratio, ratio);
+                let (offsetx, offsety) = if w > h {
+                    (0.0, w * 60.0 / h / 2.0)
+                } else {
+                    (h * 60.0 / w / 2.0, 0.0)
+                };
+                context.set_source_surface(&surface, offsetx, offsety);
+                context.paint();
+            }
+            _ => {
+                eprintln!("failed reading png {}", icon.len());
+            }
+        }
+    }
+
+    fn draw_label(context: &cairo::Context, allocation_width: i32, contents: &str) {
+        context.set_source_rgb(1.0, 1.0, 1.0);
+        let text_extents = context.text_extents(contents);
+        context.move_to(
+            (allocation_width / 2) as f64 - text_extents.width / 2.0 - text_extents.x_bearing,
+            (allocation_width / 2) as f64 - text_extents.y_bearing - text_extents.height / 2.0,
+        );
+        context.text_path(contents);
+        context.fill();
+    }
+
     fn update(&mut self, event: Msg) {
         match event {
             Msg::UpdateDrawBuffer => {
@@ -88,19 +120,16 @@ impl Widget for ProjectBadge {
                 );
                 context.fill();
 
-                context.set_source_rgb(1.0, 1.0, 1.0);
-                let contents = &self.model.project.name[..2];
-                let text_extents = context.text_extents(contents);
-                context.move_to(
-                    (allocation.width / 2) as f64
-                        - text_extents.width / 2.0
-                        - text_extents.x_bearing,
-                    (allocation.width / 2) as f64
-                        - text_extents.y_bearing
-                        - text_extents.height / 2.0,
-                );
-                context.text_path(contents);
-                context.fill();
+                // https://developer.gnome.org/gtkmm-tutorial/stable/sec-draw-images.html.en
+                match &self.model.project.icon {
+                    // the 'if' works around an issue reading from SQL. should be None if it's empty!!
+                    Some(icon) if icon.len() > 0 => {
+                        Self::draw_icon(&context, allocation.width, &icon)
+                    }
+                    _ => {
+                        Self::draw_label(&context, allocation.width, &self.model.project.name[..2])
+                    }
+                }
             }
             Msg::Click => {
                 self.model

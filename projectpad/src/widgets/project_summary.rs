@@ -22,41 +22,29 @@ impl Widget for ProjectSummary {
         gtk::Box {
             orientation: gtk::Orientation::Vertical,
             gtk::Label {
+                margin_top: 8,
+                margin_bottom: 8,
                 markup: "<b>Hubli</b>"
             },
-            gtk::Grid {
+            gtk::Box {
+                homogeneous: true,
+                margin_start: 35,
+                margin_end: 35,
                 child: {
-                    padding: 20,
+                    padding: 5,
                 },
-                column_homogeneous: true,
-                row_spacing: 3,
+                spacing: 3,
                 gtk::Label {
                     markup: "<b>Dev</b>",
-                    cell: {
-                        left_attach: 0,
-                        top_attach: 0,
-                    }
                 },
                 gtk::Label {
                     text: "Stg",
-                    cell: {
-                        left_attach: 1,
-                        top_attach: 0,
-                    }
                 },
                 gtk::Label {
                     text: "Uat",
-                    cell: {
-                        left_attach: 0,
-                        top_attach: 1,
-                    }
                 },
                 gtk::Label {
                     text: "Prd",
-                    cell: {
-                        left_attach: 1,
-                        top_attach: 1,
-                    }
                 },
             }
         }

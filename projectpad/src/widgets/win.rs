@@ -136,6 +136,10 @@ impl Widget for Win {
                     ProjectSummary(self.model.cur_project.clone()),
                     ProjectItemsList((self.model.cur_project.clone(), self.model.project_items.clone())) {
                         property_width_request: 260,
+                        child: {
+                            fill: true,
+                            expand: true,
+                        }
                     },
                 },
                 ProjectPoiContents(self.model.cur_project_item.clone(), self.model.project_poi_items.clone()) {

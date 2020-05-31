@@ -178,7 +178,12 @@ impl Widget for ProjectBadge {
                 // meant for my parent, not me
             }
             Msg::ActiveProjectChanged(p) => {
-                self.model.is_active = p == self.model.project;
+                let new_active = p == self.model.project;
+                if new_active != self.model.is_active {
+                    self.model.is_active = new_active;
+                    // force a recompute of the display
+                    self.model.backing_buffer = None;
+                }
             }
         }
     }

@@ -18,6 +18,7 @@ pub struct Model {
     project: Project,
     draw_handler: DrawHandler<DrawingArea>,
     font_size_for_width: Option<(i32, f64)>, // cache the computed font size
+    backing_buffer: Option<cairo::ImageSurface>,
     is_active: bool,
 }
 
@@ -37,8 +38,57 @@ impl Widget for ProjectBadge {
             project,
             draw_handler: DrawHandler::new().expect("draw handler"),
             font_size_for_width: None,
+            backing_buffer: None,
             is_active: false,
         }
+    }
+
+    fn prepare_backing_buffer(
+        &mut self,
+        allocation_width: i32,
+        allocation_height: i32,
+    ) -> cairo::ImageSurface {
+        let buf =
+            cairo::ImageSurface::create(cairo::Format::ARgb32, allocation_width, allocation_height)
+                .expect("cairo backing buffer");
+        let context = cairo::Context::new(&buf);
+
+        // println!("drawing badge, allocation: {:?}", allocation);
+        match self.model.font_size_for_width {
+            Some((w, font_size)) if w == allocation_width => context.set_font_size(font_size),
+            _ => {
+                self.model.font_size_for_width = Some((
+                    allocation_width,
+                    Self::compute_font_size(&context, allocation_width as f64 * 0.75),
+                ));
+            }
+        }
+        context.set_antialias(cairo::Antialias::Best);
+
+        context.set_source_rgb(1.0, 1.0, 1.0);
+        context.rectangle(0.0, 0.0, allocation_width.into(), allocation_height.into());
+        context.fill();
+
+        if self.model.is_active {
+            context.set_source_rgb(0.5, 0.5, 0.5);
+        } else {
+            context.set_source_rgb(0.0, 0.0, 0.0);
+        }
+        context.arc(
+            (allocation_width / 2).into(),
+            (allocation_width / 2).into(),
+            (allocation_width / 2).into(),
+            0.0,
+            2.0 * PI,
+        );
+        context.stroke();
+
+        match &self.model.project.icon {
+            // the 'if' works around an issue reading from SQL. should be None if it's empty!!
+            Some(icon) if icon.len() > 0 => Self::draw_icon(&context, allocation_width, &icon),
+            _ => Self::draw_label(&context, allocation_width, &self.model.project.name[..2]),
+        }
+        buf
     }
 
     fn compute_font_size(context: &cairo::Context, width: f64) -> f64 {
@@ -97,47 +147,25 @@ impl Widget for ProjectBadge {
             Msg::UpdateDrawBuffer => {
                 let context = self.model.draw_handler.get_context();
                 let allocation = self.drawing_area.get_allocation();
-                // println!("drawing badge, allocation: {:?}", allocation);
-                match self.model.font_size_for_width {
-                    Some((w, font_size)) if w == allocation.width => {
-                        context.set_font_size(font_size)
-                    }
-                    _ => {
-                        self.model.font_size_for_width = Some((
-                            allocation.width,
-                            Self::compute_font_size(&context, allocation.width as f64 * 0.75),
-                        ));
-                    }
-                }
-                context.set_antialias(cairo::Antialias::Best);
-
-                context.set_source_rgb(1.0, 1.0, 1.0);
-                context.rectangle(0.0, 0.0, allocation.width.into(), allocation.height.into());
-                context.fill();
-
-                if self.model.is_active {
-                    context.set_source_rgb(0.5, 0.5, 0.5);
+                if Some((allocation.width, allocation.height))
+                    == self
+                        .model
+                        .backing_buffer
+                        .as_ref()
+                        .map(|b| (b.get_width(), b.get_height()))
+                {
+                    // the backing buffer is good, just paint it
+                    context.set_source_surface(
+                        self.model.backing_buffer.as_ref().unwrap(),
+                        0.0,
+                        0.0,
+                    );
+                    context.paint();
                 } else {
-                    context.set_source_rgb(0.0, 0.0, 0.0);
-                }
-                context.arc(
-                    (allocation.width / 2).into(),
-                    (allocation.width / 2).into(),
-                    (allocation.width / 2).into(),
-                    0.0,
-                    2.0 * PI,
-                );
-                context.stroke();
-
-                // https://developer.gnome.org/gtkmm-tutorial/stable/sec-draw-images.html.en
-                match &self.model.project.icon {
-                    // the 'if' works around an issue reading from SQL. should be None if it's empty!!
-                    Some(icon) if icon.len() > 0 => {
-                        Self::draw_icon(&context, allocation.width, &icon)
-                    }
-                    _ => {
-                        Self::draw_label(&context, allocation.width, &self.model.project.name[..2])
-                    }
+                    // need to set up the backing buffer
+                    println!("computing the backing buffer");
+                    self.model.backing_buffer =
+                        Some(self.prepare_backing_buffer(allocation.width, allocation.height));
                 }
             }
             Msg::Click => {

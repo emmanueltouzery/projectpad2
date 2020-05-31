@@ -56,14 +56,23 @@ impl Widget for ProjectBadge {
             Some(surface) => {
                 let w = surface.get_width() as f64;
                 let h = surface.get_height() as f64;
-                let ratio = f64::min(60.0 / w, 60.0 / h);
-                context.scale(ratio, ratio);
+                let scale_ratio = f64::min(60.0 / w, 60.0 / h);
+                context.scale(scale_ratio, scale_ratio);
                 let (offsetx, offsety) = if w > h {
-                    (0.0, w * 60.0 / h / 2.0)
+                    (0.0, (60.0 - 60.0 * h / w) / 2.0)
                 } else {
-                    (h * 60.0 / w / 2.0, 0.0)
+                    ((60.0 - 60.0 * w / h) / 2.0, 0.0)
                 };
-                context.set_source_surface(&surface, offsetx, offsety);
+                if w > h {
+                    println!(
+                        "w {} h {} effective height: {} offsety {}",
+                        w,
+                        h,
+                        60.0 * h / w,
+                        offsety
+                    );
+                }
+                context.set_source_surface(&surface, offsetx / scale_ratio, offsety / scale_ratio);
                 context.paint();
             }
             _ => {

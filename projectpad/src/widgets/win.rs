@@ -3,13 +3,13 @@ use super::project_list::{Msg::ProjectActivated, ProjectList};
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
+use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
-use diesel::sqlite::SqliteConnection;
 use gtk::prelude::*;
 use projectpadsql::models::Project;
 use relm::Widget;
 use relm_derive::{widget, Msg};
-use std::rc::Rc;
+use std::sync::mpsc;
 
 const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
 
@@ -65,7 +65,7 @@ impl ProjectPoiItem {
 }
 
 pub struct Model {
-    db_conn: std::rc::Rc<SqliteConnection>,
+    db_sender: mpsc::Sender<SqlFunc>,
     project_items: Vec<ProjectPoi>,
     cur_project_item: Option<ProjectPoi>,
     project_poi_items: Vec<ProjectPoiItem>,
@@ -79,16 +79,20 @@ impl Widget for Win {
         }
     }
 
-    fn model(relm: &relm::Relm<Self>, db_conn: SqliteConnection) -> Model {
-        use projectpadsql::schema::project::dsl::*;
-        let prjs = project.order(name.asc()).load::<Project>(&db_conn).unwrap();
-        println!("{:?}", prjs);
+    fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
+        // db_sender
+        //     .send(SqlFunc::new(move |db_conn| {
+        //         use projectpadsql::schema::project::dsl::*;
+        //         let prjs = project.order(name.asc()).load::<Project>(db_conn).unwrap();
+        //         println!("{:?}", prjs);
+        //     }))
+        //     .unwrap();
         let project_items = vec![
             ProjectPoi::new("AFCp", "117.23.13.13", "razvoj", ServerType::Application),
             ProjectPoi::new("AFC SQL", "34.23.43.53", "razvoj", ServerType::Database),
         ];
         Model {
-            db_conn: Rc::new(db_conn),
+            db_sender,
             cur_project_item: project_items.first().cloned(),
             project_items,
             project_poi_items: vec![
@@ -126,7 +130,7 @@ impl Widget for Win {
             property_default_width: 1000,
             property_default_height: 650,
             gtk::Box {
-                ProjectList(self.model.db_conn.clone()) {
+                ProjectList(self.model.db_sender.clone()) {
                     property_width_request: 60,
                     ProjectActivated(ref prj) => Msg::ProjectActivated(prj.clone())
                 },

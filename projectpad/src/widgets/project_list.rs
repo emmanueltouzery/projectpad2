@@ -1,36 +1,47 @@
 use super::project_badge::Msg as ProjectBadgeMsg;
 use super::project_badge::ProjectBadge;
+use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::Project;
 use relm::ContainerWidget;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
-use std::rc::Rc;
+use std::sync::mpsc;
 
-#[derive(Msg)]
+#[derive(Msg, Clone)]
 pub enum Msg {
     ProjectActivated(Project),
+    GotProjects(Vec<Project>),
 }
 
 pub struct Model {
-    db_conn: std::rc::Rc<SqliteConnection>,
+    db_sender: mpsc::Sender<SqlFunc>,
     relm: relm::Relm<ProjectList>,
     projects: Vec<Project>,
     // need to keep hold of the children widgets
     children_widgets: Vec<Component<ProjectBadge>>,
+    _channel: relm::Channel<Vec<Project>>,
+    sender: relm::Sender<Vec<Project>>,
 }
 
 #[widget]
 impl Widget for ProjectList {
     fn init_view(&mut self) {
-        self.update_projects_list();
+        self.fetch_projects();
     }
 
-    fn model(relm: &relm::Relm<Self>, db_conn: Rc<SqliteConnection>) -> Model {
+    fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
+        let stream = relm.stream().clone();
+        let (channel, sender) = relm::Channel::new(move |prjs: Vec<Project>| {
+            println!("emitting {}", prjs.len());
+            stream.emit(Msg::GotProjects(prjs));
+        });
         Model {
             relm: relm.clone(),
-            db_conn,
+            db_sender,
+            _channel: channel,
+            sender,
             projects: vec![],
             children_widgets: vec![],
         }
@@ -39,6 +50,11 @@ impl Widget for ProjectList {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ProjectActivated(ref _project) => {}
+            Msg::GotProjects(prjs) => {
+                println!("got projects: {}", prjs.len());
+                self.model.projects = prjs;
+                self.update_projects_list();
+            }
         }
     }
 
@@ -47,12 +63,23 @@ impl Widget for ProjectList {
         project.order(name.asc()).load::<Project>(db_conn).unwrap()
     }
 
+    fn fetch_projects(&mut self) {
+        let s = self.model.sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                let prjs = Self::load_projects(sql_conn);
+                println!("loaded prjs: {}", prjs.len());
+                s.send(prjs).unwrap();
+            }))
+            .unwrap();
+    }
+
     fn update_projects_list(&mut self) {
         for child in self.project_list.get_children() {
             self.project_list.remove(&child);
         }
         self.model.children_widgets.clear();
-        self.model.projects = Self::load_projects(&self.model.db_conn);
         for project in &self.model.projects {
             let child = self
                 .project_list

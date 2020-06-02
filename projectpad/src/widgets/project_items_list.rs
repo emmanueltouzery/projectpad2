@@ -28,11 +28,11 @@ impl Widget for ProjectItemsList {
         );
     }
 
-    fn model(relm: &relm::Relm<Self>, project: (Option<Project>, Vec<ProjectPoi>)) -> Model {
+    fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         Model {
             relm: relm.clone(),
-            project: project.0,
-            project_pois: project.1,
+            project: None,
+            project_pois: vec![],
         }
     }
 

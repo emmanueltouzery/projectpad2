@@ -1,10 +1,12 @@
 use super::project_badge::Msg as ProjectBadgeMsg;
 use super::project_badge::ProjectBadge;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::Project;
 use relm::ContainerWidget;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
+use std::rc::Rc;
 
 #[derive(Msg)]
 pub enum Msg {
@@ -12,6 +14,7 @@ pub enum Msg {
 }
 
 pub struct Model {
+    db_conn: std::rc::Rc<SqliteConnection>,
     relm: relm::Relm<ProjectList>,
     projects: Vec<Project>,
     // need to keep hold of the children widgets
@@ -24,10 +27,11 @@ impl Widget for ProjectList {
         self.update_projects_list();
     }
 
-    fn model(relm: &relm::Relm<Self>, projects: Vec<Project>) -> Model {
+    fn model(relm: &relm::Relm<Self>, db_conn: Rc<SqliteConnection>) -> Model {
         Model {
             relm: relm.clone(),
-            projects,
+            db_conn,
+            projects: vec![],
             children_widgets: vec![],
         }
     }
@@ -38,11 +42,17 @@ impl Widget for ProjectList {
         }
     }
 
+    fn load_projects(db_conn: &SqliteConnection) -> Vec<Project> {
+        use projectpadsql::schema::project::dsl::*;
+        project.order(name.asc()).load::<Project>(db_conn).unwrap()
+    }
+
     fn update_projects_list(&mut self) {
         for child in self.project_list.get_children() {
             self.project_list.remove(&child);
         }
         self.model.children_widgets.clear();
+        self.model.projects = Self::load_projects(&self.model.db_conn);
         for project in &self.model.projects {
             let child = self
                 .project_list
@@ -56,7 +66,7 @@ impl Widget for ProjectList {
             relm::connect!(
                 relm@Msg::ProjectActivated(ref project),
                 child,
-                ProjectBadgeMsg::ActiveProjectChanged(project.clone()));
+                ProjectBadgeMsg::ActiveProjectChanged(project.id));
             self.model.children_widgets.push(child);
         }
     }

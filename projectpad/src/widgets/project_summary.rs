@@ -4,7 +4,9 @@ use relm::Widget;
 use relm_derive::{widget, Msg};
 
 #[derive(Msg)]
-pub enum Msg {}
+pub enum Msg {
+    ProjectActivated(Project),
+}
 
 pub struct Model {
     project: Option<Project>,
@@ -12,11 +14,15 @@ pub struct Model {
 
 #[widget]
 impl Widget for ProjectSummary {
-    fn model(project: Option<Project>) -> Model {
-        Model { project }
+    fn model(_: ()) -> Model {
+        Model { project: None }
     }
 
-    fn update(&mut self, event: Msg) {}
+    fn update(&mut self, event: Msg) {
+        match event {
+            Msg::ProjectActivated(prj) => self.model.project = Some(prj),
+        }
+    }
 
     view! {
         gtk::Box {
@@ -24,7 +30,7 @@ impl Widget for ProjectSummary {
             gtk::Label {
                 margin_top: 8,
                 margin_bottom: 8,
-                markup: "<b>Hubli</b>"
+                markup: &self.model.project.as_ref().map(|p| format!("<b>{}</b>", &p.name)).unwrap_or("".to_string())
             },
             gtk::Box {
                 homogeneous: true,

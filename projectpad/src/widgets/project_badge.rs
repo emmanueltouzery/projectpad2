@@ -10,7 +10,7 @@ pub enum Msg {
     UpdateDrawBuffer,
     Click,
     Activate(Project),
-    ActiveProjectChanged(Project),
+    ActiveProjectChanged(i32),
 }
 
 pub struct Model {
@@ -177,8 +177,8 @@ impl Widget for ProjectBadge {
             Msg::Activate(_) => {
                 // meant for my parent, not me
             }
-            Msg::ActiveProjectChanged(p) => {
-                let new_active = p == self.model.project;
+            Msg::ActiveProjectChanged(pid) => {
+                let new_active = pid == self.model.project.id;
                 if new_active != self.model.is_active {
                     self.model.is_active = new_active;
                     // force a recompute of the display

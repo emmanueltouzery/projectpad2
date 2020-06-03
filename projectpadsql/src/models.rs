@@ -2,7 +2,6 @@ use diesel::backend::Backend;
 use diesel::prelude::*;
 use diesel::types::*;
 use std::str::FromStr;
-use strum;
 use strum_macros::EnumString;
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
@@ -41,37 +40,23 @@ pub enum EnvironmentType {
     EnvProd,
 }
 
-//
-// TODO write a macro, don't want to c/p this X times!!
-//
+macro_rules! simple_enum {
+    ($x:ty) => {
+        impl<DB> FromSql<Varchar, DB> for $x
+        where
+            DB: Backend,
+            String: FromSql<Varchar, DB>,
+        {
+            fn from_sql(bytes: Option<&DB::RawValue>) -> diesel::deserialize::Result<Self> {
+                Ok(<$x>::from_str(&String::from_sql(bytes)?)?)
+            }
+        }
+    };
+}
 
-impl<DB> FromSql<Varchar, DB> for EnvironmentType
-where
-    DB: Backend,
-    String: FromSql<Varchar, DB>,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> diesel::deserialize::Result<Self> {
-        Ok(EnvironmentType::from_str(&String::from_sql(bytes)?)?)
-    }
-}
-impl<DB> FromSql<Varchar, DB> for ServerType
-where
-    DB: Backend,
-    String: FromSql<Varchar, DB>,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> diesel::deserialize::Result<Self> {
-        Ok(ServerType::from_str(&String::from_sql(bytes)?)?)
-    }
-}
-impl<DB> FromSql<Varchar, DB> for ServerAccessType
-where
-    DB: Backend,
-    String: FromSql<Varchar, DB>,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> diesel::deserialize::Result<Self> {
-        Ok(ServerAccessType::from_str(&String::from_sql(bytes)?)?)
-    }
-}
+simple_enum!(EnvironmentType);
+simple_enum!(ServerType);
+simple_enum!(ServerAccessType);
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct Server {

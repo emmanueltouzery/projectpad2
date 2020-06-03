@@ -3,6 +3,13 @@ use diesel::sqlite::SqliteConnection;
 use std::sync::mpsc;
 use std::thread;
 
+// we do sql requests in a separate thread not to block the GUI thread
+// - i considered that spawning a new thread everytime the GUI wants to fetch
+//   from SQL seems more heavyweight than reusing a thread
+// - setting up the connection is messy, requires to fetch the password from
+//   the OS secret storage -- so we'd like to set up the connection once
+//   then reuse it.
+
 // https://stackoverflow.com/a/49122850/516188
 pub struct SqlFunc(Box<dyn Fn(&SqliteConnection) + Send + 'static>);
 

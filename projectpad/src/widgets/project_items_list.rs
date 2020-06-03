@@ -63,6 +63,7 @@ impl Widget for ProjectItemsList {
                 let prj_pois = match cur_project_id {
                     Some(pid) => server
                         .filter(project_id.eq(pid))
+                        .order(desc.asc())
                         .load::<Server>(sql_conn)
                         .unwrap(),
                     None => vec![],
@@ -100,7 +101,9 @@ impl Widget for ProjectItemsList {
     }
 
     view! {
-        #[name="project_items_list"]
-        gtk::ListBox {}
+        gtk::ScrolledWindow {
+            #[name="project_items_list"]
+            gtk::ListBox {}
+        }
     }
 }

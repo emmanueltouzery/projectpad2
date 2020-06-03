@@ -1299,6 +1299,8 @@ dependencies = [
  "dirs",
  "keyring",
  "libsqlite3-sys",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]

@@ -1,3 +1,4 @@
+use super::project_items_list::Msg as ProjectItemsListMsg;
 use super::project_items_list::ProjectItemsList;
 use super::project_list::{Msg::ProjectActivated, ProjectList};
 use super::project_poi_contents::ProjectPoiContents;
@@ -106,9 +107,12 @@ impl Widget for Win {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::Quit => gtk::main_quit(),
-            Msg::ProjectActivated(project) => self
-                .project_summary
-                .emit(ProjectSummaryMsg::ProjectActivated(project)),
+            Msg::ProjectActivated(project) => {
+                self.project_items_list
+                    .emit(ProjectItemsListMsg::ActiveProjectChanged(project.id));
+                self.project_summary
+                    .emit(ProjectSummaryMsg::ProjectActivated(project));
+            }
         }
     }
 
@@ -138,7 +142,8 @@ impl Widget for Win {
                     orientation: gtk::Orientation::Vertical,
                     #[name="project_summary"]
                     ProjectSummary(),
-                    ProjectItemsList() {
+                    #[name="project_items_list"]
+                    ProjectItemsList(self.model.db_sender.clone()) {
                         property_width_request: 260,
                         child: {
                             fill: true,

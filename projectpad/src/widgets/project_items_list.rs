@@ -1,8 +1,10 @@
+use super::environment_list_item::EnvironmentListItem;
 use super::project_poi_list_item::ProjectPoiListItem;
 use super::win::ProjectPoi;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use projectpadsql::models::EnvironmentType;
 use projectpadsql::models::Project;
 use projectpadsql::models::Server;
 use relm::{ContainerWidget, Widget};
@@ -89,15 +91,33 @@ impl Widget for ProjectItemsList {
         }
     }
 
+    fn add_items_list_environment(&mut self, env: EnvironmentType) {
+        let mut items = self
+            .model
+            .project_pois
+            .iter()
+            .filter(|p| p.environment == EnvironmentType::EnvProd)
+            .peekable();
+        if items.peek().is_some() {
+            let _child = self
+                .project_items_list
+                .add_widget::<EnvironmentListItem>(env);
+            for project_poi in items {
+                let _child = self
+                    .project_items_list
+                    .add_widget::<ProjectPoiListItem>(project_poi.clone());
+            }
+        }
+    }
+
     fn update_items_list(&mut self) {
         for child in self.project_items_list.get_children() {
             self.project_items_list.remove(&child);
         }
-        for project_poi in &self.model.project_pois {
-            let _child = self
-                .project_items_list
-                .add_widget::<ProjectPoiListItem>(project_poi.clone());
-        }
+        self.add_items_list_environment(EnvironmentType::EnvProd);
+        self.add_items_list_environment(EnvironmentType::EnvUat);
+        self.add_items_list_environment(EnvironmentType::EnvStage);
+        self.add_items_list_environment(EnvironmentType::EnvDevelopment);
     }
 
     view! {

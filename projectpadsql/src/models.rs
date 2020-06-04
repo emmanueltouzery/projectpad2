@@ -2,7 +2,7 @@ use diesel::backend::Backend;
 use diesel::prelude::*;
 use diesel::types::*;
 use std::str::FromStr;
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct Project {
@@ -32,7 +32,7 @@ pub enum ServerAccessType {
     SrvAccessSshTunnel,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumString, AsExpression, FromSqlRow)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
 pub enum EnvironmentType {
     EnvDevelopment,
     EnvUat,

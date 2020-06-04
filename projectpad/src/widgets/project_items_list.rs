@@ -152,20 +152,20 @@ impl Widget for ProjectItemsList {
                             secondary_desc: Some(server.username.clone()),
                         });
             }
-            for prj_poi in &self.model.project_pois {
-                let _child =
-                    self.project_items_list
-                        .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                            text: prj_poi.desc.clone(),
-                            secondary_desc: Some(prj_poi.text.clone()),
-                        });
-            }
         }
     }
 
     fn update_items_list(&mut self) {
         for child in self.project_items_list.get_children() {
             self.project_items_list.remove(&child);
+        }
+        for prj_poi in &self.model.project_pois {
+            let _child =
+                self.project_items_list
+                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
+                        text: prj_poi.desc.clone(),
+                        secondary_desc: Some(prj_poi.text.clone()),
+                    });
         }
         self.add_items_list_environment(EnvironmentType::EnvProd);
         self.add_items_list_environment(EnvironmentType::EnvUat);

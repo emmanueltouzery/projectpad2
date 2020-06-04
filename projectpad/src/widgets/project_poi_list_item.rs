@@ -1,5 +1,4 @@
 use gtk::prelude::*;
-use projectpadsql::models::Server;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
@@ -7,13 +6,14 @@ use relm_derive::{widget, Msg};
 pub enum Msg {}
 
 pub struct Model {
-    project_poi: Server,
+    pub text: String,
+    pub secondary_desc: Option<String>,
 }
 
 #[widget]
 impl Widget for ProjectPoiListItem {
-    fn model(relm: &relm::Relm<Self>, project_poi: Server) -> Model {
-        Model { project_poi }
+    fn model(relm: &relm::Relm<Self>, model: Model) -> Model {
+        model
     }
 
     fn update(&mut self, _event: Msg) {}
@@ -25,14 +25,14 @@ impl Widget for ProjectPoiListItem {
             gtk::Box {
                 spacing: 10,
                 gtk::Label {
-                    text: &self.model.project_poi.desc
+                    text: &self.model.text
                 },
                 // gtk::Label {
                 //     text: &self.model.project_poi.address
                 // }
             },
             gtk::Label {
-                text: &self.model.project_poi.username
+                text: self.model.secondary_desc.as_deref().unwrap_or("")
             }
         }
     }

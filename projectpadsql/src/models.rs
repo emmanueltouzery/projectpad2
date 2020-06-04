@@ -15,7 +15,7 @@ pub struct Project {
     pub has_prod: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumString, AsExpression, FromSqlRow)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow)]
 pub enum ServerType {
     SrvDatabase,
     SrvApplication,
@@ -24,7 +24,7 @@ pub enum ServerType {
     SrvReporting,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumString, AsExpression, FromSqlRow)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow)]
 pub enum ServerAccessType {
     SrvAccessSsh,
     SrvAccessRdp,
@@ -32,7 +32,7 @@ pub enum ServerAccessType {
     SrvAccessSshTunnel,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
 pub enum EnvironmentType {
     EnvDevelopment,
     EnvUat,
@@ -72,6 +72,19 @@ pub struct Server {
     pub ssh_tunnel_port: Option<i32>,
     pub ssh_tunnel_through_server_id: Option<i32>,
     pub environment: EnvironmentType,
+    pub group_name: Option<String>,
+    pub project_id: i32,
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ProjectNote {
+    pub id: i32,
+    pub title: String,
+    pub contents: String,
+    pub has_dev: bool,
+    pub has_uat: bool,
+    pub has_stage: bool,
+    pub has_prod: bool,
     pub group_name: Option<String>,
     pub project_id: i32,
 }

@@ -32,3 +32,17 @@ table! {
         project_id -> Integer,
     }
 }
+
+table! {
+    project_note {
+        id -> Integer,
+        title -> Varchar,
+        contents -> Varchar,
+        has_dev -> Bool,
+        has_uat -> Bool,
+        has_stage -> Bool,
+        has_prod -> Bool,
+        group_name -> Nullable<Varchar>,
+        project_id -> Integer,
+    }
+}

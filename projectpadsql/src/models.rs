@@ -40,6 +40,16 @@ pub enum EnvironmentType {
     EnvProd,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+pub enum InterestType {
+    PoiApplication,
+    PoiLogFile,
+    PoiConfigFile,
+    PoiCommandToRun,
+    PoiCommandTerminal,
+    PoiBackupArchive,
+}
+
 macro_rules! simple_enum {
     ($x:ty) => {
         impl<DB> FromSql<Varchar, DB> for $x
@@ -57,6 +67,7 @@ macro_rules! simple_enum {
 simple_enum!(EnvironmentType);
 simple_enum!(ServerType);
 simple_enum!(ServerAccessType);
+simple_enum!(InterestType);
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct Server {
@@ -85,6 +96,17 @@ pub struct ProjectNote {
     pub has_uat: bool,
     pub has_stage: bool,
     pub has_prod: bool,
+    pub group_name: Option<String>,
+    pub project_id: i32,
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ProjectPointOfInterest {
+    pub id: i32,
+    pub desc: String,
+    pub path: String,
+    pub text: String,
+    pub interest_type: InterestType,
     pub group_name: Option<String>,
     pub project_id: i32,
 }

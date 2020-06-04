@@ -46,3 +46,15 @@ table! {
         project_id -> Integer,
     }
 }
+
+table! {
+    project_point_of_interest {
+        id -> Integer,
+        desc -> Varchar,
+        path -> Varchar,
+        text -> Varchar,
+        interest_type -> Varchar,
+        group_name -> Nullable<Varchar>,
+        project_id -> Integer,
+    }
+}

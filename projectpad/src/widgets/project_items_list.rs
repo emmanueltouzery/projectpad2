@@ -119,7 +119,7 @@ impl Widget for ProjectItemsList {
             .model
             .servers
             .iter()
-            .filter(|p| p.environment == EnvironmentType::EnvProd)
+            .filter(|p| p.environment == env)
             .peekable();
         let matches_env = |note: &&ProjectNote| match env {
             EnvironmentType::EnvProd => note.has_prod,

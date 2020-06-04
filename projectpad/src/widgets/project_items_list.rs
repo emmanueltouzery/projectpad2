@@ -4,6 +4,7 @@ use super::project_poi_list_item::ProjectPoiListItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use projectpadsql::models::Project;
 use projectpadsql::models::{EnvironmentType, ProjectNote, ProjectPointOfInterest, Server};
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
@@ -14,14 +15,14 @@ type ProjectItems = (Vec<Server>, Vec<ProjectNote>, Vec<ProjectPointOfInterest>)
 #[derive(Msg)]
 pub enum Msg {
     EventSelected,
-    ActiveProjectChanged(i32),
+    ActiveProjectChanged(Project),
     GotProjectPois(ProjectItems),
 }
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     relm: relm::Relm<ProjectItemsList>,
-    project_id: Option<i32>,
+    project: Option<Project>,
     servers: Vec<Server>,
     project_notes: Vec<ProjectNote>,
     project_pois: Vec<ProjectPointOfInterest>,
@@ -48,7 +49,7 @@ impl Widget for ProjectItemsList {
         });
         Model {
             relm: relm.clone(),
-            project_id: None,
+            project: None,
             servers: vec![],
             project_notes: vec![],
             project_pois: vec![],
@@ -60,7 +61,7 @@ impl Widget for ProjectItemsList {
 
     fn fetch_project_items(&mut self) {
         let s = self.model.sender.clone();
-        let cur_project_id = self.model.project_id;
+        let cur_project_id = self.model.project.as_ref().map(|p| p.id);
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
@@ -97,11 +98,14 @@ impl Widget for ProjectItemsList {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::EventSelected => {}
-            Msg::ActiveProjectChanged(pid) => {
-                self.model.project_id = Some(pid);
+            Msg::ActiveProjectChanged(project) => {
+                self.model.project = Some(project);
                 self.fetch_project_items();
             }
             Msg::GotProjectPois(pois) => {
+                if let Some(vadj) = self.scroll.get_vadjustment() {
+                    vadj.set_value(0.0);
+                }
                 self.model.servers = pois.0;
                 self.model.project_notes = pois.1;
                 self.model.project_pois = pois.2;
@@ -129,10 +133,7 @@ impl Widget for ProjectItemsList {
             .iter()
             .filter(matches_env)
             .peekable();
-        if servers.peek().is_some()
-            || project_notes.peek().is_some()
-            || !self.model.project_pois.is_empty()
-        {
+        if servers.peek().is_some() || project_notes.peek().is_some() {
             let _child = self
                 .project_items_list
                 .add_widget::<EnvironmentListItem>(env);
@@ -159,21 +160,39 @@ impl Widget for ProjectItemsList {
         for child in self.project_items_list.get_children() {
             self.project_items_list.remove(&child);
         }
-        for prj_poi in &self.model.project_pois {
-            let _child =
-                self.project_items_list
-                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                        text: prj_poi.desc.clone(),
-                        secondary_desc: Some(prj_poi.text.clone()),
-                    });
+        if let Some(Project {
+            has_prod,
+            has_uat,
+            has_stage,
+            has_dev,
+            ..
+        }) = self.model.project
+        {
+            for prj_poi in &self.model.project_pois {
+                let _child =
+                    self.project_items_list
+                        .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
+                            text: prj_poi.desc.clone(),
+                            secondary_desc: Some(prj_poi.text.clone()),
+                        });
+            }
+            if has_prod {
+                self.add_items_list_environment(EnvironmentType::EnvProd);
+            }
+            if has_uat {
+                self.add_items_list_environment(EnvironmentType::EnvUat);
+            }
+            if has_stage {
+                self.add_items_list_environment(EnvironmentType::EnvStage);
+            }
+            if has_dev {
+                self.add_items_list_environment(EnvironmentType::EnvDevelopment);
+            }
         }
-        self.add_items_list_environment(EnvironmentType::EnvProd);
-        self.add_items_list_environment(EnvironmentType::EnvUat);
-        self.add_items_list_environment(EnvironmentType::EnvStage);
-        self.add_items_list_environment(EnvironmentType::EnvDevelopment);
     }
 
     view! {
+        #[name="scroll"]
         gtk::ScrolledWindow {
             #[name="project_items_list"]
             gtk::ListBox {}

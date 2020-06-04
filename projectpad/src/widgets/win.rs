@@ -5,7 +5,6 @@ use super::project_poi_contents::ProjectPoiContents;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
 use crate::sql_thread::SqlFunc;
-use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::Project;
 use relm::Widget;
@@ -109,7 +108,7 @@ impl Widget for Win {
             Msg::Quit => gtk::main_quit(),
             Msg::ProjectActivated(project) => {
                 self.project_items_list
-                    .emit(ProjectItemsListMsg::ActiveProjectChanged(project.id));
+                    .emit(ProjectItemsListMsg::ActiveProjectChanged(project.clone()));
                 self.project_summary
                     .emit(ProjectSummaryMsg::ProjectActivated(project));
             }

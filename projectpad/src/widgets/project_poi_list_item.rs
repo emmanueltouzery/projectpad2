@@ -8,6 +8,7 @@ pub enum Msg {}
 pub struct Model {
     pub text: String,
     pub secondary_desc: Option<String>,
+    pub group_name: Option<String>,
 }
 
 #[widget]
@@ -27,9 +28,9 @@ impl Widget for ProjectPoiListItem {
                 gtk::Label {
                     text: &self.model.text
                 },
-                // gtk::Label {
-                //     text: &self.model.project_poi.address
-                // }
+                gtk::Label {
+                    text: self.model.group_name.as_deref().unwrap_or("")
+                }
             },
             gtk::Label {
                 text: self.model.secondary_desc.as_deref().unwrap_or("")

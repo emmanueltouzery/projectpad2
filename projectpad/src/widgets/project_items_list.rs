@@ -138,8 +138,8 @@ impl Widget for ProjectItemsList {
     }
 
     fn add_items_list_environment(&mut self, env: EnvironmentType) {
-        let mut servers = self.model.servers.iter().filter(|p| p.environment == env);
-        let mut linked_servers = self
+        let servers = self.model.servers.iter().filter(|p| p.environment == env);
+        let linked_servers = self
             .model
             .linked_servers
             .iter()
@@ -150,13 +150,14 @@ impl Widget for ProjectItemsList {
             EnvironmentType::EnvStage => note.has_stage,
             EnvironmentType::EnvDevelopment => note.has_dev,
         };
-        let mut project_notes = self.model.project_notes.iter().filter(matches_env);
+        let project_notes = self.model.project_notes.iter().filter(matches_env);
         for prj_note in project_notes {
             let _child =
                 self.project_items_list
                     .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
                         text: prj_note.title.clone(),
                         secondary_desc: None,
+                        group_name: prj_note.group_name.as_ref().cloned(),
                     });
         }
         for server in servers {
@@ -165,6 +166,7 @@ impl Widget for ProjectItemsList {
                     .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
                         text: server.desc.clone(),
                         secondary_desc: Some(server.username.clone()),
+                        group_name: server.group_name.as_ref().cloned(),
                     });
         }
         for server in linked_servers {
@@ -173,6 +175,7 @@ impl Widget for ProjectItemsList {
                     .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
                         text: server.desc.clone(),
                         secondary_desc: None,
+                        group_name: server.group_name.as_ref().cloned(),
                     });
         }
     }
@@ -187,6 +190,7 @@ impl Widget for ProjectItemsList {
                     .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
                         text: prj_poi.desc.clone(),
                         secondary_desc: Some(prj_poi.text.clone()),
+                        group_name: prj_poi.group_name.as_ref().cloned(),
                     });
         }
         self.add_items_list_environment(self.model.environment);

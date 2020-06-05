@@ -5,8 +5,9 @@ use super::project_poi_contents::ProjectPoiContents;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use gtk::prelude::*;
-use projectpadsql::models::Project;
+use projectpadsql::models::{EnvironmentType, Project};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -17,6 +18,7 @@ const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
 pub enum Msg {
     Quit,
     ProjectActivated(Project),
+    EnvironmentChanged(EnvironmentType),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -112,6 +114,10 @@ impl Widget for Win {
                 self.project_summary
                     .emit(ProjectSummaryMsg::ProjectActivated(project));
             }
+            Msg::EnvironmentChanged(env) => {
+                self.project_items_list
+                    .emit(ProjectItemsListMsg::ActiveEnvironmentChanged(env));
+            }
         }
     }
 
@@ -140,7 +146,9 @@ impl Widget for Win {
                 gtk::Box {
                     orientation: gtk::Orientation::Vertical,
                     #[name="project_summary"]
-                    ProjectSummary(),
+                    ProjectSummary() {
+                        EnvironmentChanged(env) => Msg::EnvironmentChanged(env)
+                    },
                     #[name="project_items_list"]
                     ProjectItemsList(self.model.db_sender.clone()) {
                         property_width_request: 260,

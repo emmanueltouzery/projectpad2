@@ -1,4 +1,3 @@
-mod environment_list_item;
 mod project_badge;
 mod project_items_list;
 mod project_list;

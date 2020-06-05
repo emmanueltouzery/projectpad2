@@ -1,4 +1,3 @@
-use super::environment_list_item::EnvironmentListItem;
 use super::project_poi_list_item::Model as PrjPoiItemModel;
 use super::project_poi_list_item::ProjectPoiListItem;
 use crate::sql_thread::SqlFunc;
@@ -16,6 +15,7 @@ type ProjectItems = (Vec<Server>, Vec<ProjectNote>, Vec<ProjectPointOfInterest>)
 pub enum Msg {
     EventSelected,
     ActiveProjectChanged(Project),
+    ActiveEnvironmentChanged(EnvironmentType),
     GotProjectPois(ProjectItems),
 }
 
@@ -23,6 +23,7 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     relm: relm::Relm<ProjectItemsList>,
     project: Option<Project>,
+    environment: EnvironmentType,
     servers: Vec<Server>,
     project_notes: Vec<ProjectNote>,
     project_pois: Vec<ProjectPointOfInterest>,
@@ -50,6 +51,7 @@ impl Widget for ProjectItemsList {
         Model {
             relm: relm.clone(),
             project: None,
+            environment: EnvironmentType::EnvProd,
             servers: vec![],
             project_notes: vec![],
             project_pois: vec![],
@@ -111,6 +113,11 @@ impl Widget for ProjectItemsList {
                 self.model.project_pois = pois.2;
                 self.update_items_list();
             }
+            Msg::ActiveEnvironmentChanged(env) => {
+                self.model.environment = env;
+                // TODO gtk actually supports listbox filters...
+                self.update_items_list();
+            }
         }
     }
 
@@ -134,9 +141,6 @@ impl Widget for ProjectItemsList {
             .filter(matches_env)
             .peekable();
         if servers.peek().is_some() || project_notes.peek().is_some() {
-            let _child = self
-                .project_items_list
-                .add_widget::<EnvironmentListItem>(env);
             for prj_note in project_notes {
                 let _child =
                     self.project_items_list
@@ -160,35 +164,15 @@ impl Widget for ProjectItemsList {
         for child in self.project_items_list.get_children() {
             self.project_items_list.remove(&child);
         }
-        if let Some(Project {
-            has_prod,
-            has_uat,
-            has_stage,
-            has_dev,
-            ..
-        }) = self.model.project
-        {
-            for prj_poi in &self.model.project_pois {
-                let _child =
-                    self.project_items_list
-                        .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                            text: prj_poi.desc.clone(),
-                            secondary_desc: Some(prj_poi.text.clone()),
-                        });
-            }
-            if has_prod {
-                self.add_items_list_environment(EnvironmentType::EnvProd);
-            }
-            if has_uat {
-                self.add_items_list_environment(EnvironmentType::EnvUat);
-            }
-            if has_stage {
-                self.add_items_list_environment(EnvironmentType::EnvStage);
-            }
-            if has_dev {
-                self.add_items_list_environment(EnvironmentType::EnvDevelopment);
-            }
+        for prj_poi in &self.model.project_pois {
+            let _child =
+                self.project_items_list
+                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
+                        text: prj_poi.desc.clone(),
+                        secondary_desc: Some(prj_poi.text.clone()),
+                    });
         }
+        self.add_items_list_environment(self.model.environment);
     }
 
     view! {

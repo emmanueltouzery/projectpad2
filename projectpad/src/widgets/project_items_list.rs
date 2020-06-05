@@ -4,12 +4,19 @@ use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::Project;
-use projectpadsql::models::{EnvironmentType, ProjectNote, ProjectPointOfInterest, Server};
+use projectpadsql::models::{
+    EnvironmentType, ProjectNote, ProjectPointOfInterest, Server, ServerLink,
+};
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-type ProjectItems = (Vec<Server>, Vec<ProjectNote>, Vec<ProjectPointOfInterest>);
+type ProjectItems = (
+    Vec<Server>,
+    Vec<ServerLink>,
+    Vec<ProjectNote>,
+    Vec<ProjectPointOfInterest>,
+);
 
 #[derive(Msg)]
 pub enum Msg {
@@ -25,6 +32,7 @@ pub struct Model {
     project: Option<Project>,
     environment: EnvironmentType,
     servers: Vec<Server>,
+    linked_servers: Vec<ServerLink>,
     project_notes: Vec<ProjectNote>,
     project_pois: Vec<ProjectPointOfInterest>,
     _channel: relm::Channel<ProjectItems>,
@@ -53,6 +61,7 @@ impl Widget for ProjectItemsList {
             project: None,
             environment: EnvironmentType::EnvProd,
             servers: vec![],
+            linked_servers: vec![],
             project_notes: vec![],
             project_pois: vec![],
             sender,
@@ -70,12 +79,18 @@ impl Widget for ProjectItemsList {
                 use projectpadsql::schema::project_note::dsl as pnt;
                 use projectpadsql::schema::project_point_of_interest::dsl as ppoi;
                 use projectpadsql::schema::server::dsl as srv;
-                let (servers, prj_notes, prj_pois) = match cur_project_id {
+                use projectpadsql::schema::server_link::dsl as lsrv;
+                let (servers, lsrvs, prj_notes, prj_pois) = match cur_project_id {
                     Some(pid) => {
                         let srvs = srv::server
                             .filter(srv::project_id.eq(pid))
                             .order(srv::desc.asc())
                             .load::<Server>(sql_conn)
+                            .unwrap();
+                        let lsrvs = lsrv::server_link
+                            .filter(lsrv::project_id.eq(pid))
+                            .order(lsrv::desc.asc())
+                            .load::<ServerLink>(sql_conn)
                             .unwrap();
                         let prj_notes = pnt::project_note
                             .filter(pnt::project_id.eq(pid))
@@ -87,12 +102,12 @@ impl Widget for ProjectItemsList {
                             .order(ppoi::desc.asc())
                             .load::<ProjectPointOfInterest>(sql_conn)
                             .unwrap();
-                        (srvs, prj_notes, prj_pois)
+                        (srvs, lsrvs, prj_notes, prj_pois)
                     }
-                    None => (vec![], vec![], vec![]),
+                    None => (vec![], vec![], vec![], vec![]),
                 };
 
-                s.send((servers, prj_notes, prj_pois)).unwrap();
+                s.send((servers, lsrvs, prj_notes, prj_pois)).unwrap();
             }))
             .unwrap();
     }
@@ -109,8 +124,9 @@ impl Widget for ProjectItemsList {
                     vadj.set_value(0.0);
                 }
                 self.model.servers = pois.0;
-                self.model.project_notes = pois.1;
-                self.model.project_pois = pois.2;
+                self.model.linked_servers = pois.1;
+                self.model.project_notes = pois.2;
+                self.model.project_pois = pois.3;
                 self.update_items_list();
             }
             Msg::ActiveEnvironmentChanged(env) => {
@@ -122,41 +138,42 @@ impl Widget for ProjectItemsList {
     }
 
     fn add_items_list_environment(&mut self, env: EnvironmentType) {
-        let mut servers = self
+        let mut servers = self.model.servers.iter().filter(|p| p.environment == env);
+        let mut linked_servers = self
             .model
-            .servers
+            .linked_servers
             .iter()
-            .filter(|p| p.environment == env)
-            .peekable();
+            .filter(|p| p.environment == env);
         let matches_env = |note: &&ProjectNote| match env {
             EnvironmentType::EnvProd => note.has_prod,
             EnvironmentType::EnvUat => note.has_uat,
             EnvironmentType::EnvStage => note.has_stage,
             EnvironmentType::EnvDevelopment => note.has_dev,
         };
-        let mut project_notes = self
-            .model
-            .project_notes
-            .iter()
-            .filter(matches_env)
-            .peekable();
-        if servers.peek().is_some() || project_notes.peek().is_some() {
-            for prj_note in project_notes {
-                let _child =
-                    self.project_items_list
-                        .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                            text: prj_note.title.clone(),
-                            secondary_desc: None,
-                        });
-            }
-            for server in servers {
-                let _child =
-                    self.project_items_list
-                        .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                            text: server.desc.clone(),
-                            secondary_desc: Some(server.username.clone()),
-                        });
-            }
+        let mut project_notes = self.model.project_notes.iter().filter(matches_env);
+        for prj_note in project_notes {
+            let _child =
+                self.project_items_list
+                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
+                        text: prj_note.title.clone(),
+                        secondary_desc: None,
+                    });
+        }
+        for server in servers {
+            let _child =
+                self.project_items_list
+                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
+                        text: server.desc.clone(),
+                        secondary_desc: Some(server.username.clone()),
+                    });
+        }
+        for server in linked_servers {
+            let _child =
+                self.project_items_list
+                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
+                        text: server.desc.clone(),
+                        secondary_desc: None,
+                    });
         }
     }
 

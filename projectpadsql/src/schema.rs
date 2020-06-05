@@ -58,3 +58,14 @@ table! {
         project_id -> Integer,
     }
 }
+
+table! {
+    server_link {
+        id -> Integer,
+        desc -> Varchar,
+        linked_server_id -> Integer,
+        environment -> Varchar,
+        group_name -> Nullable<Varchar>,
+        project_id -> Integer,
+    }
+}

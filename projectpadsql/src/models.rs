@@ -110,3 +110,13 @@ pub struct ProjectPointOfInterest {
     pub group_name: Option<String>,
     pub project_id: i32,
 }
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ServerLink {
+    pub id: i32,
+    pub desc: String,
+    pub linked_server_id: i32,
+    pub environment: EnvironmentType,
+    pub group_name: Option<String>,
+    pub project_id: i32,
+}

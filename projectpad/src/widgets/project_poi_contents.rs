@@ -4,7 +4,9 @@ use super::win::ProjectPoiItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Server, ServerNote, ServerPointOfInterest, ServerWebsite};
+use projectpadsql::models::{
+    Server, ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerWebsite,
+};
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -13,6 +15,7 @@ type ItemTypes = (
     Vec<ServerWebsite>,
     Vec<ServerPointOfInterest>,
     Vec<ServerNote>,
+    Vec<ServerExtraUserAccount>,
 );
 
 #[derive(Msg)]
@@ -29,6 +32,7 @@ pub struct Model {
     server_wwws: Vec<ServerWebsite>,
     server_pois: Vec<ServerPointOfInterest>,
     server_notes: Vec<ServerNote>,
+    server_extra_user_accounts: Vec<ServerExtraUserAccount>,
 }
 
 #[widget]
@@ -53,6 +57,7 @@ impl Widget for ProjectPoiContents {
             server_wwws: vec![],
             server_pois: vec![],
             server_notes: vec![],
+            server_extra_user_accounts: vec![],
         }
     }
 
@@ -66,6 +71,7 @@ impl Widget for ProjectPoiContents {
                 self.model.server_wwws = items.0;
                 self.model.server_pois = items.1;
                 self.model.server_notes = items.2;
+                self.model.server_extra_user_accounts = items.3;
                 self.update_contents_list();
             }
         }
@@ -96,6 +102,13 @@ impl Widget for ProjectPoiContents {
                     name: item.title.clone(),
                 });
         }
+        for item in &self.model.server_extra_user_accounts {
+            let _child = self
+                .contents_list
+                .add_widget::<ProjectPoiItemListItem>(ProjectPoiItem {
+                    name: item.desc.clone(),
+                });
+        }
     }
 
     fn fetch_items(&mut self) {
@@ -107,6 +120,7 @@ impl Widget for ProjectPoiContents {
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
                 use projectpadsql::schema::server_note::dsl as srv_note;
                 use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
                 use projectpadsql::schema::server_website::dsl as srv_www;
@@ -127,9 +141,14 @@ impl Widget for ProjectPoiContents {
                             .order(srv_note::title.asc())
                             .load::<ServerNote>(sql_conn)
                             .unwrap();
-                        (srv_wwws, srv_pois, srv_notes)
+                        let srv_users = srv_usr::server_extra_user_account
+                            .filter(srv_usr::server_id.eq(sid))
+                            .order(srv_usr::desc.asc())
+                            .load::<ServerExtraUserAccount>(sql_conn)
+                            .unwrap();
+                        (srv_wwws, srv_pois, srv_notes, srv_users)
                     }
-                    None => (vec![], vec![], vec![]),
+                    None => (vec![], vec![], vec![], vec![]),
                 };
                 s.send(items).unwrap();
             }))

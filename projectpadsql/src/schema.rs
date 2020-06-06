@@ -106,3 +106,16 @@ table! {
         server_id -> Integer,
     }
 }
+
+table! {
+    server_extra_user_account {
+        id -> Integer,
+        username -> Varchar,
+        password -> Varchar,
+        desc -> Varchar,
+        auth_key -> Nullable<Binary>,
+        auth_key_filename -> Nullable<Varchar>,
+        group_name -> Nullable<Varchar>,
+        server_id -> Integer,
+    }
+}

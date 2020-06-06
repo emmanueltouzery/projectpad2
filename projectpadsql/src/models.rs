@@ -175,3 +175,15 @@ pub struct ServerNote {
     pub group_name: Option<String>,
     pub server_id: i32,
 }
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ServerExtraUserAccount {
+    pub id: i32,
+    pub username: String,
+    pub password: String,
+    pub desc: String,
+    pub auth_key: Option<Vec<u8>>,
+    pub auth_key_filename: Option<String>,
+    pub group_name: Option<String>,
+    pub server_id: i32,
+}

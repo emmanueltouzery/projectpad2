@@ -1,6 +1,6 @@
 use super::project_items_list::ProjectItem;
 use super::project_poi_item_list_item::ProjectPoiItemListItem;
-use super::win::{ProjectPoi, ProjectPoiItem};
+use super::win::ProjectPoiItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -18,6 +18,7 @@ pub enum Msg {
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     sender: relm::Sender<Vec<ServerWebsite>>,
+    _channel: relm::Channel<Vec<ServerWebsite>>,
     cur_project_item: Option<ProjectItem>,
     items: Vec<ServerWebsite>,
 }
@@ -37,6 +38,7 @@ impl Widget for ProjectPoiContents {
             stream.emit(Msg::GotItems(items));
         });
         Model {
+            _channel: channel,
             sender,
             db_sender,
             cur_project_item: None,

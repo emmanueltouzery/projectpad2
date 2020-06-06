@@ -24,56 +24,14 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ServerType {
-    Application,
-    Database,
-    HttpServerOrProxy,
-    Monitoring,
-    Reporting,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProjectPoi {
-    pub name: String,
-    pub address: String,
-    pub username: String,
-    pub server_type: ServerType,
-}
-
-impl ProjectPoi {
-    fn new<S: Into<String>>(
-        name: S,
-        address: S,
-        username: S,
-        server_type: ServerType,
-    ) -> ProjectPoi {
-        ProjectPoi {
-            name: name.into(),
-            address: address.into(),
-            username: username.into(),
-            server_type,
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProjectPoiItem {
     pub name: String,
     // TODO groups
 }
-
-impl ProjectPoiItem {
-    fn new<S: Into<String>>(name: S) -> ProjectPoiItem {
-        ProjectPoiItem { name: name.into() }
-    }
-}
-
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
-    project_items: Vec<ProjectPoi>,
-    cur_project_item: Option<ProjectPoi>,
-    project_poi_items: Vec<ProjectPoiItem>,
 }
 
 #[widget]
@@ -85,27 +43,7 @@ impl Widget for Win {
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
-        // db_sender
-        //     .send(SqlFunc::new(move |db_conn| {
-        //         use projectpadsql::schema::project::dsl::*;
-        //         let prjs = project.order(name.asc()).load::<Project>(db_conn).unwrap();
-        //         println!("{:?}", prjs);
-        //     }))
-        //     .unwrap();
-        let project_items = vec![
-            ProjectPoi::new("AFCp", "117.23.13.13", "razvoj", ServerType::Application),
-            ProjectPoi::new("AFC SQL", "34.23.43.53", "razvoj", ServerType::Database),
-        ];
-        Model {
-            db_sender,
-            cur_project_item: project_items.first().cloned(),
-            project_items,
-            project_poi_items: vec![
-                ProjectPoiItem::new("metrics user"),
-                ProjectPoiItem::new("Prometheus"),
-                ProjectPoiItem::new("afcp"),
-            ],
-        }
+        Model { db_sender }
     }
 
     fn update(&mut self, event: Msg) {

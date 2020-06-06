@@ -119,3 +119,16 @@ table! {
         server_id -> Integer,
     }
 }
+
+table! {
+    server_database {
+        id -> Integer,
+        desc -> Varchar,
+        name -> Varchar,
+        text -> Varchar,
+        username -> Varchar,
+        password -> Varchar,
+        group_name -> Nullable<Varchar>,
+        server_id -> Integer,
+    }
+}

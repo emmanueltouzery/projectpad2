@@ -187,3 +187,15 @@ pub struct ServerExtraUserAccount {
     pub group_name: Option<String>,
     pub server_id: i32,
 }
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ServerDatabase {
+    pub id: i32,
+    pub desc: String,
+    pub name: String,
+    pub text: String,
+    pub username: String,
+    pub password: String,
+    pub group_name: Option<String>,
+    pub server_id: i32,
+}

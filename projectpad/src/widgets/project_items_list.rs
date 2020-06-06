@@ -85,18 +85,12 @@ impl Widget for ProjectItemsList {
                         let mut prj_query = pnt::project_note
                             .filter(pnt::project_id.eq(pid))
                             .into_boxed();
-                        match env {
-                            EnvironmentType::EnvProd => {
-                                prj_query = prj_query.filter(pnt::has_prod.eq(true))
-                            }
-                            EnvironmentType::EnvUat => {
-                                prj_query = prj_query.filter(pnt::has_uat.eq(true))
-                            }
-                            EnvironmentType::EnvStage => {
-                                prj_query = prj_query.filter(pnt::has_stage.eq(true))
-                            }
+                        prj_query = match env {
+                            EnvironmentType::EnvProd => prj_query.filter(pnt::has_prod.eq(true)),
+                            EnvironmentType::EnvUat => prj_query.filter(pnt::has_uat.eq(true)),
+                            EnvironmentType::EnvStage => prj_query.filter(pnt::has_stage.eq(true)),
                             EnvironmentType::EnvDevelopment => {
-                                prj_query = prj_query.filter(pnt::has_dev.eq(true))
+                                prj_query.filter(pnt::has_dev.eq(true))
                             }
                         };
                         let prj_notes = prj_query

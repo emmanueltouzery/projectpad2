@@ -54,6 +54,12 @@ pub enum InterestType {
     PoiBackupArchive,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+pub enum RunOn {
+    RunOnServer,
+    RunOnClient,
+}
+
 macro_rules! simple_enum {
     ($x:ty) => {
         impl<DB> FromSql<Varchar, DB> for $x
@@ -82,6 +88,7 @@ simple_enum!(EnvironmentType);
 simple_enum!(ServerType);
 simple_enum!(ServerAccessType);
 simple_enum!(InterestType);
+simple_enum!(RunOn);
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct Server {
@@ -144,6 +151,18 @@ pub struct ServerWebsite {
     pub username: String,
     pub password: String,
     pub server_database_id: Option<i32>,
+    pub group_name: Option<String>,
+    pub server_id: i32,
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ServerPointOfInterest {
+    pub id: i32,
+    pub desc: String,
+    pub path: String,
+    pub text: String,
+    pub interest_type: InterestType,
+    pub run_on: RunOn,
     pub group_name: Option<String>,
     pub server_id: i32,
 }

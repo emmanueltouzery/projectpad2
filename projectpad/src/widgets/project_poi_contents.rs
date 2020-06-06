@@ -4,23 +4,26 @@ use super::win::ProjectPoiItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Server, ServerWebsite};
+use projectpadsql::models::{Server, ServerPointOfInterest, ServerWebsite};
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
+type ItemTypes = (Vec<ServerWebsite>, Vec<ServerPointOfInterest>);
+
 #[derive(Msg)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
-    GotItems(Vec<ServerWebsite>),
+    GotItems(ItemTypes),
 }
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
-    sender: relm::Sender<Vec<ServerWebsite>>,
-    _channel: relm::Channel<Vec<ServerWebsite>>,
+    sender: relm::Sender<ItemTypes>,
+    _channel: relm::Channel<ItemTypes>,
     cur_project_item: Option<ProjectItem>,
-    items: Vec<ServerWebsite>,
+    server_wwws: Vec<ServerWebsite>,
+    server_pois: Vec<ServerPointOfInterest>,
 }
 
 #[widget]
@@ -34,7 +37,7 @@ impl Widget for ProjectPoiContents {
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |items: Vec<ServerWebsite>| {
+        let (channel, sender) = relm::Channel::new(move |items: ItemTypes| {
             stream.emit(Msg::GotItems(items));
         });
         Model {
@@ -42,7 +45,8 @@ impl Widget for ProjectPoiContents {
             sender,
             db_sender,
             cur_project_item: None,
-            items: vec![],
+            server_wwws: vec![],
+            server_pois: vec![],
         }
     }
 
@@ -53,7 +57,8 @@ impl Widget for ProjectPoiContents {
                 self.fetch_items();
             }
             Msg::GotItems(items) => {
-                self.model.items = items;
+                self.model.server_wwws = items.0;
+                self.model.server_pois = items.1;
                 self.update_contents_list();
             }
         }
@@ -63,7 +68,14 @@ impl Widget for ProjectPoiContents {
         for child in self.contents_list.get_children() {
             self.contents_list.remove(&child);
         }
-        for item in &self.model.items {
+        for item in &self.model.server_wwws {
+            let child = self
+                .contents_list
+                .add_widget::<ProjectPoiItemListItem>(ProjectPoiItem {
+                    name: item.desc.clone(),
+                });
+        }
+        for item in &self.model.server_pois {
             let child = self
                 .contents_list
                 .add_widget::<ProjectPoiItemListItem>(ProjectPoiItem {
@@ -81,14 +93,23 @@ impl Widget for ProjectPoiContents {
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
                 use projectpadsql::schema::server_website::dsl as srv_www;
                 let items = match cur_server_id {
-                    Some(sid) => srv_www::server_website
-                        .filter(srv_www::server_id.eq(sid))
-                        .order(srv_www::desc.asc())
-                        .load::<ServerWebsite>(sql_conn)
-                        .unwrap(),
-                    None => vec![],
+                    Some(sid) => {
+                        let srv_wwws = srv_www::server_website
+                            .filter(srv_www::server_id.eq(sid))
+                            .order(srv_www::desc.asc())
+                            .load::<ServerWebsite>(sql_conn)
+                            .unwrap();
+                        let srv_pois = srv_poi::server_point_of_interest
+                            .filter(srv_poi::server_id.eq(sid))
+                            .order(srv_poi::desc.asc())
+                            .load::<ServerPointOfInterest>(sql_conn)
+                            .unwrap();
+                        (srv_wwws, srv_pois)
+                    }
+                    None => (vec![], vec![]),
                 };
                 s.send(items).unwrap();
             }))

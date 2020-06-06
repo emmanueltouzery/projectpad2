@@ -83,3 +83,16 @@ table! {
         server_id -> Integer,
     }
 }
+
+table! {
+    server_point_of_interest {
+        id -> Integer,
+        desc -> Varchar,
+        path -> Varchar,
+        text -> Varchar,
+        interest_type -> Varchar,
+        run_on -> Varchar,
+        group_name -> Nullable<Varchar>,
+        server_id -> Integer,
+    }
+}

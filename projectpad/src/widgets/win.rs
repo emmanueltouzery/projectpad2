@@ -24,7 +24,6 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProjectPoiItem {
     pub name: String,

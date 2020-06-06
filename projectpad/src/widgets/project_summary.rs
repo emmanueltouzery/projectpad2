@@ -6,6 +6,7 @@ use relm_derive::{widget, Msg};
 #[derive(Msg)]
 pub enum Msg {
     ProjectActivated(Project),
+    EnvironmentToggled(EnvironmentType), // implementation detail
     EnvironmentChanged(EnvironmentType),
 }
 
@@ -63,6 +64,34 @@ impl Widget for ProjectSummary {
                 }
                 self.model.project = Some(prj);
             }
+            Msg::EnvironmentToggled(env) => match env {
+                // sadly the radio button api is a bit of mess, toggled is emitted
+                // on both the one that gets de-activated and the one that gets
+                // activated. 'clicked' does the same, too.
+                // => must filter to re-emit only the one that gets activated.
+                // https://stackoverflow.com/questions/13385024/read-gtk-radio-button-signal-only-when-selected
+                EnvironmentType::EnvDevelopment if self.radio_dev.get_active() => self
+                    .model
+                    .relm
+                    .stream()
+                    .emit(Msg::EnvironmentChanged(EnvironmentType::EnvDevelopment)),
+                EnvironmentType::EnvStage if self.radio_stg.get_active() => self
+                    .model
+                    .relm
+                    .stream()
+                    .emit(Msg::EnvironmentChanged(EnvironmentType::EnvStage)),
+                EnvironmentType::EnvUat if self.radio_uat.get_active() => self
+                    .model
+                    .relm
+                    .stream()
+                    .emit(Msg::EnvironmentChanged(EnvironmentType::EnvUat)),
+                EnvironmentType::EnvProd if self.radio_prd.get_active() => self
+                    .model
+                    .relm
+                    .stream()
+                    .emit(Msg::EnvironmentChanged(EnvironmentType::EnvProd)),
+                _ => {}
+            },
             Msg::EnvironmentChanged(_) => { /* meant for my parent */ }
         }
     }
@@ -90,28 +119,28 @@ impl Widget for ProjectSummary {
                     label: "Dev",
                     mode: false,
                     sensitive: false,
-                    clicked => Msg::EnvironmentChanged(EnvironmentType::EnvDevelopment)
+                    toggled => Msg::EnvironmentToggled(EnvironmentType::EnvDevelopment)
                 },
                 #[name="radio_stg"]
                 gtk::RadioButton {
                     label: "Stg",
                     mode: false,
                     sensitive: false,
-                    clicked => Msg::EnvironmentChanged(EnvironmentType::EnvStage)
+                    toggled => Msg::EnvironmentToggled(EnvironmentType::EnvStage)
                 },
                 #[name="radio_uat"]
                 gtk::RadioButton {
                     label: "Uat",
                     mode: false,
                     sensitive: false,
-                    clicked => Msg::EnvironmentChanged(EnvironmentType::EnvUat)
+                    toggled => Msg::EnvironmentToggled(EnvironmentType::EnvUat)
                 },
                 #[name="radio_prd"]
                 gtk::RadioButton {
                     label: "Prd",
                     mode: false,
                     sensitive: false,
-                    clicked => Msg::EnvironmentChanged(EnvironmentType::EnvProd)
+                    toggled => Msg::EnvironmentToggled(EnvironmentType::EnvProd)
                 },
             }
         }

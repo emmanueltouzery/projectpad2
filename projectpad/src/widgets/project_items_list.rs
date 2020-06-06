@@ -137,8 +137,7 @@ impl Widget for ProjectItemsList {
             }
             Msg::ActiveEnvironmentChanged(env) => {
                 self.model.environment = env;
-                // TODO gtk actually supports listbox filters...
-                self.update_items_list();
+                self.fetch_project_items();
             }
             Msg::ProjectItemIndexSelected(row_idx) => {
                 self.model.relm.stream().emit(Msg::ProjectItemSelected(

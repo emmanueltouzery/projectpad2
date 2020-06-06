@@ -11,7 +11,7 @@ use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProjectItem {
     Server(Server),
     ServerLink(ServerLink),
@@ -24,7 +24,8 @@ pub enum Msg {
     ActiveProjectChanged(Project),
     ActiveEnvironmentChanged(EnvironmentType),
     GotProjectItems(Vec<ProjectItem>),
-    ProjectItemSelected(Option<usize>),
+    ProjectItemIndexSelected(Option<usize>),
+    ProjectItemSelected(Option<ProjectItem>),
 }
 
 pub struct Model {
@@ -139,10 +140,14 @@ impl Widget for ProjectItemsList {
                 // TODO gtk actually supports listbox filters...
                 self.update_items_list();
             }
-            Msg::ProjectItemSelected(row_idx) => println!(
-                "selected {:?}",
-                row_idx.map(|idx| self.model.project_items.get(idx))
-            ),
+            Msg::ProjectItemIndexSelected(row_idx) => {
+                self.model.relm.stream().emit(Msg::ProjectItemSelected(
+                    row_idx.and_then(|idx| self.model.project_items.get(idx).cloned()),
+                ))
+            }
+            Msg::ProjectItemSelected(_) => {
+                // meant for my parent
+            }
         }
     }
 
@@ -187,7 +192,8 @@ impl Widget for ProjectItemsList {
         gtk::ScrolledWindow {
             #[name="project_items_list"]
             gtk::ListBox {
-                row_selected(_, row) => Msg::ProjectItemSelected(row.map(|r| r.get_index() as usize))
+                row_selected(_, row) =>
+                    Msg::ProjectItemIndexSelected(row.map(|r| r.get_index() as usize))
             }
         }
     }

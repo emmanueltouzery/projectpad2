@@ -1,10 +1,12 @@
 use super::project_items_list::Msg as ProjectItemsListMsg;
-use super::project_items_list::ProjectItemsList;
+use super::project_items_list::{ProjectItem, ProjectItemsList};
 use super::project_list::{Msg::ProjectActivated, ProjectList};
+use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use gtk::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project};
@@ -19,6 +21,7 @@ pub enum Msg {
     Quit,
     ProjectActivated(Project),
     EnvironmentChanged(EnvironmentType),
+    ProjectItemSelected(Option<ProjectItem>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -118,6 +121,10 @@ impl Widget for Win {
                 self.project_items_list
                     .emit(ProjectItemsListMsg::ActiveEnvironmentChanged(env));
             }
+            Msg::ProjectItemSelected(pi) => {
+                self.project_poi_contents
+                    .emit(ProjectPoiContentsMsg::ProjectItemSelected(pi));
+            }
         }
     }
 
@@ -155,10 +162,12 @@ impl Widget for Win {
                         child: {
                             fill: true,
                             expand: true,
-                        }
+                        },
+                        ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
                     },
                 },
-                ProjectPoiContents(self.model.cur_project_item.clone(), self.model.project_poi_items.clone()) {
+                #[name="project_poi_contents"]
+                ProjectPoiContents(self.model.db_sender.clone()) {
                     child: {
                         fill: true,
                         expand: true,

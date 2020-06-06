@@ -69,3 +69,17 @@ table! {
         project_id -> Integer,
     }
 }
+
+table! {
+    server_website {
+        id -> Integer,
+        desc -> Varchar,
+        url -> Varchar,
+        text -> Varchar,
+        username -> Varchar,
+        password -> Varchar,
+        server_database_id -> Nullable<Integer>,
+        group_name -> Nullable<Varchar>,
+        server_id -> Integer,
+    }
+}

@@ -11,19 +11,20 @@ use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-type ProjectItems = (
-    Vec<Server>,
-    Vec<ServerLink>,
-    Vec<ProjectNote>,
-    Vec<ProjectPointOfInterest>,
-);
+#[derive(Debug)]
+pub enum ProjectItem {
+    Server(Server),
+    ServerLink(ServerLink),
+    ProjectNote(ProjectNote),
+    ProjectPointOfInterest(ProjectPointOfInterest),
+}
 
 #[derive(Msg)]
 pub enum Msg {
-    EventSelected,
     ActiveProjectChanged(Project),
     ActiveEnvironmentChanged(EnvironmentType),
-    GotProjectPois(ProjectItems),
+    GotProjectItems(Vec<ProjectItem>),
+    ProjectItemSelected(Option<usize>),
 }
 
 pub struct Model {
@@ -31,39 +32,27 @@ pub struct Model {
     relm: relm::Relm<ProjectItemsList>,
     project: Option<Project>,
     environment: EnvironmentType,
-    servers: Vec<Server>,
-    linked_servers: Vec<ServerLink>,
-    project_notes: Vec<ProjectNote>,
-    project_pois: Vec<ProjectPointOfInterest>,
-    _channel: relm::Channel<ProjectItems>,
-    sender: relm::Sender<ProjectItems>,
+    project_items: Vec<ProjectItem>,
+    _channel: relm::Channel<Vec<ProjectItem>>,
+    sender: relm::Sender<Vec<ProjectItem>>,
 }
 
 #[widget]
 impl Widget for ProjectItemsList {
     fn init_view(&mut self) {
         self.update_items_list();
-        relm::connect!(
-            self.model.relm,
-            self.project_items_list,
-            connect_row_selected(_, _),
-            Msg::EventSelected
-        );
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |prj_items: ProjectItems| {
-            stream.emit(Msg::GotProjectPois(prj_items));
+        let (channel, sender) = relm::Channel::new(move |prj_items: Vec<ProjectItem>| {
+            stream.emit(Msg::GotProjectItems(prj_items));
         });
         Model {
             relm: relm.clone(),
             project: None,
             environment: EnvironmentType::EnvProd,
-            servers: vec![],
-            linked_servers: vec![],
-            project_notes: vec![],
-            project_pois: vec![],
+            project_items: vec![],
             sender,
             _channel: channel,
             db_sender,
@@ -73,6 +62,7 @@ impl Widget for ProjectItemsList {
     fn fetch_project_items(&mut self) {
         let s = self.model.sender.clone();
         let cur_project_id = self.model.project.as_ref().map(|p| p.id);
+        let env = self.model.environment;
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
@@ -83,17 +73,33 @@ impl Widget for ProjectItemsList {
                 let (servers, lsrvs, prj_notes, prj_pois) = match cur_project_id {
                     Some(pid) => {
                         let srvs = srv::server
-                            .filter(srv::project_id.eq(pid))
+                            .filter(srv::project_id.eq(pid).and(srv::environment.eq(env)))
                             .order(srv::desc.asc())
                             .load::<Server>(sql_conn)
                             .unwrap();
                         let lsrvs = lsrv::server_link
-                            .filter(lsrv::project_id.eq(pid))
+                            .filter(lsrv::project_id.eq(pid).and(lsrv::environment.eq(env)))
                             .order(lsrv::desc.asc())
                             .load::<ServerLink>(sql_conn)
                             .unwrap();
-                        let prj_notes = pnt::project_note
+                        let mut prj_query = pnt::project_note
                             .filter(pnt::project_id.eq(pid))
+                            .into_boxed();
+                        match env {
+                            EnvironmentType::EnvProd => {
+                                prj_query = prj_query.filter(pnt::has_prod.eq(true))
+                            }
+                            EnvironmentType::EnvUat => {
+                                prj_query = prj_query.filter(pnt::has_uat.eq(true))
+                            }
+                            EnvironmentType::EnvStage => {
+                                prj_query = prj_query.filter(pnt::has_stage.eq(true))
+                            }
+                            EnvironmentType::EnvDevelopment => {
+                                prj_query = prj_query.filter(pnt::has_dev.eq(true))
+                            }
+                        };
+                        let prj_notes = prj_query
                             .order(pnt::title.asc())
                             .load::<ProjectNote>(sql_conn)
                             .unwrap();
@@ -107,26 +113,31 @@ impl Widget for ProjectItemsList {
                     None => (vec![], vec![], vec![], vec![]),
                 };
 
-                s.send((servers, lsrvs, prj_notes, prj_pois)).unwrap();
+                let mut items: Vec<_> = servers.into_iter().map(ProjectItem::Server).collect();
+                items.extend(&mut lsrvs.into_iter().map(ProjectItem::ServerLink));
+                items.extend(&mut prj_notes.into_iter().map(ProjectItem::ProjectNote));
+                items.extend(
+                    &mut prj_pois
+                        .into_iter()
+                        .map(ProjectItem::ProjectPointOfInterest),
+                );
+
+                s.send(items).unwrap();
             }))
             .unwrap();
     }
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::EventSelected => {}
             Msg::ActiveProjectChanged(project) => {
                 self.model.project = Some(project);
                 self.fetch_project_items();
             }
-            Msg::GotProjectPois(pois) => {
+            Msg::GotProjectItems(items) => {
                 if let Some(vadj) = self.scroll.get_vadjustment() {
                     vadj.set_value(0.0);
                 }
-                self.model.servers = pois.0;
-                self.model.linked_servers = pois.1;
-                self.model.project_notes = pois.2;
-                self.model.project_pois = pois.3;
+                self.model.project_items = items;
                 self.update_items_list();
             }
             Msg::ActiveEnvironmentChanged(env) => {
@@ -134,49 +145,35 @@ impl Widget for ProjectItemsList {
                 // TODO gtk actually supports listbox filters...
                 self.update_items_list();
             }
+            Msg::ProjectItemSelected(row_idx) => println!(
+                "selected {:?}",
+                row_idx.map(|idx| self.model.project_items.get(idx))
+            ),
         }
     }
 
-    fn add_items_list_environment(&mut self, env: EnvironmentType) {
-        let servers = self.model.servers.iter().filter(|p| p.environment == env);
-        let linked_servers = self
-            .model
-            .linked_servers
-            .iter()
-            .filter(|p| p.environment == env);
-        let matches_env = |note: &&ProjectNote| match env {
-            EnvironmentType::EnvProd => note.has_prod,
-            EnvironmentType::EnvUat => note.has_uat,
-            EnvironmentType::EnvStage => note.has_stage,
-            EnvironmentType::EnvDevelopment => note.has_dev,
-        };
-        let project_notes = self.model.project_notes.iter().filter(matches_env);
-        for prj_note in project_notes {
-            let _child =
-                self.project_items_list
-                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                        text: prj_note.title.clone(),
-                        secondary_desc: None,
-                        group_name: prj_note.group_name.as_ref().cloned(),
-                    });
-        }
-        for server in servers {
-            let _child =
-                self.project_items_list
-                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                        text: server.desc.clone(),
-                        secondary_desc: Some(server.username.clone()),
-                        group_name: server.group_name.as_ref().cloned(),
-                    });
-        }
-        for server in linked_servers {
-            let _child =
-                self.project_items_list
-                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                        text: server.desc.clone(),
-                        secondary_desc: None,
-                        group_name: server.group_name.as_ref().cloned(),
-                    });
+    fn to_item_model(project_item: &ProjectItem) -> PrjPoiItemModel {
+        match project_item {
+            ProjectItem::Server(srv) => PrjPoiItemModel {
+                text: srv.desc.clone(),
+                secondary_desc: Some(srv.username.clone()),
+                group_name: srv.group_name.as_ref().cloned(),
+            },
+            ProjectItem::ServerLink(link) => PrjPoiItemModel {
+                text: link.desc.clone(),
+                secondary_desc: None,
+                group_name: link.group_name.as_ref().cloned(),
+            },
+            ProjectItem::ProjectNote(note) => PrjPoiItemModel {
+                text: note.title.clone(),
+                secondary_desc: None,
+                group_name: note.group_name.as_ref().cloned(),
+            },
+            ProjectItem::ProjectPointOfInterest(poi) => PrjPoiItemModel {
+                text: poi.desc.clone(),
+                secondary_desc: Some(poi.text.clone()),
+                group_name: poi.group_name.as_ref().cloned(),
+            },
         }
     }
 
@@ -184,23 +181,20 @@ impl Widget for ProjectItemsList {
         for child in self.project_items_list.get_children() {
             self.project_items_list.remove(&child);
         }
-        for prj_poi in &self.model.project_pois {
-            let _child =
-                self.project_items_list
-                    .add_widget::<ProjectPoiListItem>(PrjPoiItemModel {
-                        text: prj_poi.desc.clone(),
-                        secondary_desc: Some(prj_poi.text.clone()),
-                        group_name: prj_poi.group_name.as_ref().cloned(),
-                    });
+        for project_item in &self.model.project_items {
+            let _child = self
+                .project_items_list
+                .add_widget::<ProjectPoiListItem>(Self::to_item_model(project_item));
         }
-        self.add_items_list_environment(self.model.environment);
     }
 
     view! {
         #[name="scroll"]
         gtk::ScrolledWindow {
             #[name="project_items_list"]
-            gtk::ListBox {}
+            gtk::ListBox {
+                row_selected(_, row) => Msg::ProjectItemSelected(row.map(|r| r.get_index() as usize))
+            }
         }
     }
 }

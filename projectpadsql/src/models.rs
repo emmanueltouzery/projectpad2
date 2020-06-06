@@ -1,7 +1,10 @@
 use diesel::backend::Backend;
 use diesel::prelude::*;
+use diesel::serialize::Output;
 use diesel::types::*;
+use std::io::Write;
 use std::str::FromStr;
+use std::string::ToString;
 use strum_macros::{Display, EnumString};
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
@@ -15,7 +18,7 @@ pub struct Project {
     pub has_prod: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
 pub enum ServerType {
     SrvDatabase,
     SrvApplication,
@@ -24,7 +27,7 @@ pub enum ServerType {
     SrvReporting,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
 pub enum ServerAccessType {
     SrvAccessSsh,
     SrvAccessRdp,
@@ -33,6 +36,7 @@ pub enum ServerAccessType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[sql_type = "Varchar"]
 pub enum EnvironmentType {
     EnvDevelopment,
     EnvUat,
@@ -59,6 +63,16 @@ macro_rules! simple_enum {
         {
             fn from_sql(bytes: Option<&DB::RawValue>) -> diesel::deserialize::Result<Self> {
                 Ok(<$x>::from_str(&String::from_sql(bytes)?)?)
+            }
+        }
+
+        impl<DB> ToSql<Varchar, DB> for $x
+        where
+            DB: Backend,
+        {
+            fn to_sql<W: Write>(&self, out: &mut Output<W, DB>) -> diesel::serialize::Result {
+                out.write_all(self.to_string().as_bytes())?;
+                Ok(IsNull::No)
             }
         }
     };
@@ -119,4 +133,17 @@ pub struct ServerLink {
     pub environment: EnvironmentType,
     pub group_name: Option<String>,
     pub project_id: i32,
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ServerWebsite {
+    pub id: i32,
+    pub desc: String,
+    pub url: String,
+    pub text: String,
+    pub username: String,
+    pub password: String,
+    pub server_database_id: Option<i32>,
+    pub group_name: Option<String>,
+    pub server_id: i32,
 }

@@ -166,3 +166,12 @@ pub struct ServerPointOfInterest {
     pub group_name: Option<String>,
     pub server_id: i32,
 }
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct ServerNote {
+    pub id: i32,
+    pub title: String,
+    pub contents: String,
+    pub group_name: Option<String>,
+    pub server_id: i32,
+}

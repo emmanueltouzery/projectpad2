@@ -96,3 +96,13 @@ table! {
         server_id -> Integer,
     }
 }
+
+table! {
+    server_note {
+        id -> Integer,
+        title -> Varchar,
+        contents -> Varchar,
+        group_name -> Nullable<Varchar>,
+        server_id -> Integer,
+    }
+}

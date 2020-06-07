@@ -3,6 +3,8 @@ use super::project_items_list::{ProjectItem, ProjectItemsList};
 use super::project_list::{Msg::ProjectActivated, ProjectList};
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::ProjectPoiContents;
+use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
+use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
 use crate::sql_thread::SqlFunc;
@@ -59,8 +61,10 @@ impl Widget for Win {
                     .emit(ProjectItemsListMsg::ActiveEnvironmentChanged(env));
             }
             Msg::ProjectItemSelected(pi) => {
+                self.project_poi_header
+                    .emit(ProjectPoiHeaderMsg::ProjectItemSelected(pi.clone()));
                 self.project_poi_contents
-                    .emit(ProjectPoiContentsMsg::ProjectItemSelected(pi));
+                    .emit(ProjectPoiContentsMsg::ProjectItemSelected(pi.clone()));
             }
         }
     }
@@ -103,12 +107,21 @@ impl Widget for Win {
                         ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
                     },
                 },
-                #[name="project_poi_contents"]
-                ProjectPoiContents(self.model.db_sender.clone()) {
+                gtk::Box {
+                    orientation: gtk::Orientation::Vertical,
                     child: {
                         fill: true,
                         expand: true,
                     },
+                    #[name="project_poi_header"]
+                    ProjectPoiHeader(),
+                    #[name="project_poi_contents"]
+                    ProjectPoiContents(self.model.db_sender.clone()) {
+                        child: {
+                            fill: true,
+                            expand: true,
+                        },
+                    }
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),

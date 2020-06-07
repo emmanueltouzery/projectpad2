@@ -12,3 +12,4 @@ cairo-rs = {version = "0.8.1", features = ["png"]}
 gdk = "0.12.1"
 projectpadsql = { path = "../projectpadsql" }
 diesel = {version = "1.4.4", features= ["sqlite"]}
+itertools = "0.9.0"

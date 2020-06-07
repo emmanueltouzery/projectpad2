@@ -64,7 +64,7 @@ impl Widget for Win {
                 self.project_poi_header
                     .emit(ProjectPoiHeaderMsg::ProjectItemSelected(pi.clone()));
                 self.project_poi_contents
-                    .emit(ProjectPoiContentsMsg::ProjectItemSelected(pi.clone()));
+                    .emit(ProjectPoiContentsMsg::ProjectItemSelected(pi));
             }
         }
     }

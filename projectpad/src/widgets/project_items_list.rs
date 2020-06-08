@@ -3,17 +3,16 @@ use super::project_poi_list_item::ProjectPoiListItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use itertools::Itertools;
 use projectpadsql::models::Project;
 use projectpadsql::models::{
     EnvironmentType, ProjectNote, ProjectPointOfInterest, Server, ServerLink,
 };
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc;
 
-type ChannelData = (Vec<ProjectItem>, HashSet<i32>);
+type ChannelData = (Vec<ProjectItem>, HashMap<i32, String>);
 
 #[derive(Debug, Clone)]
 pub enum ProjectItem {
@@ -38,7 +37,7 @@ pub struct Model {
     project: Option<Project>,
     environment: EnvironmentType,
     project_items: Vec<ProjectItem>,
-    project_item_groups_start_indexes: HashSet<i32>,
+    project_item_groups_start_indexes: HashMap<i32, String>,
     _channel: relm::Channel<ChannelData>,
     sender: relm::Sender<ChannelData>,
 }
@@ -59,7 +58,7 @@ impl Widget for ProjectItemsList {
             project: None,
             environment: EnvironmentType::EnvProd,
             project_items: Vec::new(),
-            project_item_groups_start_indexes: HashSet::new(),
+            project_item_groups_start_indexes: HashMap::new(),
             sender,
             _channel: channel,
             db_sender,
@@ -68,23 +67,81 @@ impl Widget for ProjectItemsList {
 
     fn add_items(
         items: &mut Vec<ProjectItem>,
-        servers_by_group: &mut HashMap<Option<String>, Vec<Server>>,
-        lsrvs_by_group: &mut HashMap<Option<String>, Vec<ServerLink>>,
-        prj_notes_by_group: &mut HashMap<Option<String>, Vec<ProjectNote>>,
-        prj_pois_by_group: &mut HashMap<Option<String>, Vec<ProjectPointOfInterest>>,
+        servers: &mut dyn Iterator<Item = Server>,
+        lsrvs: &mut dyn Iterator<Item = ServerLink>,
+        prj_notes: &mut dyn Iterator<Item = ProjectNote>,
+        prj_pois: &mut dyn Iterator<Item = ProjectPointOfInterest>,
         group_name: Option<String>,
     ) {
-        if let Some(servers) = servers_by_group.remove(&group_name) {
-            items.extend(servers.into_iter().map(ProjectItem::Server));
-        }
-        if let Some(lsrvs) = lsrvs_by_group.remove(&group_name) {
-            items.extend(lsrvs.into_iter().map(ProjectItem::ServerLink));
-        }
-        if let Some(notes) = prj_notes_by_group.remove(&group_name) {
-            items.extend(notes.into_iter().map(ProjectItem::ProjectNote));
-        }
-        if let Some(pois) = prj_pois_by_group.remove(&group_name) {
-            items.extend(pois.into_iter().map(ProjectItem::ProjectPointOfInterest));
+        items.extend(
+            servers
+                .take_while(|s| s.group_name == group_name)
+                .map(ProjectItem::Server),
+        );
+        items.extend(
+            lsrvs
+                .take_while(|s| s.group_name == group_name)
+                .map(ProjectItem::ServerLink),
+        );
+        items.extend(
+            prj_notes
+                .take_while(|s| s.group_name == group_name)
+                .map(ProjectItem::ProjectNote),
+        );
+        items.extend(
+            prj_pois
+                .take_while(|s| s.group_name == group_name)
+                .map(ProjectItem::ProjectPointOfInterest),
+        );
+    }
+
+    fn fetch_project_items_sql(
+        sql_conn: &diesel::SqliteConnection,
+        env: EnvironmentType,
+        cur_project_id: Option<i32>,
+    ) -> (
+        Vec<Server>,
+        Vec<ServerLink>,
+        Vec<ProjectNote>,
+        Vec<ProjectPointOfInterest>,
+    ) {
+        use projectpadsql::schema::project_note::dsl as pnt;
+        use projectpadsql::schema::project_point_of_interest::dsl as ppoi;
+        use projectpadsql::schema::server::dsl as srv;
+        use projectpadsql::schema::server_link::dsl as lsrv;
+        match cur_project_id {
+            Some(pid) => {
+                let srvs = srv::server
+                    .filter(srv::project_id.eq(pid).and(srv::environment.eq(env)))
+                    .order((srv::group_name.asc(), srv::desc.asc()))
+                    .load::<Server>(sql_conn)
+                    .unwrap();
+                let lsrvs = lsrv::server_link
+                    .filter(lsrv::project_id.eq(pid).and(lsrv::environment.eq(env)))
+                    .order((lsrv::group_name.asc(), lsrv::desc.asc()))
+                    .load::<ServerLink>(sql_conn)
+                    .unwrap();
+                let mut prj_query = pnt::project_note
+                    .filter(pnt::project_id.eq(pid))
+                    .into_boxed();
+                prj_query = match env {
+                    EnvironmentType::EnvProd => prj_query.filter(pnt::has_prod.eq(true)),
+                    EnvironmentType::EnvUat => prj_query.filter(pnt::has_uat.eq(true)),
+                    EnvironmentType::EnvStage => prj_query.filter(pnt::has_stage.eq(true)),
+                    EnvironmentType::EnvDevelopment => prj_query.filter(pnt::has_dev.eq(true)),
+                };
+                let prj_notes = prj_query
+                    .order((pnt::group_name.asc(), pnt::title.asc()))
+                    .load::<ProjectNote>(sql_conn)
+                    .unwrap();
+                let prj_pois = ppoi::project_point_of_interest
+                    .filter(ppoi::project_id.eq(pid))
+                    .order((ppoi::group_name.asc(), ppoi::desc.asc()))
+                    .load::<ProjectPointOfInterest>(sql_conn)
+                    .unwrap();
+                (srvs, lsrvs, prj_notes, prj_pois)
+            }
+            None => (Vec::new(), Vec::new(), Vec::new(), Vec::new()),
         }
     }
 
@@ -95,92 +152,48 @@ impl Widget for ProjectItemsList {
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
-                use projectpadsql::schema::project_note::dsl as pnt;
-                use projectpadsql::schema::project_point_of_interest::dsl as ppoi;
-                use projectpadsql::schema::server::dsl as srv;
-                use projectpadsql::schema::server_link::dsl as lsrv;
-                let (servers, lsrvs, prj_notes, prj_pois) = match cur_project_id {
-                    Some(pid) => {
-                        let srvs = srv::server
-                            .filter(srv::project_id.eq(pid).and(srv::environment.eq(env)))
-                            .order((srv::group_name.asc(), srv::desc.asc()))
-                            .load::<Server>(sql_conn)
-                            .unwrap();
-                        let lsrvs = lsrv::server_link
-                            .filter(lsrv::project_id.eq(pid).and(lsrv::environment.eq(env)))
-                            .order((lsrv::group_name.asc(), lsrv::desc.asc()))
-                            .load::<ServerLink>(sql_conn)
-                            .unwrap();
-                        let mut prj_query = pnt::project_note
-                            .filter(pnt::project_id.eq(pid))
-                            .into_boxed();
-                        prj_query = match env {
-                            EnvironmentType::EnvProd => prj_query.filter(pnt::has_prod.eq(true)),
-                            EnvironmentType::EnvUat => prj_query.filter(pnt::has_uat.eq(true)),
-                            EnvironmentType::EnvStage => prj_query.filter(pnt::has_stage.eq(true)),
-                            EnvironmentType::EnvDevelopment => {
-                                prj_query.filter(pnt::has_dev.eq(true))
-                            }
-                        };
-                        let prj_notes = prj_query
-                            .order((pnt::group_name.asc(), pnt::title.asc()))
-                            .load::<ProjectNote>(sql_conn)
-                            .unwrap();
-                        let prj_pois = ppoi::project_point_of_interest
-                            .filter(ppoi::project_id.eq(pid))
-                            .order((ppoi::group_name.asc(), ppoi::desc.asc()))
-                            .load::<ProjectPointOfInterest>(sql_conn)
-                            .unwrap();
-                        (srvs, lsrvs, prj_notes, prj_pois)
-                    }
-                    None => (Vec::new(), Vec::new(), Vec::new(), Vec::new()),
-                };
+                let (servers, lsrvs, prj_notes, prj_pois) =
+                    Self::fetch_project_items_sql(sql_conn, env, cur_project_id);
 
-                let mut group_names: BTreeSet<String> =
-                    servers.iter().filter_map(|s| s.group_name).collect();
-                group_names.extend(lsrvs.iter().filter_map(|s| s.group_name));
-                group_names.extend(prj_notes.iter().filter_map(|s| s.group_name));
-                group_names.extend(prj_pois.iter().filter_map(|s| s.group_name));
+                let mut group_names: BTreeSet<&String> = servers
+                    .iter()
+                    .filter_map(|s| s.group_name.as_ref())
+                    .collect();
+                group_names.extend(lsrvs.iter().filter_map(|s| s.group_name.as_ref()));
+                group_names.extend(prj_notes.iter().filter_map(|s| s.group_name.as_ref()));
+                group_names.extend(prj_pois.iter().filter_map(|s| s.group_name.as_ref()));
+                let group_names: BTreeSet<String> =
+                    group_names.iter().map(|s| s.to_string()).collect();
 
-                let mut servers_by_group_name = HashMap::new();
-                for (key, group) in &servers.into_iter().group_by(|s| s.group_name) {
-                    servers_by_group_name.insert(key, group.collect());
-                }
-                let mut lsrvs_by_group_name = HashMap::new();
-                for (key, group) in &lsrvs.into_iter().group_by(|s| s.group_name) {
-                    lsrvs_by_group_name.insert(key, group.collect());
-                }
-                let mut notes_by_group_name = HashMap::new();
-                for (key, group) in &prj_notes.into_iter().group_by(|s| s.group_name) {
-                    notes_by_group_name.insert(key, group.collect());
-                }
-                let mut pois_by_group_name = HashMap::new();
-                for (key, group) in &prj_pois.into_iter().group_by(|s| s.group_name) {
-                    pois_by_group_name.insert(key, group.collect());
-                }
+                let mut servers_iter = servers.into_iter();
+                let mut lsrvs_iter = lsrvs.into_iter();
+                let mut prj_notes_iter = prj_notes.into_iter();
+                let mut prj_pois_iter = prj_pois.into_iter();
 
                 let mut items = Vec::new();
-                let mut group_start_indexes = HashSet::new();
+                let mut group_start_indexes = HashMap::new();
+                // this code relies on the sort order from the SQL query
+                // to be the same as the one we process the results in.
+                // notably we must have the nulls (no group) first.
+                Self::add_items(
+                    &mut items,
+                    &mut servers_iter,
+                    &mut lsrvs_iter,
+                    &mut prj_notes_iter,
+                    &mut prj_pois_iter,
+                    None,
+                );
                 for group_name in group_names {
-                    group_start_indexes.insert(items.len() as i32);
+                    group_start_indexes.insert(items.len() as i32, group_name.clone());
                     Self::add_items(
                         &mut items,
-                        &mut servers_by_group_name,
-                        &mut lsrvs_by_group_name,
-                        &mut notes_by_group_name,
-                        &mut pois_by_group_name,
+                        &mut servers_iter,
+                        &mut lsrvs_iter,
+                        &mut prj_notes_iter,
+                        &mut prj_pois_iter,
                         Some(group_name),
                     );
                 }
-                Self::add_items(
-                    &mut items,
-                    &mut servers_by_group_name,
-                    &mut lsrvs_by_group_name,
-                    &mut notes_by_group_name,
-                    &mut pois_by_group_name,
-                    None,
-                );
-
                 s.send((items, group_start_indexes)).unwrap();
             }))
             .unwrap();
@@ -252,8 +265,8 @@ impl Widget for ProjectItemsList {
         let indexes = self.model.project_item_groups_start_indexes.clone();
         self.project_items_list
             .set_header_func(Some(Box::new(move |row, h| {
-                if indexes.contains(&row.get_index()) {
-                    row.set_header(Some(&gtk::Label::new(Some("hi"))));
+                if let Some(group_name) = indexes.get(&row.get_index()) {
+                    row.set_header(Some(&gtk::Label::new(Some(group_name))));
                 } else {
                     row.set_header::<gtk::ListBoxRow>(None)
                 }

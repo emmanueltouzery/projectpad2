@@ -5,3 +5,9 @@
 .items_frame {
   background-color: @theme_base_color;
 }
+
+.project_item_header {
+  background-color: #7590ae;
+  padding: 5px;
+  text-decoration: underline;
+}

@@ -266,7 +266,9 @@ impl Widget for ProjectItemsList {
         self.project_items_list
             .set_header_func(Some(Box::new(move |row, h| {
                 if let Some(group_name) = indexes.get(&row.get_index()) {
-                    row.set_header(Some(&gtk::Label::new(Some(group_name))));
+                    let label = gtk::Label::new(Some(group_name));
+                    label.get_style_context().add_class("project_item_header");
+                    row.set_header(Some(&label));
                 } else {
                     row.set_header::<gtk::ListBoxRow>(None)
                 }

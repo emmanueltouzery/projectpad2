@@ -13,6 +13,8 @@ tar = "0.4"
 relm = "0.19.0"
 relm-derive = "0.19.0"
 gtk = "0.8.1"
+glib = "0.9.3"
+gio = "0.8.1"
 cairo-rs = {version = "0.8.1", features = ["png"]}
 gdk = "0.12.1"
 projectpadsql = { path = "../projectpadsql" }

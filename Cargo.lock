@@ -1677,6 +1677,8 @@ dependencies = [
  "diesel",
  "flate2",
  "gdk",
+ "gio",
+ "glib",
  "gtk",
  "projectpadsql",
  "relm",

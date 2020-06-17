@@ -1,6 +1,7 @@
 use flate2::read::GzDecoder;
 use std::fs::*;
 use std::path::Path;
+use std::process::Command;
 
 const FONTAWESOME_VERSION: &str = "5.13.0";
 
@@ -10,6 +11,15 @@ fn main() {
     if !Path::new(&target_foldername).exists() {
         fetch_fontawesome_icons(&target_foldername);
     }
+
+    let status = Command::new("glib-compile-resources")
+        .arg("src/icons.gresource")
+        .arg("--target=src/icons.bin")
+        .spawn()
+        .expect("Failed running glib-compile-resources")
+        .wait()
+        .unwrap();
+    assert!(status.success());
 }
 
 fn fetch_fontawesome_icons(target_foldername: &str) {

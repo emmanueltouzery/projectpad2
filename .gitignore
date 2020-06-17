@@ -5,3 +5,4 @@ vendor/
 .flatpak-builder
 cargo-sources.json
 flatpak-cargo-generator.py
+projectpad/fontawesome-5.13.0/

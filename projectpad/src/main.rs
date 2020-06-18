@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate diesel;
 
+pub mod icons;
 mod sql_thread;
 mod widgets;
 

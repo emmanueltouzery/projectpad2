@@ -1,3 +1,4 @@
+use crate::icons::Icon;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -6,6 +7,7 @@ use relm_derive::{widget, Msg};
 pub enum Msg {}
 
 pub struct Model {
+    pub icon: Icon,
     pub text: String,
     pub secondary_desc: Option<String>,
     pub group_name: Option<String>,
@@ -25,6 +27,11 @@ impl Widget for ProjectPoiListItem {
             orientation: gtk::Orientation::Vertical,
             gtk::Box {
                 spacing: 10,
+                gtk::Image {
+                    property_icon_name: Some(self.model.icon.name()),
+                    // https://github.com/gtk-rs/gtk/issues/837
+                    property_icon_size: 5, // gtk::IconSize::Dnd
+                },
                 gtk::Label {
                     text: &self.model.text
                 },

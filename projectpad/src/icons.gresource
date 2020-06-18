@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <gresources>
   <gresource prefix="/icons/scalable/actions">
-    <file alias="database">fontawesome-5.13.0/svgs/solid/database.svg</file>
+    <file alias="server-symbolic.svg">fontawesome-5.13.0/svgs/solid/server.svg</file>
+    <file alias="clipboard-symbolic.svg">fontawesome-5.13.0/svgs/solid/clipboard.svg</file>
+    <file alias="cube-symbolic.svg">fontawesome-5.13.0/svgs/solid/cube.svg</file>
+    <file alias="link-symbolic.svg">fontawesome-5.13.0/svgs/solid/link.svg</file>
   </gresource>
 </gresources>

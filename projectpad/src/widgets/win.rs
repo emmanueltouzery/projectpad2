@@ -44,6 +44,9 @@ impl Widget for Win {
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
+        gtk::IconTheme::get_default()
+            .unwrap()
+            .add_resource_path("/icons");
         Model { db_sender }
     }
 

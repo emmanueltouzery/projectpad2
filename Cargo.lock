@@ -1680,6 +1680,7 @@ dependencies = [
  "gio",
  "glib",
  "gtk",
+ "pango",
  "projectpadsql",
  "relm",
  "relm-derive",

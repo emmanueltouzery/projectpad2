@@ -25,6 +25,7 @@ impl Widget for ProjectPoiListItem {
         gtk::Box {
             property_width_request: 260,
             spacing: 10,
+            border_width: 5,
             orientation: gtk::Orientation::Vertical,
             gtk::Box {
                     child: {

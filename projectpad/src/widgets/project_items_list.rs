@@ -4,9 +4,9 @@ use crate::icons::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::Project;
 use projectpadsql::models::{
-    EnvironmentType, ProjectNote, ProjectPointOfInterest, Server, ServerLink,
+    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType,
+    ServerLink, ServerType,
 };
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
@@ -233,9 +233,16 @@ impl Widget for ProjectItemsList {
         match project_item {
             ProjectItem::Server(srv) => PrjPoiItemModel {
                 text: srv.desc.clone(),
-                secondary_desc: Some(srv.username.clone()),
+                secondary_desc: None,
                 group_name: srv.group_name.as_ref().cloned(),
-                icon: Icon::SERVER,
+                icon: match (srv.server_type, srv.access_type) {
+                    (ServerType::SrvDatabase, _) => Icon::DATABASE,
+                    (ServerType::SrvReporting, _) => Icon::REPORTING,
+                    (ServerType::SrvMonitoring, _) => Icon::MONITORING,
+                    (ServerType::SrvHttpOrProxy, _) => Icon::HTTP,
+                    (_, ServerAccessType::SrvAccessRdp) => Icon::WINDOWS,
+                    (_, _) => Icon::SERVER,
+                },
             },
             ProjectItem::ServerLink(link) => PrjPoiItemModel {
                 text: link.desc.clone(),

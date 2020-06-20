@@ -5,5 +5,10 @@
     <file alias="clipboard-symbolic.svg">fontawesome-5.13.0/svgs/solid/clipboard.svg</file>
     <file alias="cube-symbolic.svg">fontawesome-5.13.0/svgs/solid/cube.svg</file>
     <file alias="link-symbolic.svg">fontawesome-5.13.0/svgs/solid/link.svg</file>
+    <file alias="database-symbolic.svg">fontawesome-5.13.0/svgs/solid/database.svg</file>
+    <file alias="monitoring-symbolic.svg">fontawesome-5.13.0/svgs/solid/tachometer-alt.svg</file>
+    <file alias="reporting-symbolic.svg">fontawesome-5.13.0/svgs/solid/chart-line.svg</file>
+    <file alias="http-symbolic.svg">fontawesome-5.13.0/svgs/solid/globe.svg</file>
+    <file alias="windows-symbolic.svg">fontawesome-5.13.0/svgs/brands/windows.svg</file>
   </gresource>
 </gresources>

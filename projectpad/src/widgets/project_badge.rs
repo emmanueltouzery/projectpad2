@@ -5,6 +5,9 @@ use relm::{DrawHandler, Widget};
 use relm_derive::{widget, Msg};
 use std::f64::consts::PI;
 
+const OUTER_SIZE: i32 = 60;
+const PADDING: i32 = 5;
+
 #[derive(Msg)]
 pub enum Msg {
     UpdateDrawBuffer,
@@ -26,7 +29,7 @@ pub struct Model {
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
         println!("badge init_view called");
-        self.drawing_area.set_size_request(60, 60);
+        self.drawing_area.set_size_request(OUTER_SIZE, OUTER_SIZE);
         self.model.draw_handler.init(&self.drawing_area);
         self.drawing_area
             .add_events(gdk::EventMask::BUTTON_PRESS_MASK);
@@ -59,7 +62,10 @@ impl Widget for ProjectBadge {
             _ => {
                 self.model.font_size_for_width = Some((
                     allocation_width,
-                    Self::compute_font_size(&context, allocation_width as f64 * 0.75),
+                    Self::compute_font_size(
+                        &context,
+                        (allocation_width - PADDING * 2) as f64 * 0.75,
+                    ),
                 ));
             }
         }
@@ -77,7 +83,7 @@ impl Widget for ProjectBadge {
         context.arc(
             (allocation_width / 2).into(),
             (allocation_width / 2).into(),
-            (allocation_width / 2).into(),
+            (allocation_width / 2 - PADDING).into(),
             0.0,
             2.0 * PI,
         );
@@ -104,21 +110,23 @@ impl Widget for ProjectBadge {
     fn draw_icon(context: &cairo::Context, allocation_width: i32, icon: &[u8]) {
         match cairo::ImageSurface::create_from_png(&mut icon.clone()).ok() {
             Some(surface) => {
+                let p = PADDING as f64;
+                let aw = (allocation_width - PADDING * 2) as f64;
                 let w = surface.get_width() as f64;
                 let h = surface.get_height() as f64;
-                let scale_ratio = f64::min(60.0 / w, 60.0 / h);
+                let scale_ratio = f64::min(aw / w, aw / h);
                 context.scale(scale_ratio, scale_ratio);
                 let (offsetx, offsety) = if w > h {
-                    (0.0, (60.0 - 60.0 * h / w) / 2.0)
+                    (p, p + (aw - aw * h / w) / 2.0)
                 } else {
-                    ((60.0 - 60.0 * w / h) / 2.0, 0.0)
+                    (p + (aw - aw * w / h) / 2.0, p)
                 };
                 if w > h {
                     println!(
                         "w {} h {} effective height: {} offsety {}",
                         w,
                         h,
-                        60.0 * h / w,
+                        aw * h / w,
                         offsety
                     );
                 }

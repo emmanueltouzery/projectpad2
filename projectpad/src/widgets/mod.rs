@@ -9,6 +9,7 @@ mod project_summary;
 mod server_database_list_item;
 mod server_extra_user_list_item;
 mod server_note_list_item;
+mod server_poi_contents;
 mod server_poi_list_item;
 mod server_website_list_item;
 pub mod win;

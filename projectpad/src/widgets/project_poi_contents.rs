@@ -171,9 +171,11 @@ impl Widget for ProjectPoiContents {
     }
 
     view! {
-        #[name="contents_list"]
-        gtk::ListBox {
-            selection_mode: gtk::SelectionMode::None,
+        gtk::ScrolledWindow {
+            #[name="contents_list"]
+            gtk::ListBox {
+                selection_mode: gtk::SelectionMode::None,
+            }
         }
     }
 }

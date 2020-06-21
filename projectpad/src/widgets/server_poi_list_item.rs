@@ -76,7 +76,8 @@ impl Widget for ServerPoiListItem {
                     },
                     gtk::Label {
                         margin_start: 5,
-                        text: &self.model.server_poi.desc
+                        text: &self.model.server_poi.desc,
+                        ellipsize: pango::EllipsizeMode::End,
                     },
                 },
                 #[name="label1"]
@@ -94,7 +95,8 @@ impl Widget for ServerPoiListItem {
                     },
                     hexpand: true,
                     xalign: 0.0,
-                    text: &self.model.server_poi.path
+                    text: &self.model.server_poi.path,
+                    ellipsize: pango::EllipsizeMode::End,
                 },
                 #[name="label2"]
                 gtk::Label {
@@ -111,7 +113,8 @@ impl Widget for ServerPoiListItem {
                     },
                     hexpand: true,
                     xalign: 0.0,
-                    text: &self.model.server_poi.text
+                    text: &self.model.server_poi.text,
+                    ellipsize: pango::EllipsizeMode::End,
                 }
             }
         }

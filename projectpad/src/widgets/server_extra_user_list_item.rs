@@ -63,7 +63,8 @@ impl Widget for ServerExtraUserListItem {
                     },
                     gtk::Label {
                         margin_start: 5,
-                        text: &self.model.server_extra_user_account.desc
+                        text: &self.model.server_extra_user_account.desc,
+                        ellipsize: pango::EllipsizeMode::End,
                     },
                 },
                 #[name="label1"]
@@ -81,7 +82,8 @@ impl Widget for ServerExtraUserListItem {
                     },
                     hexpand: true,
                     xalign: 0.0,
-                    text: &self.model.server_extra_user_account.username
+                    text: &self.model.server_extra_user_account.username,
+                    ellipsize: pango::EllipsizeMode::End,
                 },
                 #[name="label2"]
                 gtk::Label {
@@ -98,7 +100,8 @@ impl Widget for ServerExtraUserListItem {
                     },
                     hexpand: true,
                     xalign: 0.0,
-                    text: if self.model.server_extra_user_account.password.is_empty() { "" } else { "●●●●●"}
+                    text: if self.model.server_extra_user_account.password.is_empty() { "" } else { "●●●●●"},
+                    ellipsize: pango::EllipsizeMode::End,
                 }
             }
         }

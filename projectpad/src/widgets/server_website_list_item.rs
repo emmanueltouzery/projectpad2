@@ -65,7 +65,8 @@ impl Widget for ServerWebsiteListItem {
                     },
                     gtk::Label {
                         margin_start: 5,
-                        text: &self.model.server_website.desc
+                        text: &self.model.server_website.desc,
+                        ellipsize: pango::EllipsizeMode::End,
                     },
                 },
                 #[name="label1"]
@@ -83,7 +84,8 @@ impl Widget for ServerWebsiteListItem {
                     },
                     hexpand: true,
                     xalign: 0.0,
-                    markup: &Self::format_link(&self.model.server_website.url)
+                    markup: &Self::format_link(&self.model.server_website.url),
+                    ellipsize: pango::EllipsizeMode::End,
                 },
                 #[name="label2"]
                 gtk::Label {
@@ -100,7 +102,8 @@ impl Widget for ServerWebsiteListItem {
                     },
                     hexpand: true,
                     xalign: 0.0,
-                    text: &self.model.server_website.username
+                    text: &self.model.server_website.username,
+                    ellipsize: pango::EllipsizeMode::End,
                 },
                 #[name="label3"]
                 gtk::Label {
@@ -117,7 +120,8 @@ impl Widget for ServerWebsiteListItem {
                     },
                     hexpand: true,
                     xalign: 0.0,
-                    text: if self.model.server_website.password.is_empty() { "" } else { "●●●●●"}
+                    text: if self.model.server_website.password.is_empty() { "" } else { "●●●●●"},
+                    ellipsize: pango::EllipsizeMode::End,
                 }
             }
         }

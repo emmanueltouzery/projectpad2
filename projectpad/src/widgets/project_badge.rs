@@ -75,11 +75,19 @@ impl Widget for ProjectBadge {
         context.rectangle(0.0, 0.0, allocation_width.into(), allocation_height.into());
         context.fill();
 
+        context.set_source_rgb(0.0, 0.0, 0.0);
+
         if self.model.is_active {
-            context.set_source_rgb(0.5, 0.5, 0.5);
-        } else {
-            context.set_source_rgb(0.0, 0.0, 0.0);
+            // TODO maybe a rounded rect?  https://www.cairographics.org/samples/rounded_rectangle/
+            context.rectangle(
+                PADDING as f64 / 2.0,
+                PADDING as f64 / 2.0,
+                allocation_width as f64 - PADDING as f64 / 2.0,
+                allocation_height as f64 - PADDING as f64 / 2.0,
+            );
+            context.fill();
         }
+
         context.arc(
             (allocation_width / 2).into(),
             (allocation_width / 2).into(),
@@ -87,7 +95,10 @@ impl Widget for ProjectBadge {
             0.0,
             2.0 * PI,
         );
-        context.stroke();
+        context.stroke_preserve();
+        context.set_source_rgb(1.0, 1.0, 1.0);
+        context.fill();
+        context.set_source_rgb(0.0, 0.0, 0.0);
 
         match &self.model.project.icon {
             // the 'if' works around an issue reading from SQL. should be None if it's empty!!

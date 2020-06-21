@@ -1,5 +1,6 @@
 use super::project_items_list::ProjectItem;
 use super::project_poi_item_list_item::ProjectPoiItemListItem;
+use super::server_database_list_item::ServerDatabaseListItem;
 use super::server_extra_user_list_item::ServerExtraUserListItem;
 use super::server_poi_list_item::ServerPoiListItem;
 use super::server_website_list_item::ServerWebsiteListItem;
@@ -114,9 +115,7 @@ impl Widget for ProjectPoiContents {
         for item in &self.model.server_databases {
             let _child = self
                 .contents_list
-                .add_widget::<ProjectPoiItemListItem>(ProjectPoiItem {
-                    name: item.desc.clone(),
-                });
+                .add_widget::<ServerDatabaseListItem>(item.clone());
         }
     }
 

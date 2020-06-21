@@ -108,8 +108,6 @@ impl Widget for ProjectSummary {
             },
             gtk::Box {
                 homogeneous: true,
-                margin_start: 35,
-                margin_end: 35,
                 child: {
                     padding: 5,
                 },

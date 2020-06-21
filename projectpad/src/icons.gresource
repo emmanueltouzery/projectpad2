@@ -11,5 +11,11 @@
     <file alias="http-symbolic.svg">fontawesome-5.13.0/svgs/solid/globe.svg</file>
     <file alias="windows-symbolic.svg">fontawesome-5.13.0/svgs/brands/windows.svg</file>
     <file alias="user-symbolic.svg">fontawesome-5.13.0/svgs/solid/user.svg</file>
+    <file alias="log-file-symbolic.svg">fontawesome-5.13.0/svgs/solid/file-medical-alt.svg</file>
+    <file alias="config-file-symbolic.svg">fontawesome-5.13.0/svgs/solid/file-code.svg</file>
+    <file alias="cog-symbolic.svg">fontawesome-5.13.0/svgs/solid/cog.svg</file>
+    <file alias="folder-plus-symbolic.svg">fontawesome-5.13.0/svgs/solid/folder-plus.svg</file>
+    <file alias="archive-symbolic.svg">fontawesome-5.13.0/svgs/solid/archive.svg</file>
+    <file alias="terminal-symbolic.svg">fontawesome-5.13.0/svgs/solid/terminal.svg</file>
   </gresource>
 </gresources>

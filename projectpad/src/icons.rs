@@ -15,4 +15,5 @@ impl Icon {
     pub const NOTE: Icon = Icon("clipboard"); // sticky-note?
     pub const POINT_OF_INTEREST: Icon = Icon("cube"); // cube, file, flag, folder, map_marker_alt?
     pub const SERVER_LINK: Icon = Icon("link"); // link, hdd?
+    pub const USER: Icon = Icon("user");
 }

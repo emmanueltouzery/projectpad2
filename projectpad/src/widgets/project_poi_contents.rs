@@ -1,5 +1,6 @@
 use super::project_items_list::ProjectItem;
 use super::project_poi_item_list_item::ProjectPoiItemListItem;
+use super::server_extra_user_list_item::ServerExtraUserListItem;
 use super::server_website_list_item::ServerWebsiteListItem;
 use super::win::ProjectPoiItem;
 use crate::sql_thread::SqlFunc;
@@ -109,9 +110,7 @@ impl Widget for ProjectPoiContents {
         for item in &self.model.server_extra_user_accounts {
             let _child = self
                 .contents_list
-                .add_widget::<ProjectPoiItemListItem>(ProjectPoiItem {
-                    name: item.desc.clone(),
-                });
+                .add_widget::<ServerExtraUserListItem>(item.clone());
         }
         for item in &self.model.server_databases {
             let _child = self

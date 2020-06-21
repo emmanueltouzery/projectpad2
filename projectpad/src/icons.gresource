@@ -10,5 +10,6 @@
     <file alias="reporting-symbolic.svg">fontawesome-5.13.0/svgs/solid/chart-line.svg</file>
     <file alias="http-symbolic.svg">fontawesome-5.13.0/svgs/solid/globe.svg</file>
     <file alias="windows-symbolic.svg">fontawesome-5.13.0/svgs/brands/windows.svg</file>
+    <file alias="user-symbolic.svg">fontawesome-5.13.0/svgs/solid/user.svg</file>
   </gresource>
 </gresources>

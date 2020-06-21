@@ -17,6 +17,12 @@ impl Widget for ServerWebsiteListItem {
         self.items_frame
             .get_style_context()
             .add_class("items_frame");
+        self.title
+            .get_style_context()
+            .add_class("items_frame_title");
+        for l in &[&mut self.label1, &mut self.label2, &mut self.label3] {
+            l.get_style_context().add_class("item_label");
+        }
     }
 
     fn model(relm: &relm::Relm<Self>, server_website: ServerWebsite) -> Model {
@@ -42,6 +48,7 @@ impl Widget for ServerWebsiteListItem {
                 margin_bottom: 5,
                 row_spacing: 5,
                 column_spacing: 10,
+                #[name="title"]
                 gtk::Box {
                     cell: {
                         left_attach: 0,
@@ -57,9 +64,11 @@ impl Widget for ServerWebsiteListItem {
                         property_icon_size: 1, // gtk::IconSize::Menu,
                     },
                     gtk::Label {
+                        margin_start: 5,
                         text: &self.model.server_website.desc
                     },
                 },
+                #[name="label1"]
                 gtk::Label {
                     cell: {
                         left_attach: 0,
@@ -76,6 +85,7 @@ impl Widget for ServerWebsiteListItem {
                     xalign: 0.0,
                     markup: &Self::format_link(&self.model.server_website.url)
                 },
+                #[name="label2"]
                 gtk::Label {
                     cell: {
                         left_attach: 0,
@@ -92,6 +102,7 @@ impl Widget for ServerWebsiteListItem {
                     xalign: 0.0,
                     text: &self.model.server_website.username
                 },
+                #[name="label3"]
                 gtk::Label {
                     cell: {
                         left_attach: 0,

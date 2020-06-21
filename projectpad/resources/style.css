@@ -6,6 +6,20 @@
   background-color: @theme_base_color;
 }
 
+.items_frame_title {
+  border-left: 5px solid black;
+  font-size: 15px;
+  font-weight: bold;
+  padding: 5px 5px 5px 10px;
+  padding-left: 10px;
+  margin-bottom: 5px;
+}
+
+.item_label {
+  opacity: 0.6;
+  font-weight: bold;
+}
+
 .project_item_header {
   background-color: #7590ae;
   padding: 5px;

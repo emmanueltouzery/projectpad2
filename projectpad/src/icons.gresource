@@ -17,5 +17,6 @@
     <file alias="folder-plus-symbolic.svg">fontawesome-5.13.0/svgs/solid/folder-plus.svg</file>
     <file alias="archive-symbolic.svg">fontawesome-5.13.0/svgs/solid/archive.svg</file>
     <file alias="terminal-symbolic.svg">fontawesome-5.13.0/svgs/solid/terminal.svg</file>
+    <file alias="ssh-symbolic.svg">fontawesome-5.13.0/svgs/solid/hashtag.svg</file>
   </gresource>
 </gresources>

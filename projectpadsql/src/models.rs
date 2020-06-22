@@ -94,6 +94,7 @@ simple_enum!(RunOn);
 pub struct Server {
     pub id: i32,
     pub desc: String,
+    pub ip: String,
     pub is_retired: bool,
     pub username: String,
     pub password: String,

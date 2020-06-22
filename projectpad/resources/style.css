@@ -15,6 +15,14 @@
   margin-bottom: 5px;
 }
 
+.header_frame_title {
+  font-size: 15px;
+  font-weight: bold;
+  padding: 5px 5px 5px 10px;
+  padding-left: 10px;
+  margin-bottom: 5px;
+}
+
 .item_label {
   opacity: 0.6;
   font-weight: bold;

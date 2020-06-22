@@ -22,4 +22,5 @@ impl Icon {
     pub const FOLDER_PLUS: Icon = Icon("folder-plus");
     pub const ARCHIVE: Icon = Icon("archive");
     pub const TERMINAL: Icon = Icon("terminal");
+    pub const SSH: Icon = Icon("ssh");
 }

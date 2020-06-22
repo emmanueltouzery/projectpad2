@@ -17,6 +17,7 @@ table! {
     server {
         id -> Integer,
         desc -> Varchar,
+        ip -> Varchar,
         is_retired -> Bool,
         username -> Varchar,
         password -> Varchar,

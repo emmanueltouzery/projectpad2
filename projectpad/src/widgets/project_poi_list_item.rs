@@ -23,7 +23,8 @@ impl Widget for ProjectPoiListItem {
 
     view! {
         gtk::Box {
-            property_width_request: 260,
+            // not sure why the -4 is needed. some padding on the parent ListBoxRow or something?
+            property_width_request: 260-4,
             spacing: 10,
             border_width: 5,
             orientation: gtk::Orientation::Vertical,
@@ -33,7 +34,6 @@ impl Widget for ProjectPoiListItem {
                         expand: true,
                         fill: true,
                     },
-                property_width_request: 260,
                 spacing: 10,
                 gtk::Image {
                     property_icon_name: Some(self.model.icon.name()),
@@ -41,23 +41,13 @@ impl Widget for ProjectPoiListItem {
                     property_icon_size: 5, // gtk::IconSize::Dnd
                 },
                 gtk::Box {
-                    child: {
-                        expand: true,
-                        fill: true,
-                    },
                     orientation: gtk::Orientation::Vertical,
                     gtk::Label {
-                        child: {
-                            fill: true,
-                        },
                         text: &self.model.text,
                         ellipsize: pango::EllipsizeMode::End,
                         xalign: 0.0
                     },
                     gtk::Label {
-                        child: {
-                            fill: true,
-                        },
                         text: self.model.secondary_desc.as_deref().unwrap_or(""),
                         ellipsize: pango::EllipsizeMode::End,
                         xalign: 0.0

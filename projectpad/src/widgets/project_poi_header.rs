@@ -73,6 +73,14 @@ impl Widget for ProjectPoiHeader {
         }
     }
 
+    fn server_ip_display(srv: &Server) -> String {
+        if srv.access_type == ServerAccessType::SrvAccessWww {
+            format!("<a href=\"{}\">{}</a>", srv.ip, srv.ip)
+        } else {
+            srv.ip.clone()
+        }
+    }
+
     view! {
         #[name="items_frame"]
         gtk::Frame {
@@ -136,10 +144,10 @@ impl Widget for ProjectPoiHeader {
                             gtk::Label {
                                 margin_start: 5,
                                 xalign: 0.0,
-                                text: &self.model.project_item
+                                markup: &self.model.project_item
                                              .as_ref()
                                              .and_then(Self::as_server)
-                                             .map(|s| s.ip.to_string())
+                                             .map(Self::server_ip_display)
                                              .unwrap_or_else(|| "".to_string())
                             }
                         },

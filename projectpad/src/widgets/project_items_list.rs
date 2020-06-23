@@ -5,8 +5,8 @@ use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType,
-    ServerLink, ServerType,
+    EnvironmentType, InterestType, Project, ProjectNote, ProjectPointOfInterest, Server,
+    ServerAccessType, ServerLink, ServerType,
 };
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
@@ -260,7 +260,14 @@ impl Widget for ProjectItemsList {
                 text: poi.desc.clone(),
                 secondary_desc: Some(poi.text.clone()),
                 group_name: poi.group_name.as_ref().cloned(),
-                icon: Icon::POINT_OF_INTEREST,
+                icon: match poi.interest_type {
+                    InterestType::PoiLogFile => Icon::LOG_FILE,
+                    InterestType::PoiConfigFile => Icon::CONFIG_FILE,
+                    InterestType::PoiApplication => Icon::COG,
+                    InterestType::PoiCommandToRun => Icon::TERMINAL,
+                    InterestType::PoiCommandTerminal => Icon::TERMINAL,
+                    InterestType::PoiBackupArchive => Icon::ARCHIVE,
+                },
             },
         }
     }

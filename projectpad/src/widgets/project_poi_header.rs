@@ -1,7 +1,7 @@
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use gtk::prelude::*;
-use projectpadsql::models::{Server, ServerAccessType};
+use projectpadsql::models::{ProjectPointOfInterest, Server, ServerAccessType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
@@ -27,6 +27,8 @@ impl Widget for ProjectPoiHeader {
             &mut self.server_label1,
             &mut self.server_label2,
             &mut self.server_label3,
+            &mut self.poi_label1,
+            &mut self.poi_label2,
         ] {
             l.get_style_context().add_class("item_label");
         }
@@ -41,6 +43,7 @@ impl Widget for ProjectPoiHeader {
             Msg::ProjectItemSelected(pi) => {
                 self.header_contents.set_visible_child_name(match &pi {
                     Some(ProjectItem::Server(_)) => "server",
+                    Some(ProjectItem::ProjectPointOfInterest(_)) => "poi",
                     _ => "none",
                 });
                 self.model.project_item = pi;
@@ -51,6 +54,13 @@ impl Widget for ProjectPoiHeader {
     fn as_server(pi: &ProjectItem) -> Option<&Server> {
         match pi {
             ProjectItem::Server(srv) => Some(srv),
+            _ => None,
+        }
+    }
+
+    fn as_poi(pi: &ProjectItem) -> Option<&ProjectPointOfInterest> {
+        match pi {
+            ProjectItem::ProjectPointOfInterest(poi) => Some(poi),
             _ => None,
         }
     }
@@ -103,12 +113,62 @@ impl Widget for ProjectPoiHeader {
                 },
                 #[name="header_contents"]
                 gtk::Stack {
+                    homogeneous: false,
                     gtk::Box {
                         child: {
                             name: Some("none"),
                         },
                     },
-                    homogeneous: false,
+                    // POI HEADER
+                    gtk::Grid {
+                        margin_start: 30,
+                        margin_end: 30,
+                        margin_top: 10,
+                        margin_bottom: 5,
+                        row_spacing: 5,
+                        column_spacing: 10,
+                        child: {
+                            name: Some("poi"),
+                        },
+                        #[name="poi_label1"]
+                        gtk::Label {
+                            cell: {
+                                left_attach: 0,
+                                top_attach: 0,
+                            },
+                            text: "Path",
+                        },
+                        gtk::Label {
+                            margin_start: 5,
+                            xalign: 0.0,
+                            markup: &self.model.project_item
+                                         .as_ref()
+                                         .and_then(Self::as_poi)
+                                         .map(|p| p.path.to_string())
+                                         .unwrap_or_else(|| "".to_string())
+                        },
+                        #[name="poi_label2"]
+                        gtk::Label {
+                            cell: {
+                                left_attach: 0,
+                                top_attach: 1,
+                            },
+                            text: "Text",
+                        },
+                        gtk::Label {
+                            cell: {
+                                left_attach: 1,
+                                top_attach: 1,
+                            },
+                            xalign: 0.0,
+                            text: &self.model.project_item
+                                         .as_ref()
+                                         .and_then(Self::as_poi)
+                                         .map(|s| s.text.to_string())
+                                         .unwrap_or_else(|| "".to_string())
+                        },
+                    },
+                    // SERVER HEADER
                     gtk::Grid {
                         margin_start: 30,
                         margin_end: 30,

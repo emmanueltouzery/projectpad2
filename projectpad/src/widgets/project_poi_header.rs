@@ -13,6 +13,7 @@ pub enum Msg {
 
 pub struct Model {
     project_item: Option<ProjectItem>,
+    header_popover: gtk::Popover,
     title: gtk::Label,
 }
 
@@ -37,11 +38,22 @@ impl Widget for ProjectPoiHeader {
             .get_style_context()
             .add_class("header_frame_title");
         self.model.title.show_all();
+
+        let vbox = gtk::BoxBuilder::new()
+            .margin(10)
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        vbox.add(&gtk::ModelButtonBuilder::new().label("Edit").build());
+        vbox.show_all();
+        self.model.header_popover.add(&vbox);
+        self.header_actions_btn
+            .set_popover(Some(&self.model.header_popover));
     }
 
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         Model {
             project_item: None,
+            header_popover: gtk::Popover::new(None::<&gtk::Button>),
             title: gtk::LabelBuilder::new()
                 .margin_top(8)
                 .margin_bottom(8)
@@ -129,8 +141,8 @@ impl Widget for ProjectPoiHeader {
                     hexpand: true,
                     orientation: gtk::Orientation::Horizontal,
                     center_widget: Some(&self.model.title),
-                    #[name="event_source_actions_btn"]
-                    gtk::Button {
+                    #[name="header_actions_btn"]
+                    gtk::MenuButton {
                         child: {
                             pack_type: gtk::PackType::End,
                         },

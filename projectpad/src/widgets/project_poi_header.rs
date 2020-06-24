@@ -8,10 +8,12 @@ use relm_derive::{widget, Msg};
 #[derive(Msg)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
+    ServerHeaderActionsClicked,
 }
 
 pub struct Model {
     project_item: Option<ProjectItem>,
+    title: gtk::Label,
 }
 
 #[widget]
@@ -20,9 +22,6 @@ impl Widget for ProjectPoiHeader {
         self.items_frame
             .get_style_context()
             .add_class("items_frame");
-        self.title
-            .get_style_context()
-            .add_class("header_frame_title");
         for l in &[
             &mut self.server_label1,
             &mut self.server_label2,
@@ -32,10 +31,23 @@ impl Widget for ProjectPoiHeader {
         ] {
             l.get_style_context().add_class("item_label");
         }
+
+        self.model
+            .title
+            .get_style_context()
+            .add_class("header_frame_title");
+        self.model.title.show_all();
     }
 
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
-        Model { project_item: None }
+        Model {
+            project_item: None,
+            title: gtk::LabelBuilder::new()
+                .margin_top(8)
+                .margin_bottom(8)
+                .hexpand(true)
+                .build(),
+        }
     }
 
     fn update(&mut self, event: Msg) {
@@ -47,6 +59,17 @@ impl Widget for ProjectPoiHeader {
                     _ => "none",
                 });
                 self.model.project_item = pi;
+                self.model.title.set_markup(
+                    self.model
+                        .project_item
+                        .as_ref()
+                        .map(Self::project_item_desc)
+                        .as_deref()
+                        .unwrap_or(""),
+                );
+            }
+            Msg::ServerHeaderActionsClicked => {
+                println!("server header actions clicked");
             }
         }
     }
@@ -101,15 +124,25 @@ impl Widget for ProjectPoiHeader {
             gtk::Box {
                 hexpand: true,
                 orientation: gtk::Orientation::Vertical,
-                #[name="title"]
-                gtk::Label {
-                    margin_top: 8,
-                    margin_bottom: 8,
+                #[name="titlebox"]
+                gtk::Box {
                     hexpand: true,
-                    markup: self.model.project_item
-                                      .as_ref()
-                                      .map(Self::project_item_desc)
-                                      .as_deref().unwrap_or("")
+                    orientation: gtk::Orientation::Horizontal,
+                    center_widget: Some(&self.model.title),
+                    #[name="event_source_actions_btn"]
+                    gtk::Button {
+                        child: {
+                            pack_type: gtk::PackType::End,
+                        },
+                        always_show_image: true,
+                        image: Some(&gtk::Image::new_from_icon_name(
+                            Some(Icon::COG.name()), gtk::IconSize::Menu)),
+                        halign: gtk::Align::End,
+                        valign: gtk::Align::Center,
+                        margin_end: 10,
+                        button_release_event(c, _) =>
+                            (Msg::ServerHeaderActionsClicked, Inhibit(false))
+                    },
                 },
                 #[name="header_contents"]
                 gtk::Stack {

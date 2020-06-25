@@ -8,10 +8,11 @@ use relm_derive::{widget, Msg};
 #[derive(Msg)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
-    ServerHeaderActionsClicked,
+    CopyClicked(String),
 }
 
 pub struct Model {
+    relm: relm::Relm<ProjectPoiHeader>,
     project_item: Option<ProjectItem>,
     header_popover: gtk::Popover,
     title: gtk::Label,
@@ -36,6 +37,7 @@ impl Widget for ProjectPoiHeader {
 
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         Model {
+            relm: relm.clone(),
             project_item: None,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             title: gtk::LabelBuilder::new()
@@ -60,8 +62,15 @@ impl Widget for ProjectPoiHeader {
                         .unwrap_or(""),
                 );
             }
-            Msg::ServerHeaderActionsClicked => {
-                println!("server header actions clicked");
+            Msg::CopyClicked(val) => {
+                if let Some(clip) = self
+                    .header_grid
+                    .get_display()
+                    .as_ref()
+                    .and_then(gtk::Clipboard::get_default)
+                {
+                    clip.set_text(&val);
+                }
             }
         }
     }
@@ -105,8 +114,9 @@ impl Widget for ProjectPoiHeader {
                     "Address",
                     Some(Self::server_access_icon(&srv)),
                     Self::server_ip_display(&srv),
+                    srv.ip.clone(),
                 ),
-                ("Username", None, srv.username.clone()),
+                ("Username", None, srv.username.clone(), srv.username.clone()),
                 (
                     "Password",
                     None,
@@ -115,11 +125,12 @@ impl Widget for ProjectPoiHeader {
                     } else {
                         "●●●●●".to_string()
                     },
+                    srv.password.clone(),
                 ),
             ],
             Some(ProjectItem::ProjectPointOfInterest(poi)) => vec![
-                ("Path", None, poi.path.clone()),
-                ("Text", None, poi.text.clone()),
+                ("Path", None, poi.path.clone(), poi.path.clone()),
+                ("Text", None, poi.text.clone(), poi.path.clone()),
             ],
             _ => vec![],
         };
@@ -131,13 +142,7 @@ impl Widget for ProjectPoiHeader {
         popover_vbox.add(&gtk::ModelButtonBuilder::new().label("Edit").build());
 
         let mut i = 0;
-        for (name, maybe_icon, markup) in fields {
-            // TODO make this work
-            popover_vbox.add(
-                &gtk::ModelButtonBuilder::new()
-                    .label(&format!("Copy {}", name))
-                    .build(),
-            );
+        for (name, maybe_icon, markup, rawval) in fields {
             let label = gtk::LabelBuilder::new().label(name).build();
             self.header_grid.attach(&label, 0, i, 1, 1);
             label.get_style_context().add_class("item_label");
@@ -147,6 +152,7 @@ impl Widget for ProjectPoiHeader {
                 .label(&markup)
                 .xalign(0.0)
                 .build();
+
             if let Some(icon) = maybe_icon {
                 let gbox = gtk::BoxBuilder::new().build();
                 // https://github.com/gtk-rs/gtk/issues/837
@@ -163,6 +169,17 @@ impl Widget for ProjectPoiHeader {
             } else {
                 self.header_grid.attach(&label, 1, i, 1, 1);
             }
+
+            let popover_btn = gtk::ModelButtonBuilder::new()
+                .label(&format!("Copy {}", name))
+                .build();
+            relm::connect!(
+                self.model.relm,
+                popover_btn,
+                connect_clicked(_),
+                Msg::CopyClicked(rawval.clone())
+            );
+            popover_vbox.add(&popover_btn);
 
             i += 1;
         }
@@ -197,8 +214,6 @@ impl Widget for ProjectPoiHeader {
                         halign: gtk::Align::End,
                         valign: gtk::Align::Center,
                         margin_end: 10,
-                        button_release_event(c, _) =>
-                            (Msg::ServerHeaderActionsClicked, Inhibit(false))
                     },
                 },
                 #[name="header_grid"]

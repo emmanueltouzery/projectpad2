@@ -7,7 +7,7 @@ use projectpadsql::models::{
     Server, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
     ServerWebsite,
 };
-use relm::{ContainerWidget, Widget};
+use relm::{Component, ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
@@ -32,6 +32,7 @@ pub struct Model {
     _channel: relm::Channel<Vec<ServerItem>>,
     cur_project_item: Option<Server>,
     server_items: Vec<ServerItem>,
+    _children_components: Vec<Component<ServerItemListItem>>,
 }
 
 #[widget]
@@ -54,6 +55,7 @@ impl Widget for ServerPoiContents {
             db_sender,
             cur_project_item: None,
             server_items: vec![],
+            _children_components: vec![],
         }
     }
 
@@ -70,17 +72,19 @@ impl Widget for ServerPoiContents {
         }
     }
 
-    fn update_contents_list(&self) {
+    fn update_contents_list(&mut self) {
         for child in self.contents_list.get_children() {
             self.contents_list.remove(&child);
         }
+        let mut children_components = vec![];
         for item in &self.model.server_items {
-            std::mem::forget(
-                // ########## TODO
+            children_components.push(
                 self.contents_list
                     .add_widget::<ServerItemListItem>(item.clone()),
             );
         }
+        // need to keep the component alive else the event handling dies
+        self.model._children_components = children_components;
     }
 
     fn fetch_items(&mut self) {

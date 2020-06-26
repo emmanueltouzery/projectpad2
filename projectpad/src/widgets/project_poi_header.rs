@@ -61,40 +61,42 @@ pub fn populate_grid(
 
     let mut i = 0;
     for item in fields {
-        let label = gtk::LabelBuilder::new().label(&item.label_name).build();
-        header_grid.attach(&label, 0, i, 1, 1);
-        label.get_style_context().add_class("item_label");
+        if !item.markup.is_empty() {
+            let label = gtk::LabelBuilder::new().label(&item.label_name).build();
+            header_grid.attach(&label, 0, i, 1, 1);
+            label.get_style_context().add_class("item_label");
 
-        let label = gtk::LabelBuilder::new()
-            .use_markup(true)
-            .label(&item.markup)
-            .xalign(0.0)
-            .build();
+            let label = gtk::LabelBuilder::new()
+                .use_markup(true)
+                .label(&item.markup)
+                .xalign(0.0)
+                .build();
 
-        if let Some(icon) = &item.icon {
-            let gbox = gtk::BoxBuilder::new().build();
-            // https://github.com/gtk-rs/gtk/issues/837
-            // property_icon_size: 1, // gtk::IconSize::Menu,
-            gbox.add(
-                &gtk::ImageBuilder::new()
-                    .icon_name(&icon.name())
-                    .icon_size(1)
-                    .margin_end(5)
-                    .build(),
-            );
-            gbox.add(&label);
-            header_grid.attach(&gbox, 1, i, 1, 1);
-        } else {
-            header_grid.attach(&label, 1, i, 1, 1);
+            if let Some(icon) = &item.icon {
+                let gbox = gtk::BoxBuilder::new().build();
+                // https://github.com/gtk-rs/gtk/issues/837
+                // property_icon_size: 1, // gtk::IconSize::Menu,
+                gbox.add(
+                    &gtk::ImageBuilder::new()
+                        .icon_name(&icon.name())
+                        .icon_size(1)
+                        .margin_end(5)
+                        .build(),
+                );
+                gbox.add(&label);
+                header_grid.attach(&gbox, 1, i, 1, 1);
+            } else {
+                header_grid.attach(&label, 1, i, 1, 1);
+            }
+
+            let popover_btn = gtk::ModelButtonBuilder::new()
+                .label(&format!("Copy {}", item.label_name))
+                .build();
+            register_btn(&popover_btn, item.raw_value.clone());
+            popover_vbox.add(&popover_btn);
+
+            i += 1;
         }
-
-        let popover_btn = gtk::ModelButtonBuilder::new()
-            .label(&format!("Copy {}", item.label_name))
-            .build();
-        register_btn(&popover_btn, item.raw_value.clone());
-        popover_vbox.add(&popover_btn);
-
-        i += 1;
     }
     header_grid.show_all();
     popover_vbox.show_all();

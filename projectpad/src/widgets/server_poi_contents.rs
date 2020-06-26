@@ -90,9 +90,11 @@ impl Widget for ServerPoiContents {
             self.contents_list.remove(&child);
         }
         for item in &self.model.server_wwws {
-            let _child = self
-                .contents_list
-                .add_widget::<ServerWebsiteListItem>(item.clone());
+            std::mem::forget(
+                // ########### TODO
+                self.contents_list
+                    .add_widget::<ServerWebsiteListItem>(item.clone()),
+            );
         }
         for item in &self.model.server_pois {
             let _child = self

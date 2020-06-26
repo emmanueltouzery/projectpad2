@@ -1,7 +1,7 @@
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use gtk::prelude::*;
-use projectpadsql::models::{ProjectPointOfInterest, Server, ServerAccessType};
+use projectpadsql::models::{Server, ServerAccessType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
@@ -45,7 +45,7 @@ pub fn populate_grid(
     header_grid: gtk::Grid,
     actions_popover: gtk::Popover,
     fields: &[GridItem],
-    register_btn: &dyn Fn(gtk::ModelButton, String),
+    register_btn: &dyn Fn(&gtk::ModelButton, String),
 ) {
     for child in header_grid.get_children() {
         header_grid.remove(&child);
@@ -91,7 +91,7 @@ pub fn populate_grid(
         let popover_btn = gtk::ModelButtonBuilder::new()
             .label(&format!("Copy {}", item.label_name))
             .build();
-        register_btn(popover_btn.clone(), item.raw_value.clone());
+        register_btn(&popover_btn, item.raw_value.clone());
         popover_vbox.add(&popover_btn);
 
         i += 1;
@@ -215,7 +215,7 @@ impl Widget for ProjectPoiHeader {
             self.header_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
-            &|btn: gtk::ModelButton, str_val: String| {
+            &|btn: &gtk::ModelButton, str_val: String| {
                 relm::connect!(
                     self.model.relm,
                     btn,

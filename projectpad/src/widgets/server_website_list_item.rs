@@ -1,3 +1,4 @@
+use super::project_poi_header::{populate_grid, GridItem};
 use crate::icons::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerWebsite;
@@ -5,10 +6,14 @@ use relm::Widget;
 use relm_derive::{widget, Msg};
 
 #[derive(Msg)]
-pub enum Msg {}
+pub enum Msg {
+    CopyClicked(String),
+}
 
 pub struct Model {
+    relm: relm::Relm<ServerWebsiteListItem>,
     server_website: ServerWebsite,
+    header_popover: gtk::Popover,
 }
 
 #[widget]
@@ -20,16 +25,72 @@ impl Widget for ServerWebsiteListItem {
         self.title
             .get_style_context()
             .add_class("items_frame_title");
-        for l in &[&mut self.label1, &mut self.label2, &mut self.label3] {
-            l.get_style_context().add_class("item_label");
-        }
+
+        self.header_actions_btn
+            .set_popover(Some(&self.model.header_popover));
+        let items = populate_grid(
+            self.items_grid.clone(),
+            self.model.header_popover.clone(),
+            &[
+                GridItem::new(
+                    "Address",
+                    Some(Icon::HTTP),
+                    format!(
+                        "<a href=\"{}\">{}</a>",
+                        self.model.server_website.url, self.model.server_website.url
+                    ),
+                    self.model.server_website.url.clone(),
+                ),
+                GridItem::new(
+                    "Username",
+                    None,
+                    self.model.server_website.username.clone(),
+                    self.model.server_website.username.clone(),
+                ),
+                GridItem::new(
+                    "Password",
+                    None,
+                    if self.model.server_website.username.is_empty() {
+                        "".to_string()
+                    } else {
+                        "●●●●●".to_string()
+                    },
+                    self.model.server_website.password.clone(),
+                ),
+            ],
+            &|btn: &gtk::ModelButton, str_val: String| {
+                relm::connect!(
+                    self.model.relm,
+                    &btn,
+                    connect_clicked(_),
+                    Msg::CopyClicked(str_val.clone())
+                );
+            },
+        );
     }
 
     fn model(relm: &relm::Relm<Self>, server_website: ServerWebsite) -> Model {
-        Model { server_website }
+        Model {
+            relm: relm.clone(),
+            server_website,
+            header_popover: gtk::Popover::new(None::<&gtk::Button>),
+        }
     }
 
-    fn update(&mut self, _event: Msg) {}
+    fn update(&mut self, event: Msg) {
+        match event {
+            Msg::CopyClicked(val) => {
+                if let Some(clip) = self
+                    .items_grid
+                    .get_display()
+                    .as_ref()
+                    .and_then(gtk::Clipboard::get_default)
+                {
+                    clip.set_text(&val);
+                }
+            }
+        }
+    }
 
     fn format_link(str: &str) -> String {
         format!("<a href='{}'>{}</a>", str, str)
@@ -41,23 +102,11 @@ impl Widget for ServerWebsiteListItem {
             margin_start: 20,
             margin_end: 20,
             margin_top: 20,
-            gtk::Grid {
-                margin_start: 10,
-                margin_end: 10,
-                margin_top: 10,
-                margin_bottom: 5,
-                row_spacing: 5,
-                column_spacing: 10,
+            gtk::Box {
+                orientation: gtk::Orientation::Vertical,
                 #[name="title"]
                 gtk::Box {
-                    cell: {
-                        left_attach: 0,
-                        top_attach: 0,
-                    },
                     orientation: gtk::Orientation::Horizontal,
-                    cell: {
-                        width: 2
-                    },
                     gtk::Image {
                         property_icon_name: Some(Icon::HTTP.name()),
                         // https://github.com/gtk-rs/gtk/issues/837
@@ -68,60 +117,26 @@ impl Widget for ServerWebsiteListItem {
                         text: &self.model.server_website.desc,
                         ellipsize: pango::EllipsizeMode::End,
                     },
-                },
-                #[name="label1"]
-                gtk::Label {
-                    cell: {
-                        left_attach: 0,
-                        top_attach: 1,
+                    #[name="header_actions_btn"]
+                    gtk::MenuButton {
+                        child: {
+                            pack_type: gtk::PackType::End,
+                        },
+                        always_show_image: true,
+                        image: Some(&gtk::Image::new_from_icon_name(
+                            Some(Icon::COG.name()), gtk::IconSize::Menu)),
+                        halign: gtk::Align::End,
+                        valign: gtk::Align::Center,
                     },
-                    text: "Address"
                 },
-                gtk::Label {
-                    cell: {
-                        left_attach: 1,
-                        top_attach: 1,
-                    },
-                    hexpand: true,
-                    xalign: 0.0,
-                    markup: &Self::format_link(&self.model.server_website.url),
-                    ellipsize: pango::EllipsizeMode::End,
-                },
-                #[name="label2"]
-                gtk::Label {
-                    cell: {
-                        left_attach: 0,
-                        top_attach: 2,
-                    },
-                    text: "Username"
-                },
-                gtk::Label {
-                    cell: {
-                        left_attach: 1,
-                        top_attach: 2,
-                    },
-                    hexpand: true,
-                    xalign: 0.0,
-                    text: &self.model.server_website.username,
-                    ellipsize: pango::EllipsizeMode::End,
-                },
-                #[name="label3"]
-                gtk::Label {
-                    cell: {
-                        left_attach: 0,
-                        top_attach: 3,
-                    },
-                    text: "Password"
-                },
-                gtk::Label {
-                    cell: {
-                        left_attach: 1,
-                        top_attach: 3,
-                    },
-                    hexpand: true,
-                    xalign: 0.0,
-                    text: if self.model.server_website.password.is_empty() { "" } else { "●●●●●"},
-                    ellipsize: pango::EllipsizeMode::End,
+                #[name="items_grid"]
+                gtk::Grid {
+                    margin_start: 10,
+                    margin_end: 10,
+                    margin_top: 10,
+                    margin_bottom: 5,
+                    row_spacing: 5,
+                    column_spacing: 10,
                 }
             }
         }

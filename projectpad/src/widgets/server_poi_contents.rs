@@ -1,9 +1,5 @@
 use super::project_items_list::ProjectItem;
-use super::server_database_list_item::ServerDatabaseListItem;
-use super::server_extra_user_list_item::ServerExtraUserListItem;
-use super::server_note_list_item::ServerNoteListItem;
-use super::server_poi_list_item::ServerPoiListItem;
-use super::server_website_list_item::ServerWebsiteListItem;
+use super::server_item_list_item::ServerItemListItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -15,30 +11,27 @@ use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-type ItemTypes = (
-    Vec<ServerWebsite>,
-    Vec<ServerPointOfInterest>,
-    Vec<ServerNote>,
-    Vec<ServerExtraUserAccount>,
-    Vec<ServerDatabase>,
-);
-
 #[derive(Msg)]
 pub enum Msg {
     ServerSelected(Option<Server>),
-    GotItems(ItemTypes),
+    GotItems(Vec<ServerItem>),
+}
+
+#[derive(Clone)]
+pub enum ServerItem {
+    Website(ServerWebsite),
+    PointOfInterest(ServerPointOfInterest),
+    Note(ServerNote),
+    ExtraUserAccount(ServerExtraUserAccount),
+    Database(ServerDatabase),
 }
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
-    sender: relm::Sender<ItemTypes>,
-    _channel: relm::Channel<ItemTypes>,
+    sender: relm::Sender<Vec<ServerItem>>,
+    _channel: relm::Channel<Vec<ServerItem>>,
     cur_project_item: Option<Server>,
-    server_wwws: Vec<ServerWebsite>,
-    server_pois: Vec<ServerPointOfInterest>,
-    server_notes: Vec<ServerNote>,
-    server_extra_user_accounts: Vec<ServerExtraUserAccount>,
-    server_databases: Vec<ServerDatabase>,
+    server_items: Vec<ServerItem>,
 }
 
 #[widget]
@@ -52,7 +45,7 @@ impl Widget for ServerPoiContents {
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |items: ItemTypes| {
+        let (channel, sender) = relm::Channel::new(move |items: Vec<ServerItem>| {
             stream.emit(Msg::GotItems(items));
         });
         Model {
@@ -60,11 +53,7 @@ impl Widget for ServerPoiContents {
             sender,
             db_sender,
             cur_project_item: None,
-            server_wwws: vec![],
-            server_pois: vec![],
-            server_notes: vec![],
-            server_extra_user_accounts: vec![],
-            server_databases: vec![],
+            server_items: vec![],
         }
     }
 
@@ -75,46 +64,22 @@ impl Widget for ServerPoiContents {
                 self.fetch_items();
             }
             Msg::GotItems(items) => {
-                self.model.server_wwws = items.0;
-                self.model.server_pois = items.1;
-                self.model.server_notes = items.2;
-                self.model.server_extra_user_accounts = items.3;
-                self.model.server_databases = items.4;
+                self.model.server_items = items;
                 self.update_contents_list();
             }
         }
     }
 
-    fn update_contents_list(&mut self) {
+    fn update_contents_list(&self) {
         for child in self.contents_list.get_children() {
             self.contents_list.remove(&child);
         }
-        for item in &self.model.server_wwws {
+        for item in &self.model.server_items {
             std::mem::forget(
-                // ########### TODO
+                // ########## TODO
                 self.contents_list
-                    .add_widget::<ServerWebsiteListItem>(item.clone()),
+                    .add_widget::<ServerItemListItem>(item.clone()),
             );
-        }
-        for item in &self.model.server_pois {
-            let _child = self
-                .contents_list
-                .add_widget::<ServerPoiListItem>(item.clone());
-        }
-        for item in &self.model.server_notes {
-            let _child = self
-                .contents_list
-                .add_widget::<ServerNoteListItem>(item.clone());
-        }
-        for item in &self.model.server_extra_user_accounts {
-            let _child = self
-                .contents_list
-                .add_widget::<ServerExtraUserListItem>(item.clone());
-        }
-        for item in &self.model.server_databases {
-            let _child = self
-                .contents_list
-                .add_widget::<ServerDatabaseListItem>(item.clone());
         }
     }
 
@@ -131,34 +96,54 @@ impl Widget for ServerPoiContents {
                 use projectpadsql::schema::server_website::dsl as srv_www;
                 let items = match cur_server_id {
                     Some(sid) => {
-                        let srv_wwws = srv_www::server_website
+                        let mut servers = srv_www::server_website
                             .filter(srv_www::server_id.eq(sid))
                             .order(srv_www::desc.asc())
                             .load::<ServerWebsite>(sql_conn)
-                            .unwrap();
-                        let srv_pois = srv_poi::server_point_of_interest
-                            .filter(srv_poi::server_id.eq(sid))
-                            .order(srv_poi::desc.asc())
-                            .load::<ServerPointOfInterest>(sql_conn)
-                            .unwrap();
-                        let srv_notes = srv_note::server_note
-                            .filter(srv_note::server_id.eq(sid))
-                            .order(srv_note::title.asc())
-                            .load::<ServerNote>(sql_conn)
-                            .unwrap();
-                        let srv_users = srv_usr::server_extra_user_account
-                            .filter(srv_usr::server_id.eq(sid))
-                            .order(srv_usr::desc.asc())
-                            .load::<ServerExtraUserAccount>(sql_conn)
-                            .unwrap();
-                        let srv_dbs = srv_db::server_database
-                            .filter(srv_db::server_id.eq(sid))
-                            .order(srv_db::desc.asc())
-                            .load::<ServerDatabase>(sql_conn)
-                            .unwrap();
-                        (srv_wwws, srv_pois, srv_notes, srv_users, srv_dbs)
+                            .unwrap()
+                            .into_iter()
+                            .map(ServerItem::Website)
+                            .collect::<Vec<_>>();
+                        servers.extend(
+                            srv_poi::server_point_of_interest
+                                .filter(srv_poi::server_id.eq(sid))
+                                .order(srv_poi::desc.asc())
+                                .load::<ServerPointOfInterest>(sql_conn)
+                                .unwrap()
+                                .into_iter()
+                                .map(ServerItem::PointOfInterest),
+                        );
+                        servers.extend(
+                            srv_note::server_note
+                                .filter(srv_note::server_id.eq(sid))
+                                .order(srv_note::title.asc())
+                                .load::<ServerNote>(sql_conn)
+                                .unwrap()
+                                .into_iter()
+                                .map(ServerItem::Note),
+                        );
+                        servers.extend(
+                            &mut srv_usr::server_extra_user_account
+                                .filter(srv_usr::server_id.eq(sid))
+                                .order(srv_usr::desc.asc())
+                                .load::<ServerExtraUserAccount>(sql_conn)
+                                .unwrap()
+                                .into_iter()
+                                .map(ServerItem::ExtraUserAccount),
+                        );
+                        servers.extend(
+                            &mut srv_db::server_database
+                                .filter(srv_db::server_id.eq(sid))
+                                .order(srv_db::desc.asc())
+                                .load::<ServerDatabase>(sql_conn)
+                                .unwrap()
+                                .into_iter()
+                                .map(ServerItem::Database),
+                        );
+
+                        servers
                     }
-                    None => (vec![], vec![], vec![], vec![], vec![]),
+                    None => vec![],
                 };
                 s.send(items).unwrap();
             }))

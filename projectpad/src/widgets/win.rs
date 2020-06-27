@@ -112,6 +112,7 @@ impl Widget for Win {
                 },
                 gtk::Box {
                     orientation: gtk::Orientation::Vertical,
+                    spacing: 10,
                     child: {
                         fill: true,
                         expand: true,

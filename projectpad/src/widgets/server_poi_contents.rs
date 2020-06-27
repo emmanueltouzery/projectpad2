@@ -41,6 +41,9 @@ impl Widget for ServerPoiContents {
         self.contents_list
             .get_style_context()
             .add_class("item_list");
+        self.contents_scroll
+            .get_style_context()
+            .add_class("scrollgradient");
         self.update_contents_list();
     }
 
@@ -155,6 +158,7 @@ impl Widget for ServerPoiContents {
     }
 
     view! {
+        #[name="contents_scroll"]
         gtk::ScrolledWindow {
             #[name="contents_list"]
             gtk::ListBox {

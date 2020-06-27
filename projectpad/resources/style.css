@@ -33,3 +33,8 @@
   padding: 5px;
   text-decoration: underline;
 }
+
+/* https://elementaryos.stackexchange.com/a/22239/23318 */
+.scrollgradient undershoot.top {
+  background: linear-gradient(gray 0, alpha(gray, 0) 12px);
+}

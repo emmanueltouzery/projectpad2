@@ -9,3 +9,4 @@ mod project_summary;
 mod server_item_list_item;
 mod server_poi_contents;
 pub mod win;
+mod wintitlebar;

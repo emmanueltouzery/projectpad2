@@ -7,12 +7,13 @@ use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
+use super::wintitlebar::WinTitleBar;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use gtk::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project};
-use relm::Widget;
+use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
@@ -33,6 +34,7 @@ pub struct ProjectPoiItem {
 }
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
+    titlebar: Component<WinTitleBar>,
 }
 
 #[widget]
@@ -47,7 +49,11 @@ impl Widget for Win {
         gtk::IconTheme::get_default()
             .unwrap()
             .add_resource_path("/icons");
-        Model { db_sender }
+        let titlebar = relm::init::<WinTitleBar>(()).expect("win title bar init");
+        Model {
+            db_sender,
+            titlebar,
+        }
     }
 
     fn update(&mut self, event: Msg) {
@@ -87,6 +93,7 @@ impl Widget for Win {
     view! {
         #[name="window"]
         gtk::Window {
+            titlebar: Some(self.model.titlebar.widget()),
             property_default_width: 1000,
             property_default_height: 650,
             gtk::Box {

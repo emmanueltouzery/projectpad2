@@ -157,7 +157,7 @@ impl Widget for Win {
                             expand: true,
                         },
                         #[name="project_poi_header"]
-                        ProjectPoiHeader(),
+                        ProjectPoiHeader(None),
                         #[name="project_poi_contents"]
                         ProjectPoiContents(self.model.db_sender.clone()) {
                             child: {

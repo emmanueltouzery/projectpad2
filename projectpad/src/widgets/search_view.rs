@@ -1,3 +1,6 @@
+use super::project_items_list::ProjectItem;
+use super::project_poi_header::ProjectPoiHeader;
+use super::project_search_header::ProjectSearchHeader;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -5,13 +8,22 @@ use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
-use relm::Widget;
+use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::collections::HashSet;
 use std::sync::mpsc;
 
 pub struct SearchResult {
     pub projects: Vec<Project>,
+    pub project_notes: Vec<ProjectNote>,
+    pub project_pois: Vec<ProjectPointOfInterest>,
+    pub servers: Vec<Server>,
+    pub server_databases: Vec<ServerDatabase>,
+    pub server_extra_users: Vec<ServerExtraUserAccount>,
+    pub server_links: Vec<ServerLink>,
+    pub server_notes: Vec<ServerNote>,
+    pub server_pois: Vec<ServerPointOfInterest>,
+    pub server_websites: Vec<ServerWebsite>,
 }
 
 #[derive(Msg)]
@@ -24,6 +36,7 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
     sender: relm::Sender<SearchResult>,
+    search_result: Option<SearchResult>,
 }
 
 #[widget]
@@ -39,6 +52,7 @@ impl Widget for SearchView {
             filter: None,
             db_sender,
             sender,
+            search_result: None,
         }
     }
 
@@ -57,17 +71,49 @@ impl Widget for SearchView {
                         .map(|p| &p.name)
                         .collect::<Vec<_>>()
                 );
+                self.model.search_result = Some(search_result);
+                self.refresh_display();
+            }
+        }
+    }
+
+    fn refresh_display(&self) {
+        for child in self.search_result_box.get_children() {
+            self.search_result_box.remove(&child);
+        }
+        if let Some(search_result) = &self.model.search_result {
+            for project in &search_result.projects {
+                self.search_result_box
+                    .add_widget::<ProjectSearchHeader>(project.clone());
+                for server in search_result
+                    .servers
+                    .iter()
+                    .filter(|s| s.project_id == project.id)
+                {
+                    self.search_result_box
+                        .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
+                }
             }
         }
     }
 
     fn fetch_search_results(&self) {
-        println!("refresh");
         match &self.model.filter {
             None => self
                 .model
                 .sender
-                .send(SearchResult { projects: vec![] })
+                .send(SearchResult {
+                    projects: vec![],
+                    project_notes: vec![],
+                    project_pois: vec![],
+                    servers: vec![],
+                    server_databases: vec![],
+                    server_extra_users: vec![],
+                    server_links: vec![],
+                    server_notes: vec![],
+                    server_pois: vec![],
+                    server_websites: vec![],
+                })
                 .unwrap(),
             Some(filter) => {
                 let s = self.model.sender.clone();
@@ -111,6 +157,15 @@ impl Widget for SearchView {
                         let all_projects = Self::load_projects_by_id(sql_conn, &all_project_ids);
                         s.send(SearchResult {
                             projects: all_projects,
+                            project_notes,
+                            project_pois,
+                            servers: all_servers,
+                            server_notes,
+                            server_links,
+                            server_pois,
+                            server_databases,
+                            server_extra_users,
+                            server_websites,
                         })
                         .unwrap();
                     }))
@@ -123,6 +178,7 @@ impl Widget for SearchView {
         use projectpadsql::schema::project::dsl::*;
         project
             .filter(id.eq_any(ids))
+            .order(name.asc())
             .load::<Project>(db_conn)
             .unwrap()
     }

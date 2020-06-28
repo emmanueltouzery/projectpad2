@@ -106,6 +106,7 @@ pub fn populate_grid(
 #[widget]
 impl Widget for ProjectPoiHeader {
     fn init_view(&mut self) {
+        self.load_project_item();
         self.items_frame
             .get_style_context()
             .add_class("items_frame");
@@ -120,10 +121,10 @@ impl Widget for ProjectPoiHeader {
             .set_popover(Some(&self.model.header_popover));
     }
 
-    fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
+    fn model(relm: &relm::Relm<Self>, project_item: Option<ProjectItem>) -> Model {
         Model {
             relm: relm.clone(),
-            project_item: None,
+            project_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             title: gtk::LabelBuilder::new()
                 .margin_top(8)
@@ -137,15 +138,7 @@ impl Widget for ProjectPoiHeader {
         match event {
             Msg::ProjectItemSelected(pi) => {
                 self.model.project_item = pi;
-                self.populate_header();
-                self.model.title.set_markup(
-                    self.model
-                        .project_item
-                        .as_ref()
-                        .map(Self::project_item_desc)
-                        .as_deref()
-                        .unwrap_or(""),
-                );
+                self.load_project_item();
             }
             Msg::CopyClicked(val) => {
                 if let Some(clip) = self
@@ -158,6 +151,18 @@ impl Widget for ProjectPoiHeader {
                 }
             }
         }
+    }
+
+    fn load_project_item(&self) {
+        self.populate_header();
+        self.model.title.set_markup(
+            self.model
+                .project_item
+                .as_ref()
+                .map(Self::project_item_desc)
+                .as_deref()
+                .unwrap_or(""),
+        );
     }
 
     fn server_access_icon(srv: &Server) -> Icon {

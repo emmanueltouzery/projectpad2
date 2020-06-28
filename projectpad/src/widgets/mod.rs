@@ -5,6 +5,7 @@ mod project_poi_contents;
 mod project_poi_header;
 mod project_poi_item_list_item;
 mod project_poi_list_item;
+mod project_search_header;
 mod project_summary;
 mod search_view;
 mod server_item_list_item;

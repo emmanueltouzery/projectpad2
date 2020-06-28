@@ -36,5 +36,8 @@
 
 /* https://elementaryos.stackexchange.com/a/22239/23318 */
 .scrollgradient undershoot.top {
-  background: linear-gradient(gray 0, alpha(gray, 0) 12px);
+  background: linear-gradient(
+    @theme_bg_color 0,
+    alpha(@theme_bg_color, 0) 12px
+  );
 }

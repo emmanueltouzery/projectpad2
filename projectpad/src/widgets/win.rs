@@ -7,6 +7,9 @@ use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
+use super::search_view::Msg as SearchViewMsg;
+use super::search_view::SearchView;
+use super::wintitlebar::Msg as WinTitleBarMsg;
 use super::wintitlebar::WinTitleBar;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
@@ -25,6 +28,8 @@ pub enum Msg {
     ProjectActivated(Project),
     EnvironmentChanged(EnvironmentType),
     ProjectItemSelected(Option<ProjectItem>),
+    SearchActiveChanged(bool),
+    SearchTextChanged(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,9 +38,13 @@ pub struct ProjectPoiItem {
     // TODO groups
 }
 pub struct Model {
+    relm: relm::Relm<Win>,
     db_sender: mpsc::Sender<SqlFunc>,
     titlebar: Component<WinTitleBar>,
 }
+
+const CHILD_NAME_NORMAL: &str = "normal";
+const CHILD_NAME_SEARCH: &str = "search";
 
 #[widget]
 impl Widget for Win {
@@ -43,6 +52,11 @@ impl Widget for Win {
         if let Err(err) = self.load_style() {
             println!("Error loading the CSS: {}", err);
         }
+        let titlebar = &self.model.titlebar;
+        relm::connect!(titlebar@WinTitleBarMsg::SearchActiveChanged(is_active),
+                               self.model.relm, Msg::SearchActiveChanged(is_active));
+        relm::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
+                               self.model.relm, Msg::SearchTextChanged(search_text.clone()));
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -51,6 +65,7 @@ impl Widget for Win {
             .add_resource_path("/icons");
         let titlebar = relm::init::<WinTitleBar>(()).expect("win title bar init");
         Model {
+            relm: relm.clone(),
             db_sender,
             titlebar,
         }
@@ -75,6 +90,18 @@ impl Widget for Win {
                 self.project_poi_contents
                     .emit(ProjectPoiContentsMsg::ProjectItemSelected(pi));
             }
+            Msg::SearchActiveChanged(is_active) => {
+                self.normal_or_search_stack
+                    .set_visible_child_name(if is_active {
+                        CHILD_NAME_SEARCH
+                    } else {
+                        CHILD_NAME_NORMAL
+                    });
+            }
+            Msg::SearchTextChanged(search_text) => {
+                self.search_view
+                    .emit(SearchViewMsg::FilterChanged(Some(search_text)));
+            }
         }
     }
 
@@ -96,43 +123,55 @@ impl Widget for Win {
             titlebar: Some(self.model.titlebar.widget()),
             property_default_width: 1000,
             property_default_height: 650,
-            gtk::Box {
-                ProjectList(self.model.db_sender.clone()) {
-                    property_width_request: 60,
-                    ProjectActivated(ref prj) => Msg::ProjectActivated(prj.clone())
-                },
+            #[name="normal_or_search_stack"]
+            gtk::Stack {
                 gtk::Box {
-                    orientation: gtk::Orientation::Vertical,
-                    #[name="project_summary"]
-                    ProjectSummary() {
-                        EnvironmentChanged(env) => Msg::EnvironmentChanged(env)
-                    },
-                    #[name="project_items_list"]
-                    ProjectItemsList(self.model.db_sender.clone()) {
-                        property_width_request: 260,
-                        child: {
-                            fill: true,
-                            expand: true,
-                        },
-                        ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
-                    },
-                },
-                gtk::Box {
-                    orientation: gtk::Orientation::Vertical,
-                    spacing: 10,
                     child: {
-                        fill: true,
-                        expand: true,
+                        name: Some(CHILD_NAME_NORMAL)
                     },
-                    #[name="project_poi_header"]
-                    ProjectPoiHeader(),
-                    #[name="project_poi_contents"]
-                    ProjectPoiContents(self.model.db_sender.clone()) {
+                    ProjectList(self.model.db_sender.clone()) {
+                        property_width_request: 60,
+                        ProjectActivated(ref prj) => Msg::ProjectActivated(prj.clone())
+                    },
+                    gtk::Box {
+                        orientation: gtk::Orientation::Vertical,
+                        #[name="project_summary"]
+                        ProjectSummary() {
+                            EnvironmentChanged(env) => Msg::EnvironmentChanged(env)
+                        },
+                        #[name="project_items_list"]
+                        ProjectItemsList(self.model.db_sender.clone()) {
+                            property_width_request: 260,
+                            child: {
+                                fill: true,
+                                expand: true,
+                            },
+                            ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                        },
+                    },
+                    gtk::Box {
+                        orientation: gtk::Orientation::Vertical,
+                        spacing: 10,
                         child: {
                             fill: true,
                             expand: true,
                         },
+                        #[name="project_poi_header"]
+                        ProjectPoiHeader(),
+                        #[name="project_poi_contents"]
+                        ProjectPoiContents(self.model.db_sender.clone()) {
+                            child: {
+                                fill: true,
+                                expand: true,
+                            },
+                        }
                     }
+                },
+                #[name="search_view"]
+                SearchView() {
+                    child: {
+                        name: Some(CHILD_NAME_SEARCH)
+                    },
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),

@@ -18,6 +18,9 @@ pub struct Model {
     project_note_contents: Option<String>,
 }
 
+const CHILD_NAME_SERVER: &str = "server";
+const CHILD_NAME_NOTE: &str = "note";
+
 #[widget]
 impl Widget for ProjectPoiContents {
     fn init_view(&mut self) {}
@@ -55,8 +58,8 @@ impl Widget for ProjectPoiContents {
                         });
                 self.contents_stack
                     .set_visible_child_name(match self.model.cur_project_item {
-                        Some(ProjectItem::ProjectNote(_)) => "note",
-                        _ => "server", // server is a list of items, handles None well (no items)
+                        Some(ProjectItem::ProjectNote(_)) => CHILD_NAME_NOTE,
+                        _ => CHILD_NAME_SERVER, // server is a list of items, handles None well (no items)
                     });
             }
         }
@@ -68,12 +71,12 @@ impl Widget for ProjectPoiContents {
             #[name="server_contents"]
             ServerPoiContents(self.model.db_sender.clone()) {
                 child: {
-                    name: Some("server")
+                    name: Some(CHILD_NAME_SERVER)
                 }
             },
             gtk::ScrolledWindow {
                 child: {
-                    name: Some("note")
+                    name: Some(CHILD_NAME_NOTE)
                 },
                 gtk::Label {
                     margin_top: 10,

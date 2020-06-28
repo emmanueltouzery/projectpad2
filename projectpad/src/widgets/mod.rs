@@ -6,6 +6,7 @@ mod project_poi_header;
 mod project_poi_item_list_item;
 mod project_poi_list_item;
 mod project_summary;
+mod search_view;
 mod server_item_list_item;
 mod server_poi_contents;
 pub mod win;

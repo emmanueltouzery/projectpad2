@@ -1,7 +1,9 @@
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Project, Server, ServerDatabase, ServerWebsite};
+use projectpadsql::models::{
+    Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerNote, ServerWebsite,
+};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::collections::HashSet;
@@ -73,9 +75,12 @@ impl Widget for SearchView {
                     .db_sender
                     .send(SqlFunc::new(move |sql_conn| {
                         // find all the leaves...
-                        let servers = Self::load_servers(sql_conn, &f);
-                        let prjs = Self::load_projects(sql_conn, &f);
-                        let server_websites = Self::load_server_websites(sql_conn, &f)
+                        let servers = Self::filter_servers(sql_conn, &f);
+                        let prjs = Self::filter_projects(sql_conn, &f);
+                        let project_pois = Self::filter_project_pois(sql_conn, &f);
+                        let project_notes = Self::filter_project_notes(sql_conn, &f);
+                        let server_notes = Self::filter_server_notes(sql_conn, &f);
+                        let server_websites = Self::filter_server_websites(sql_conn, &f)
                             .into_iter()
                             .map(|p| p.0)
                             .collect::<Vec<_>>();
@@ -84,6 +89,7 @@ impl Widget for SearchView {
                         let mut all_server_ids =
                             servers.iter().map(|s| s.id).collect::<HashSet<_>>();
                         all_server_ids.extend(server_websites.iter().map(|sw| sw.server_id));
+                        all_server_ids.extend(server_notes.iter().map(|sn| sn.server_id));
                         let all_servers = Self::load_servers_by_id(sql_conn, &all_server_ids);
 
                         let mut all_project_ids = all_servers
@@ -91,6 +97,8 @@ impl Widget for SearchView {
                             .map(|s| s.project_id)
                             .collect::<HashSet<_>>();
                         all_project_ids.extend(prjs.iter().map(|p| p.id));
+                        all_project_ids.extend(project_pois.iter().map(|ppoi| ppoi.project_id));
+                        all_project_ids.extend(project_notes.iter().map(|pn| pn.project_id));
                         let all_projects = Self::load_projects_by_id(sql_conn, &all_project_ids);
                         s.send(SearchResult {
                             projects: all_projects,
@@ -100,14 +108,6 @@ impl Widget for SearchView {
                     .unwrap();
             }
         }
-    }
-
-    fn load_projects(db_conn: &SqliteConnection, filter: &str) -> Vec<Project> {
-        use projectpadsql::schema::project::dsl::*;
-        project
-            .filter(name.like(filter).escape('\\'))
-            .load::<Project>(db_conn)
-            .unwrap()
     }
 
     fn load_projects_by_id(db_conn: &SqliteConnection, ids: &HashSet<i32>) -> Vec<Project> {
@@ -126,7 +126,57 @@ impl Widget for SearchView {
             .unwrap()
     }
 
-    fn load_servers(db_conn: &SqliteConnection, filter: &str) -> Vec<Server> {
+    fn filter_projects(db_conn: &SqliteConnection, filter: &str) -> Vec<Project> {
+        use projectpadsql::schema::project::dsl::*;
+        project
+            .filter(name.like(filter).escape('\\'))
+            .load::<Project>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_project_pois(
+        db_conn: &SqliteConnection,
+        filter: &str,
+    ) -> Vec<ProjectPointOfInterest> {
+        use projectpadsql::schema::project_point_of_interest::dsl::*;
+        project_point_of_interest
+            .filter(
+                desc.like(filter)
+                    .escape('\\')
+                    .or(text.like(filter).escape('\\'))
+                    .or(path.like(filter).escape('\\')),
+            )
+            .load::<ProjectPointOfInterest>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_project_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<ProjectNote> {
+        use projectpadsql::schema::project_note::dsl::*;
+        project_note
+            .filter(
+                title
+                    .like(filter)
+                    .escape('\\')
+                    .or(contents.like(filter).escape('\\')),
+            )
+            .load::<ProjectNote>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_server_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerNote> {
+        use projectpadsql::schema::server_note::dsl::*;
+        server_note
+            .filter(
+                title
+                    .like(filter)
+                    .escape('\\')
+                    .or(contents.like(filter).escape('\\')),
+            )
+            .load::<ServerNote>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_servers(db_conn: &SqliteConnection, filter: &str) -> Vec<Server> {
         use projectpadsql::schema::server::dsl::*;
         server
             .filter(
@@ -139,7 +189,7 @@ impl Widget for SearchView {
             .unwrap()
     }
 
-    fn load_server_websites(
+    fn filter_server_websites(
         db_conn: &SqliteConnection,
         filter: &str,
     ) -> Vec<(ServerWebsite, Option<ServerDatabase>)> {

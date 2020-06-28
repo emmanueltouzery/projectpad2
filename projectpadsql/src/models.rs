@@ -95,6 +95,7 @@ pub struct Server {
     pub id: i32,
     pub desc: String,
     pub ip: String,
+    pub text: String,
     pub is_retired: bool,
     pub username: String,
     pub password: String,

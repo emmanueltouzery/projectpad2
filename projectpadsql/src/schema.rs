@@ -18,6 +18,7 @@ table! {
         id -> Integer,
         desc -> Varchar,
         ip -> Varchar,
+        text -> Varchar,
         is_retired -> Bool,
         username -> Varchar,
         password -> Varchar,
@@ -133,3 +134,6 @@ table! {
         server_id -> Integer,
     }
 }
+
+joinable!(server_website -> server_database (server_database_id));
+allow_tables_to_appear_in_same_query!(server_website, server_database);

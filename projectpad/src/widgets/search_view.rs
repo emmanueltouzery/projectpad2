@@ -2,7 +2,8 @@ use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerNote, ServerWebsite,
+    Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
+    ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -80,6 +81,10 @@ impl Widget for SearchView {
                         let project_pois = Self::filter_project_pois(sql_conn, &f);
                         let project_notes = Self::filter_project_notes(sql_conn, &f);
                         let server_notes = Self::filter_server_notes(sql_conn, &f);
+                        let server_links = Self::filter_server_links(sql_conn, &f);
+                        let server_pois = Self::filter_server_pois(sql_conn, &f);
+                        let server_databases = Self::filter_server_databases(sql_conn, &f);
+                        let server_extra_users = Self::filter_server_extra_users(sql_conn, &f);
                         let server_websites = Self::filter_server_websites(sql_conn, &f)
                             .into_iter()
                             .map(|p| p.0)
@@ -90,6 +95,10 @@ impl Widget for SearchView {
                             servers.iter().map(|s| s.id).collect::<HashSet<_>>();
                         all_server_ids.extend(server_websites.iter().map(|sw| sw.server_id));
                         all_server_ids.extend(server_notes.iter().map(|sn| sn.server_id));
+                        all_server_ids.extend(server_links.iter().map(|sl| sl.linked_server_id));
+                        all_server_ids.extend(server_extra_users.iter().map(|sl| sl.server_id));
+                        all_server_ids.extend(server_pois.iter().map(|sl| sl.server_id));
+                        all_server_ids.extend(server_databases.iter().map(|sl| sl.server_id));
                         let all_servers = Self::load_servers_by_id(sql_conn, &all_server_ids);
 
                         let mut all_project_ids = all_servers
@@ -173,6 +182,51 @@ impl Widget for SearchView {
                     .or(contents.like(filter).escape('\\')),
             )
             .load::<ServerNote>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_server_links(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerLink> {
+        use projectpadsql::schema::server_link::dsl::*;
+        server_link
+            .filter(desc.like(filter).escape('\\'))
+            .load::<ServerLink>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_server_extra_users(
+        db_conn: &SqliteConnection,
+        filter: &str,
+    ) -> Vec<ServerExtraUserAccount> {
+        use projectpadsql::schema::server_extra_user_account::dsl::*;
+        server_extra_user_account
+            .filter(desc.like(filter).escape('\\'))
+            .load::<ServerExtraUserAccount>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_server_pois(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerPointOfInterest> {
+        use projectpadsql::schema::server_point_of_interest::dsl::*;
+        server_point_of_interest
+            .filter(
+                desc.like(filter)
+                    .escape('\\')
+                    .or(path.like(filter).escape('\\'))
+                    .or(text.like(filter).escape('\\')),
+            )
+            .load::<ServerPointOfInterest>(db_conn)
+            .unwrap()
+    }
+
+    fn filter_server_databases(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerDatabase> {
+        use projectpadsql::schema::server_database::dsl::*;
+        server_database
+            .filter(
+                desc.like(filter)
+                    .escape('\\')
+                    .or(name.like(filter).escape('\\'))
+                    .or(text.like(filter).escape('\\')),
+            )
+            .load::<ServerDatabase>(db_conn)
             .unwrap()
     }
 

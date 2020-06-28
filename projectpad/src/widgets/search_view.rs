@@ -1,6 +1,8 @@
 use super::project_items_list::ProjectItem;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_search_header::ProjectSearchHeader;
+use super::server_item_list_item::ServerItemListItem;
+use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -17,10 +19,10 @@ pub struct SearchResult {
     pub projects: Vec<Project>,
     pub project_notes: Vec<ProjectNote>,
     pub project_pois: Vec<ProjectPointOfInterest>,
+    pub server_links: Vec<ServerLink>,
     pub servers: Vec<Server>,
     pub server_databases: Vec<ServerDatabase>,
     pub server_extra_users: Vec<ServerExtraUserAccount>,
-    pub server_links: Vec<ServerLink>,
     pub server_notes: Vec<ServerNote>,
     pub server_pois: Vec<ServerPointOfInterest>,
     pub server_websites: Vec<ServerWebsite>,
@@ -63,14 +65,6 @@ impl Widget for SearchView {
                 self.fetch_search_results();
             }
             Msg::GotSearchResult(search_result) => {
-                println!(
-                    "got results {:?}!",
-                    search_result
-                        .projects
-                        .iter()
-                        .map(|p| &p.name)
-                        .collect::<Vec<_>>()
-                );
                 self.model.search_result = Some(search_result);
                 self.refresh_display();
             }
@@ -92,6 +86,80 @@ impl Widget for SearchView {
                 {
                     self.search_result_box
                         .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
+
+                    for server_website in search_result
+                        .server_websites
+                        .iter()
+                        .filter(|sw| sw.server_id == server.id)
+                    {
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::Website(server_website.clone()),
+                        );
+                    }
+                    for server_note in search_result
+                        .server_notes
+                        .iter()
+                        .filter(|sn| sn.server_id == server.id)
+                    {
+                        self.search_result_box
+                            .add_widget::<ServerItemListItem>(ServerItem::Note(
+                                server_note.clone(),
+                            ));
+                    }
+                    for server_user in search_result
+                        .server_extra_users
+                        .iter()
+                        .filter(|su| su.server_id == server.id)
+                    {
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::ExtraUserAccount(server_user.clone()),
+                        );
+                    }
+                    for server_db in search_result
+                        .server_databases
+                        .iter()
+                        .filter(|sd| sd.server_id == server.id)
+                    {
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::Database(server_db.clone()),
+                        );
+                    }
+                    for server_poi in search_result
+                        .server_pois
+                        .iter()
+                        .filter(|sp| sp.server_id == server.id)
+                    {
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::PointOfInterest(server_poi.clone()),
+                        );
+                    }
+                }
+                for server_link in search_result
+                    .server_links
+                    .iter()
+                    .filter(|s| s.project_id == project.id)
+                {
+                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                        ProjectItem::ServerLink(server_link.clone()),
+                    ));
+                }
+                for project_note in search_result
+                    .project_notes
+                    .iter()
+                    .filter(|s| s.project_id == project.id)
+                {
+                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                        ProjectItem::ProjectNote(project_note.clone()),
+                    ));
+                }
+                for project_poi in search_result
+                    .project_pois
+                    .iter()
+                    .filter(|s| s.project_id == project.id)
+                {
+                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                        ProjectItem::ProjectPointOfInterest(project_poi.clone()),
+                    ));
                 }
             }
         }

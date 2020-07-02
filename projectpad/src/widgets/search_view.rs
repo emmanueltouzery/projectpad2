@@ -12,7 +12,8 @@ use projectpadsql::models::{
 };
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
+use std::rc::Rc;
 use std::sync::mpsc;
 
 pub struct SearchResult {
@@ -54,7 +55,7 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
     sender: relm::Sender<SearchResult>,
-    search_display: SearchDisplay,
+    search_display: Rc<SearchDisplay>,
 }
 
 #[widget]
@@ -72,7 +73,10 @@ impl Widget for SearchView {
             filter: None,
             db_sender,
             sender,
-            search_display: vec![],
+            // must clone for each keystroke on the search
+            // entry (because the callback must be 'static)
+            // so instead of cloning the data, RC it.
+            search_display: Rc::new(vec![]),
         }
     }
 
@@ -80,17 +84,12 @@ impl Widget for SearchView {
         match event {
             Msg::FilterChanged(filter) => {
                 println!("{:?}", filter);
-                let sd = self.model.search_display.clone(); // TODO that's a pretty bad clone
+                let sd = self.model.search_display.clone();
                 let f = filter.clone();
                 self.search_result_box
                     .set_filter_func(Some(Box::new(move |row| match &f {
                         None => false,
                         Some(f) => {
-                            println!(
-                                "filter func called for row {} and filter {}",
-                                row.get_index(),
-                                f
-                            );
                             let l = f.to_lowercase();
                             let matches = |contents: &str| contents.to_lowercase().contains(&l);
                             match &sd[row.get_index() as usize] {
@@ -239,7 +238,7 @@ impl Widget for SearchView {
                 // TODO clone
             }
         }
-        self.model.search_display = search_display; // TODO don't think i need a model member & a clone
+        self.model.search_display = Rc::new(search_display); // TODO don't think i need a model member & a clone
         println!("refresh display done");
     }
 

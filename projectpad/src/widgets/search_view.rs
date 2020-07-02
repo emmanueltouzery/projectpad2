@@ -16,6 +16,7 @@ use std::collections::HashSet;
 use std::sync::mpsc;
 
 pub struct SearchResult {
+    pub filter: String,
     pub projects: Vec<Project>,
     pub project_notes: Vec<ProjectNote>,
     pub project_pois: Vec<ProjectPointOfInterest>,
@@ -31,13 +32,15 @@ pub struct SearchResult {
 #[derive(Msg)]
 pub enum Msg {
     FilterChanged(Option<String>),
-    GotSearchResult(SearchResult),
+    GotSearchResult(String, SearchResult),
+    // Refresh,
 }
 
 pub struct Model {
+    relm: relm::Relm<SearchView>,
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
-    sender: relm::Sender<SearchResult>,
+    sender: relm::Sender<(String, SearchResult)>,
     search_result: Option<SearchResult>,
 }
 
@@ -47,10 +50,11 @@ impl Widget for SearchView {
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
-            stream.emit(Msg::GotSearchResult(search_r));
+        let (channel, sender) = relm::Channel::new(move |search_r: (String, SearchResult)| {
+            stream.emit(Msg::GotSearchResult(search_r.0, search_r.1));
         });
         Model {
+            relm: relm.clone(),
             filter: None,
             db_sender,
             sender,
@@ -61,77 +65,114 @@ impl Widget for SearchView {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::FilterChanged(filter) => {
+                println!("{:?} filter changed", std::time::Instant::now());
                 self.model.filter = filter;
                 self.fetch_search_results();
             }
-            Msg::GotSearchResult(search_result) => {
+            Msg::GotSearchResult(filter, search_result) => {
+                // don't display this if the user modified the
+                // filter since this was fetched (as we pause the GUI thread
+                // and hurt interactivity by redisplaying)
+                println!(
+                    "{:?} {} -- {:?}",
+                    std::time::Instant::now(),
+                    filter,
+                    self.model.filter
+                );
                 self.model.search_result = Some(search_result);
-                self.refresh_display();
+                //     relm::timeout(self.model.relm.stream(), 500, || Msg::Refresh);
+                // }
+                // Msg::Refresh => {
+                //     while gtk::events_pending() {
+                //         gtk::main_iteration();
+                //     }
+                if self
+                    .model
+                    .search_result
+                    .as_ref()
+                    .map(|sr| sr.filter.clone())
+                    == self.model.filter
+                {
+                    self.refresh_display();
+                }
             }
         }
     }
 
     fn refresh_display(&self) {
+        println!(
+            "{:?} search_view::refresh display",
+            std::time::Instant::now()
+        );
         for child in self.search_result_box.get_children() {
             self.search_result_box.remove(&child);
         }
+        // let vbox = gtk::BoxBuilder::new()
+        //     .orientation(gtk::Orientation::Vertical)
+        //     .build();
+        let vbox = &self.search_result_box;
         if let Some(search_result) = &self.model.search_result {
             for project in &search_result.projects {
-                self.search_result_box
-                    .add_widget::<ProjectSearchHeader>(project.clone());
+                vbox.add_widget::<ProjectSearchHeader>(project.clone());
                 for server in search_result
                     .servers
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box
-                        .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
+                    // println!("add server");
+                    // while gtk::events_pending() {
+                    //     gtk::main_iteration();
+                    // }
+                    // if Some(&filter) != self.model.filter.as_ref() {
+                    //     println!("{:?} early exit", std::time::Instant::now());
+                    //     return;
+                    // }
+                    vbox.add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
 
                     for server_website in search_result
                         .server_websites
                         .iter()
                         .filter(|sw| sw.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::Website(server_website.clone()),
-                        );
+                        vbox.add_widget::<ServerItemListItem>(ServerItem::Website(
+                            server_website.clone(),
+                        ));
                     }
                     for server_note in search_result
                         .server_notes
                         .iter()
                         .filter(|sn| sn.server_id == server.id)
                     {
-                        self.search_result_box
-                            .add_widget::<ServerItemListItem>(ServerItem::Note(
-                                server_note.clone(),
-                            ));
+                        vbox.add_widget::<ServerItemListItem>(ServerItem::Note(
+                            server_note.clone(),
+                        ));
                     }
                     for server_user in search_result
                         .server_extra_users
                         .iter()
                         .filter(|su| su.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::ExtraUserAccount(server_user.clone()),
-                        );
+                        vbox.add_widget::<ServerItemListItem>(ServerItem::ExtraUserAccount(
+                            server_user.clone(),
+                        ));
                     }
                     for server_db in search_result
                         .server_databases
                         .iter()
                         .filter(|sd| sd.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::Database(server_db.clone()),
-                        );
+                        vbox.add_widget::<ServerItemListItem>(ServerItem::Database(
+                            server_db.clone(),
+                        ));
                     }
                     for server_poi in search_result
                         .server_pois
                         .iter()
                         .filter(|sp| sp.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::PointOfInterest(server_poi.clone()),
-                        );
+                        vbox.add_widget::<ServerItemListItem>(ServerItem::PointOfInterest(
+                            server_poi.clone(),
+                        ));
                     }
                 }
                 for server_link in search_result
@@ -139,53 +180,43 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ServerLink(server_link.clone()),
-                    ));
+                    vbox.add_widget::<ProjectPoiHeader>(Some(ProjectItem::ServerLink(
+                        server_link.clone(),
+                    )));
                 }
                 for project_note in search_result
                     .project_notes
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ProjectNote(project_note.clone()),
-                    ));
+                    vbox.add_widget::<ProjectPoiHeader>(Some(ProjectItem::ProjectNote(
+                        project_note.clone(),
+                    )));
                 }
                 for project_poi in search_result
                     .project_pois
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ProjectPointOfInterest(project_poi.clone()),
-                    ));
+                    vbox.add_widget::<ProjectPoiHeader>(Some(ProjectItem::ProjectPointOfInterest(
+                        project_poi.clone(),
+                    )));
                 }
             }
+            // if Some(filter) == self.model.filter {
+            // self.search_result_box.add(&vbox);
+            // vbox.show_all();
+            // }
         }
     }
 
     fn fetch_search_results(&self) {
         match &self.model.filter {
-            None => self
-                .model
-                .sender
-                .send(SearchResult {
-                    projects: vec![],
-                    project_notes: vec![],
-                    project_pois: vec![],
-                    servers: vec![],
-                    server_databases: vec![],
-                    server_extra_users: vec![],
-                    server_links: vec![],
-                    server_notes: vec![],
-                    server_pois: vec![],
-                    server_websites: vec![],
-                })
-                .unwrap(),
+            None => {}
             Some(filter) => {
                 let s = self.model.sender.clone();
                 let f = format!("%{}%", filter.replace('%', "\\%"));
+                let orig_filter = filter.clone();
                 self.model
                     .db_sender
                     .send(SqlFunc::new(move |sql_conn| {
@@ -223,18 +254,22 @@ impl Widget for SearchView {
                         all_project_ids.extend(project_pois.iter().map(|ppoi| ppoi.project_id));
                         all_project_ids.extend(project_notes.iter().map(|pn| pn.project_id));
                         let all_projects = Self::load_projects_by_id(sql_conn, &all_project_ids);
-                        s.send(SearchResult {
-                            projects: all_projects,
-                            project_notes,
-                            project_pois,
-                            servers: all_servers,
-                            server_notes,
-                            server_links,
-                            server_pois,
-                            server_databases,
-                            server_extra_users,
-                            server_websites,
-                        })
+                        s.send((
+                            orig_filter.clone(),
+                            SearchResult {
+                                filter: orig_filter.clone(),
+                                projects: all_projects,
+                                project_notes,
+                                project_pois,
+                                servers: all_servers,
+                                server_notes,
+                                server_links,
+                                server_pois,
+                                server_databases,
+                                server_extra_users,
+                                server_websites,
+                            },
+                        ))
                         .unwrap();
                     }))
                     .unwrap();
@@ -390,9 +425,9 @@ impl Widget for SearchView {
     view! {
         gtk::ScrolledWindow {
             #[name="search_result_box"]
-            gtk::Box {
-                orientation: gtk::Orientation::Vertical,
-                spacing: 10,
+            gtk::ListBox {
+                // orientation: gtk::Orientation::Vertical,
+                // spacing: 10,
             }
         }
     }

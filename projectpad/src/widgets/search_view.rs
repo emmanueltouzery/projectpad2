@@ -80,7 +80,7 @@ impl Widget for SearchView {
         match event {
             Msg::FilterChanged(filter) => {
                 println!("{:?}", filter);
-                let sd = self.model.search_display.clone();
+                let sd = self.model.search_display.clone(); // TODO that's a pretty bad clone
                 let f = filter.clone();
                 self.search_result_box
                     .set_filter_func(Some(Box::new(move |row| match &f {

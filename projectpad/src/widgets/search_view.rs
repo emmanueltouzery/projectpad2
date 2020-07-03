@@ -83,9 +83,6 @@ impl Widget for SearchView {
         Model {
             db_sender,
             sender,
-            // must clone for each keystroke on the search
-            // entry (because the callback must be 'static)
-            // so instead of cloning the data, RC it.
             search_display: vec![],
             project_components: vec![],
             project_poi_components: vec![],

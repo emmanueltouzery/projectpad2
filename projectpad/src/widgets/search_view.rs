@@ -184,14 +184,15 @@ impl Widget for SearchView {
         );
         group_by!(servers_by_project, search_result.servers, project_id);
 
-        for project in &search_result.projects {
+        for project in search_result.projects {
             self.model.project_components.push(
                 self.search_result_box
                     .add_widget::<ProjectSearchHeader>(project.clone()),
             );
-            search_display.push(ProjectPadItem::Project(project.clone())); // TODO doesn't need to be clone
+            let project_id = project.id;
+            search_display.push(ProjectPadItem::Project(project));
             for server in servers_by_project
-                .remove(&project.id)
+                .remove(&project_id)
                 .unwrap_or_else(|| vec![])
             {
                 let server_id = server.id;
@@ -247,7 +248,7 @@ impl Widget for SearchView {
                 }
             }
             for server_link in serverlinks_by_project
-                .remove(&project.id)
+                .remove(&project_id)
                 .unwrap_or_else(|| vec![])
             {
                 self.model.project_poi_components.push(
@@ -258,7 +259,7 @@ impl Widget for SearchView {
                 search_display.push(ProjectPadItem::ServerLink(server_link));
             }
             for project_note in projectnotes_by_project
-                .remove(&project.id)
+                .remove(&project_id)
                 .unwrap_or_else(|| vec![])
             {
                 self.model.project_poi_components.push(
@@ -269,7 +270,7 @@ impl Widget for SearchView {
                 search_display.push(ProjectPadItem::ProjectNote(project_note));
             }
             for project_poi in projectpois_by_project
-                .remove(&project.id)
+                .remove(&project_id)
                 .unwrap_or_else(|| vec![])
             {
                 self.model.project_poi_components.push(

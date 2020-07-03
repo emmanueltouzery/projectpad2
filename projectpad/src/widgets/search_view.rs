@@ -375,6 +375,7 @@ impl Widget for SearchView {
         use projectpadsql::schema::server::dsl::*;
         server
             // .filter(id.eq_any(ids))
+            .order(project_id.asc()) // we must order because we group_by later!
             .load::<Server>(db_conn)
             .unwrap()
     }
@@ -490,7 +491,6 @@ impl Widget for SearchView {
             //         .or(ip.like(filter).escape('\\'))
             //         .or(text.like(filter).escape('\\')),
             // )
-            .order(project_id.asc()) // we must order because we group_by later!
             .load::<Server>(db_conn)
             .unwrap()
     }

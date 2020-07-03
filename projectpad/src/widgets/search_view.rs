@@ -14,7 +14,6 @@ use projectpadsql::models::{
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 use std::sync::mpsc;
 
 macro_rules! group_by {
@@ -39,7 +38,7 @@ pub struct SearchResult {
     pub server_websites: Vec<ServerWebsite>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum ProjectPadItem {
     Project(Project),
     ProjectNote(ProjectNote),
@@ -63,9 +62,8 @@ pub enum Msg {
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
-    filter: Option<String>,
     sender: relm::Sender<SearchResult>,
-    search_display: Rc<SearchDisplay>,
+    search_display: SearchDisplay,
     project_components: Vec<relm::Component<ProjectSearchHeader>>,
     project_poi_components: Vec<relm::Component<ProjectPoiHeader>>,
     server_item_components: Vec<relm::Component<ServerItemListItem>>,
@@ -83,13 +81,12 @@ impl Widget for SearchView {
             stream.emit(Msg::GotSearchResult(search_r));
         });
         Model {
-            filter: None,
             db_sender,
             sender,
             // must clone for each keystroke on the search
             // entry (because the callback must be 'static)
             // so instead of cloning the data, RC it.
-            search_display: Rc::new(vec![]),
+            search_display: vec![],
             project_components: vec![],
             project_poi_components: vec![],
             server_item_components: vec![],
@@ -100,49 +97,105 @@ impl Widget for SearchView {
         match event {
             Msg::FilterChanged(filter) => {
                 println!("{:?}", filter);
-                let sd = self.model.search_display.clone();
-                let f = filter.clone();
+                let indices = match filter {
+                    None => HashSet::new(),
+                    Some(f) => self.find_selected_indices(&f),
+                };
                 self.search_result_box
-                    .set_filter_func(Some(Box::new(move |row| match &f {
-                        None => false,
-                        Some(f) => {
-                            let l = f.to_lowercase();
-                            let matches = |contents: &str| contents.to_lowercase().contains(&l);
-                            match &sd[row.get_index() as usize] {
-                                ProjectPadItem::Project(p) => matches(&p.name),
-                                ProjectPadItem::ProjectNote(pn) => {
-                                    matches(&pn.title) || matches(&pn.contents)
-                                }
-                                ProjectPadItem::ServerPoi(poi) => {
-                                    matches(&poi.desc) || matches(&poi.text) || matches(&poi.path)
-                                }
-                                ProjectPadItem::ServerDatabase(db) => {
-                                    matches(&db.desc) || matches(&db.name) || matches(&db.text)
-                                }
-                                ProjectPadItem::ServerWebsite(www) => {
-                                    matches(&www.desc) || matches(&www.url) || matches(&www.text)
-                                } // TODO db desc or name...
-                                ProjectPadItem::ProjectPoi(poi) => {
-                                    matches(&poi.desc) || matches(&poi.text) || matches(&poi.path)
-                                }
-                                ProjectPadItem::ServerLink(link) => matches(&link.desc),
-                                ProjectPadItem::Server(srv) => {
-                                    matches(&srv.desc) || matches(&srv.ip) || matches(&srv.text)
-                                }
-                                ProjectPadItem::ServerExtraUserAccount(usr) => matches(&usr.desc),
-                                ProjectPadItem::ServerNote(note) => {
-                                    matches(&note.title) || matches(&note.contents)
-                                }
-                            }
-                        }
+                    .set_filter_func(Some(Box::new(move |row| {
+                        indices.contains(&row.get_index())
                     })));
                 self.search_result_box.invalidate_filter();
-                self.model.filter = filter; // TODO is that needed?
             }
             Msg::GotSearchResult(search_result) => {
                 self.refresh_display(search_result);
             }
         }
+    }
+
+    // careful there, we must bubble up the items. If a server note matches,
+    // we must bring in also the parent server and its parent project.
+    fn find_selected_indices(&self, filter: &str) -> HashSet<i32> {
+        let mut row_ids = HashSet::new();
+        let mut server_ids_indices = HashMap::new();
+        let mut project_ids_indices = HashMap::new();
+        let mut server_ids = HashSet::new();
+        let matches = |contents: &str| contents.to_lowercase().contains(&filter.to_lowercase());
+        for (pos, item) in self.model.search_display.iter().enumerate() {
+            match item {
+                ProjectPadItem::Project(p) => {
+                    if matches(&p.name) {
+                        row_ids.insert(p.id);
+                    }
+                    project_ids_indices.insert(p.id, pos as i32);
+                }
+                ProjectPadItem::ProjectNote(pn) => {
+                    if matches(&pn.title) || matches(&pn.contents) {
+                        row_ids.insert(pos as i32);
+                        row_ids.insert(*project_ids_indices.get(&pn.project_id).unwrap());
+                    }
+                }
+                ProjectPadItem::ServerPoi(poi) => {
+                    if matches(&poi.desc) || matches(&poi.text) || matches(&poi.path) {
+                        row_ids.insert(pos as i32);
+                        server_ids.insert(poi.server_id);
+                    }
+                }
+                ProjectPadItem::ServerDatabase(db) => {
+                    if matches(&db.desc) || matches(&db.name) || matches(&db.text) {
+                        row_ids.insert(pos as i32);
+                        server_ids.insert(db.server_id);
+                    }
+                }
+                ProjectPadItem::ServerWebsite(www) => {
+                    if matches(&www.desc) || matches(&www.url) || matches(&www.text) {
+                        row_ids.insert(pos as i32);
+                        server_ids.insert(www.server_id);
+                    }
+                } // TODO db desc or name...
+                ProjectPadItem::ProjectPoi(poi) => {
+                    if matches(&poi.desc) || matches(&poi.text) || matches(&poi.path) {
+                        row_ids.insert(pos as i32);
+                        row_ids.insert(*project_ids_indices.get(&poi.project_id).unwrap());
+                    }
+                }
+                ProjectPadItem::ServerLink(link) => {
+                    if matches(&link.desc) {
+                        row_ids.insert(pos as i32);
+                        row_ids.insert(*project_ids_indices.get(&link.project_id).unwrap());
+                    }
+                }
+                ProjectPadItem::Server(srv) => {
+                    if matches(&srv.desc) || matches(&srv.ip) || matches(&srv.text) {
+                        row_ids.insert(pos as i32);
+                        row_ids.insert(*project_ids_indices.get(&srv.project_id).unwrap());
+                    }
+                    server_ids_indices.insert(srv.id, pos as i32);
+                }
+                ProjectPadItem::ServerExtraUserAccount(usr) => {
+                    if matches(&usr.desc) {
+                        row_ids.insert(pos as i32);
+                        server_ids.insert(usr.server_id);
+                    }
+                }
+                ProjectPadItem::ServerNote(note) => {
+                    if matches(&note.title) || matches(&note.contents) {
+                        row_ids.insert(pos as i32);
+                        server_ids.insert(note.server_id);
+                    }
+                }
+            }
+        }
+        for server_id in server_ids {
+            let server_idx = *server_ids_indices.get(&server_id).unwrap();
+            row_ids.insert(server_idx);
+            let server = match &self.model.search_display[server_idx as usize] {
+                ProjectPadItem::Server(srv) => srv,
+                x => panic!("Expected a server, got {:?}", x),
+            };
+            row_ids.insert(*project_ids_indices.get(&server.project_id).unwrap());
+        }
+        row_ids
     }
 
     fn refresh_display(&mut self, search_result: SearchResult) {
@@ -281,7 +334,7 @@ impl Widget for SearchView {
                 search_display.push(ProjectPadItem::ProjectPoi(project_poi));
             }
         }
-        self.model.search_display = Rc::new(search_display); // TODO don't think i need a model member & a clone
+        self.model.search_display = search_display; // TODO don't think i need a model member & a clone
         println!("refresh display done");
     }
 

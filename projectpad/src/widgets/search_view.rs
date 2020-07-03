@@ -56,6 +56,9 @@ pub struct Model {
     filter: Option<String>,
     sender: relm::Sender<SearchResult>,
     search_display: Rc<SearchDisplay>,
+    project_components: Vec<relm::Component<ProjectSearchHeader>>,
+    project_poi_components: Vec<relm::Component<ProjectPoiHeader>>,
+    server_item_components: Vec<relm::Component<ServerItemListItem>>,
 }
 
 #[widget]
@@ -77,6 +80,9 @@ impl Widget for SearchView {
             // entry (because the callback must be 'static)
             // so instead of cloning the data, RC it.
             search_display: Rc::new(vec![]),
+            project_components: vec![],
+            project_poi_components: vec![],
+            server_item_components: vec![],
         }
     }
 
@@ -132,20 +138,25 @@ impl Widget for SearchView {
     fn refresh_display(&mut self, search_result: &SearchResult) {
         println!("refresh display");
         let mut search_display = vec![];
+        self.model.project_components.clear();
         for child in self.search_result_box.get_children() {
             self.search_result_box.remove(&child);
         }
         for project in &search_result.projects {
-            self.search_result_box
-                .add_widget::<ProjectSearchHeader>(project.clone());
+            self.model.project_components.push(
+                self.search_result_box
+                    .add_widget::<ProjectSearchHeader>(project.clone()),
+            );
             search_display.push(ProjectPadItem::Project(project.clone())); // TODO doesn't need to be clone
             for server in search_result
                 .servers
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                self.search_result_box
-                    .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
+                self.model.project_poi_components.push(
+                    self.search_result_box
+                        .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone()))),
+                );
                 search_display.push(ProjectPadItem::Server(server.clone())); // TODO clone
 
                 for server_website in search_result
@@ -153,10 +164,11 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|sw| sw.server_id == server.id)
                 {
-                    self.search_result_box
-                        .add_widget::<ServerItemListItem>(ServerItem::Website(
-                            server_website.clone(),
-                        ));
+                    self.model.server_item_components.push(
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::Website(server_website.clone()),
+                        ),
+                    );
                     search_display.push(ProjectPadItem::ServerWebsite(server_website.clone()));
                     // TODO clone
                 }
@@ -165,8 +177,12 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|sn| sn.server_id == server.id)
                 {
-                    self.search_result_box
-                        .add_widget::<ServerItemListItem>(ServerItem::Note(server_note.clone()));
+                    self.model.server_item_components.push(
+                        self.search_result_box
+                            .add_widget::<ServerItemListItem>(ServerItem::Note(
+                                server_note.clone(),
+                            )),
+                    );
                     search_display.push(ProjectPadItem::ServerNote(server_note.clone()));
                     // TODO clone
                 }
@@ -175,8 +191,10 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|su| su.server_id == server.id)
                 {
-                    self.search_result_box.add_widget::<ServerItemListItem>(
-                        ServerItem::ExtraUserAccount(server_user.clone()),
+                    self.model.server_item_components.push(
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::ExtraUserAccount(server_user.clone()),
+                        ),
                     );
                     search_display
                         .push(ProjectPadItem::ServerExtraUserAccount(server_user.clone()));
@@ -187,8 +205,11 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|sd| sd.server_id == server.id)
                 {
-                    self.search_result_box
-                        .add_widget::<ServerItemListItem>(ServerItem::Database(server_db.clone()));
+                    self.model.server_item_components.push(
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::Database(server_db.clone()),
+                        ),
+                    );
                     search_display.push(ProjectPadItem::ServerDatabase(server_db.clone()));
                     // TODO clone
                 }
@@ -197,8 +218,10 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|sp| sp.server_id == server.id)
                 {
-                    self.search_result_box.add_widget::<ServerItemListItem>(
-                        ServerItem::PointOfInterest(server_poi.clone()),
+                    self.model.server_item_components.push(
+                        self.search_result_box.add_widget::<ServerItemListItem>(
+                            ServerItem::PointOfInterest(server_poi.clone()),
+                        ),
                     );
                     search_display.push(ProjectPadItem::ServerPoi(server_poi.clone()));
                     // TODO clone
@@ -209,9 +232,11 @@ impl Widget for SearchView {
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                    ProjectItem::ServerLink(server_link.clone()),
-                ));
+                self.model.project_poi_components.push(
+                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                        ProjectItem::ServerLink(server_link.clone()),
+                    )),
+                );
                 search_display.push(ProjectPadItem::ServerLink(server_link.clone()));
                 // TODO clone
             }
@@ -220,9 +245,11 @@ impl Widget for SearchView {
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                    ProjectItem::ProjectNote(project_note.clone()),
-                ));
+                self.model.project_poi_components.push(
+                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                        ProjectItem::ProjectNote(project_note.clone()),
+                    )),
+                );
                 search_display.push(ProjectPadItem::ProjectNote(project_note.clone()));
                 // TODO clone
             }
@@ -231,9 +258,11 @@ impl Widget for SearchView {
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                    ProjectItem::ProjectPointOfInterest(project_poi.clone()),
-                ));
+                self.model.project_poi_components.push(
+                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                        ProjectItem::ProjectPointOfInterest(project_poi.clone()),
+                    )),
+                );
                 search_display.push(ProjectPadItem::ProjectPoi(project_poi.clone()));
                 // TODO clone
             }

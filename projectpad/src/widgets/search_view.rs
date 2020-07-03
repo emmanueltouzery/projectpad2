@@ -6,15 +6,25 @@ use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use itertools::Itertools;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use relm::{ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::mpsc;
+
+macro_rules! group_by {
+    ( $x:ident, $p:expr, $k:ident ) => {
+        let mut $x = HashMap::new();
+        for (key, group) in &$p.into_iter().group_by(|w| w.$k) {
+            $x.insert(key, group.collect::<Vec<_>>());
+        }
+    };
+}
 
 pub struct SearchResult {
     pub projects: Vec<Project>,
@@ -130,141 +140,144 @@ impl Widget for SearchView {
                 self.model.filter = filter; // TODO is that needed?
             }
             Msg::GotSearchResult(search_result) => {
-                self.refresh_display(&search_result);
+                self.refresh_display(search_result);
             }
         }
     }
 
-    fn refresh_display(&mut self, search_result: &SearchResult) {
+    fn refresh_display(&mut self, search_result: SearchResult) {
         println!("refresh display");
         let mut search_display = vec![];
         self.model.project_components.clear();
         for child in self.search_result_box.get_children() {
             self.search_result_box.remove(&child);
         }
+
+        // these group_bys speed up the lookups, not that the speed
+        // was worrying me. another thing they give us is that we
+        // can easily take ownership of the contents so that we
+        // store the values in self.model.search_display without cloning.
+        //
+        // note that we rely on the fact that items are properly
+        // sorted for the group_by! for instance server children
+        // must be sorted by server_id.
+
+        group_by!(websites_by_server, search_result.server_websites, server_id);
+        group_by!(notes_by_server, search_result.server_notes, server_id);
+        group_by!(users_by_server, search_result.server_extra_users, server_id);
+        group_by!(dbs_by_server, search_result.server_databases, server_id);
+        group_by!(pois_by_server, search_result.server_pois, server_id);
+        group_by!(
+            serverlinks_by_project,
+            search_result.server_links,
+            project_id
+        );
+        group_by!(
+            projectnotes_by_project,
+            search_result.project_notes,
+            project_id
+        );
+        group_by!(
+            projectpois_by_project,
+            search_result.project_pois,
+            project_id
+        );
+        group_by!(servers_by_project, search_result.servers, project_id);
+
         for project in &search_result.projects {
             self.model.project_components.push(
                 self.search_result_box
                     .add_widget::<ProjectSearchHeader>(project.clone()),
             );
             search_display.push(ProjectPadItem::Project(project.clone())); // TODO doesn't need to be clone
-            for server in search_result
-                .servers
-                .iter()
-                .filter(|s| s.project_id == project.id)
+            for server in servers_by_project
+                .remove(&project.id)
+                .unwrap_or_else(|| vec![])
             {
+                let server_id = server.id;
                 self.model.project_poi_components.push(
                     self.search_result_box
                         .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone()))),
                 );
-                search_display.push(ProjectPadItem::Server(server.clone())); // TODO clone
+                search_display.push(ProjectPadItem::Server(server));
 
-                for server_website in search_result
-                    .server_websites
-                    .iter()
-                    .filter(|sw| sw.server_id == server.id)
+                for server_website in websites_by_server
+                    .remove(&server_id)
+                    .unwrap_or_else(|| vec![])
                 {
                     self.model.server_item_components.push(
                         self.search_result_box.add_widget::<ServerItemListItem>(
                             ServerItem::Website(server_website.clone()),
                         ),
                     );
-                    search_display.push(ProjectPadItem::ServerWebsite(server_website.clone()));
-                    // TODO clone
+                    search_display.push(ProjectPadItem::ServerWebsite(server_website));
                 }
-                for server_note in search_result
-                    .server_notes
-                    .iter()
-                    .filter(|sn| sn.server_id == server.id)
-                {
+                for server_note in notes_by_server.remove(&server_id).unwrap_or_else(|| vec![]) {
                     self.model.server_item_components.push(
                         self.search_result_box
                             .add_widget::<ServerItemListItem>(ServerItem::Note(
                                 server_note.clone(),
                             )),
                     );
-                    search_display.push(ProjectPadItem::ServerNote(server_note.clone()));
-                    // TODO clone
+                    search_display.push(ProjectPadItem::ServerNote(server_note));
                 }
-                for server_user in search_result
-                    .server_extra_users
-                    .iter()
-                    .filter(|su| su.server_id == server.id)
-                {
+                for server_user in users_by_server.remove(&server_id).unwrap_or_else(|| vec![]) {
                     self.model.server_item_components.push(
                         self.search_result_box.add_widget::<ServerItemListItem>(
                             ServerItem::ExtraUserAccount(server_user.clone()),
                         ),
                     );
-                    search_display
-                        .push(ProjectPadItem::ServerExtraUserAccount(server_user.clone()));
-                    // TODO clone
+                    search_display.push(ProjectPadItem::ServerExtraUserAccount(server_user));
                 }
-                for server_db in search_result
-                    .server_databases
-                    .iter()
-                    .filter(|sd| sd.server_id == server.id)
-                {
+                for server_db in dbs_by_server.remove(&server_id).unwrap_or_else(|| vec![]) {
                     self.model.server_item_components.push(
                         self.search_result_box.add_widget::<ServerItemListItem>(
                             ServerItem::Database(server_db.clone()),
                         ),
                     );
-                    search_display.push(ProjectPadItem::ServerDatabase(server_db.clone()));
-                    // TODO clone
+                    search_display.push(ProjectPadItem::ServerDatabase(server_db));
                 }
-                for server_poi in search_result
-                    .server_pois
-                    .iter()
-                    .filter(|sp| sp.server_id == server.id)
-                {
+                for server_poi in pois_by_server.remove(&server_id).unwrap_or_else(|| vec![]) {
                     self.model.server_item_components.push(
                         self.search_result_box.add_widget::<ServerItemListItem>(
                             ServerItem::PointOfInterest(server_poi.clone()),
                         ),
                     );
-                    search_display.push(ProjectPadItem::ServerPoi(server_poi.clone()));
-                    // TODO clone
+                    search_display.push(ProjectPadItem::ServerPoi(server_poi));
                 }
             }
-            for server_link in search_result
-                .server_links
-                .iter()
-                .filter(|s| s.project_id == project.id)
+            for server_link in serverlinks_by_project
+                .remove(&project.id)
+                .unwrap_or_else(|| vec![])
             {
                 self.model.project_poi_components.push(
                     self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
                         ProjectItem::ServerLink(server_link.clone()),
                     )),
                 );
-                search_display.push(ProjectPadItem::ServerLink(server_link.clone()));
-                // TODO clone
+                search_display.push(ProjectPadItem::ServerLink(server_link));
             }
-            for project_note in search_result
-                .project_notes
-                .iter()
-                .filter(|s| s.project_id == project.id)
+            for project_note in projectnotes_by_project
+                .remove(&project.id)
+                .unwrap_or_else(|| vec![])
             {
                 self.model.project_poi_components.push(
                     self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
                         ProjectItem::ProjectNote(project_note.clone()),
                     )),
                 );
-                search_display.push(ProjectPadItem::ProjectNote(project_note.clone()));
-                // TODO clone
+                search_display.push(ProjectPadItem::ProjectNote(project_note));
             }
-            for project_poi in search_result
-                .project_pois
-                .iter()
-                .filter(|s| s.project_id == project.id)
+            for project_poi in projectpois_by_project
+                .remove(&project.id)
+                .unwrap_or_else(|| vec![])
             {
                 self.model.project_poi_components.push(
                     self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
                         ProjectItem::ProjectPointOfInterest(project_poi.clone()),
                     )),
                 );
-                search_display.push(ProjectPadItem::ProjectPoi(project_poi.clone()));
-                // TODO clone
+                search_display.push(ProjectPadItem::ProjectPoi(project_poi));
             }
         }
         self.model.search_display = Rc::new(search_display); // TODO don't think i need a model member & a clone
@@ -385,6 +398,7 @@ impl Widget for SearchView {
             //         .or(text.like(filter).escape('\\'))
             //         .or(path.like(filter).escape('\\')),
             // )
+            .order(project_id.asc()) // we must order because we group_by later!
             .load::<ProjectPointOfInterest>(db_conn)
             .unwrap()
     }
@@ -398,6 +412,7 @@ impl Widget for SearchView {
             //         .escape('\\')
             //         .or(contents.like(filter).escape('\\')),
             // )
+            .order(project_id.asc()) // we must order because we group_by later!
             .load::<ProjectNote>(db_conn)
             .unwrap()
     }
@@ -411,6 +426,7 @@ impl Widget for SearchView {
             //         .escape('\\')
             //         .or(contents.like(filter).escape('\\')),
             // )
+            .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerNote>(db_conn)
             .unwrap()
     }
@@ -419,6 +435,7 @@ impl Widget for SearchView {
         use projectpadsql::schema::server_link::dsl::*;
         server_link
             // .filter(desc.like(filter).escape('\\'))
+            .order(project_id.asc()) // we must order because we group_by later!
             .load::<ServerLink>(db_conn)
             .unwrap()
     }
@@ -430,6 +447,7 @@ impl Widget for SearchView {
         use projectpadsql::schema::server_extra_user_account::dsl::*;
         server_extra_user_account
             // .filter(desc.like(filter).escape('\\'))
+            .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerExtraUserAccount>(db_conn)
             .unwrap()
     }
@@ -443,6 +461,7 @@ impl Widget for SearchView {
             //         .or(path.like(filter).escape('\\'))
             //         .or(text.like(filter).escape('\\')),
             // )
+            .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerPointOfInterest>(db_conn)
             .unwrap()
     }
@@ -456,6 +475,7 @@ impl Widget for SearchView {
             //         .or(name.like(filter).escape('\\'))
             //         .or(text.like(filter).escape('\\')),
             // )
+            .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerDatabase>(db_conn)
             .unwrap()
     }
@@ -469,6 +489,7 @@ impl Widget for SearchView {
             //         .or(ip.like(filter).escape('\\'))
             //         .or(text.like(filter).escape('\\')),
             // )
+            .order(project_id.asc()) // we must order because we group_by later!
             .load::<Server>(db_conn)
             .unwrap()
     }
@@ -489,6 +510,7 @@ impl Widget for SearchView {
             //         .or(db::desc.like(filter).escape('\\'))
             //         .or(db::name.like(filter).escape('\\')),
             // )
+            .order(server_id.asc()) // we must order because we group_by later!
             .load::<(ServerWebsite, Option<ServerDatabase>)>(db_conn)
             .unwrap()
     }

@@ -339,231 +339,106 @@ impl Widget for SearchView {
     }
 
     fn fetch_search_results(&self) {
-        // match &self.model.filter {
-        //     None => self
-        //         .model
-        //         .sender
-        //         .send(SearchResult {
-        //             projects: vec![],
-        //             project_notes: vec![],
-        //             project_pois: vec![],
-        //             servers: vec![],
-        //             server_databases: vec![],
-        //             server_extra_users: vec![],
-        //             server_links: vec![],
-        //             server_notes: vec![],
-        //             server_pois: vec![],
-        //             server_websites: vec![],
-        //         })
-        //         .unwrap(),
-        //     Some(filter) => {
         let s = self.model.sender.clone();
-        //         let f = format!("%{}%", filter.replace('%', "\\%"));
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
-                let f = "";
-                // find all the leaves...
-                let servers = Self::filter_servers(sql_conn, &f);
-                let prjs = Self::filter_projects(sql_conn, &f);
-                let project_pois = Self::filter_project_pois(sql_conn, &f);
-                let project_notes = Self::filter_project_notes(sql_conn, &f);
-                let server_notes = Self::filter_server_notes(sql_conn, &f);
-                let server_links = Self::filter_server_links(sql_conn, &f);
-                let server_pois = Self::filter_server_pois(sql_conn, &f);
-                let server_databases = Self::filter_server_databases(sql_conn, &f);
-                let server_extra_users = Self::filter_server_extra_users(sql_conn, &f);
-                let server_websites = Self::filter_server_websites(sql_conn, &f)
-                    .into_iter()
-                    .map(|p| p.0)
-                    .collect::<Vec<_>>();
-
-                // bubble up to the toplevel...
-                let mut all_server_ids = servers.iter().map(|s| s.id).collect::<HashSet<_>>();
-                all_server_ids.extend(server_websites.iter().map(|sw| sw.server_id));
-                all_server_ids.extend(server_notes.iter().map(|sn| sn.server_id));
-                all_server_ids.extend(server_links.iter().map(|sl| sl.linked_server_id));
-                all_server_ids.extend(server_extra_users.iter().map(|sl| sl.server_id));
-                all_server_ids.extend(server_pois.iter().map(|sl| sl.server_id));
-                all_server_ids.extend(server_databases.iter().map(|sl| sl.server_id));
-                let all_servers = Self::load_servers_by_id(sql_conn, &all_server_ids);
-
-                let mut all_project_ids = all_servers
-                    .iter()
-                    .map(|s| s.project_id)
-                    .collect::<HashSet<_>>();
-                all_project_ids.extend(prjs.iter().map(|p| p.id));
-                all_project_ids.extend(project_pois.iter().map(|ppoi| ppoi.project_id));
-                all_project_ids.extend(project_notes.iter().map(|pn| pn.project_id));
-                let all_projects = Self::load_projects_by_id(sql_conn, &all_project_ids);
                 s.send(SearchResult {
-                    projects: all_projects,
-                    project_notes,
-                    project_pois,
-                    servers: all_servers,
-                    server_notes,
-                    server_links,
-                    server_pois,
-                    server_databases,
-                    server_extra_users,
-                    server_websites,
+                    projects: Self::filter_projects(sql_conn),
+                    project_notes: Self::filter_project_notes(sql_conn),
+                    project_pois: Self::filter_project_pois(sql_conn),
+                    servers: Self::filter_servers(sql_conn),
+                    server_notes: Self::filter_server_notes(sql_conn),
+                    server_links: Self::filter_server_links(sql_conn),
+                    server_pois: Self::filter_server_pois(sql_conn),
+                    server_databases: Self::filter_server_databases(sql_conn),
+                    server_extra_users: Self::filter_server_extra_users(sql_conn),
+                    server_websites: Self::filter_server_websites(sql_conn)
+                        .into_iter()
+                        .map(|p| p.0)
+                        .collect::<Vec<_>>(),
                 })
                 .unwrap();
             }))
             .unwrap();
-        // }
-        // }
     }
 
-    fn load_projects_by_id(db_conn: &SqliteConnection, ids: &HashSet<i32>) -> Vec<Project> {
+    fn filter_projects(db_conn: &SqliteConnection) -> Vec<Project> {
         use projectpadsql::schema::project::dsl::*;
-        project
-            // .filter(id.eq_any(ids))
-            .order(name.asc())
-            .load::<Project>(db_conn)
-            .unwrap()
+        project.order(name.asc()).load::<Project>(db_conn).unwrap()
     }
 
-    fn load_servers_by_id(db_conn: &SqliteConnection, ids: &HashSet<i32>) -> Vec<Server> {
-        use projectpadsql::schema::server::dsl::*;
-        server
-            // .filter(id.eq_any(ids))
-            .order(project_id.asc()) // we must order because we group_by later!
-            .load::<Server>(db_conn)
-            .unwrap()
-    }
-
-    fn filter_projects(db_conn: &SqliteConnection, filter: &str) -> Vec<Project> {
-        use projectpadsql::schema::project::dsl::*;
-        project
-            // .filter(name.like(filter).escape('\\'))
-            .load::<Project>(db_conn)
-            .unwrap()
-    }
-
-    fn filter_project_pois(
-        db_conn: &SqliteConnection,
-        filter: &str,
-    ) -> Vec<ProjectPointOfInterest> {
+    fn filter_project_pois(db_conn: &SqliteConnection) -> Vec<ProjectPointOfInterest> {
         use projectpadsql::schema::project_point_of_interest::dsl::*;
         project_point_of_interest
-            // .filter(
-            //     desc.like(filter)
-            //         .escape('\\')
-            //         .or(text.like(filter).escape('\\'))
-            //         .or(path.like(filter).escape('\\')),
-            // )
             .order(project_id.asc()) // we must order because we group_by later!
             .load::<ProjectPointOfInterest>(db_conn)
             .unwrap()
     }
 
-    fn filter_project_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<ProjectNote> {
+    fn filter_project_notes(db_conn: &SqliteConnection) -> Vec<ProjectNote> {
         use projectpadsql::schema::project_note::dsl::*;
         project_note
-            // .filter(
-            //     title
-            //         .like(filter)
-            //         .escape('\\')
-            //         .or(contents.like(filter).escape('\\')),
-            // )
             .order(project_id.asc()) // we must order because we group_by later!
             .load::<ProjectNote>(db_conn)
             .unwrap()
     }
 
-    fn filter_server_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerNote> {
+    fn filter_server_notes(db_conn: &SqliteConnection) -> Vec<ServerNote> {
         use projectpadsql::schema::server_note::dsl::*;
         server_note
-            // .filter(
-            //     title
-            //         .like(filter)
-            //         .escape('\\')
-            //         .or(contents.like(filter).escape('\\')),
-            // )
             .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerNote>(db_conn)
             .unwrap()
     }
 
-    fn filter_server_links(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerLink> {
+    fn filter_server_links(db_conn: &SqliteConnection) -> Vec<ServerLink> {
         use projectpadsql::schema::server_link::dsl::*;
         server_link
-            // .filter(desc.like(filter).escape('\\'))
             .order(project_id.asc()) // we must order because we group_by later!
             .load::<ServerLink>(db_conn)
             .unwrap()
     }
 
-    fn filter_server_extra_users(
-        db_conn: &SqliteConnection,
-        filter: &str,
-    ) -> Vec<ServerExtraUserAccount> {
+    fn filter_server_extra_users(db_conn: &SqliteConnection) -> Vec<ServerExtraUserAccount> {
         use projectpadsql::schema::server_extra_user_account::dsl::*;
         server_extra_user_account
-            // .filter(desc.like(filter).escape('\\'))
             .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerExtraUserAccount>(db_conn)
             .unwrap()
     }
 
-    fn filter_server_pois(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerPointOfInterest> {
+    fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ServerPointOfInterest> {
         use projectpadsql::schema::server_point_of_interest::dsl::*;
         server_point_of_interest
-            // .filter(
-            //     desc.like(filter)
-            //         .escape('\\')
-            //         .or(path.like(filter).escape('\\'))
-            //         .or(text.like(filter).escape('\\')),
-            // )
             .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerPointOfInterest>(db_conn)
             .unwrap()
     }
 
-    fn filter_server_databases(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerDatabase> {
+    fn filter_server_databases(db_conn: &SqliteConnection) -> Vec<ServerDatabase> {
         use projectpadsql::schema::server_database::dsl::*;
         server_database
-            // .filter(
-            //     desc.like(filter)
-            //         .escape('\\')
-            //         .or(name.like(filter).escape('\\'))
-            //         .or(text.like(filter).escape('\\')),
-            // )
             .order(server_id.asc()) // we must order because we group_by later!
             .load::<ServerDatabase>(db_conn)
             .unwrap()
     }
 
-    fn filter_servers(db_conn: &SqliteConnection, filter: &str) -> Vec<Server> {
+    fn filter_servers(db_conn: &SqliteConnection) -> Vec<Server> {
         use projectpadsql::schema::server::dsl::*;
         server
-            // .filter(
-            //     desc.like(filter)
-            //         .escape('\\')
-            //         .or(ip.like(filter).escape('\\'))
-            //         .or(text.like(filter).escape('\\')),
-            // )
+            .order(project_id.asc()) // we must order because we group_by later!
             .load::<Server>(db_conn)
             .unwrap()
     }
 
     fn filter_server_websites(
         db_conn: &SqliteConnection,
-        filter: &str,
     ) -> Vec<(ServerWebsite, Option<ServerDatabase>)> {
         use projectpadsql::schema::server_database::dsl as db;
         use projectpadsql::schema::server_website::dsl::*;
         server_website
             .left_outer_join(db::server_database)
-            // .filter(
-            //     desc.like(filter)
-            //         .escape('\\')
-            //         .or(url.like(filter).escape('\\'))
-            //         .or(text.like(filter).escape('\\'))
-            //         .or(db::desc.like(filter).escape('\\'))
-            //         .or(db::name.like(filter).escape('\\')),
-            // )
             .order(server_id.asc()) // we must order because we group_by later!
             .load::<(ServerWebsite, Option<ServerDatabase>)>(db_conn)
             .unwrap()
@@ -573,8 +448,6 @@ impl Widget for SearchView {
         gtk::ScrolledWindow {
             #[name="search_result_box"]
             gtk::ListBox {
-                // orientation: gtk::Orientation::Vertical,
-                // spacing: 10,
             }
         }
     }

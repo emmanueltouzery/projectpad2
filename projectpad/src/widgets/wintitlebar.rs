@@ -39,10 +39,7 @@ impl Widget for WinTitleBar {
             }
             Msg::SearchChanged => {
                 self.model.relm.stream().emit(Msg::SearchTextChanged(
-                    self.search_entry
-                        .get_text()
-                        .map(|t| t.to_string())
-                        .unwrap_or_else(|| "".to_string()),
+                    self.search_entry.get_text().to_string(),
                 ));
             }
             Msg::SearchTextChanged(_) => {} // meant for my parent
@@ -56,7 +53,7 @@ impl Widget for WinTitleBar {
             title: Some("Projectpad"),
             #[name="search_toggle"]
             gtk::ToggleButton {
-                image: Some(&gtk::Image::new_from_icon_name(Some("edit-find-symbolic"), gtk::IconSize::Menu)),
+                image: Some(&gtk::Image::from_icon_name(Some("edit-find-symbolic"), gtk::IconSize::Menu)),
                 child: {
                     pack_type: gtk::PackType::End
                 },

@@ -10,16 +10,17 @@ flate2 = "1.0"
 tar = "0.4"
 
 [dependencies]
-relm = "0.19.0"
+# relm = "0.19.0"
+relm = { git = "https://github.com/emmanueltouzery/relm", branch="gtk0.9" }
 relm-derive = "0.19.0"
-glib = "0.9.3"
-gio = "0.8.1"
-cairo-rs = {version = "0.8.1", features = ["png"]}
-gdk = "0.12.1"
+glib = "0.10.0"
+gio = "0.9.0"
+cairo-rs = {version = "0.9.0", features = ["png"]}
+gdk = "0.13.0"
 projectpadsql = { path = "../projectpadsql" }
 diesel = {version = "1.4.4", features= ["sqlite"]}
-pango = "0.8.0"
+pango = "0.9.0"
 
 [dependencies.gtk]
-version = "0.8.1"
+version = "0.9.0"
 features = ["v3_22_29"]

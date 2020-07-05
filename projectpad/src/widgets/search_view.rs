@@ -39,11 +39,21 @@ pub struct Model {
     filter: Option<String>,
     sender: relm::Sender<SearchResult>,
     search_result: Option<SearchResult>,
+    list_store: gtk::ListStore,
 }
 
 #[widget]
 impl Widget for SearchView {
-    fn init_view(&mut self) {}
+    fn init_view(&mut self) {
+        self.search_result_treeview
+            .set_model(Some(&self.model.list_store));
+        let col = gtk::TreeViewColumn::new();
+        col.set_expand(true);
+        let renderer = gtk::CellRendererText::new();
+        col.pack_start(&renderer, true);
+        col.add_attribute(&renderer, "text", 0);
+        self.search_result_treeview.append_column(&col);
+    }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
@@ -55,6 +65,7 @@ impl Widget for SearchView {
             db_sender,
             sender,
             search_result: None,
+            list_store: gtk::ListStore::new(&[glib::Type::String]),
         }
     }
 
@@ -72,95 +83,97 @@ impl Widget for SearchView {
     }
 
     fn refresh_display(&self) {
-        for child in self.search_result_box.get_children() {
-            self.search_result_box.remove(&child);
-        }
+        self.model.list_store.clear();
         if let Some(search_result) = &self.model.search_result {
             for project in &search_result.projects {
-                self.search_result_box
-                    .add_widget::<ProjectSearchHeader>(project.clone());
-                for server in search_result
-                    .servers
-                    .iter()
-                    .filter(|s| s.project_id == project.id)
-                {
-                    self.search_result_box
-                        .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
+                let row = self.model.list_store.append();
+                self.model
+                    .list_store
+                    .set_value(&row, 0, &project.name.to_value());
+                // self.search_result_box
+                //     .add_widget::<ProjectSearchHeader>(project.clone());
+                // for server in search_result
+                //     .servers
+                //     .iter()
+                //     .filter(|s| s.project_id == project.id)
+                // {
+                //     self.search_result_box
+                //         .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
 
-                    for server_website in search_result
-                        .server_websites
-                        .iter()
-                        .filter(|sw| sw.server_id == server.id)
-                    {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::Website(server_website.clone()),
-                        );
-                    }
-                    for server_note in search_result
-                        .server_notes
-                        .iter()
-                        .filter(|sn| sn.server_id == server.id)
-                    {
-                        self.search_result_box
-                            .add_widget::<ServerItemListItem>(ServerItem::Note(
-                                server_note.clone(),
-                            ));
-                    }
-                    for server_user in search_result
-                        .server_extra_users
-                        .iter()
-                        .filter(|su| su.server_id == server.id)
-                    {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::ExtraUserAccount(server_user.clone()),
-                        );
-                    }
-                    for server_db in search_result
-                        .server_databases
-                        .iter()
-                        .filter(|sd| sd.server_id == server.id)
-                    {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::Database(server_db.clone()),
-                        );
-                    }
-                    for server_poi in search_result
-                        .server_pois
-                        .iter()
-                        .filter(|sp| sp.server_id == server.id)
-                    {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::PointOfInterest(server_poi.clone()),
-                        );
-                    }
-                }
-                for server_link in search_result
-                    .server_links
-                    .iter()
-                    .filter(|s| s.project_id == project.id)
-                {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ServerLink(server_link.clone()),
-                    ));
-                }
-                for project_note in search_result
-                    .project_notes
-                    .iter()
-                    .filter(|s| s.project_id == project.id)
-                {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ProjectNote(project_note.clone()),
-                    ));
-                }
-                for project_poi in search_result
-                    .project_pois
-                    .iter()
-                    .filter(|s| s.project_id == project.id)
-                {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ProjectPointOfInterest(project_poi.clone()),
-                    ));
-                }
+                //     for server_website in search_result
+                //         .server_websites
+                //         .iter()
+                //         .filter(|sw| sw.server_id == server.id)
+                //     {
+                //         self.search_result_box.add_widget::<ServerItemListItem>(
+                //             ServerItem::Website(server_website.clone()),
+                //         );
+                //     }
+                //     for server_note in search_result
+                //         .server_notes
+                //         .iter()
+                //         .filter(|sn| sn.server_id == server.id)
+                //     {
+                //         self.search_result_box
+                //             .add_widget::<ServerItemListItem>(ServerItem::Note(
+                //                 server_note.clone(),
+                //             ));
+                //     }
+                //     for server_user in search_result
+                //         .server_extra_users
+                //         .iter()
+                //         .filter(|su| su.server_id == server.id)
+                //     {
+                //         self.search_result_box.add_widget::<ServerItemListItem>(
+                //             ServerItem::ExtraUserAccount(server_user.clone()),
+                //         );
+                //     }
+                //     for server_db in search_result
+                //         .server_databases
+                //         .iter()
+                //         .filter(|sd| sd.server_id == server.id)
+                //     {
+                //         self.search_result_box.add_widget::<ServerItemListItem>(
+                //             ServerItem::Database(server_db.clone()),
+                //         );
+                //     }
+                //     for server_poi in search_result
+                //         .server_pois
+                //         .iter()
+                //         .filter(|sp| sp.server_id == server.id)
+                //     {
+                //         self.search_result_box.add_widget::<ServerItemListItem>(
+                //             ServerItem::PointOfInterest(server_poi.clone()),
+                //         );
+                //     }
+                // }
+                // for server_link in search_result
+                //     .server_links
+                //     .iter()
+                //     .filter(|s| s.project_id == project.id)
+                // {
+                //     self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                //         ProjectItem::ServerLink(server_link.clone()),
+                //     ));
+                // }
+                // for project_note in search_result
+                //     .project_notes
+                //     .iter()
+                //     .filter(|s| s.project_id == project.id)
+                // {
+                //     self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                //         ProjectItem::ProjectNote(project_note.clone()),
+                //     ));
+                // }
+                // for project_poi in search_result
+                //     .project_pois
+                //     .iter()
+                //     .filter(|s| s.project_id == project.id)
+                // {
+                //     self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
+                //         ProjectItem::ProjectPointOfInterest(project_poi.clone()),
+                //     ));
+                // }
             }
         }
     }
@@ -389,10 +402,8 @@ impl Widget for SearchView {
 
     view! {
         gtk::ScrolledWindow {
-            #[name="search_result_box"]
-            gtk::Box {
-                orientation: gtk::Orientation::Vertical,
-                spacing: 10,
+            #[name="search_result_treeview"]
+            gtk::TreeView {
             }
         }
     }

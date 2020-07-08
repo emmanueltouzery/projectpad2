@@ -7,7 +7,9 @@ use projectpadsql::models::{
 };
 use relm::{DrawHandler, Widget};
 use relm_derive::{widget, Msg};
+use std::cell::RefCell;
 use std::collections::HashSet;
+use std::rc::Rc;
 use std::sync::mpsc;
 
 const SEARCH_RESULT_WIDGET_HEIGHT: f64 = 40.0;
@@ -30,7 +32,6 @@ pub struct SearchResult {
 pub enum Msg {
     FilterChanged(Option<String>),
     GotSearchResult(SearchResult),
-    UpdateDrawBuffer,
     MouseScroll(gdk::ScrollDirection, (f64, f64)),
 }
 
@@ -52,7 +53,8 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
     sender: relm::Sender<SearchResult>,
-    search_items: Vec<ProjectPadItem>,
+    // as of 2020-07-08 "the drawing module of relm is not ready" -- have to RefCell
+    search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
     draw_handler: DrawHandler<gtk::DrawingArea>,
 }
 
@@ -62,6 +64,19 @@ impl Widget for SearchView {
         self.model.draw_handler.init(&self.search_result_area);
         self.search_result_area
             .set_events(gdk::EventMask::ALL_EVENTS_MASK);
+        let si = self.model.search_items.clone();
+        let search_scroll = self.search_scroll.clone();
+        self.search_result_area.connect_draw(move |_, context| {
+            let search_items = si.borrow();
+            // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
+            println!("draw");
+            println!("items: {}", search_items.len());
+            let index_to_display = search_scroll.get_value() / SEARCH_RESULT_WIDGET_HEIGHT;
+            println!("displaying from item {}", index_to_display);
+            context.set_source_rgb(0.0, 1.0, 0.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
+            context.paint();
+            Inhibit(false)
+        });
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -74,7 +89,7 @@ impl Widget for SearchView {
             filter: None,
             db_sender,
             sender,
-            search_items: vec![],
+            search_items: Rc::new(RefCell::new(vec![])),
         }
     }
 
@@ -86,12 +101,6 @@ impl Widget for SearchView {
             }
             Msg::GotSearchResult(search_result) => {
                 self.refresh_display(Some(&search_result));
-            }
-            Msg::UpdateDrawBuffer => {
-                // println!("items: {}", self.model.search_items.len());
-                let context = self.model.draw_handler.get_context();
-                context.set_source_rgb(0.0, 1.0, 0.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
-                context.paint();
             }
             Msg::MouseScroll(direction, (dx, dy)) => {
                 let old_val = self.search_scroll.get_value();
@@ -112,45 +121,37 @@ impl Widget for SearchView {
 
     fn refresh_display(&mut self, search_result: Option<&SearchResult>) {
         // TODO consider the group_by & non-clones of the filter_lisbox branch
-        self.model.search_items.clear();
+        let mut search_items = self.model.search_items.borrow_mut();
+        search_items.clear();
         if let Some(search_result) = &search_result {
             for project in &search_result.projects {
-                self.model
-                    .search_items
-                    .push(ProjectPadItem::Project(project.clone()));
+                search_items.push(ProjectPadItem::Project(project.clone()));
                 for server in search_result
                     .servers
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.model
-                        .search_items
-                        .push(ProjectPadItem::Server(server.clone()));
+                    search_items.push(ProjectPadItem::Server(server.clone()));
                     for server_website in search_result
                         .server_websites
                         .iter()
                         .filter(|sw| sw.server_id == server.id)
                     {
-                        self.model
-                            .search_items
-                            .push(ProjectPadItem::ServerWebsite(server_website.clone()));
+                        search_items.push(ProjectPadItem::ServerWebsite(server_website.clone()));
                     }
                     for server_note in search_result
                         .server_notes
                         .iter()
                         .filter(|sn| sn.server_id == server.id)
                     {
-                        self.model
-                            .search_items
-                            .push(ProjectPadItem::ServerNote(server_note.clone()));
+                        search_items.push(ProjectPadItem::ServerNote(server_note.clone()));
                     }
                     for server_user in search_result
                         .server_extra_users
                         .iter()
                         .filter(|su| su.server_id == server.id)
                     {
-                        self.model
-                            .search_items
+                        search_items
                             .push(ProjectPadItem::ServerExtraUserAccount(server_user.clone()));
                     }
                     for server_db in search_result
@@ -158,18 +159,14 @@ impl Widget for SearchView {
                         .iter()
                         .filter(|sd| sd.server_id == server.id)
                     {
-                        self.model
-                            .search_items
-                            .push(ProjectPadItem::ServerDatabase(server_db.clone()));
+                        search_items.push(ProjectPadItem::ServerDatabase(server_db.clone()));
                     }
                     for server_poi in search_result
                         .server_pois
                         .iter()
                         .filter(|sp| sp.server_id == server.id)
                     {
-                        self.model
-                            .search_items
-                            .push(ProjectPadItem::ServerPoi(server_poi.clone()));
+                        search_items.push(ProjectPadItem::ServerPoi(server_poi.clone()));
                     }
                 }
                 for server_link in search_result
@@ -177,31 +174,25 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.model
-                        .search_items
-                        .push(ProjectPadItem::ServerLink(server_link.clone()));
+                    search_items.push(ProjectPadItem::ServerLink(server_link.clone()));
                 }
                 for project_note in search_result
                     .project_notes
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.model
-                        .search_items
-                        .push(ProjectPadItem::ProjectNote(project_note.clone()));
+                    search_items.push(ProjectPadItem::ProjectNote(project_note.clone()));
                 }
                 for project_poi in search_result
                     .project_pois
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.model
-                        .search_items
-                        .push(ProjectPadItem::ProjectPoi(project_poi.clone()));
+                    search_items.push(ProjectPadItem::ProjectPoi(project_poi.clone()));
                 }
             }
         }
-        let upper = self.model.search_items.len() as f64 * SEARCH_RESULT_WIDGET_HEIGHT;
+        let upper = search_items.len() as f64 * SEARCH_RESULT_WIDGET_HEIGHT;
         println!("adjustment upper is {}", upper);
         self.search_scroll.set_adjustment(&gtk::Adjustment::new(
             0.0,
@@ -442,7 +433,6 @@ impl Widget for SearchView {
                 child: {
                     expand: true
                 },
-                draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
                 scroll_event(_, event) => (Msg::MouseScroll(event.get_direction(), event.get_delta()), Inhibit(false)),
                 // motion_notify_event(_, event) => (MoveCursor(event.get_position()), Inhibit(false))
             },

@@ -11,6 +11,7 @@ use std::collections::HashSet;
 use std::sync::mpsc;
 
 const SEARCH_RESULT_WIDGET_HEIGHT: f64 = 40.0;
+const SCROLLBAR_WHEEL_DY: f64 = 20.0;
 
 pub struct SearchResult {
     pub projects: Vec<Project>,
@@ -96,9 +97,9 @@ impl Widget for SearchView {
                 let old_val = self.search_scroll.get_value();
                 let new_val = old_val
                     + if direction == gdk::ScrollDirection::Up || dy < 0.0 {
-                        -20.0
+                        -SCROLLBAR_WHEEL_DY
                     } else {
-                        20.0
+                        SCROLLBAR_WHEEL_DY
                     };
                 println!(
                     "scroll!! {} {} {} {} {}",

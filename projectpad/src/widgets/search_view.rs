@@ -10,6 +10,8 @@ use relm_derive::{widget, Msg};
 use std::collections::HashSet;
 use std::sync::mpsc;
 
+const SEARCH_RESULT_WIDGET_HEIGHT: f64 = 40.0;
+
 pub struct SearchResult {
     pub projects: Vec<Project>,
     pub project_notes: Vec<ProjectNote>,
@@ -28,6 +30,7 @@ pub enum Msg {
     FilterChanged(Option<String>),
     GotSearchResult(SearchResult),
     UpdateDrawBuffer,
+    MouseScroll(gdk::ScrollDirection, (f64, f64)),
 }
 
 #[derive(Clone, Debug)]
@@ -56,6 +59,8 @@ pub struct Model {
 impl Widget for SearchView {
     fn init_view(&mut self) {
         self.model.draw_handler.init(&self.search_result_area);
+        self.search_result_area
+            .set_events(gdk::EventMask::ALL_EVENTS_MASK);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -82,10 +87,24 @@ impl Widget for SearchView {
                 self.refresh_display(Some(&search_result));
             }
             Msg::UpdateDrawBuffer => {
-                println!("items: {}", self.model.search_items.len());
+                // println!("items: {}", self.model.search_items.len());
                 let context = self.model.draw_handler.get_context();
                 context.set_source_rgb(0.0, 1.0, 0.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
                 context.paint();
+            }
+            Msg::MouseScroll(direction, (dx, dy)) => {
+                let old_val = self.search_scroll.get_value();
+                let new_val = old_val
+                    + if direction == gdk::ScrollDirection::Up || dy < 0.0 {
+                        -20.0
+                    } else {
+                        20.0
+                    };
+                println!(
+                    "scroll!! {} {} {} {} {}",
+                    direction, old_val, new_val, dx, dy
+                );
+                self.search_scroll.set_value(new_val);
             }
         }
     }
@@ -181,6 +200,16 @@ impl Widget for SearchView {
                 }
             }
         }
+        let upper = self.model.search_items.len() as f64 * SEARCH_RESULT_WIDGET_HEIGHT;
+        println!("adjustment upper is {}", upper);
+        self.search_scroll.set_adjustment(&gtk::Adjustment::new(
+            0.0,
+            0.0,
+            upper,
+            10.0,
+            60.0,
+            self.search_result_area.get_allocation().height as f64,
+        ));
     }
 
     fn fetch_search_results(&self) {
@@ -406,12 +435,20 @@ impl Widget for SearchView {
     }
 
     view! {
-        gtk::ScrolledWindow {
+        gtk::Box {
             #[name="search_result_area"]
             gtk::DrawingArea {
+                child: {
+                    expand: true
+                },
                 draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
+                scroll_event(_, event) => (Msg::MouseScroll(event.get_direction(), event.get_delta()), Inhibit(false)),
                 // motion_notify_event(_, event) => (MoveCursor(event.get_position()), Inhibit(false))
+            },
+            #[name="search_scroll"]
+            gtk::Scrollbar {
+                orientation: gtk::Orientation::Vertical,
             }
-        }
+        },
     }
 }

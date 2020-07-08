@@ -4,8 +4,16 @@ use super::project_search_header::ProjectSearchHeader;
 use super::server_item_list_item::ServerItemListItem;
 use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
+use cairo::Context;
 use diesel::prelude::*;
+use gio::prelude::*;
+use gio::subclass::prelude::*;
+use glib::subclass;
+use glib::subclass::prelude::*;
+use glib::translate::*;
 use gtk::prelude::*;
+use gtk::subclass::prelude::*;
+use gtk::CellRendererState;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
@@ -42,6 +50,79 @@ pub struct Model {
     list_store: gtk::ListStore,
 }
 
+pub struct MyRendererPrivate {}
+
+glib_wrapper! {
+    pub struct MyRenderer(
+        Object<subclass::simple::InstanceStruct<MyRendererPrivate>,
+        subclass::simple::ClassStruct<MyRendererPrivate>,
+        MyRendererClass>)
+        @extends gtk::CellRenderer;
+
+    match fn {
+        get_type => || MyRendererPrivate::get_type().to_glib(),
+    }
+}
+
+impl MyRenderer {
+    pub fn new() -> Self {
+        glib::Object::new(Self::static_type(), &[])
+            .expect("Failed to create MyRenderer")
+            .downcast()
+            .expect("Created MyRenderer is of wrong type")
+    }
+}
+
+// https://gitlab.gnome.org/GNOME/rhythmbox/-/blob/master/widgets/rb-cell-renderer-rating.c
+// https://github.com/gtk-rs/examples/blob/master/src/bin/basic_subclass.rs
+// https://people.gnome.org/~federico/blog/librsvg-gobject-in-rust.html
+impl ObjectImpl for MyRendererPrivate {
+    glib_object_impl!();
+
+    fn set_property(&self, _obj: &glib::Object, _id: usize, _value: &glib::Value) {
+        println!("set_property, {:?}, {:?}", _obj, _value.get::<i32>());
+    }
+}
+impl ObjectSubclass for MyRendererPrivate {
+    const NAME: &'static str = "MyRenderer";
+    type ParentType = gtk::CellRenderer;
+    type Instance = subclass::simple::InstanceStruct<Self>;
+    type Class = subclass::simple::ClassStruct<Self>;
+
+    glib::glib_object_subclass!();
+
+    fn class_init(klass: &mut Self::Class) {
+        klass.install_properties(&[subclass::Property("project_id", |name| {
+            glib::ParamSpec::int(
+                name,
+                "Project ID",
+                "Project ID",
+                0,
+                i32::MAX,
+                0,
+                glib::ParamFlags::READWRITE,
+            )
+        })]);
+    }
+
+    fn new() -> Self {
+        Self {}
+    }
+}
+impl CellRendererImpl for MyRendererPrivate {
+    fn render<P: IsA<gtk::Widget>>(
+        &self,
+        renderer: &gtk::CellRenderer,
+        cr: &Context,
+        widget: &P,
+        background_area: &gtk::Rectangle,
+        cell_area: &gtk::Rectangle,
+        flags: CellRendererState,
+    ) {
+        // println!("render!!");
+    }
+}
+
 #[widget]
 impl Widget for SearchView {
     fn init_view(&mut self) {
@@ -49,9 +130,9 @@ impl Widget for SearchView {
             .set_model(Some(&self.model.list_store));
         let col = gtk::TreeViewColumn::new();
         col.set_expand(true);
-        let renderer = gtk::CellRendererText::new();
+        let renderer = MyRenderer::new();
         col.pack_start(&renderer, true);
-        col.add_attribute(&renderer, "text", 0);
+        col.add_attribute(&renderer, "project_id", 0);
         self.search_result_treeview.append_column(&col);
     }
 
@@ -65,7 +146,7 @@ impl Widget for SearchView {
             db_sender,
             sender,
             search_result: None,
-            list_store: gtk::ListStore::new(&[glib::Type::String]),
+            list_store: gtk::ListStore::new(&[glib::Type::I32]),
         }
     }
 
@@ -89,7 +170,7 @@ impl Widget for SearchView {
                 let row = self.model.list_store.append();
                 self.model
                     .list_store
-                    .set_value(&row, 0, &project.name.to_value());
+                    .set_value(&row, 0, &project.id.to_value());
                 // self.search_result_box
                 //     .add_widget::<ProjectSearchHeader>(project.clone());
                 // for server in search_result

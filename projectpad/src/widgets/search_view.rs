@@ -1,8 +1,3 @@
-use super::project_items_list::ProjectItem;
-use super::project_poi_header::ProjectPoiHeader;
-use super::project_search_header::ProjectSearchHeader;
-use super::server_item_list_item::ServerItemListItem;
-use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -10,7 +5,7 @@ use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
-use relm::{ContainerWidget, Widget};
+use relm::{DrawHandler, Widget};
 use relm_derive::{widget, Msg};
 use std::collections::HashSet;
 use std::sync::mpsc;
@@ -32,18 +27,36 @@ pub struct SearchResult {
 pub enum Msg {
     FilterChanged(Option<String>),
     GotSearchResult(SearchResult),
+    UpdateDrawBuffer,
+}
+
+#[derive(Clone, Debug)]
+enum ProjectPadItem {
+    Project(Project),
+    ProjectNote(ProjectNote),
+    ProjectPoi(ProjectPointOfInterest),
+    ServerLink(ServerLink),
+    Server(Server),
+    ServerDatabase(ServerDatabase),
+    ServerExtraUserAccount(ServerExtraUserAccount),
+    ServerNote(ServerNote),
+    ServerPoi(ServerPointOfInterest),
+    ServerWebsite(ServerWebsite),
 }
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
     sender: relm::Sender<SearchResult>,
-    search_result: Option<SearchResult>,
+    search_items: Vec<ProjectPadItem>,
+    draw_handler: DrawHandler<gtk::DrawingArea>,
 }
 
 #[widget]
 impl Widget for SearchView {
-    fn init_view(&mut self) {}
+    fn init_view(&mut self) {
+        self.model.draw_handler.init(&self.search_result_area);
+    }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
@@ -51,10 +64,11 @@ impl Widget for SearchView {
             stream.emit(Msg::GotSearchResult(search_r));
         });
         Model {
+            draw_handler: DrawHandler::new().expect("draw handler"),
             filter: None,
             db_sender,
             sender,
-            search_result: None,
+            search_items: vec![],
         }
     }
 
@@ -65,73 +79,77 @@ impl Widget for SearchView {
                 self.fetch_search_results();
             }
             Msg::GotSearchResult(search_result) => {
-                self.model.search_result = Some(search_result);
-                self.refresh_display();
+                self.refresh_display(Some(&search_result));
+            }
+            Msg::UpdateDrawBuffer => {
+                println!("items: {}", self.model.search_items.len());
+                let context = self.model.draw_handler.get_context();
+                context.set_source_rgb(0.0, 1.0, 0.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
+                context.paint();
             }
         }
     }
 
-    fn refresh_display(&self) {
-        for child in self.search_result_box.get_children() {
-            self.search_result_box.remove(&child);
-        }
-        if let Some(search_result) = &self.model.search_result {
+    fn refresh_display(&mut self, search_result: Option<&SearchResult>) {
+        // TODO consider the group_by & non-clones of the filter_lisbox branch
+        self.model.search_items.clear();
+        if let Some(search_result) = &search_result {
             for project in &search_result.projects {
-                self.search_result_box
-                    .add_widget::<ProjectSearchHeader>(project.clone());
+                self.model
+                    .search_items
+                    .push(ProjectPadItem::Project(project.clone()));
                 for server in search_result
                     .servers
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box
-                        .add_widget::<ProjectPoiHeader>(Some(ProjectItem::Server(server.clone())));
-
+                    self.model
+                        .search_items
+                        .push(ProjectPadItem::Server(server.clone()));
                     for server_website in search_result
                         .server_websites
                         .iter()
                         .filter(|sw| sw.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::Website(server_website.clone()),
-                        );
+                        self.model
+                            .search_items
+                            .push(ProjectPadItem::ServerWebsite(server_website.clone()));
                     }
                     for server_note in search_result
                         .server_notes
                         .iter()
                         .filter(|sn| sn.server_id == server.id)
                     {
-                        self.search_result_box
-                            .add_widget::<ServerItemListItem>(ServerItem::Note(
-                                server_note.clone(),
-                            ));
+                        self.model
+                            .search_items
+                            .push(ProjectPadItem::ServerNote(server_note.clone()));
                     }
                     for server_user in search_result
                         .server_extra_users
                         .iter()
                         .filter(|su| su.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::ExtraUserAccount(server_user.clone()),
-                        );
+                        self.model
+                            .search_items
+                            .push(ProjectPadItem::ServerExtraUserAccount(server_user.clone()));
                     }
                     for server_db in search_result
                         .server_databases
                         .iter()
                         .filter(|sd| sd.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::Database(server_db.clone()),
-                        );
+                        self.model
+                            .search_items
+                            .push(ProjectPadItem::ServerDatabase(server_db.clone()));
                     }
                     for server_poi in search_result
                         .server_pois
                         .iter()
                         .filter(|sp| sp.server_id == server.id)
                     {
-                        self.search_result_box.add_widget::<ServerItemListItem>(
-                            ServerItem::PointOfInterest(server_poi.clone()),
-                        );
+                        self.model
+                            .search_items
+                            .push(ProjectPadItem::ServerPoi(server_poi.clone()));
                     }
                 }
                 for server_link in search_result
@@ -139,27 +157,27 @@ impl Widget for SearchView {
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ServerLink(server_link.clone()),
-                    ));
+                    self.model
+                        .search_items
+                        .push(ProjectPadItem::ServerLink(server_link.clone()));
                 }
                 for project_note in search_result
                     .project_notes
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ProjectNote(project_note.clone()),
-                    ));
+                    self.model
+                        .search_items
+                        .push(ProjectPadItem::ProjectNote(project_note.clone()));
                 }
                 for project_poi in search_result
                     .project_pois
                     .iter()
                     .filter(|s| s.project_id == project.id)
                 {
-                    self.search_result_box.add_widget::<ProjectPoiHeader>(Some(
-                        ProjectItem::ProjectPointOfInterest(project_poi.clone()),
-                    ));
+                    self.model
+                        .search_items
+                        .push(ProjectPadItem::ProjectPoi(project_poi.clone()));
                 }
             }
         }
@@ -389,10 +407,10 @@ impl Widget for SearchView {
 
     view! {
         gtk::ScrolledWindow {
-            #[name="search_result_box"]
-            gtk::Box {
-                orientation: gtk::Orientation::Vertical,
-                spacing: 10,
+            #[name="search_result_area"]
+            gtk::DrawingArea {
+                draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
+                // motion_notify_event(_, event) => (MoveCursor(event.get_position()), Inhibit(false))
             }
         }
     }

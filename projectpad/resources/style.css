@@ -8,6 +8,7 @@
 
 .search_result_frame {
   background-color: @theme_base_color;
+  padding: 10px;
 }
 
 .items_frame_title {

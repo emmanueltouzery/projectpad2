@@ -132,13 +132,16 @@ impl Widget for SearchView {
     ) {
         // println!("drawing child {} at y {}", item_idx, y);
         context.move_to(0.0, 0.0);
+        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
         gtk::render_background(
             style_context,
             context,
-            10.0,
-            y as f64 + 10.0,
-            search_result_area.get_allocation().width as f64 - 20.0,
-            SEARCH_RESULT_WIDGET_HEIGHT as f64 - 20.0,
+            padding.left.into(),
+            y as f64 + padding.top as f64,
+            search_result_area.get_allocation().width as f64
+                - padding.left as f64
+                - padding.right as f64,
+            SEARCH_RESULT_WIDGET_HEIGHT as f64 - padding.top as f64 - padding.bottom as f64,
         );
         // https://github.com/GNOME/gtk/blob/ca71340c6bfa10092c756e5fdd5e41230e2981b5/gtk/theme/Adwaita/gtk-contained.css#L1599
         // use the system theme's frame class
@@ -146,10 +149,12 @@ impl Widget for SearchView {
         gtk::render_frame(
             style_context,
             context,
-            10.0,
-            y as f64 + 10.0,
-            search_result_area.get_allocation().width as f64 - 20.0,
-            SEARCH_RESULT_WIDGET_HEIGHT as f64 - 20.0,
+            padding.left.into(),
+            y as f64 + padding.top as f64,
+            search_result_area.get_allocation().width as f64
+                - padding.left as f64
+                - padding.right as f64,
+            SEARCH_RESULT_WIDGET_HEIGHT as f64 - padding.top as f64 - padding.bottom as f64,
         );
         style_context.remove_class("frame");
         context.move_to(12.0, y as f64 + 12.0);

@@ -1,6 +1,5 @@
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
-use glib::translate::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
@@ -13,7 +12,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::mpsc;
 
-const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 40;
+const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 120;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
 
 pub struct SearchResult {
@@ -79,12 +78,14 @@ impl Widget for SearchView {
                 search_scroll.get_value() / search_scroll.get_adjustment().get_upper()
             );
             println!("items: {}", search_items.len());
-            context.set_source_rgb(
+            gtk::render_background(
+                &search_result_area.get_style_context(),
+                context,
                 0.0,
-                1.0,
-                search_scroll.get_value() / search_scroll.get_adjustment().get_upper(),
-            ); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
-            context.paint();
+                0.0,
+                search_result_area.get_allocation().width.into(),
+                search_result_area.get_allocation().height.into(),
+            );
             let mut y = 0;
             let mut item_idx = 0;
             while y + SEARCH_RESULT_WIDGET_HEIGHT < y_to_display {
@@ -98,6 +99,10 @@ impl Widget for SearchView {
                 && y < y_to_display + search_result_area.get_allocation().height
             {
                 Self::draw_child(
+                    // not all styles are born equal. if i want gtk::render_frame() to work,
+                    // i must give the style of a button (at least the styles of a drawingarea
+                    // or a scrollbar don't work)
+                    &gtk::Button::new().get_style_context(),
                     &search_items[item_idx],
                     y - y_to_display,
                     context,
@@ -112,6 +117,7 @@ impl Widget for SearchView {
     }
 
     fn draw_child(
+        style_context: &gtk::StyleContext,
         item: &ProjectPadItem,
         y: i32,
         context: &cairo::Context,
@@ -119,23 +125,39 @@ impl Widget for SearchView {
         search_result_area: &gtk::DrawingArea,
     ) {
         // println!("drawing child {} at y {}", item_idx, y);
-        context.set_source_rgb(0.0, 0.0, 0.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
-        context.rectangle(
-            1.0,
-            y as f64,
-            (search_result_area.get_allocation().width - 2).into(),
-            (SEARCH_RESULT_WIDGET_HEIGHT - 2).into(),
+        context.move_to(0.0, 0.0);
+        style_context.add_class("items_frame");
+        gtk::render_frame(
+            style_context,
+            context,
+            10.0,
+            y as f64 + 10.0,
+            search_result_area.get_allocation().width as f64 - 20.0,
+            SEARCH_RESULT_WIDGET_HEIGHT as f64 - 20.0,
         );
-        context.fill();
-        context.move_to(1.0, y as f64);
+        style_context.remove_class("items_frame");
+        context.move_to(12.0, y as f64 + 12.0);
         match item {
-            ProjectPadItem::Project(p) => Self::draw_project(context, pango_context, &p),
+            ProjectPadItem::Project(p) => {
+                Self::draw_project(style_context, context, pango_context, &p)
+            }
             _ => {}
         }
     }
 
-    fn draw_project(context: &cairo::Context, pango_context: &pango::Context, project: &Project) {
-        context.set_source_rgb(1.0, 1.0, 1.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
+    fn draw_project(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        pango_context: &pango::Context,
+        project: &Project,
+    ) {
+        let fore_color = style_context.get_color(gtk::StateFlags::NORMAL);
+        context.set_source_rgba(
+            fore_color.red,
+            fore_color.green,
+            fore_color.blue,
+            fore_color.alpha,
+        ); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
 
         // context.show_text(&project.name);
         let layout = pango::Layout::new(pango_context);

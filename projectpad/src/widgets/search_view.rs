@@ -1,5 +1,7 @@
+use crate::icons::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
+use gdk::prelude::GdkContextExt;
 use gtk::prelude::*;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
@@ -14,6 +16,7 @@ use std::sync::mpsc;
 
 const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 120;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
+const PROJECT_ICON_SIZE: i32 = 64;
 
 pub struct SearchResult {
     pub projects: Vec<Project>,
@@ -191,13 +194,28 @@ impl Widget for SearchView {
 
         if let Some(icon) = &project.icon {
             if icon.len() > 0 {
-                let translate_x = search_result_area.get_allocation().width as f64 - 150.0;
-                let translate_y = y + padding.top as f64;
+                let translate_x = padding.left as f64;
+                let translate_y = y + (layout.get_extents().0.height / 1024) as f64 + 5.0;
                 context.translate(translate_x, translate_y);
-                super::project_badge::ProjectBadge::draw_icon(context, 96, &icon);
+                super::project_badge::ProjectBadge::draw_icon(context, PROJECT_ICON_SIZE, &icon);
                 context.translate(-translate_x, -translate_y);
             }
         }
+        Self::draw_actions_icon(
+            context,
+            search_result_area.get_allocation().width as f64 - 50.0,
+            y + padding.top as f64,
+        );
+    }
+
+    fn draw_actions_icon(context: &cairo::Context, x: f64, y: f64) {
+        let pixbuf = gtk::IconTheme::get_default()
+            .expect("get icon theme")
+            .load_icon(Icon::COG.name(), 24, gtk::IconLookupFlags::FORCE_SYMBOLIC)
+            .expect("load icon1")
+            .expect("load icon2");
+        context.set_source_pixbuf(&pixbuf, x, y);
+        context.paint();
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {

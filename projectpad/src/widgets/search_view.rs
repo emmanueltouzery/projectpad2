@@ -162,6 +162,14 @@ impl Widget for SearchView {
                 y as f64 + padding.top as f64,
                 &p,
             ),
+            ProjectPadItem::Server(s) => Self::draw_server(
+                style_context,
+                context,
+                search_result_area,
+                padding.left.into(),
+                y as f64 + padding.top as f64,
+                &s,
+            ),
             _ => {}
         }
     }
@@ -174,13 +182,73 @@ impl Widget for SearchView {
         y: f64,
         project: &Project,
     ) {
-        style_context.add_class("search_result_item_title");
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        let title_extents = Self::draw_title(
+            style_context,
+            context,
+            &padding,
+            search_result_area,
+            &project.name,
+            x,
+            y,
+        );
+
+        if let Some(icon) = &project.icon {
+            if icon.len() > 0 {
+                let translate_x = padding.left as f64;
+                let translate_y = y + (title_extents.height / 1024) as f64 + 5.0;
+                context.translate(translate_x, translate_y);
+                super::project_badge::ProjectBadge::draw_icon(context, PROJECT_ICON_SIZE, &icon);
+                context.translate(-translate_x, -translate_y);
+            }
+        }
+        Self::draw_actions_icon(
+            context,
+            search_result_area.get_allocation().width as f64,
+            y + padding.top as f64,
+        );
+    }
+
+    fn draw_server(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        search_result_area: &gtk::DrawingArea,
+        x: f64,
+        y: f64,
+        server: &Server,
+    ) {
+        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        Self::draw_title(
+            style_context,
+            context,
+            &padding,
+            search_result_area,
+            &server.desc,
+            x,
+            y,
+        );
+        Self::draw_actions_icon(
+            context,
+            search_result_area.get_allocation().width as f64,
+            y + padding.top as f64,
+        );
+    }
+
+    fn draw_title(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        padding: &gtk::Border,
+        search_result_area: &gtk::DrawingArea,
+        text: &str,
+        x: f64,
+        y: f64,
+    ) -> pango::Rectangle {
+        style_context.add_class("search_result_item_title");
         let pango_context = search_result_area
             .get_pango_context()
             .expect("failed getting pango context");
         let layout = pango::Layout::new(&pango_context);
-        layout.set_text(&project.name);
+        layout.set_text(text);
         layout.set_ellipsize(pango::EllipsizeMode::End);
         layout.set_width(350 * 1024);
         gtk::render_layout(
@@ -192,29 +260,16 @@ impl Widget for SearchView {
         );
         style_context.remove_class("search_result_item_title");
 
-        if let Some(icon) = &project.icon {
-            if icon.len() > 0 {
-                let translate_x = padding.left as f64;
-                let translate_y = y + (layout.get_extents().0.height / 1024) as f64 + 5.0;
-                context.translate(translate_x, translate_y);
-                super::project_badge::ProjectBadge::draw_icon(context, PROJECT_ICON_SIZE, &icon);
-                context.translate(-translate_x, -translate_y);
-            }
-        }
-        Self::draw_actions_icon(
-            context,
-            search_result_area.get_allocation().width as f64 - 50.0,
-            y + padding.top as f64,
-        );
+        layout.get_extents().0
     }
 
-    fn draw_actions_icon(context: &cairo::Context, x: f64, y: f64) {
+    fn draw_actions_icon(context: &cairo::Context, parent_width: f64, y: f64) {
         let pixbuf = gtk::IconTheme::get_default()
             .expect("get icon theme")
             .load_icon(Icon::COG.name(), 24, gtk::IconLookupFlags::FORCE_SYMBOLIC)
             .expect("load icon1")
             .expect("load icon2");
-        context.set_source_pixbuf(&pixbuf, x, y);
+        context.set_source_pixbuf(&pixbuf, parent_width - 50.0, y);
         context.paint();
     }
 

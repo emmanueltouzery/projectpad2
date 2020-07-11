@@ -118,7 +118,8 @@ impl Widget for ProjectBadge {
         size
     }
 
-    fn draw_icon(context: &cairo::Context, allocation_width: i32, icon: &[u8]) {
+    pub fn draw_icon(context: &cairo::Context, allocation_width: i32, icon: &[u8]) {
+        context.save();
         match cairo::ImageSurface::create_from_png(&mut icon.clone()).ok() {
             Some(surface) => {
                 let p = PADDING as f64;
@@ -148,6 +149,7 @@ impl Widget for ProjectBadge {
                 eprintln!("failed reading png {}", icon.len());
             }
         }
+        context.restore();
     }
 
     fn draw_label(context: &cairo::Context, allocation_width: i32, contents: &str) {

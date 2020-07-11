@@ -150,7 +150,6 @@ impl Widget for SearchView {
             SEARCH_RESULT_WIDGET_HEIGHT as f64 - padding.top as f64 - padding.bottom as f64,
         );
         style_context.remove_class("frame");
-        // context.move_to(12.0, y as f64 + 12.0);
         match item {
             ProjectPadItem::Project(p) => Self::draw_project(
                 style_context,
@@ -189,6 +188,16 @@ impl Widget for SearchView {
             &layout,
         );
         style_context.remove_class("search_result_item_title");
+
+        if let Some(icon) = &project.icon {
+            if icon.len() > 0 {
+                let translate_x = search_result_area.get_allocation().width as f64 - 150.0;
+                let translate_y = y + padding.top as f64;
+                context.translate(translate_x, translate_y);
+                super::project_badge::ProjectBadge::draw_icon(context, 96, &icon);
+                context.translate(-translate_x, -translate_y);
+            }
+        }
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {

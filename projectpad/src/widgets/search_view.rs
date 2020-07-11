@@ -92,9 +92,6 @@ impl Widget for SearchView {
                 y += SEARCH_RESULT_WIDGET_HEIGHT;
                 item_idx += 1;
             }
-            let pango_context = search_result_area
-                .get_pango_context()
-                .expect("failed getting pango context");
             search_result_area
                 .get_style_context()
                 .add_class("search_result_frame");
@@ -109,7 +106,6 @@ impl Widget for SearchView {
                     &search_items[item_idx],
                     y - y_to_display,
                     context,
-                    &pango_context,
                     &search_result_area,
                 );
                 y += SEARCH_RESULT_WIDGET_HEIGHT;
@@ -127,11 +123,8 @@ impl Widget for SearchView {
         item: &ProjectPadItem,
         y: i32,
         context: &cairo::Context,
-        pango_context: &pango::Context,
         search_result_area: &gtk::DrawingArea,
     ) {
-        // println!("drawing child {} at y {}", item_idx, y);
-        context.move_to(0.0, 0.0);
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
         gtk::render_background(
             style_context,
@@ -157,11 +150,16 @@ impl Widget for SearchView {
             SEARCH_RESULT_WIDGET_HEIGHT as f64 - padding.top as f64 - padding.bottom as f64,
         );
         style_context.remove_class("frame");
-        context.move_to(12.0, y as f64 + 12.0);
+        // context.move_to(12.0, y as f64 + 12.0);
         match item {
-            ProjectPadItem::Project(p) => {
-                Self::draw_project(style_context, context, pango_context, &p)
-            }
+            ProjectPadItem::Project(p) => Self::draw_project(
+                style_context,
+                context,
+                search_result_area,
+                padding.left.into(),
+                y as f64 + padding.top as f64,
+                &p,
+            ),
             _ => {}
         }
     }
@@ -169,23 +167,28 @@ impl Widget for SearchView {
     fn draw_project(
         style_context: &gtk::StyleContext,
         context: &cairo::Context,
-        pango_context: &pango::Context,
+        search_result_area: &gtk::DrawingArea,
+        x: f64,
+        y: f64,
         project: &Project,
     ) {
-        let fore_color = style_context.get_color(gtk::StateFlags::NORMAL);
-        context.set_source_rgba(
-            fore_color.red,
-            fore_color.green,
-            fore_color.blue,
-            fore_color.alpha,
-        ); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
-
-        // context.show_text(&project.name);
-        let layout = pango::Layout::new(pango_context);
+        style_context.add_class("search_result_item_title");
+        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        let pango_context = search_result_area
+            .get_pango_context()
+            .expect("failed getting pango context");
+        let layout = pango::Layout::new(&pango_context);
         layout.set_text(&project.name);
         layout.set_ellipsize(pango::EllipsizeMode::End);
         layout.set_width(350 * 1024);
-        pangocairo::functions::show_layout(context, &layout);
+        gtk::render_layout(
+            style_context,
+            context,
+            x + padding.left as f64,
+            y + padding.top as f64,
+            &layout,
+        );
+        style_context.remove_class("search_result_item_title");
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {

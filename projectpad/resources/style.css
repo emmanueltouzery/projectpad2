@@ -11,6 +11,12 @@
   padding: 10px;
 }
 
+.search_result_item_title {
+  font-size: 15px;
+  font-weight: bold;
+  padding: 15px;
+}
+
 .items_frame_title {
   border-left: 5px solid black;
   font-size: 15px;

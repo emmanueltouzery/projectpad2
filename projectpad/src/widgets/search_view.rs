@@ -141,7 +141,7 @@ impl Widget for SearchView {
         );
         // https://github.com/GNOME/gtk/blob/ca71340c6bfa10092c756e5fdd5e41230e2981b5/gtk/theme/Adwaita/gtk-contained.css#L1599
         // use the system theme's frame class
-        style_context.add_class("frame");
+        style_context.add_class(&gtk::STYLE_CLASS_FRAME);
         gtk::render_frame(
             style_context,
             context,
@@ -152,7 +152,7 @@ impl Widget for SearchView {
                 - padding.right as f64,
             SEARCH_RESULT_WIDGET_HEIGHT as f64 - padding.top as f64 - padding.bottom as f64,
         );
-        style_context.remove_class("frame");
+        style_context.remove_class(&gtk::STYLE_CLASS_FRAME);
         match item {
             ProjectPadItem::Project(p) => Self::draw_project(
                 style_context,

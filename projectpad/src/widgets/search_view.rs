@@ -17,6 +17,7 @@ use std::sync::mpsc;
 const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 120;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
 const PROJECT_ICON_SIZE: i32 = 64;
+const ACTION_ICON_SIZE: i32 = 24;
 
 pub struct SearchResult {
     pub projects: Vec<Project>,
@@ -203,6 +204,7 @@ impl Widget for SearchView {
             }
         }
         Self::draw_actions_icon(
+            style_context,
             context,
             search_result_area.get_allocation().width as f64,
             y + padding.top as f64,
@@ -228,6 +230,7 @@ impl Widget for SearchView {
             y,
         );
         Self::draw_actions_icon(
+            style_context,
             context,
             search_result_area.get_allocation().width as f64,
             y + padding.top as f64,
@@ -263,14 +266,49 @@ impl Widget for SearchView {
         layout.get_extents().0
     }
 
-    fn draw_actions_icon(context: &cairo::Context, parent_width: f64, y: f64) {
+    fn draw_actions_icon(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        parent_width: f64,
+        y: f64,
+    ) {
+        // we know we use symbolic (single color) icons.
+        // i want to paint them in the theme's foreground color
+        // (important for dark themes).
+        // the way that I found is to paint a mask.
+
+        // 1. load the icon as a pixbuf...
         let pixbuf = gtk::IconTheme::get_default()
             .expect("get icon theme")
-            .load_icon(Icon::COG.name(), 24, gtk::IconLookupFlags::FORCE_SYMBOLIC)
+            .load_icon(
+                Icon::COG.name(),
+                ACTION_ICON_SIZE,
+                gtk::IconLookupFlags::FORCE_SYMBOLIC,
+            )
             .expect("load icon1")
             .expect("load icon2");
-        context.set_source_pixbuf(&pixbuf, parent_width - 50.0, y);
-        context.paint();
+
+        // 2. create a cairo surface, paint the pixbuf on it...
+        let surf =
+            cairo::ImageSurface::create(cairo::Format::ARgb32, ACTION_ICON_SIZE, ACTION_ICON_SIZE)
+                .expect("ImageSurface");
+        let surf_context = cairo::Context::new(&surf);
+        surf_context.set_source_pixbuf(&pixbuf, 0.0, 0.0);
+        surf_context.paint();
+
+        // 3. set the foreground color of our context to the theme's fg color
+        let fore_color = style_context.get_color(gtk::StateFlags::NORMAL);
+        context.set_source_rgba(
+            fore_color.red,
+            fore_color.green,
+            fore_color.blue,
+            fore_color.alpha,
+        );
+
+        // 4. use the surface we created with the icon as a mask
+        // (the alpha channel of the surface is mixed with the context
+        // color to paint)
+        context.mask_surface(&surf, parent_width - 50.0, y);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {

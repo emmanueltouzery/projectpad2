@@ -68,10 +68,6 @@ impl Widget for SearchView {
         let si = self.model.search_items.clone();
         let search_scroll = self.search_scroll.clone();
         let search_result_area = self.search_result_area.clone();
-        self.btn
-            .get_style_context()
-            .add_class("search_result_frame");
-        let btn = self.btn.clone();
         self.search_result_area.connect_draw(move |_, context| {
             let search_items = si.borrow();
             // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
@@ -99,6 +95,9 @@ impl Widget for SearchView {
             let pango_context = search_result_area
                 .get_pango_context()
                 .expect("failed getting pango context");
+            search_result_area
+                .get_style_context()
+                .add_class("search_result_frame");
             while item_idx < search_items.len()
                 && y < y_to_display + search_result_area.get_allocation().height
             {
@@ -106,7 +105,7 @@ impl Widget for SearchView {
                     // not all styles are born equal. if i want gtk::render_frame() to work,
                     // i must give the style of a button (at least the styles of a drawingarea
                     // or a scrollbar don't work)
-                    &btn.get_style_context(),
+                    &search_result_area.get_style_context(),
                     &search_items[item_idx],
                     y - y_to_display,
                     context,
@@ -116,6 +115,9 @@ impl Widget for SearchView {
                 y += SEARCH_RESULT_WIDGET_HEIGHT;
                 item_idx += 1;
             }
+            search_result_area
+                .get_style_context()
+                .remove_class("search_result_frame");
             Inhibit(false)
         });
     }
@@ -531,8 +533,6 @@ impl Widget for SearchView {
 
     view! {
         gtk::Box {
-        #[name="btn"]
-        gtk::Box {},
             #[name="search_result_area"]
             gtk::DrawingArea {
                 child: {

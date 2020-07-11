@@ -68,6 +68,10 @@ impl Widget for SearchView {
         let si = self.model.search_items.clone();
         let search_scroll = self.search_scroll.clone();
         let search_result_area = self.search_result_area.clone();
+        self.btn
+            .get_style_context()
+            .add_class("search_result_frame");
+        let btn = self.btn.clone();
         self.search_result_area.connect_draw(move |_, context| {
             let search_items = si.borrow();
             // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
@@ -102,7 +106,7 @@ impl Widget for SearchView {
                     // not all styles are born equal. if i want gtk::render_frame() to work,
                     // i must give the style of a button (at least the styles of a drawingarea
                     // or a scrollbar don't work)
-                    &gtk::Button::new().get_style_context(),
+                    &btn.get_style_context(),
                     &search_items[item_idx],
                     y - y_to_display,
                     context,
@@ -126,7 +130,17 @@ impl Widget for SearchView {
     ) {
         // println!("drawing child {} at y {}", item_idx, y);
         context.move_to(0.0, 0.0);
-        style_context.add_class("items_frame");
+        gtk::render_background(
+            style_context,
+            context,
+            10.0,
+            y as f64 + 10.0,
+            search_result_area.get_allocation().width as f64 - 20.0,
+            SEARCH_RESULT_WIDGET_HEIGHT as f64 - 20.0,
+        );
+        // https://github.com/GNOME/gtk/blob/ca71340c6bfa10092c756e5fdd5e41230e2981b5/gtk/theme/Adwaita/gtk-contained.css#L1599
+        // use the system theme's frame class
+        style_context.add_class("frame");
         gtk::render_frame(
             style_context,
             context,
@@ -135,7 +149,7 @@ impl Widget for SearchView {
             search_result_area.get_allocation().width as f64 - 20.0,
             SEARCH_RESULT_WIDGET_HEIGHT as f64 - 20.0,
         );
-        style_context.remove_class("items_frame");
+        style_context.remove_class("frame");
         context.move_to(12.0, y as f64 + 12.0);
         match item {
             ProjectPadItem::Project(p) => {
@@ -517,6 +531,8 @@ impl Widget for SearchView {
 
     view! {
         gtk::Box {
+        #[name="btn"]
+        gtk::Box {},
             #[name="search_result_area"]
             gtk::DrawingArea {
                 child: {

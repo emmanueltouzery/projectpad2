@@ -6,6 +6,10 @@
   background-color: @theme_base_color;
 }
 
+.search_result_frame {
+  background-color: @theme_base_color;
+}
+
 .items_frame_title {
   border-left: 5px solid black;
   font-size: 15px;

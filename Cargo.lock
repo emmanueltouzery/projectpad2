@@ -1590,6 +1590,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pangocairo"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdd1077c0db2e5eb9225cc040514aa856cb6a4c4890c542cf50d37880e1c572d"
+dependencies = [
+ "bitflags",
+ "cairo-rs",
+ "cairo-sys-rs",
+ "glib",
+ "glib-sys",
+ "gobject-sys",
+ "libc",
+ "pango",
+ "pango-sys",
+ "pangocairo-sys",
+]
+
+[[package]]
 name = "pangocairo-sys"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1694,7 +1712,7 @@ dependencies = [
  "glib",
  "gtk",
  "pango",
- "pangocairo-sys",
+ "pangocairo",
  "projectpadsql",
  "relm",
  "relm-derive",

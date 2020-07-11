@@ -142,13 +142,7 @@ impl Widget for SearchView {
         layout.set_text(&project.name);
         layout.set_ellipsize(pango::EllipsizeMode::End);
         layout.set_width(350 * 1024);
-        // context.draw_layout(layout, 0, 0);
-        unsafe {
-            pango_cairo_sys::pango_cairo_show_layout(
-                context.to_raw_none(),
-                layout.to_glib_none().0,
-            );
-        }
+        pangocairo::functions::show_layout(context, &layout);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {

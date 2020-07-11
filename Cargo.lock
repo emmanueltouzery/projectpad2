@@ -1590,6 +1590,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pangocairo-sys"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3921b31ab776b23e28c8f6e474dda52fdc28bc2689101caeb362ba976719efe"
+dependencies = [
+ "cairo-sys-rs",
+ "glib-sys",
+ "libc",
+ "pango-sys",
+ "pkg-config",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1681,6 +1694,7 @@ dependencies = [
  "glib",
  "gtk",
  "pango",
+ "pangocairo-sys",
  "projectpadsql",
  "relm",
  "relm-derive",

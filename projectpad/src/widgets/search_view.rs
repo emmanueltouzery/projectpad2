@@ -1,5 +1,6 @@
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
+use glib::translate::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
@@ -12,7 +13,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::mpsc;
 
-const SEARCH_RESULT_WIDGET_HEIGHT: f64 = 40.0;
+const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 40;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
 
 pub struct SearchResult {
@@ -33,6 +34,7 @@ pub enum Msg {
     FilterChanged(Option<String>),
     GotSearchResult(SearchResult),
     MouseScroll(gdk::ScrollDirection, (f64, f64)),
+    ScrollChanged,
 }
 
 #[derive(Clone, Debug)]
@@ -55,7 +57,7 @@ pub struct Model {
     sender: relm::Sender<SearchResult>,
     // as of 2020-07-08 "the drawing module of relm is not ready" -- have to RefCell
     search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
-    draw_handler: DrawHandler<gtk::DrawingArea>,
+    draw_handler: DrawHandler<gtk::DrawingArea>, // <--- TODO drop me
 }
 
 #[widget]
@@ -66,17 +68,87 @@ impl Widget for SearchView {
             .set_events(gdk::EventMask::ALL_EVENTS_MASK);
         let si = self.model.search_items.clone();
         let search_scroll = self.search_scroll.clone();
+        let search_result_area = self.search_result_area.clone();
         self.search_result_area.connect_draw(move |_, context| {
             let search_items = si.borrow();
             // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
-            println!("draw");
+            let y_to_display = search_scroll.get_value() as i32;
+            println!(
+                "draw {} {}",
+                y_to_display,
+                search_scroll.get_value() / search_scroll.get_adjustment().get_upper()
+            );
             println!("items: {}", search_items.len());
-            let index_to_display = search_scroll.get_value() / SEARCH_RESULT_WIDGET_HEIGHT;
-            println!("displaying from item {}", index_to_display);
-            context.set_source_rgb(0.0, 1.0, 0.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
+            context.set_source_rgb(
+                0.0,
+                1.0,
+                search_scroll.get_value() / search_scroll.get_adjustment().get_upper(),
+            ); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
             context.paint();
+            let mut y = 0;
+            let mut item_idx = 0;
+            while y + SEARCH_RESULT_WIDGET_HEIGHT < y_to_display {
+                y += SEARCH_RESULT_WIDGET_HEIGHT;
+                item_idx += 1;
+            }
+            let pango_context = search_result_area
+                .get_pango_context()
+                .expect("failed getting pango context");
+            while item_idx < search_items.len()
+                && y < y_to_display + search_result_area.get_allocation().height
+            {
+                Self::draw_child(
+                    &search_items[item_idx],
+                    y - y_to_display,
+                    context,
+                    &pango_context,
+                    &search_result_area,
+                );
+                y += SEARCH_RESULT_WIDGET_HEIGHT;
+                item_idx += 1;
+            }
             Inhibit(false)
         });
+    }
+
+    fn draw_child(
+        item: &ProjectPadItem,
+        y: i32,
+        context: &cairo::Context,
+        pango_context: &pango::Context,
+        search_result_area: &gtk::DrawingArea,
+    ) {
+        // println!("drawing child {} at y {}", item_idx, y);
+        context.set_source_rgb(0.0, 0.0, 0.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
+        context.rectangle(
+            1.0,
+            y as f64,
+            (search_result_area.get_allocation().width - 2).into(),
+            (SEARCH_RESULT_WIDGET_HEIGHT - 2).into(),
+        );
+        context.fill();
+        context.move_to(1.0, y as f64);
+        match item {
+            ProjectPadItem::Project(p) => Self::draw_project(context, pango_context, &p),
+            _ => {}
+        }
+    }
+
+    fn draw_project(context: &cairo::Context, pango_context: &pango::Context, project: &Project) {
+        context.set_source_rgb(1.0, 1.0, 1.0); // TODO colors from the theme... https://stackoverflow.com/questions/38871450/how-can-i-get-the-default-colors-in-gtk
+
+        // context.show_text(&project.name);
+        let layout = pango::Layout::new(pango_context);
+        layout.set_text(&project.name);
+        layout.set_ellipsize(pango::EllipsizeMode::End);
+        layout.set_width(350 * 1024);
+        // context.draw_layout(layout, 0, 0);
+        unsafe {
+            pango_cairo_sys::pango_cairo_show_layout(
+                context.to_raw_none(),
+                layout.to_glib_none().0,
+            );
+        }
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -116,6 +188,7 @@ impl Widget for SearchView {
                 );
                 self.search_scroll.set_value(new_val);
             }
+            Msg::ScrollChanged => self.search_result_area.queue_draw(),
         }
     }
 
@@ -192,12 +265,12 @@ impl Widget for SearchView {
                 }
             }
         }
-        let upper = search_items.len() as f64 * SEARCH_RESULT_WIDGET_HEIGHT;
+        let upper = search_items.len() as i32 * SEARCH_RESULT_WIDGET_HEIGHT;
         println!("adjustment upper is {}", upper);
         self.search_scroll.set_adjustment(&gtk::Adjustment::new(
             0.0,
             0.0,
-            upper,
+            upper as f64,
             10.0,
             60.0,
             self.search_result_area.get_allocation().height as f64,
@@ -439,6 +512,7 @@ impl Widget for SearchView {
             #[name="search_scroll"]
             gtk::Scrollbar {
                 orientation: gtk::Orientation::Vertical,
+                value_changed => Msg::ScrollChanged
             }
         },
     }

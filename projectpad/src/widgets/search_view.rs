@@ -1,3 +1,8 @@
+// for a summary as to how I came to that approach of using a
+// DrawingArea to render the search results, you can view this
+// discussion:
+// https://discourse.gnome.org/t/lazy-scrollable-list/3774
+
 use crate::icons::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;

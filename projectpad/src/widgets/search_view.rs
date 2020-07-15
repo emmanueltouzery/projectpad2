@@ -108,9 +108,6 @@ impl Widget for SearchView {
                 && y < y_to_display + search_result_area.get_allocation().height
             {
                 Self::draw_child(
-                    // not all styles are born equal. if i want gtk::render_frame() to work,
-                    // i must give the style of a button (at least the styles of a drawingarea
-                    // or a scrollbar don't work)
                     &search_result_area.get_style_context(),
                     &search_items[item_idx],
                     y - y_to_display,
@@ -234,7 +231,6 @@ impl Widget for SearchView {
             x,
             y,
         );
-        println!("label height: {}", title_rect.height);
         Self::draw_environment(
             style_context,
             context,
@@ -268,7 +264,7 @@ impl Widget for SearchView {
         style_context.add_class(&label_classname);
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
         let pango_context = search_result_area
-            .get_pango_context()
+            .create_pango_context()
             .expect("failed getting pango context");
         let layout = pango::Layout::new(&pango_context);
         layout.set_text(&env_name.to_uppercase());
@@ -315,7 +311,7 @@ impl Widget for SearchView {
     ) -> pango::Rectangle {
         style_context.add_class("search_result_item_title");
         let pango_context = search_result_area
-            .get_pango_context()
+            .create_pango_context()
             .expect("failed getting pango context");
         let layout = pango::Layout::new(&pango_context);
         layout.set_text(text);

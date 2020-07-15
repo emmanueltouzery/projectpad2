@@ -17,6 +17,11 @@
   padding: 15px;
 }
 
+.search_result_item_link {
+  color: #4b6983;
+  text-decoration: underline;
+}
+
 .items_frame_title {
   border-left: 5px solid black;
   font-size: 15px;

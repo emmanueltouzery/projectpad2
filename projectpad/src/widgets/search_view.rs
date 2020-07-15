@@ -23,6 +23,7 @@ const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 120;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
 const PROJECT_ICON_SIZE: i32 = 64;
 const ACTION_ICON_SIZE: i32 = 24;
+const ACTION_ICON_OFFSET_FROM_RIGHT: f64 = 50.0;
 
 pub struct SearchResult {
     pub projects: Vec<Project>,
@@ -173,6 +174,14 @@ impl Widget for SearchView {
                 y as f64 + padding.top as f64,
                 &s,
             ),
+            ProjectPadItem::ServerWebsite(w) => Self::draw_server_website(
+                style_context,
+                context,
+                search_result_area,
+                padding.left.into(),
+                y as f64 + padding.top as f64,
+                &w,
+            ),
             _ => {}
         }
     }
@@ -194,6 +203,7 @@ impl Widget for SearchView {
             &project.name,
             x,
             y,
+            None,
         );
 
         if let Some(icon) = &project.icon {
@@ -205,10 +215,54 @@ impl Widget for SearchView {
                 context.translate(-translate_x, -translate_y);
             }
         }
-        Self::draw_actions_icon(
+        Self::draw_icon(
             style_context,
             context,
-            search_result_area.get_allocation().width as f64,
+            &Icon::COG,
+            search_result_area.get_allocation().width as f64 - ACTION_ICON_OFFSET_FROM_RIGHT,
+            y + padding.top as f64,
+        );
+    }
+
+    fn draw_server_website(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        search_result_area: &gtk::DrawingArea,
+        x: f64,
+        y: f64,
+        website: &ServerWebsite,
+    ) {
+        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        Self::draw_icon(
+            style_context,
+            context,
+            &Icon::HTTP,
+            x + padding.left as f64,
+            y + padding.top as f64,
+        );
+        let title_rect = Self::draw_title(
+            style_context,
+            context,
+            &padding,
+            search_result_area,
+            &website.desc,
+            x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
+            y,
+            Some(ACTION_ICON_SIZE),
+        );
+        Self::draw_link(
+            style_context,
+            context,
+            search_result_area,
+            &website.url,
+            x + padding.left as f64,
+            y + (title_rect.height / 1024) as f64 + padding.top as f64,
+        );
+        Self::draw_icon(
+            style_context,
+            context,
+            &Icon::COG,
+            search_result_area.get_allocation().width as f64 - ACTION_ICON_OFFSET_FROM_RIGHT,
             y + padding.top as f64,
         );
     }
@@ -230,6 +284,7 @@ impl Widget for SearchView {
             &server.desc,
             x,
             y,
+            None,
         );
         Self::draw_environment(
             style_context,
@@ -244,10 +299,11 @@ impl Widget for SearchView {
                 EnvironmentType::EnvDevelopment => "dev",
             },
         );
-        Self::draw_actions_icon(
+        Self::draw_icon(
             style_context,
             context,
-            search_result_area.get_allocation().width as f64,
+            &Icon::COG,
+            search_result_area.get_allocation().width as f64 - ACTION_ICON_OFFSET_FROM_RIGHT,
             y + padding.top as f64,
         );
     }
@@ -308,8 +364,44 @@ impl Widget for SearchView {
         text: &str,
         x: f64,
         y: f64,
+        height: Option<i32>,
     ) -> pango::Rectangle {
         style_context.add_class("search_result_item_title");
+        let pango_context = search_result_area
+            .create_pango_context()
+            .expect("failed getting pango context");
+        let layout = pango::Layout::new(&pango_context);
+        layout.set_text(text);
+        layout.set_ellipsize(pango::EllipsizeMode::End);
+        layout.set_width(350 * 1024);
+        let extra_y = if let Some(h) = height {
+            let layout_height = layout.get_extents().1.height as f64 / 1024.0;
+            (h as f64 - layout_height) / 2.0
+        } else {
+            0.0
+        };
+        gtk::render_layout(
+            style_context,
+            context,
+            x + padding.left as f64,
+            y + padding.top as f64 + extra_y,
+            &layout,
+        );
+        style_context.remove_class("search_result_item_title");
+
+        layout.get_extents().1
+    }
+
+    fn draw_link(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        search_result_area: &gtk::DrawingArea,
+        text: &str,
+        x: f64,
+        y: f64,
+    ) -> pango::Rectangle {
+        style_context.add_class("search_result_item_link");
+        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
         let pango_context = search_result_area
             .create_pango_context()
             .expect("failed getting pango context");
@@ -324,15 +416,16 @@ impl Widget for SearchView {
             y + padding.top as f64,
             &layout,
         );
-        style_context.remove_class("search_result_item_title");
 
+        style_context.remove_class("search_result_item_link");
         layout.get_extents().1
     }
 
-    fn draw_actions_icon(
+    fn draw_icon(
         style_context: &gtk::StyleContext,
         context: &cairo::Context,
-        parent_width: f64,
+        icon: &Icon,
+        x: f64,
         y: f64,
     ) {
         // we know we use symbolic (single color) icons.
@@ -344,7 +437,7 @@ impl Widget for SearchView {
         let pixbuf = gtk::IconTheme::get_default()
             .expect("get icon theme")
             .load_icon(
-                Icon::COG.name(),
+                icon.name(),
                 ACTION_ICON_SIZE,
                 gtk::IconLookupFlags::FORCE_SYMBOLIC,
             )
@@ -371,7 +464,7 @@ impl Widget for SearchView {
         // 4. use the surface we created with the icon as a mask
         // (the alpha channel of the surface is mixed with the context
         // color to paint)
-        context.mask_surface(&surf, parent_width - 50.0, y);
+        context.mask_surface(&surf, x, y);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {

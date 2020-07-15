@@ -9,8 +9,8 @@ use diesel::prelude::*;
 use gdk::prelude::GdkContextExt;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
-    ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
+    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase,
+    ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use relm::{DrawHandler, Widget};
 use relm_derive::{widget, Msg};
@@ -225,7 +225,7 @@ impl Widget for SearchView {
         server: &Server,
     ) {
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-        Self::draw_title(
+        let title_rect = Self::draw_title(
             style_context,
             context,
             &padding,
@@ -234,12 +234,74 @@ impl Widget for SearchView {
             x,
             y,
         );
+        println!("label height: {}", title_rect.height);
+        Self::draw_environment(
+            style_context,
+            context,
+            search_result_area,
+            x + padding.left as f64,
+            y + (title_rect.height / 1024) as f64 + padding.top as f64,
+            &match server.environment {
+                EnvironmentType::EnvUat => "uat",
+                EnvironmentType::EnvProd => "prod",
+                EnvironmentType::EnvStage => "stg",
+                EnvironmentType::EnvDevelopment => "dev",
+            },
+        );
         Self::draw_actions_icon(
             style_context,
             context,
             search_result_area.get_allocation().width as f64,
             y + padding.top as f64,
         );
+    }
+
+    fn draw_environment(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        search_result_area: &gtk::DrawingArea,
+        x: f64,
+        y: f64,
+        env_name: &str,
+    ) {
+        let label_classname = format!("environment_label_{}", env_name);
+        style_context.add_class(&label_classname);
+        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        let pango_context = search_result_area
+            .get_pango_context()
+            .expect("failed getting pango context");
+        let layout = pango::Layout::new(&pango_context);
+        layout.set_text(&env_name.to_uppercase());
+        let rect = layout.get_extents().1;
+        let text_w = (rect.width / 1024) as f64;
+        let text_h = (rect.height / 1024) as f64;
+
+        gtk::render_background(
+            style_context,
+            context,
+            x,
+            y,
+            text_w + padding.left as f64 + padding.right as f64,
+            text_h + padding.top as f64 + padding.bottom as f64,
+        );
+
+        gtk::render_frame(
+            style_context,
+            context,
+            x,
+            y,
+            text_w + padding.left as f64 + padding.right as f64,
+            text_h + padding.top as f64 + padding.bottom as f64,
+        );
+
+        gtk::render_layout(
+            style_context,
+            context,
+            x + padding.left as f64,
+            y + padding.top as f64,
+            &layout,
+        );
+        style_context.remove_class(&label_classname);
     }
 
     fn draw_title(
@@ -268,7 +330,7 @@ impl Widget for SearchView {
         );
         style_context.remove_class("search_result_item_title");
 
-        layout.get_extents().0
+        layout.get_extents().1
     }
 
     fn draw_actions_icon(

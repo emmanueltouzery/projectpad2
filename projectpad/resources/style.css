@@ -52,3 +52,27 @@
     alpha(@theme_bg_color, 0) 12px
   );
 }
+
+/* https://developer.gnome.org/hig-book/unstable/design-color.html.en */
+.environment_label_dev {
+  background: #46a046; /* greenish */
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  padding: 3px;
+}
+.environment_label_uat {
+  background: #eed680; /* yellowish */
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  padding: 3px;
+  font-size: 11px;
+}
+.environment_label_stg {
+  background: #7590ae; /* blueish  */
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  padding: 3px;
+}
+.environment_label_prod {
+  background-color: #df421e; /* reddish */
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  padding: 3px;
+  font-size: 8px;
+}

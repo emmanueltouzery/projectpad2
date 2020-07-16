@@ -67,13 +67,11 @@ pub struct Model {
     sender: relm::Sender<SearchResult>,
     // as of 2020-07-08 "the drawing module of relm is not ready" -- have to RefCell
     search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
-    draw_handler: DrawHandler<gtk::DrawingArea>, // <--- TODO drop me
 }
 
 #[widget]
 impl Widget for SearchView {
     fn init_view(&mut self) {
-        self.model.draw_handler.init(&self.search_result_area);
         self.search_result_area
             .set_events(gdk::EventMask::ALL_EVENTS_MASK);
         let si = self.model.search_items.clone();
@@ -525,7 +523,6 @@ impl Widget for SearchView {
             stream.emit(Msg::GotSearchResult(search_r));
         });
         Model {
-            draw_handler: DrawHandler::new().expect("draw handler"),
             filter: None,
             db_sender,
             sender,

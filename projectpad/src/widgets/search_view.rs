@@ -7,6 +7,7 @@ use crate::icons::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gdk::prelude::GdkContextExt;
+use gdk::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
     EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase,
@@ -15,7 +16,7 @@ use projectpadsql::models::{
 use relm::{DrawHandler, Widget};
 use relm_derive::{widget, Msg};
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::mpsc;
 
@@ -37,6 +38,28 @@ pub struct SearchResult {
     pub server_notes: Vec<ServerNote>,
     pub server_pois: Vec<ServerPointOfInterest>,
     pub server_websites: Vec<ServerWebsite>,
+}
+
+struct Area {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+impl Area {
+    pub fn new(x: i32, y: i32, width: i32, height: i32) -> Area {
+        Area {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    pub fn contains(&self, x: i32, y: i32) -> bool {
+        x >= self.x && x < self.x + self.width && y >= self.y && y < self.y + self.height
+    }
 }
 
 #[derive(Msg)]
@@ -67,6 +90,7 @@ pub struct Model {
     sender: relm::Sender<SearchResult>,
     // as of 2020-07-08 "the drawing module of relm is not ready" -- have to RefCell
     search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
+    links: Rc<RefCell<Vec<(Area, String)>>>,
 }
 
 #[widget]
@@ -76,52 +100,88 @@ impl Widget for SearchView {
             .set_events(gdk::EventMask::ALL_EVENTS_MASK);
         let si = self.model.search_items.clone();
         let search_scroll = self.search_scroll.clone();
+        let links = self.model.links.clone();
         let search_result_area = self.search_result_area.clone();
         self.search_result_area.connect_draw(move |_, context| {
-            let search_items = si.borrow();
-            // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
-            let y_to_display = search_scroll.get_value() as i32;
-            println!(
-                "draw {} {}",
-                y_to_display,
-                search_scroll.get_value() / search_scroll.get_adjustment().get_upper()
-            );
-            println!("items: {}", search_items.len());
-            gtk::render_background(
-                &search_result_area.get_style_context(),
-                context,
-                0.0,
-                0.0,
-                search_result_area.get_allocation().width.into(),
-                search_result_area.get_allocation().height.into(),
-            );
-            let mut y = 0;
-            let mut item_idx = 0;
-            while y + SEARCH_RESULT_WIDGET_HEIGHT < y_to_display {
-                y += SEARCH_RESULT_WIDGET_HEIGHT;
-                item_idx += 1;
-            }
-            search_result_area
-                .get_style_context()
-                .add_class("search_result_frame");
-            while item_idx < search_items.len()
-                && y < y_to_display + search_result_area.get_allocation().height
-            {
-                Self::draw_child(
-                    &search_result_area.get_style_context(),
-                    &search_items[item_idx],
-                    y - y_to_display,
-                    context,
-                    &search_result_area,
-                );
-                y += SEARCH_RESULT_WIDGET_HEIGHT;
-                item_idx += 1;
-            }
-            search_result_area
-                .get_style_context()
-                .remove_class("search_result_frame");
+            Self::draw_search_view(context, &links, &si, &search_result_area, &search_scroll);
             Inhibit(false)
         });
+        let links_mmove = self.model.links.clone();
+        let search_result_area_mmove = self.search_result_area.clone();
+        let hand_cursor = gdk::Cursor::new_for_display(
+            &self.search_result_area.get_display().unwrap(),
+            gdk::CursorType::Hand2,
+        );
+        self.search_result_area
+            .connect_motion_notify_event(move |_, event_motion| {
+                let x = event_motion.get_position().0 as i32;
+                let y = event_motion.get_position().1 as i32;
+                let links = links_mmove.borrow();
+                search_result_area_mmove
+                    .get_parent_window()
+                    .unwrap()
+                    .set_cursor(
+                        links
+                            .iter()
+                            .find(|l| l.0.contains(x, y))
+                            .and_then(|_| Some(&hand_cursor)),
+                    );
+                Inhibit(false)
+            });
+    }
+
+    fn draw_search_view(
+        context: &cairo::Context,
+        links: &Rc<RefCell<Vec<(Area, String)>>>,
+        si: &Rc<RefCell<Vec<ProjectPadItem>>>,
+        search_result_area: &gtk::DrawingArea,
+        search_scroll: &gtk::Scrollbar,
+    ) {
+        let mut links = links.borrow_mut();
+        links.clear();
+        let search_items = si.borrow();
+        // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
+        let y_to_display = search_scroll.get_value() as i32;
+        println!(
+            "draw {} {}",
+            y_to_display,
+            search_scroll.get_value() / search_scroll.get_adjustment().get_upper()
+        );
+        println!("items: {}", search_items.len());
+        gtk::render_background(
+            &search_result_area.get_style_context(),
+            context,
+            0.0,
+            0.0,
+            search_result_area.get_allocation().width.into(),
+            search_result_area.get_allocation().height.into(),
+        );
+        let mut y = 0;
+        let mut item_idx = 0;
+        while y + SEARCH_RESULT_WIDGET_HEIGHT < y_to_display {
+            y += SEARCH_RESULT_WIDGET_HEIGHT;
+            item_idx += 1;
+        }
+        search_result_area
+            .get_style_context()
+            .add_class("search_result_frame");
+        while item_idx < search_items.len()
+            && y < y_to_display + search_result_area.get_allocation().height
+        {
+            Self::draw_child(
+                &search_result_area.get_style_context(),
+                &search_items[item_idx],
+                y - y_to_display,
+                context,
+                &search_result_area,
+                &mut links,
+            );
+            y += SEARCH_RESULT_WIDGET_HEIGHT;
+            item_idx += 1;
+        }
+        search_result_area
+            .get_style_context()
+            .remove_class("search_result_frame");
     }
 
     fn draw_box(
@@ -167,6 +227,7 @@ impl Widget for SearchView {
         y: i32,
         context: &cairo::Context,
         search_result_area: &gtk::DrawingArea,
+        links: &mut Vec<(Area, String)>,
     ) {
         let extra_css_class = match item {
             ProjectPadItem::Server(_) => "search_view_parent",
@@ -200,6 +261,7 @@ impl Widget for SearchView {
                 padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
                 y as f64,
                 &w,
+                links,
             ),
             _ => {
                 Self::draw_box(
@@ -256,13 +318,10 @@ impl Widget for SearchView {
         x: f64,
         y: f64,
         website: &ServerWebsite,
+        links: &mut Vec<(Area, String)>,
     ) {
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
         let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
-        println!(
-            "server website, padding top {}, margin top {}",
-            padding.top, margin.top
-        );
         Self::draw_box(
             LEFT_RIGHT_MARGIN as f64,
             style_context,
@@ -294,6 +353,7 @@ impl Widget for SearchView {
             &website.url,
             x + padding.left as f64,
             y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+            links,
         );
         Self::draw_icon(
             style_context,
@@ -449,6 +509,7 @@ impl Widget for SearchView {
         text: &str,
         x: f64,
         y: f64,
+        links: &mut Vec<(Area, String)>,
     ) -> pango::Rectangle {
         style_context.add_class("search_result_item_link");
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
@@ -459,16 +520,24 @@ impl Widget for SearchView {
         layout.set_text(text);
         layout.set_ellipsize(pango::EllipsizeMode::End);
         layout.set_width(350 * 1024);
-        gtk::render_layout(
-            style_context,
-            context,
-            x + padding.left as f64,
-            y + padding.top as f64,
-            &layout,
-        );
+        let left = x + padding.left as f64;
+        let top = y + padding.top as f64;
+        gtk::render_layout(style_context, context, left, top, &layout);
+
+        let extents = layout.get_extents().1;
+
+        links.push((
+            Area::new(
+                left as i32,
+                top as i32,
+                extents.width / 1024,
+                extents.height / 1024,
+            ),
+            text.to_string(),
+        ));
 
         style_context.remove_class("search_result_item_link");
-        layout.get_extents().1
+        extents
     }
 
     fn draw_icon(
@@ -527,6 +596,7 @@ impl Widget for SearchView {
             db_sender,
             sender,
             search_items: Rc::new(RefCell::new(vec![])),
+            links: Rc::new(RefCell::new(vec![])),
         }
     }
 
@@ -640,6 +710,7 @@ impl Widget for SearchView {
             60.0,
             self.search_result_area.get_allocation().height as f64,
         ));
+        self.search_result_area.queue_draw();
     }
 
     fn fetch_search_results(&self) {

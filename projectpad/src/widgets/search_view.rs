@@ -19,11 +19,12 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::mpsc;
 
-const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 120;
+const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 75;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
-const PROJECT_ICON_SIZE: i32 = 64;
+const PROJECT_ICON_SIZE: i32 = 56;
 const ACTION_ICON_SIZE: i32 = 24;
 const ACTION_ICON_OFFSET_FROM_RIGHT: f64 = 50.0;
+const LEFT_RIGHT_MARGIN: i32 = 150;
 
 pub struct SearchResult {
     pub projects: Vec<Project>,
@@ -125,6 +126,43 @@ impl Widget for SearchView {
         });
     }
 
+    fn draw_box(
+        hierarchy_offset: f64,
+        style_context: &gtk::StyleContext,
+        y: f64,
+        context: &cairo::Context,
+        search_result_area: &gtk::DrawingArea,
+    ) {
+        let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+        gtk::render_background(
+            style_context,
+            context,
+            margin.left as f64 + hierarchy_offset,
+            y + margin.top as f64,
+            search_result_area.get_allocation().width as f64
+                - margin.left as f64
+                - margin.right as f64
+                - hierarchy_offset * 2.0,
+            SEARCH_RESULT_WIDGET_HEIGHT as f64 - margin.top as f64,
+        );
+
+        // https://github.com/GNOME/gtk/blob/ca71340c6bfa10092c756e5fdd5e41230e2981b5/gtk/theme/Adwaita/gtk-contained.css#L1599
+        // use the system theme's frame class
+        style_context.add_class(&gtk::STYLE_CLASS_FRAME);
+        gtk::render_frame(
+            style_context,
+            context,
+            margin.left as f64 + hierarchy_offset,
+            y as f64 + margin.top as f64,
+            search_result_area.get_allocation().width as f64
+                - margin.left as f64
+                - margin.right as f64
+                - hierarchy_offset * 2.0,
+            SEARCH_RESULT_WIDGET_HEIGHT as f64 - margin.top as f64,
+        );
+        style_context.remove_class(&gtk::STYLE_CLASS_FRAME);
+    }
+
     fn draw_child(
         style_context: &gtk::StyleContext,
         item: &ProjectPadItem,
@@ -132,58 +170,50 @@ impl Widget for SearchView {
         context: &cairo::Context,
         search_result_area: &gtk::DrawingArea,
     ) {
+        let extra_css_class = match item {
+            ProjectPadItem::Server(_) => "search_view_parent",
+            _ => "search_view_child",
+        };
+        style_context.add_class(extra_css_class);
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-        gtk::render_background(
-            style_context,
-            context,
-            padding.left.into(),
-            y as f64 + padding.top as f64,
-            search_result_area.get_allocation().width as f64
-                - padding.left as f64
-                - padding.right as f64,
-            SEARCH_RESULT_WIDGET_HEIGHT as f64 - padding.top as f64 - padding.bottom as f64,
-        );
-        // https://github.com/GNOME/gtk/blob/ca71340c6bfa10092c756e5fdd5e41230e2981b5/gtk/theme/Adwaita/gtk-contained.css#L1599
-        // use the system theme's frame class
-        style_context.add_class(&gtk::STYLE_CLASS_FRAME);
-        gtk::render_frame(
-            style_context,
-            context,
-            padding.left.into(),
-            y as f64 + padding.top as f64,
-            search_result_area.get_allocation().width as f64
-                - padding.left as f64
-                - padding.right as f64,
-            SEARCH_RESULT_WIDGET_HEIGHT as f64 - padding.top as f64 - padding.bottom as f64,
-        );
-        style_context.remove_class(&gtk::STYLE_CLASS_FRAME);
         match item {
             ProjectPadItem::Project(p) => Self::draw_project(
                 style_context,
                 context,
                 search_result_area,
-                padding.left.into(),
-                y as f64 + padding.top as f64,
+                padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+                y as f64,
                 &p,
             ),
             ProjectPadItem::Server(s) => Self::draw_server(
                 style_context,
                 context,
+                &padding,
+                LEFT_RIGHT_MARGIN as f64,
                 search_result_area,
-                padding.left.into(),
-                y as f64 + padding.top as f64,
+                padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+                y as f64,
                 &s,
             ),
             ProjectPadItem::ServerWebsite(w) => Self::draw_server_website(
                 style_context,
                 context,
                 search_result_area,
-                padding.left.into(),
-                y as f64 + padding.top as f64,
+                padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+                y as f64,
                 &w,
             ),
-            _ => {}
+            _ => {
+                Self::draw_box(
+                    LEFT_RIGHT_MARGIN as f64,
+                    style_context,
+                    y as f64,
+                    context,
+                    search_result_area,
+                );
+            }
         }
+        style_context.remove_class(extra_css_class);
     }
 
     fn draw_project(
@@ -194,6 +224,9 @@ impl Widget for SearchView {
         y: f64,
         project: &Project,
     ) {
+        // since the servers have 10px padding on top of them,
+        // let's draw the projects at the bottom of their area
+        // so, y+height-icon_size
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
         let title_extents = Self::draw_title(
             style_context,
@@ -202,26 +235,20 @@ impl Widget for SearchView {
             search_result_area,
             &project.name,
             x,
-            y,
-            None,
+            y + SEARCH_RESULT_WIDGET_HEIGHT as f64 - PROJECT_ICON_SIZE as f64,
+            Some(PROJECT_ICON_SIZE),
         );
 
         if let Some(icon) = &project.icon {
             if icon.len() > 0 {
-                let translate_x = padding.left as f64;
-                let translate_y = y + (title_extents.height / 1024) as f64 + 5.0;
+                let translate_x = x + (title_extents.width / 1024) as f64 + padding.left as f64;
+                let translate_y = y + padding.top as f64 + SEARCH_RESULT_WIDGET_HEIGHT as f64
+                    - PROJECT_ICON_SIZE as f64;
                 context.translate(translate_x, translate_y);
                 super::project_badge::ProjectBadge::draw_icon(context, PROJECT_ICON_SIZE, &icon);
                 context.translate(-translate_x, -translate_y);
             }
         }
-        Self::draw_icon(
-            style_context,
-            context,
-            &Icon::COG,
-            search_result_area.get_allocation().width as f64 - ACTION_ICON_OFFSET_FROM_RIGHT,
-            y + padding.top as f64,
-        );
     }
 
     fn draw_server_website(
@@ -233,12 +260,24 @@ impl Widget for SearchView {
         website: &ServerWebsite,
     ) {
         let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+        println!(
+            "server website, padding top {}, margin top {}",
+            padding.top, margin.top
+        );
+        Self::draw_box(
+            LEFT_RIGHT_MARGIN as f64,
+            style_context,
+            y,
+            context,
+            search_result_area,
+        );
         Self::draw_icon(
             style_context,
             context,
             &Icon::HTTP,
             x + padding.left as f64,
-            y + padding.top as f64,
+            y + margin.top as f64 + padding.top as f64,
         );
         let title_rect = Self::draw_title(
             style_context,
@@ -247,7 +286,7 @@ impl Widget for SearchView {
             search_result_area,
             &website.desc,
             x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
-            y,
+            y + margin.top as f64,
             Some(ACTION_ICON_SIZE),
         );
         Self::draw_link(
@@ -256,26 +295,37 @@ impl Widget for SearchView {
             search_result_area,
             &website.url,
             x + padding.left as f64,
-            y + (title_rect.height / 1024) as f64 + padding.top as f64,
+            y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
         );
         Self::draw_icon(
             style_context,
             context,
             &Icon::COG,
-            search_result_area.get_allocation().width as f64 - ACTION_ICON_OFFSET_FROM_RIGHT,
-            y + padding.top as f64,
+            search_result_area.get_allocation().width as f64
+                - ACTION_ICON_OFFSET_FROM_RIGHT
+                - LEFT_RIGHT_MARGIN as f64,
+            y + padding.top as f64 + margin.top as f64,
         );
     }
 
     fn draw_server(
         style_context: &gtk::StyleContext,
         context: &cairo::Context,
+        padding: &gtk::Border,
+        hierarchy_offset: f64,
         search_result_area: &gtk::DrawingArea,
         x: f64,
         y: f64,
         server: &Server,
     ) {
-        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+        Self::draw_box(
+            hierarchy_offset,
+            style_context,
+            y,
+            context,
+            search_result_area,
+        );
         let title_rect = Self::draw_title(
             style_context,
             context,
@@ -283,7 +333,7 @@ impl Widget for SearchView {
             search_result_area,
             &server.desc,
             x,
-            y,
+            y + margin.top as f64,
             None,
         );
         Self::draw_environment(
@@ -291,7 +341,7 @@ impl Widget for SearchView {
             context,
             search_result_area,
             x + padding.left as f64,
-            y + (title_rect.height / 1024) as f64 + padding.top as f64,
+            y + (title_rect.height / 1024) as f64 + padding.top as f64 + margin.top as f64,
             &match server.environment {
                 EnvironmentType::EnvUat => "uat",
                 EnvironmentType::EnvProd => "prod",
@@ -303,8 +353,10 @@ impl Widget for SearchView {
             style_context,
             context,
             &Icon::COG,
-            search_result_area.get_allocation().width as f64 - ACTION_ICON_OFFSET_FROM_RIGHT,
-            y + padding.top as f64,
+            search_result_area.get_allocation().width as f64
+                - ACTION_ICON_OFFSET_FROM_RIGHT
+                - LEFT_RIGHT_MARGIN as f64,
+            y + padding.top as f64 + margin.top as f64,
         );
     }
 

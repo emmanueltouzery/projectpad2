@@ -58,6 +58,16 @@
   );
 }
 
+.search_view_parent {
+  border-left-width: 3px;
+  border-left-color: black;
+  margin-top: 7px;
+}
+
+.search_view_child {
+  border-top-width: 0px;
+}
+
 /* https://developer.gnome.org/hig-book/unstable/design-color.html.en */
 .environment_label_dev {
   background: #46a046; /* greenish */

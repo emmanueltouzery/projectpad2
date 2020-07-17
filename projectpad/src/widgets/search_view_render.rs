@@ -98,7 +98,9 @@ pub fn draw_child(
     item_with_depressed_icon: &Option<ProjectPadItem>,
 ) {
     let extra_css_class = match item {
-        ProjectPadItem::Server(_) => "search_view_parent",
+        ProjectPadItem::Server(_)
+        | ProjectPadItem::ProjectNote(_)
+        | ProjectPadItem::ProjectPoi(_) => "search_view_parent",
         _ => "search_view_child",
     };
     style_context.add_class(extra_css_class);
@@ -125,6 +127,28 @@ pub fn draw_child(
             item_with_depressed_icon,
             action_buttons,
         ),
+        ProjectPadItem::ServerNote(n) => draw_server_note(
+            style_context,
+            context,
+            search_result_area,
+            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+            y as f64,
+            item,
+            item_with_depressed_icon,
+            &n,
+            action_buttons,
+        ),
+        ProjectPadItem::ProjectNote(n) => draw_project_note(
+            style_context,
+            context,
+            search_result_area,
+            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+            y as f64,
+            item,
+            item_with_depressed_icon,
+            &n,
+            action_buttons,
+        ),
         ProjectPadItem::ServerWebsite(w) => draw_server_website(
             style_context,
             context,
@@ -148,15 +172,50 @@ pub fn draw_child(
             &u,
             action_buttons,
         ),
-        _ => {
-            draw_box(
-                LEFT_RIGHT_MARGIN as f64,
-                style_context,
-                y as f64,
-                context,
-                search_result_area,
-            );
-        }
+        ProjectPadItem::ServerPoi(p) => draw_server_poi(
+            style_context,
+            context,
+            search_result_area,
+            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+            y as f64,
+            item,
+            item_with_depressed_icon,
+            &p,
+            action_buttons,
+        ),
+        ProjectPadItem::ProjectPoi(p) => draw_project_poi(
+            style_context,
+            context,
+            search_result_area,
+            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+            y as f64,
+            item,
+            item_with_depressed_icon,
+            &p,
+            action_buttons,
+        ),
+        ProjectPadItem::ServerDatabase(d) => draw_server_database(
+            style_context,
+            context,
+            search_result_area,
+            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+            y as f64,
+            item,
+            item_with_depressed_icon,
+            &d,
+            action_buttons,
+        ),
+        ProjectPadItem::ServerLink(s) => draw_linked_server(
+            style_context,
+            context,
+            search_result_area,
+            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+            y as f64,
+            item,
+            item_with_depressed_icon,
+            &s,
+            action_buttons,
+        ),
     }
     style_context.remove_class(extra_css_class);
 }
@@ -317,6 +376,183 @@ fn draw_server_extra_user(
         &user.desc,
         x + padding.left as f64,
         y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+    );
+}
+
+fn draw_server_poi(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    poi: &ServerPointOfInterest,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+) {
+    let (padding, margin, title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &poi.desc,
+        &Icon::POINT_OF_INTEREST,
+        item,
+        item_with_depressed_action,
+        action_buttons,
+    );
+
+    draw_subtext(
+        style_context,
+        context,
+        search_result_area,
+        &poi.text,
+        x + padding.left as f64,
+        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+    );
+}
+
+fn draw_project_poi(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    poi: &ProjectPointOfInterest,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+) {
+    let (padding, margin, title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &poi.desc,
+        &Icon::POINT_OF_INTEREST,
+        item,
+        item_with_depressed_action,
+        action_buttons,
+    );
+
+    draw_subtext(
+        style_context,
+        context,
+        search_result_area,
+        &poi.text,
+        x + padding.left as f64,
+        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+    );
+}
+
+fn draw_server_database(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    db: &ServerDatabase,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+) {
+    let (padding, margin, title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &db.desc,
+        &Icon::DATABASE,
+        item,
+        item_with_depressed_action,
+        action_buttons,
+    );
+
+    draw_subtext(
+        style_context,
+        context,
+        search_result_area,
+        &format!("{} {}", db.text, db.username),
+        x + padding.left as f64,
+        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+    );
+}
+
+fn draw_linked_server(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    srv: &ServerLink,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+) {
+    let (padding, margin, title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &srv.desc,
+        &Icon::SERVER_LINK,
+        item,
+        item_with_depressed_action,
+        action_buttons,
+    );
+}
+
+fn draw_project_note(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    note: &ProjectNote,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+) {
+    let (_padding, _margin, _title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &note.title,
+        &Icon::NOTE,
+        item,
+        item_with_depressed_action,
+        action_buttons,
+    );
+}
+
+fn draw_server_note(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    note: &ServerNote,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+) {
+    let (_padding, _margin, _title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &note.title,
+        &Icon::NOTE,
+        item,
+        item_with_depressed_action,
+        action_buttons,
     );
 }
 

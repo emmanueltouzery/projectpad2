@@ -11,15 +11,38 @@ const ACTION_ICON_SIZE: i32 = 16;
 const PROJECT_ICON_SIZE: i32 = 56;
 const ACTION_ICON_OFFSET_FROM_RIGHT: f64 = 50.0;
 
-fn draw_button(context: &cairo::Context, flags: gtk::StateFlags, x: f64, y: f64, w: f64, h: f64) {
+#[derive(PartialEq, Eq)]
+enum ItemType {
+    Parent,
+    Child,
+}
+
+fn draw_button(
+    context: &cairo::Context,
+    item_type: ItemType,
+    flags: gtk::StateFlags,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+) {
     let style_context = &gtk::StyleContext::new();
     let path = gtk::WidgetPath::new();
+    if item_type == ItemType::Child {
+        // if it's a child, i use the button style when it's
+        // in a list, which is more discrete.
+        path.append_type(glib::Type::Invalid);
+        path.iter_set_object_name(-3, Some("list"));
+        path.append_type(glib::Type::Invalid);
+        path.iter_set_object_name(-2, Some("row"));
+    }
     path.append_type(glib::Type::Invalid);
     path.iter_set_object_name(-1, Some("button"));
     style_context.set_state(flags);
     style_context.set_path(&path);
     style_context.add_class(&gtk::STYLE_CLASS_BUTTON);
     style_context.add_class("image-button");
+    style_context.add_class("popup");
     style_context.add_class("toggle");
 
     gtk::render_background(style_context, context, x, y, w, h);
@@ -426,12 +449,15 @@ fn draw_action(
     let w = ACTION_ICON_SIZE as f64 + (padding.left + padding.right) as f64;
     let h = ACTION_ICON_SIZE as f64 + (padding.top + padding.bottom) as f64;
     let flags = if Some(item) == item_with_depressed_icon.as_ref() {
-        println!("pressed btn");
         gtk::StateFlags::CHECKED
     } else {
         gtk::StateFlags::NORMAL
     };
-    draw_button(context, flags, x, y, w, h);
+    let item_type = match item {
+        ProjectPadItem::Server(_) => ItemType::Parent,
+        _ => ItemType::Child,
+    };
+    draw_button(context, item_type, flags, x, y, w, h);
     style_context.remove_class("search_result_action_btn");
     draw_icon(
         style_context,

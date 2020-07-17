@@ -145,6 +145,7 @@ fn draw_project(
         &padding,
         search_result_area,
         &project.name,
+        Some("search_result_project_title".to_string()),
         x,
         y + SEARCH_RESULT_WIDGET_HEIGHT as f64 - PROJECT_ICON_SIZE as f64,
         Some(PROJECT_ICON_SIZE),
@@ -196,6 +197,7 @@ fn draw_server_website(
         &padding,
         search_result_area,
         &website.desc,
+        None,
         x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
         y + margin.top as f64,
         Some(ACTION_ICON_SIZE),
@@ -251,6 +253,7 @@ fn draw_server(
         &padding,
         search_result_area,
         &server.desc,
+        None,
         x,
         y + margin.top as f64,
         None,
@@ -336,11 +339,15 @@ fn draw_title(
     padding: &gtk::Border,
     search_result_area: &gtk::DrawingArea,
     text: &str,
+    custom_class: Option<String>,
     x: f64,
     y: f64,
     height: Option<i32>,
 ) -> pango::Rectangle {
-    style_context.add_class("search_result_item_title");
+    let clazz = custom_class
+        .as_deref()
+        .unwrap_or("search_result_item_title");
+    style_context.add_class(clazz);
     let pango_context = search_result_area
         .create_pango_context()
         .expect("failed getting pango context");
@@ -361,7 +368,7 @@ fn draw_title(
         y + padding.top as f64 + extra_y,
         &layout,
     );
-    style_context.remove_class("search_result_item_title");
+    style_context.remove_class(clazz);
 
     layout.get_extents().1
 }

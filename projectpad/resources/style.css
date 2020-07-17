@@ -11,8 +11,13 @@
   padding: 10px;
 }
 
-.search_result_item_title {
+.search_result_project_title {
   font-size: 15px;
+  font-weight: bold;
+}
+
+.search_result_item_title {
+  font-size: 13px;
   font-weight: bold;
   padding: 15px;
 }
@@ -63,6 +68,7 @@
 }
 
 .search_view_parent {
+  font-size: 15px;
   border-left-width: 3px;
   border-left-color: black;
   margin-top: 7px;

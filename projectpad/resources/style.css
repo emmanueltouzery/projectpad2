@@ -86,6 +86,7 @@
   background: #46a046; /* greenish */
   border: 2px solid rgba(0, 0, 0, 0.5);
   padding: 3px;
+  font-size: 11px;
 }
 .environment_label_uat {
   background: #eed680; /* yellowish */
@@ -97,6 +98,7 @@
   background: #7590ae; /* blueish  */
   border: 2px solid rgba(0, 0, 0, 0.5);
   padding: 3px;
+  font-size: 11px;
 }
 .environment_label_prod {
   background-color: #df421e; /* reddish */

@@ -137,6 +137,17 @@ pub fn draw_child(
             action_buttons,
             links,
         ),
+        ProjectPadItem::ServerExtraUserAccount(u) => draw_server_extra_user(
+            style_context,
+            context,
+            search_result_area,
+            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
+            y as f64,
+            item,
+            item_with_depressed_icon,
+            &u,
+            action_buttons,
+        ),
         _ => {
             draw_box(
                 LEFT_RIGHT_MARGIN as f64,
@@ -186,18 +197,18 @@ fn draw_project(
     }
 }
 
-fn draw_server_website(
+fn draw_server_item_common(
     style_context: &gtk::StyleContext,
     context: &cairo::Context,
     search_result_area: &gtk::DrawingArea,
     x: f64,
     y: f64,
+    title: &str,
+    icon: &Icon,
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
-    website: &ServerWebsite,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
-    links: &mut Vec<(Area, String)>,
-) {
+) -> (gtk::Border, gtk::Border, pango::Rectangle) {
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
     draw_box(
@@ -210,7 +221,7 @@ fn draw_server_website(
     draw_icon(
         style_context,
         context,
-        &Icon::HTTP,
+        icon,
         x + padding.left as f64,
         y + margin.top as f64 + padding.top as f64,
     );
@@ -219,22 +230,12 @@ fn draw_server_website(
         context,
         &padding,
         search_result_area,
-        &website.desc,
+        title,
         None,
         x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
         y + margin.top as f64,
         Some(ACTION_ICON_SIZE),
     );
-    draw_link(
-        style_context,
-        context,
-        search_result_area,
-        &website.url,
-        x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
-        links,
-    );
-
     draw_action(
         style_context,
         context,
@@ -246,6 +247,76 @@ fn draw_server_website(
             - ACTION_ICON_OFFSET_FROM_RIGHT
             - LEFT_RIGHT_MARGIN as f64,
         y + padding.top as f64 + margin.top as f64,
+    );
+    (padding, margin, title_rect)
+}
+
+fn draw_server_website(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    website: &ServerWebsite,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    links: &mut Vec<(Area, String)>,
+) {
+    let (padding, margin, title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &website.desc,
+        &Icon::HTTP,
+        item,
+        item_with_depressed_action,
+        action_buttons,
+    );
+    draw_link(
+        style_context,
+        context,
+        search_result_area,
+        &website.url,
+        x + padding.left as f64,
+        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+        links,
+    );
+}
+
+fn draw_server_extra_user(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    x: f64,
+    y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    user: &ServerExtraUserAccount,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+) {
+    let (padding, margin, title_rect) = draw_server_item_common(
+        style_context,
+        context,
+        search_result_area,
+        x,
+        y,
+        &user.username,
+        &Icon::USER,
+        item,
+        item_with_depressed_action,
+        action_buttons,
+    );
+
+    draw_subtext(
+        style_context,
+        context,
+        search_result_area,
+        &user.desc,
+        x + padding.left as f64,
+        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
     );
 }
 
@@ -396,16 +467,14 @@ fn draw_title(
     layout.get_extents().1
 }
 
-fn draw_link(
+fn draw_basic_layout(
     style_context: &gtk::StyleContext,
     context: &cairo::Context,
     search_result_area: &gtk::DrawingArea,
     text: &str,
     x: f64,
     y: f64,
-    links: &mut Vec<(Area, String)>,
-) -> pango::Rectangle {
-    style_context.add_class("search_result_item_link");
+) -> (pango::Rectangle, f64, f64) {
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     let pango_context = search_result_area
         .create_pango_context()
@@ -418,7 +487,21 @@ fn draw_link(
     let top = y + padding.top as f64;
     gtk::render_layout(style_context, context, left, top, &layout);
 
-    let extents = layout.get_extents().1;
+    (layout.get_extents().1, left, top)
+}
+
+fn draw_link(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    text: &str,
+    x: f64,
+    y: f64,
+    links: &mut Vec<(Area, String)>,
+) -> pango::Rectangle {
+    style_context.add_class("search_result_item_link");
+    let (extents, left, top) =
+        draw_basic_layout(style_context, context, search_result_area, text, x, y);
 
     links.push((
         Area::new(
@@ -431,6 +514,21 @@ fn draw_link(
     ));
 
     style_context.remove_class("search_result_item_link");
+    extents
+}
+
+fn draw_subtext(
+    style_context: &gtk::StyleContext,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    text: &str,
+    x: f64,
+    y: f64,
+) -> pango::Rectangle {
+    style_context.add_class("search_result_item_subtext");
+    let (extents, left, top) =
+        draw_basic_layout(style_context, context, search_result_area, text, x, y);
+    style_context.remove_class("search_result_item_subtext");
     extents
 }
 

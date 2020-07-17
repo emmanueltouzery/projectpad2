@@ -27,6 +27,9 @@
   text-decoration: underline;
 }
 
+.search_result_item_subtext {
+}
+
 .search_result_action_btn {
   padding: 7px;
 }

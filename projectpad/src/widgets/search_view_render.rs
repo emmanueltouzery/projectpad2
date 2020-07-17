@@ -11,14 +11,16 @@ const ACTION_ICON_SIZE: i32 = 16;
 const PROJECT_ICON_SIZE: i32 = 56;
 const ACTION_ICON_OFFSET_FROM_RIGHT: f64 = 50.0;
 
-fn draw_button(context: &cairo::Context, x: f64, y: f64, w: f64, h: f64) {
+fn draw_button(context: &cairo::Context, flags: gtk::StateFlags, x: f64, y: f64, w: f64, h: f64) {
     let style_context = &gtk::StyleContext::new();
     let path = gtk::WidgetPath::new();
     path.append_type(glib::Type::Invalid);
     path.iter_set_object_name(-1, Some("button"));
+    style_context.set_state(flags);
     style_context.set_path(&path);
     style_context.add_class(&gtk::STYLE_CLASS_BUTTON);
     style_context.add_class("image-button");
+    style_context.add_class("toggle");
 
     gtk::render_background(style_context, context, x, y, w, h);
 
@@ -69,6 +71,8 @@ pub fn draw_child(
     context: &cairo::Context,
     search_result_area: &gtk::DrawingArea,
     links: &mut Vec<(Area, String)>,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    item_with_depressed_icon: &Option<ProjectPadItem>,
 ) {
     let extra_css_class = match item {
         ProjectPadItem::Server(_) => "search_view_parent",
@@ -94,6 +98,9 @@ pub fn draw_child(
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             &s,
+            item,
+            item_with_depressed_icon,
+            action_buttons,
         ),
         ProjectPadItem::ServerWebsite(w) => draw_server_website(
             style_context,
@@ -101,7 +108,10 @@ pub fn draw_child(
             search_result_area,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
+            item,
+            item_with_depressed_icon,
             &w,
+            action_buttons,
             links,
         ),
         _ => {
@@ -158,7 +168,10 @@ fn draw_server_website(
     search_result_area: &gtk::DrawingArea,
     x: f64,
     y: f64,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
     website: &ServerWebsite,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     links: &mut Vec<(Area, String)>,
 ) {
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
@@ -200,6 +213,9 @@ fn draw_server_website(
     draw_action(
         style_context,
         context,
+        action_buttons,
+        item,
+        item_with_depressed_action,
         &Icon::COG,
         search_result_area.get_allocation().width as f64
             - ACTION_ICON_OFFSET_FROM_RIGHT
@@ -217,6 +233,9 @@ fn draw_server(
     x: f64,
     y: f64,
     server: &Server,
+    item: &ProjectPadItem,
+    item_with_depressed_action: &Option<ProjectPadItem>,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
 ) {
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
     draw_box(
@@ -252,6 +271,9 @@ fn draw_server(
     draw_action(
         style_context,
         context,
+        action_buttons,
+        item,
+        item_with_depressed_action,
         &Icon::COG,
         search_result_area.get_allocation().width as f64
             - ACTION_ICON_OFFSET_FROM_RIGHT
@@ -385,19 +407,24 @@ fn draw_link(
 fn draw_action(
     style_context: &gtk::StyleContext,
     context: &cairo::Context,
+    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    item: &ProjectPadItem,
+    item_with_depressed_icon: &Option<ProjectPadItem>,
     icon: &Icon,
     x: f64,
     y: f64,
 ) {
     style_context.add_class("search_result_action_btn");
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-    draw_button(
-        context,
-        x,
-        y,
-        ACTION_ICON_SIZE as f64 + (padding.left + padding.right) as f64,
-        ACTION_ICON_SIZE as f64 + (padding.top + padding.bottom) as f64,
-    );
+    let w = ACTION_ICON_SIZE as f64 + (padding.left + padding.right) as f64;
+    let h = ACTION_ICON_SIZE as f64 + (padding.top + padding.bottom) as f64;
+    let flags = if Some(item) == item_with_depressed_icon.as_ref() {
+        println!("pressed btn");
+        gtk::StateFlags::CHECKED
+    } else {
+        gtk::StateFlags::NORMAL
+    };
+    draw_button(context, flags, x, y, w, h);
     style_context.remove_class("search_result_action_btn");
     draw_icon(
         style_context,
@@ -406,6 +433,10 @@ fn draw_action(
         x + padding.left as f64,
         y + padding.top as f64,
     );
+    action_buttons.push((
+        Area::new(x as i32, y as i32, w as i32, h as i32),
+        item.clone(),
+    ));
 }
 
 fn draw_icon(

@@ -128,6 +128,25 @@ impl Widget for SearchView {
                     );
                 Inhibit(false)
             });
+        let links_btnclick = self.model.links.clone();
+        let search_result_area_btnclick = self.search_result_area.clone();
+        self.search_result_area
+            .connect_button_release_event(move |_, event_click| {
+                let x = event_click.get_position().0 as i32;
+                let y = event_click.get_position().1 as i32;
+                let window = search_result_area_btnclick
+                    .get_toplevel()
+                    .and_then(|w| w.downcast::<gtk::Window>().ok());
+                let links = links_btnclick.borrow();
+                if let Some(link) = links.iter().find(|l| l.0.contains(x, y)) {
+                    if let Result::Err(err) =
+                        gtk::show_uri_on_window(window.as_ref(), &link.1, event_click.get_time())
+                    {
+                        eprintln!("Error opening the link: {}", err);
+                    }
+                }
+                Inhibit(false)
+            });
     }
 
     fn draw_search_view(

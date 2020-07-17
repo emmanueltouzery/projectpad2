@@ -23,7 +23,7 @@ use std::sync::mpsc;
 const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 75;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
 const PROJECT_ICON_SIZE: i32 = 56;
-const ACTION_ICON_SIZE: i32 = 24;
+const ACTION_ICON_SIZE: i32 = 16;
 const ACTION_ICON_OFFSET_FROM_RIGHT: f64 = 50.0;
 const LEFT_RIGHT_MARGIN: i32 = 150;
 
@@ -203,6 +203,20 @@ impl Widget for SearchView {
             .remove_class("search_result_frame");
     }
 
+    fn draw_button(context: &cairo::Context, x: f64, y: f64, w: f64, h: f64) {
+        let style_context = &gtk::StyleContext::new();
+        let path = gtk::WidgetPath::new();
+        path.append_type(glib::Type::Invalid);
+        path.iter_set_object_name(-1, Some("button"));
+        style_context.set_path(&path);
+        style_context.add_class(&gtk::STYLE_CLASS_BUTTON);
+        style_context.add_class("image-button");
+
+        gtk::render_background(style_context, context, x, y, w, h);
+
+        gtk::render_frame(style_context, context, x, y, w, h);
+    }
+
     fn draw_box(
         hierarchy_offset: f64,
         style_context: &gtk::StyleContext,
@@ -237,7 +251,7 @@ impl Widget for SearchView {
                 - hierarchy_offset * 2.0,
             SEARCH_RESULT_WIDGET_HEIGHT as f64 - margin.top as f64,
         );
-        style_context.remove_class(&gtk::STYLE_CLASS_FRAME);
+        style_context.remove_class(&gtk::STYLE_CLASS_BUTTON);
     }
 
     fn draw_child(
@@ -374,7 +388,8 @@ impl Widget for SearchView {
             y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
             links,
         );
-        Self::draw_icon(
+
+        Self::draw_action(
             style_context,
             context,
             &Icon::COG,
@@ -426,7 +441,7 @@ impl Widget for SearchView {
                 EnvironmentType::EnvDevelopment => "dev",
             },
         );
-        Self::draw_icon(
+        Self::draw_action(
             style_context,
             context,
             &Icon::COG,
@@ -557,6 +572,32 @@ impl Widget for SearchView {
 
         style_context.remove_class("search_result_item_link");
         extents
+    }
+
+    fn draw_action(
+        style_context: &gtk::StyleContext,
+        context: &cairo::Context,
+        icon: &Icon,
+        x: f64,
+        y: f64,
+    ) {
+        style_context.add_class("search_result_action_btn");
+        let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+        Self::draw_button(
+            context,
+            x,
+            y,
+            ACTION_ICON_SIZE as f64 + (padding.left + padding.right) as f64,
+            ACTION_ICON_SIZE as f64 + (padding.top + padding.bottom) as f64,
+        );
+        style_context.remove_class("search_result_action_btn");
+        Self::draw_icon(
+            style_context,
+            context,
+            icon,
+            x + padding.left as f64,
+            y + padding.top as f64,
+        );
     }
 
     fn draw_icon(

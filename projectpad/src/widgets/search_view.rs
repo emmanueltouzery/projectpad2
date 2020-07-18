@@ -3,13 +3,17 @@
 // discussion:
 // https://discourse.gnome.org/t/lazy-scrollable-list/3774
 
+use super::project_items_list::ProjectItem;
+use super::project_poi_header;
+use super::server_item_list_item;
+use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gdk::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase,
-    ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
+    Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
+    ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -87,6 +91,29 @@ pub enum ProjectPadItem {
     ServerWebsite(ServerWebsite),
 }
 
+impl ProjectPadItem {
+    fn to_server_item(&self) -> Option<ServerItem> {
+        match self {
+            Self::ServerDatabase(d) => Some(ServerItem::Database(d.clone())),
+            Self::ServerWebsite(w) => Some(ServerItem::Website(w.clone())),
+            Self::ServerNote(n) => Some(ServerItem::Note(n.clone())),
+            Self::ServerExtraUserAccount(u) => Some(ServerItem::ExtraUserAccount(u.clone())),
+            Self::ServerPoi(p) => Some(ServerItem::PointOfInterest(p.clone())),
+            _ => None,
+        }
+    }
+
+    fn to_project_item(&self) -> Option<ProjectItem> {
+        match self {
+            Self::Server(s) => Some(ProjectItem::Server(s.clone())),
+            Self::ServerLink(l) => Some(ProjectItem::ServerLink(l.clone())),
+            Self::ProjectNote(n) => Some(ProjectItem::ProjectNote(n.clone())),
+            Self::ProjectPoi(p) => Some(ProjectItem::ProjectPointOfInterest(p.clone())),
+            _ => None,
+        }
+    }
+}
+
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
@@ -97,6 +124,28 @@ pub struct Model {
     action_buttons: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
+}
+
+fn fill_popover(popover: &gtk::Popover, projectpad_item: &ProjectPadItem) {
+    let grid_items = if let Some(server_item) = projectpad_item.to_server_item() {
+        server_item_list_item::get_server_item_grid_items(&server_item)
+    } else if let Some(project_item) = projectpad_item.to_project_item() {
+        project_poi_header::get_project_item_fields(&project_item)
+    } else {
+        vec![]
+    };
+    project_poi_header::populate_popover(
+        popover,
+        &grid_items,
+        &|btn: &gtk::ModelButton, str_val: String| {
+            // relm::connect!(
+            //     self.model.relm,
+            //     btn,
+            //     connect_clicked(_),
+            //     Msg::CopyClicked(str_val.clone())
+            // );
+        },
+    );
 }
 
 #[widget]
@@ -186,7 +235,7 @@ impl Widget for SearchView {
                         .borrow_mut()
                         .replace(btn.1.clone());
 
-                    // Self::fill_popover(&btn.1);
+                    fill_popover(&popover, &btn.1);
                     popover.set_pointing_to(&btn.0.to_rect());
                     popover.popup();
                 }

@@ -41,6 +41,30 @@ impl GridItem {
     }
 }
 
+pub fn populate_popover(
+    actions_popover: &gtk::Popover,
+    fields: &[GridItem],
+    register_btn: &dyn Fn(&gtk::ModelButton, String),
+) {
+    for child in actions_popover.get_children() {
+        actions_popover.remove(&child);
+    }
+    let popover_vbox = gtk::BoxBuilder::new()
+        .margin(10)
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    popover_vbox.add(&gtk::ModelButtonBuilder::new().label("Edit").build());
+    for item in fields {
+        let popover_btn = gtk::ModelButtonBuilder::new()
+            .label(&format!("Copy {}", item.label_name))
+            .build();
+        register_btn(&popover_btn, item.raw_value.clone());
+        popover_vbox.add(&popover_btn);
+    }
+    popover_vbox.show_all();
+    actions_popover.add(&popover_vbox);
+}
+
 pub fn populate_grid(
     header_grid: gtk::Grid,
     actions_popover: gtk::Popover,
@@ -50,14 +74,6 @@ pub fn populate_grid(
     for child in header_grid.get_children() {
         header_grid.remove(&child);
     }
-    for child in actions_popover.get_children() {
-        actions_popover.remove(&child);
-    }
-    let popover_vbox = gtk::BoxBuilder::new()
-        .margin(10)
-        .orientation(gtk::Orientation::Vertical)
-        .build();
-    popover_vbox.add(&gtk::ModelButtonBuilder::new().label("Edit").build());
 
     let mut i = 0;
     for item in fields {
@@ -89,18 +105,57 @@ pub fn populate_grid(
                 header_grid.attach(&label, 1, i, 1, 1);
             }
 
-            let popover_btn = gtk::ModelButtonBuilder::new()
-                .label(&format!("Copy {}", item.label_name))
-                .build();
-            register_btn(&popover_btn, item.raw_value.clone());
-            popover_vbox.add(&popover_btn);
-
             i += 1;
         }
     }
     header_grid.show_all();
-    popover_vbox.show_all();
-    actions_popover.add(&popover_vbox);
+    populate_popover(&actions_popover, fields, register_btn);
+}
+
+pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
+    match project_item {
+        ProjectItem::Server(srv) => vec![
+            GridItem::new(
+                "Address",
+                Some(server_access_icon(&srv)),
+                server_ip_display(&srv),
+                srv.ip.clone(),
+            ),
+            GridItem::new("Username", None, srv.username.clone(), srv.username.clone()),
+            GridItem::new(
+                "Password",
+                None,
+                if srv.password.is_empty() {
+                    "".to_string()
+                } else {
+                    "●●●●●".to_string()
+                },
+                srv.password.clone(),
+            ),
+        ],
+        ProjectItem::ProjectPointOfInterest(poi) => vec![
+            GridItem::new("Path", None, poi.path.clone(), poi.path.clone()),
+            GridItem::new("Text", None, poi.text.clone(), poi.path.clone()),
+        ],
+        _ => vec![],
+    }
+}
+
+fn server_ip_display(srv: &Server) -> String {
+    if srv.access_type == ServerAccessType::SrvAccessWww {
+        format!("<a href=\"{}\">{}</a>", srv.ip, srv.ip)
+    } else {
+        srv.ip.clone()
+    }
+}
+
+fn server_access_icon(srv: &Server) -> Icon {
+    match srv.access_type {
+        ServerAccessType::SrvAccessSsh => Icon::SSH,
+        ServerAccessType::SrvAccessSshTunnel => Icon::SSH,
+        ServerAccessType::SrvAccessRdp => Icon::WINDOWS,
+        ServerAccessType::SrvAccessWww => Icon::HTTP,
+    }
 }
 
 #[widget]
@@ -165,15 +220,6 @@ impl Widget for ProjectPoiHeader {
         );
     }
 
-    fn server_access_icon(srv: &Server) -> Icon {
-        match srv.access_type {
-            ServerAccessType::SrvAccessSsh => Icon::SSH,
-            ServerAccessType::SrvAccessSshTunnel => Icon::SSH,
-            ServerAccessType::SrvAccessRdp => Icon::WINDOWS,
-            ServerAccessType::SrvAccessWww => Icon::HTTP,
-        }
-    }
-
     fn project_item_desc(pi: &ProjectItem) -> &str {
         match pi {
             ProjectItem::Server(srv) => &srv.desc,
@@ -183,41 +229,13 @@ impl Widget for ProjectPoiHeader {
         }
     }
 
-    fn server_ip_display(srv: &Server) -> String {
-        if srv.access_type == ServerAccessType::SrvAccessWww {
-            format!("<a href=\"{}\">{}</a>", srv.ip, srv.ip)
-        } else {
-            srv.ip.clone()
-        }
-    }
-
     fn populate_header(&self) {
-        let fields = match &self.model.project_item {
-            Some(ProjectItem::Server(srv)) => vec![
-                GridItem::new(
-                    "Address",
-                    Some(Self::server_access_icon(&srv)),
-                    Self::server_ip_display(&srv),
-                    srv.ip.clone(),
-                ),
-                GridItem::new("Username", None, srv.username.clone(), srv.username.clone()),
-                GridItem::new(
-                    "Password",
-                    None,
-                    if srv.password.is_empty() {
-                        "".to_string()
-                    } else {
-                        "●●●●●".to_string()
-                    },
-                    srv.password.clone(),
-                ),
-            ],
-            Some(ProjectItem::ProjectPointOfInterest(poi)) => vec![
-                GridItem::new("Path", None, poi.path.clone(), poi.path.clone()),
-                GridItem::new("Text", None, poi.text.clone(), poi.path.clone()),
-            ],
-            _ => vec![],
-        };
+        let fields = self
+            .model
+            .project_item
+            .as_ref()
+            .map(get_project_item_fields)
+            .unwrap_or_else(|| vec![]);
         populate_grid(
             self.header_grid.clone(),
             self.model.header_popover.clone(),

@@ -21,6 +21,94 @@ pub struct Model {
     title: (String, Icon),
 }
 
+pub fn get_server_item_grid_items(server_item: &ServerItem) -> Vec<GridItem> {
+    match server_item {
+        ServerItem::Website(ref srv_w) => get_website_grid_items(srv_w),
+        ServerItem::PointOfInterest(ref srv_poi) => get_poi_grid_items(srv_poi),
+        ServerItem::Note(ref srv_n) => get_note_grid_items(srv_n),
+        ServerItem::ExtraUserAccount(ref srv_u) => get_user_grid_items(srv_u),
+        ServerItem::Database(ref srv_d) => get_db_grid_items(srv_d),
+    }
+}
+
+fn get_website_grid_items(website: &ServerWebsite) -> Vec<GridItem> {
+    vec![
+        GridItem::new(
+            "Address",
+            Some(Icon::HTTP),
+            format!("<a href=\"{}\">{}</a>", website.url, website.url),
+            website.url.clone(),
+        ),
+        GridItem::new(
+            "Username",
+            None,
+            website.username.clone(),
+            website.username.clone(),
+        ),
+        GridItem::new(
+            "Password",
+            None,
+            if website.username.is_empty() {
+                "".to_string()
+            } else {
+                "●●●●●".to_string()
+            },
+            website.password.clone(),
+        ),
+    ]
+}
+
+fn get_poi_grid_items(poi: &ServerPointOfInterest) -> Vec<GridItem> {
+    vec![
+        // TODO lots of clones...
+        GridItem::new("Path", None, poi.path.clone(), poi.path.clone()),
+        GridItem::new("Text", None, poi.text.clone(), poi.text.clone()),
+    ]
+}
+
+fn get_note_grid_items(note: &ServerNote) -> Vec<GridItem> {
+    vec![]
+}
+
+fn get_user_grid_items(user: &ServerExtraUserAccount) -> Vec<GridItem> {
+    vec![
+        GridItem::new(
+            "Username",
+            None,
+            user.username.clone(),
+            user.username.clone(),
+        ),
+        GridItem::new(
+            "Password",
+            None,
+            if user.password.is_empty() {
+                "".to_string()
+            } else {
+                "●●●●●".to_string()
+            },
+            user.password.clone(),
+        ),
+    ]
+}
+
+fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
+    vec![
+        GridItem::new("Name", None, db.name.clone(), db.name.clone()),
+        GridItem::new("Text", None, db.text.clone(), db.text.clone()),
+        GridItem::new("Username", None, db.username.clone(), db.username.clone()),
+        GridItem::new(
+            "Text",
+            None,
+            if db.password.is_empty() {
+                "".to_string()
+            } else {
+                "●●●●●".to_string()
+            },
+            db.password.clone(),
+        ),
+    ]
+}
+
 #[widget]
 impl Widget for ServerItemListItem {
     fn init_view(&mut self) {
@@ -33,11 +121,11 @@ impl Widget for ServerItemListItem {
 
         self.header_actions_btn
             .set_popover(Some(&self.model.header_popover));
-        let fields = &self.get_grid_items();
+        let fields = get_server_item_grid_items(&self.model.server_item);
         populate_grid(
             self.items_grid.clone(),
             self.model.header_popover.clone(),
-            fields,
+            &fields,
             &|btn: &gtk::ModelButton, str_val: String| {
                 relm::connect!(
                     self.model.relm,
@@ -94,94 +182,6 @@ impl Widget for ServerItemListItem {
             InterestType::PoiBackupArchive => Icon::ARCHIVE,
             InterestType::PoiCommandTerminal => Icon::TERMINAL,
         }
-    }
-
-    fn get_grid_items(&self) -> Vec<GridItem> {
-        match self.model.server_item {
-            ServerItem::Website(ref srv_w) => Self::get_website_grid_items(srv_w),
-            ServerItem::PointOfInterest(ref srv_poi) => Self::get_poi_grid_items(srv_poi),
-            ServerItem::Note(ref srv_n) => Self::get_note_grid_items(srv_n),
-            ServerItem::ExtraUserAccount(ref srv_u) => Self::get_user_grid_items(srv_u),
-            ServerItem::Database(ref srv_d) => Self::get_db_grid_items(srv_d),
-        }
-    }
-
-    fn get_website_grid_items(website: &ServerWebsite) -> Vec<GridItem> {
-        vec![
-            GridItem::new(
-                "Address",
-                Some(Icon::HTTP),
-                format!("<a href=\"{}\">{}</a>", website.url, website.url),
-                website.url.clone(),
-            ),
-            GridItem::new(
-                "Username",
-                None,
-                website.username.clone(),
-                website.username.clone(),
-            ),
-            GridItem::new(
-                "Password",
-                None,
-                if website.username.is_empty() {
-                    "".to_string()
-                } else {
-                    "●●●●●".to_string()
-                },
-                website.password.clone(),
-            ),
-        ]
-    }
-
-    fn get_poi_grid_items(poi: &ServerPointOfInterest) -> Vec<GridItem> {
-        vec![
-            // TODO lots of clones...
-            GridItem::new("Path", None, poi.path.clone(), poi.path.clone()),
-            GridItem::new("Text", None, poi.text.clone(), poi.text.clone()),
-        ]
-    }
-
-    fn get_note_grid_items(note: &ServerNote) -> Vec<GridItem> {
-        vec![]
-    }
-
-    fn get_user_grid_items(user: &ServerExtraUserAccount) -> Vec<GridItem> {
-        vec![
-            GridItem::new(
-                "Username",
-                None,
-                user.username.clone(),
-                user.username.clone(),
-            ),
-            GridItem::new(
-                "Password",
-                None,
-                if user.password.is_empty() {
-                    "".to_string()
-                } else {
-                    "●●●●●".to_string()
-                },
-                user.password.clone(),
-            ),
-        ]
-    }
-
-    fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
-        vec![
-            GridItem::new("Name", None, db.name.clone(), db.name.clone()),
-            GridItem::new("Text", None, db.text.clone(), db.text.clone()),
-            GridItem::new("Username", None, db.username.clone(), db.username.clone()),
-            GridItem::new(
-                "Text",
-                None,
-                if db.password.is_empty() {
-                    "".to_string()
-                } else {
-                    "●●●●●".to_string()
-                },
-                db.password.clone(),
-            ),
-        ]
     }
 
     fn model(relm: &relm::Relm<Self>, server_item: ServerItem) -> Model {

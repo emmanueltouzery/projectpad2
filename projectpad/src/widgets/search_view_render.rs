@@ -762,7 +762,7 @@ fn draw_subtext(
     y: f64,
 ) -> pango::Rectangle {
     style_context.add_class("search_result_item_subtext");
-    let (extents, left, top) =
+    let (extents, _left, _top) =
         draw_basic_layout(style_context, context, search_result_area, text, x, y);
     style_context.remove_class("search_result_item_subtext");
     extents
@@ -788,7 +788,9 @@ fn draw_action(
         gtk::StateFlags::NORMAL
     };
     let item_type = match item {
-        ProjectPadItem::Server(_) => ItemType::Parent,
+        ProjectPadItem::Server(_)
+        | ProjectPadItem::ProjectPoi(_)
+        | ProjectPadItem::ProjectNote(_) => ItemType::Parent,
         _ => ItemType::Child,
     };
     draw_button(context, item_type, flags, x, y, w, h);

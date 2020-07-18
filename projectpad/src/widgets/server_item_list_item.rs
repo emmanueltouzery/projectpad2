@@ -208,10 +208,6 @@ impl Widget for ServerItemListItem {
         }
     }
 
-    fn format_link(str: &str) -> String {
-        format!("<a href='{}'>{}</a>", str, str)
-    }
-
     view! {
         #[name="items_frame"]
         gtk::Frame {

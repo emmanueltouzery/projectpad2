@@ -75,6 +75,7 @@ pub enum Msg {
     GotSearchResult(SearchResult),
     MouseScroll(gdk::ScrollDirection, (f64, f64)),
     ScrollChanged,
+    CopyClicked(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -115,6 +116,7 @@ impl ProjectPadItem {
 }
 
 pub struct Model {
+    relm: relm::Relm<SearchView>,
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
     sender: relm::Sender<SearchResult>,
@@ -124,28 +126,6 @@ pub struct Model {
     action_buttons: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
-}
-
-fn fill_popover(popover: &gtk::Popover, projectpad_item: &ProjectPadItem) {
-    let grid_items = if let Some(server_item) = projectpad_item.to_server_item() {
-        server_item_list_item::get_server_item_grid_items(&server_item)
-    } else if let Some(project_item) = projectpad_item.to_project_item() {
-        project_poi_header::get_project_item_fields(&project_item)
-    } else {
-        vec![]
-    };
-    project_poi_header::populate_popover(
-        popover,
-        &grid_items,
-        &|btn: &gtk::ModelButton, str_val: String| {
-            // relm::connect!(
-            //     self.model.relm,
-            //     btn,
-            //     connect_clicked(_),
-            //     Msg::CopyClicked(str_val.clone())
-            // );
-        },
-    );
 }
 
 #[widget]
@@ -214,6 +194,7 @@ impl Widget for SearchView {
         let search_result_area_btnclick = self.search_result_area.clone();
         let popover = self.model.action_popover.as_ref().unwrap().clone();
         let item_with_depressed_btnclick = self.model.item_with_depressed_action.clone();
+        let relm = self.model.relm.clone();
         self.search_result_area
             .connect_button_release_event(move |_, event_click| {
                 let x = event_click.get_position().0 as i32;
@@ -235,12 +216,38 @@ impl Widget for SearchView {
                         .borrow_mut()
                         .replace(btn.1.clone());
 
-                    fill_popover(&popover, &btn.1);
+                    Self::fill_popover(&relm, &popover, &btn.1);
                     popover.set_pointing_to(&btn.0.to_rect());
                     popover.popup();
                 }
                 Inhibit(false)
             });
+    }
+
+    fn fill_popover(
+        relm: &relm::Relm<SearchView>,
+        popover: &gtk::Popover,
+        projectpad_item: &ProjectPadItem,
+    ) {
+        let grid_items = if let Some(server_item) = projectpad_item.to_server_item() {
+            server_item_list_item::get_server_item_grid_items(&server_item)
+        } else if let Some(project_item) = projectpad_item.to_project_item() {
+            project_poi_header::get_project_item_fields(&project_item)
+        } else {
+            vec![]
+        };
+        project_poi_header::populate_popover(
+            popover,
+            &grid_items,
+            &move |btn: &gtk::ModelButton, str_val: String| {
+                relm::connect!(
+                    relm,
+                    btn,
+                    connect_clicked(_),
+                    Msg::CopyClicked(str_val.clone())
+                );
+            },
+        );
     }
 
     fn draw_search_view(
@@ -303,6 +310,7 @@ impl Widget for SearchView {
             stream.emit(Msg::GotSearchResult(search_r));
         });
         Model {
+            relm: relm.clone(),
             filter: None,
             db_sender,
             sender,
@@ -338,6 +346,16 @@ impl Widget for SearchView {
                 self.search_scroll.set_value(new_val);
             }
             Msg::ScrollChanged => self.search_result_area.queue_draw(),
+            Msg::CopyClicked(val) => {
+                if let Some(clip) = self
+                    .search_result_area
+                    .get_display()
+                    .as_ref()
+                    .and_then(gtk::Clipboard::get_default)
+                {
+                    clip.set_text(&val);
+                }
+            }
         }
     }
 

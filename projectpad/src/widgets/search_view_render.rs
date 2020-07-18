@@ -3,8 +3,9 @@ use crate::icons::*;
 use gdk::prelude::GdkContextExt;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase,
-    ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
+    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType,
+    ServerDatabase, ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest,
+    ServerWebsite,
 };
 const LEFT_RIGHT_MARGIN: i32 = 150;
 const ACTION_ICON_SIZE: i32 = 16;
@@ -125,6 +126,7 @@ pub fn draw_child(
             &s,
             item,
             item_with_depressed_icon,
+            links,
             action_buttons,
         ),
         ProjectPadItem::ServerNote(n) => draw_server_note(
@@ -567,6 +569,7 @@ fn draw_server(
     server: &Server,
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
+    links: &mut Vec<(Area, String)>,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
 ) {
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
@@ -577,6 +580,7 @@ fn draw_server(
         context,
         search_result_area,
     );
+    style_context.add_class("title");
     let title_rect = draw_title(
         style_context,
         context,
@@ -588,7 +592,8 @@ fn draw_server(
         y + margin.top as f64,
         None,
     );
-    draw_environment(
+    style_context.remove_class("title");
+    let env_rect = draw_environment(
         style_context,
         context,
         search_result_area,
@@ -601,6 +606,17 @@ fn draw_server(
             EnvironmentType::EnvDevelopment => "dev",
         },
     );
+    if server.access_type == ServerAccessType::SrvAccessWww && !server.ip.is_empty() {
+        draw_link(
+            style_context,
+            context,
+            search_result_area,
+            &server.ip,
+            (env_rect.x + env_rect.width) as f64,
+            y + (title_rect.height / 1024) as f64 + padding.top as f64,
+            links,
+        );
+    }
     draw_action(
         style_context,
         context,
@@ -622,7 +638,7 @@ fn draw_environment(
     x: f64,
     y: f64,
     env_name: &str,
-) {
+) -> gtk::Rectangle {
     let label_classname = format!("environment_label_{}", env_name);
     style_context.add_class(&label_classname);
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
@@ -635,23 +651,12 @@ fn draw_environment(
     let text_w = (rect.width / 1024) as f64;
     let text_h = (rect.height / 1024) as f64;
 
-    gtk::render_background(
-        style_context,
-        context,
-        x,
-        y,
-        text_w + padding.left as f64 + padding.right as f64,
-        text_h + padding.top as f64 + padding.bottom as f64,
-    );
+    let total_width = text_w + padding.left as f64 + padding.right as f64;
+    let total_height = text_h + padding.top as f64 + padding.bottom as f64;
 
-    gtk::render_frame(
-        style_context,
-        context,
-        x,
-        y,
-        text_w + padding.left as f64 + padding.right as f64,
-        text_h + padding.top as f64 + padding.bottom as f64,
-    );
+    gtk::render_background(style_context, context, x, y, total_width, total_height);
+
+    gtk::render_frame(style_context, context, x, y, total_width, total_height);
 
     gtk::render_layout(
         style_context,
@@ -661,6 +666,12 @@ fn draw_environment(
         &layout,
     );
     style_context.remove_class(&label_classname);
+    gtk::Rectangle {
+        x: x as i32,
+        y: y as i32,
+        width: total_width as i32,
+        height: total_height as i32,
+    }
 }
 
 fn draw_title(

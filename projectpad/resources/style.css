@@ -70,8 +70,11 @@
   );
 }
 
-.search_view_parent {
+.search_view_parent.title {
   font-size: 15px;
+}
+
+.search_view_parent {
   border-left-width: 3px;
   border-left-color: black;
   margin-top: 7px;

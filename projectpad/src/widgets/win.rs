@@ -1,6 +1,7 @@
 use super::project_items_list::Msg as ProjectItemsListMsg;
 use super::project_items_list::{ProjectItem, ProjectItemsList};
-use super::project_list::{Msg::ProjectActivated, ProjectList};
+use super::project_list::Msg as ProjectListMsg;
+use super::project_list::{Msg::ProjectActivated, ProjectList, UpdateParents};
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
@@ -8,7 +9,10 @@ use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
+use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
+use super::search_view::ProjectPadItem;
 use super::search_view::SearchView;
+use super::server_poi_contents::ServerItem;
 use super::wintitlebar::Msg as WinTitleBarMsg;
 use super::wintitlebar::WinTitleBar;
 use crate::sql_thread::SqlFunc;
@@ -30,6 +34,7 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     SearchActiveChanged(bool),
     SearchTextChanged(String),
+    DisplayItem((Project, Option<ProjectItem>, Option<ServerItem>)),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -102,6 +107,48 @@ impl Widget for Win {
                 self.search_view
                     .emit(SearchViewMsg::FilterChanged(Some(search_text)));
             }
+            Msg::DisplayItem((project, project_item, _server_item)) => {
+                self.project_list
+                    .emit(ProjectListMsg::ProjectSelectedFromElsewhere(project.id));
+                let env = match &project_item {
+                    Some(ProjectItem::Server(s)) => Some(s.environment),
+                    Some(ProjectItem::ServerLink(s)) => Some(s.environment),
+                    Some(ProjectItem::ProjectNote(n)) if n.has_prod => {
+                        Some(EnvironmentType::EnvProd)
+                    }
+                    Some(ProjectItem::ProjectNote(n)) if n.has_uat => Some(EnvironmentType::EnvUat),
+                    Some(ProjectItem::ProjectNote(n)) if n.has_stage => {
+                        Some(EnvironmentType::EnvStage)
+                    }
+                    Some(ProjectItem::ProjectNote(n)) if n.has_dev => {
+                        Some(EnvironmentType::EnvDevelopment)
+                    }
+                    _ => None,
+                };
+                if let Some(e) = env {
+                    self.project_summary.emit(
+                        ProjectSummaryMsg::ProjectEnvironmentSelectedFromElsewhere((
+                            project.clone(),
+                            e,
+                        )),
+                    );
+                }
+                self.project_items_list.emit(
+                    ProjectItemsListMsg::ProjectItemSelectedFromElsewhere((
+                        project,
+                        env,
+                        project_item,
+                    )),
+                );
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::SearchActiveChanged(false));
+                self.model
+                    .titlebar
+                    .stream()
+                    .emit(WinTitleBarMsg::SearchActiveChanged(false));
+            }
         }
     }
 
@@ -129,9 +176,10 @@ impl Widget for Win {
                     child: {
                         name: Some(CHILD_NAME_NORMAL)
                     },
+                    #[name="project_list"]
                     ProjectList(self.model.db_sender.clone()) {
                         property_width_request: 60,
-                        ProjectActivated(ref prj) => Msg::ProjectActivated(prj.clone())
+                        ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone())
                     },
                     gtk::Box {
                         orientation: gtk::Orientation::Vertical,
@@ -172,6 +220,7 @@ impl Widget for Win {
                     child: {
                         name: Some(CHILD_NAME_SEARCH)
                     },
+                    SearchViewOpenItemFull(ref item) => Msg::DisplayItem(item.clone())
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),

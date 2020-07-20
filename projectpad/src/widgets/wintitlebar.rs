@@ -32,6 +32,7 @@ impl Widget for WinTitleBar {
                     .emit(Msg::SearchActiveChanged(new_visible));
             }
             Msg::SearchActiveChanged(active) => {
+                self.search_toggle.set_active(active);
                 self.search_entry.set_visible(active);
                 if active {
                     self.search_entry.grab_focus();

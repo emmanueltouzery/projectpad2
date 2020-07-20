@@ -13,9 +13,13 @@ use relm_derive::{widget, Msg};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc;
 
-type ChannelData = (Vec<ProjectItem>, HashMap<i32, String>);
+type ChannelData = (
+    (Vec<ProjectItem>, HashMap<i32, String>),
+    Option<EnvironmentType>,
+    Option<ProjectItem>,
+);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ProjectItem {
     Server(Server),
     ServerLink(ServerLink),
@@ -30,6 +34,7 @@ pub enum Msg {
     GotProjectItems(ChannelData),
     ProjectItemIndexSelected(Option<usize>),
     ProjectItemSelected(Option<ProjectItem>),
+    ProjectItemSelectedFromElsewhere((Project, Option<EnvironmentType>, Option<ProjectItem>)),
 }
 
 pub struct Model {
@@ -46,13 +51,15 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectItemsList {
     fn init_view(&mut self) {
+        self.project_items_list
+            .set_focus_vadjustment(&self.scroll.get_vadjustment().unwrap());
         self.update_items_list();
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |prj_items: ChannelData| {
-            stream.emit(Msg::GotProjectItems(prj_items));
+        let (channel, sender) = relm::Channel::new(move |ch_data: ChannelData| {
+            stream.emit(Msg::GotProjectItems(ch_data));
         });
         Model {
             relm: relm.clone(),
@@ -146,7 +153,11 @@ impl Widget for ProjectItemsList {
         }
     }
 
-    fn fetch_project_items(&mut self) {
+    fn fetch_project_items(
+        &mut self,
+        env_to_select: Option<EnvironmentType>,
+        pi_to_select: Option<ProjectItem>,
+    ) {
         let s = self.model.sender.clone();
         let cur_project_id = self.model.project.as_ref().map(|p| p.id);
         let env = self.model.environment;
@@ -195,7 +206,12 @@ impl Widget for ProjectItemsList {
                         Some(group_name),
                     );
                 }
-                s.send((items, group_start_indexes)).unwrap();
+                s.send((
+                    (items, group_start_indexes),
+                    env_to_select,
+                    pi_to_select.as_ref().cloned(),
+                ))
+                .unwrap();
             }))
             .unwrap();
     }
@@ -204,19 +220,32 @@ impl Widget for ProjectItemsList {
         match event {
             Msg::ActiveProjectChanged(project) => {
                 self.model.project = Some(project);
-                self.fetch_project_items();
+                self.fetch_project_items(None, None);
             }
-            Msg::GotProjectItems(items) => {
+            Msg::GotProjectItems((items, env, project_item)) => {
+                println!("got items {:?} {:?}", env, project_item);
                 if let Some(vadj) = self.scroll.get_vadjustment() {
                     vadj.set_value(0.0);
                 }
                 self.model.project_items = items.0;
                 self.model.project_item_groups_start_indexes = items.1;
                 self.update_items_list();
+                let row_idx = self
+                    .model
+                    .project_items
+                    .iter()
+                    .position(|cur_pi| Some(cur_pi) == project_item.as_ref());
+                println!("select position: {:?}", row_idx);
+                let row = row_idx.and_then(|i| self.project_items_list.get_row_at_index(i as i32));
+                self.project_items_list.select_row(row.as_ref());
+                if let Some(r) = row {
+                    println!("ss {:?}", r);
+                    r.grab_focus();
+                }
             }
             Msg::ActiveEnvironmentChanged(env) => {
                 self.model.environment = env;
-                self.fetch_project_items();
+                self.fetch_project_items(Some(env), None);
             }
             Msg::ProjectItemIndexSelected(row_idx) => {
                 self.model.relm.stream().emit(Msg::ProjectItemSelected(
@@ -225,6 +254,13 @@ impl Widget for ProjectItemsList {
             }
             Msg::ProjectItemSelected(_) => {
                 // meant for my parent
+            }
+            Msg::ProjectItemSelectedFromElsewhere((project, env, pi)) => {
+                self.model.project = Some(project);
+                if let Some(e) = env {
+                    self.model.environment = e;
+                }
+                self.fetch_project_items(env, pi.clone());
             }
         }
     }

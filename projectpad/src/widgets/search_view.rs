@@ -76,6 +76,8 @@ pub enum Msg {
     MouseScroll(gdk::ScrollDirection, (f64, f64)),
     ScrollChanged,
     CopyClicked(String),
+    OpenItem(ProjectPadItem),
+    OpenItemFull((Project, Option<ProjectItem>, Option<ServerItem>)),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -236,8 +238,18 @@ impl Widget for SearchView {
         } else {
             vec![]
         };
+        let open_btn = gtk::ModelButtonBuilder::new().label("Open").build();
+        let ppitem = projectpad_item.clone();
+        relm::connect!(
+            relm,
+            open_btn,
+            connect_clicked(_),
+            Msg::OpenItem(ppitem.clone())
+        );
+        let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
         project_poi_header::populate_popover(
             popover,
+            &vec![open_btn, edit_btn],
             &grid_items,
             &move |btn: &gtk::ModelButton, str_val: String| {
                 relm::connect!(
@@ -356,7 +368,102 @@ impl Widget for SearchView {
                     clip.set_text(&val);
                 }
             }
+            Msg::OpenItem(item) => {
+                self.emit_open_item_full(item);
+            }
+            Msg::OpenItemFull(item) => {
+                // meant for my parent
+            }
         }
+    }
+
+    fn emit_open_item_full(&self, item: ProjectPadItem) {
+        let search_items = self.model.search_items.borrow();
+        let project_by_id = |pid| {
+            search_items
+                .iter()
+                .find_map(|si| match si {
+                    ProjectPadItem::Project(p) if p.id == pid => Some(p),
+                    _ => None,
+                })
+                .unwrap()
+                .clone()
+        };
+        let server_by_id = |sid| {
+            search_items
+                .iter()
+                .find_map(|si| match si {
+                    ProjectPadItem::Server(s) if s.id == sid => Some(s),
+                    _ => None,
+                })
+                .unwrap()
+                .clone()
+        };
+
+        let data = match item {
+            ProjectPadItem::Project(p) => (p, None, None),
+            ProjectPadItem::Server(s) => (
+                project_by_id(s.project_id),
+                Some(ProjectItem::Server(s.clone())),
+                None,
+            ),
+            ProjectPadItem::ProjectNote(n) => (
+                project_by_id(n.project_id),
+                Some(ProjectItem::ProjectNote(n)),
+                None,
+            ),
+            ProjectPadItem::ProjectPoi(p) => (
+                project_by_id(p.project_id),
+                Some(ProjectItem::ProjectPointOfInterest(p)),
+                None,
+            ),
+            ProjectPadItem::ServerLink(l) => (
+                project_by_id(l.project_id),
+                Some(ProjectItem::ServerLink(l)),
+                None,
+            ),
+            ProjectPadItem::ServerPoi(p) => {
+                let server = server_by_id(p.server_id);
+                (
+                    project_by_id(server.project_id),
+                    Some(ProjectItem::Server(server)),
+                    Some(ServerItem::PointOfInterest(p)),
+                )
+            }
+            ProjectPadItem::ServerWebsite(w) => {
+                let server = server_by_id(w.server_id);
+                (
+                    project_by_id(server.project_id),
+                    Some(ProjectItem::Server(server)),
+                    Some(ServerItem::Website(w)),
+                )
+            }
+            ProjectPadItem::ServerDatabase(d) => {
+                let server = server_by_id(d.server_id);
+                (
+                    project_by_id(server.project_id),
+                    Some(ProjectItem::Server(server)),
+                    Some(ServerItem::Database(d)),
+                )
+            }
+            ProjectPadItem::ServerNote(n) => {
+                let server = server_by_id(n.server_id);
+                (
+                    project_by_id(server.project_id),
+                    Some(ProjectItem::Server(server)),
+                    Some(ServerItem::Note(n)),
+                )
+            }
+            ProjectPadItem::ServerExtraUserAccount(u) => {
+                let server = server_by_id(u.server_id);
+                (
+                    project_by_id(server.project_id),
+                    Some(ProjectItem::Server(server)),
+                    Some(ServerItem::ExtraUserAccount(u)),
+                )
+            }
+        };
+        self.model.relm.stream().emit(Msg::OpenItemFull(data));
     }
 
     fn refresh_display(&mut self, search_result: Option<&SearchResult>) {

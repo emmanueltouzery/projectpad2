@@ -43,6 +43,7 @@ impl GridItem {
 
 pub fn populate_popover(
     actions_popover: &gtk::Popover,
+    extra_btns: &[gtk::ModelButton],
     fields: &[GridItem],
     register_btn: &dyn Fn(&gtk::ModelButton, String),
 ) {
@@ -53,7 +54,9 @@ pub fn populate_popover(
         .margin(10)
         .orientation(gtk::Orientation::Vertical)
         .build();
-    popover_vbox.add(&gtk::ModelButtonBuilder::new().label("Edit").build());
+    for extra_btn in extra_btns {
+        popover_vbox.add(extra_btn);
+    }
     for item in fields {
         let popover_btn = gtk::ModelButtonBuilder::new()
             .label(&format!("Copy {}", item.label_name))
@@ -109,7 +112,12 @@ pub fn populate_grid(
         }
     }
     header_grid.show_all();
-    populate_popover(&actions_popover, fields, register_btn);
+    populate_popover(
+        &actions_popover,
+        &vec![gtk::ModelButtonBuilder::new().label("Edit").build()],
+        fields,
+        register_btn,
+    );
 }
 
 pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {

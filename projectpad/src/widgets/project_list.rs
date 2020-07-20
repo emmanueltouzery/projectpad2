@@ -9,10 +9,17 @@ use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
+#[derive(Clone)]
+pub enum UpdateParents {
+    Yes,
+    No,
+}
+
 #[derive(Msg, Clone)]
 pub enum Msg {
-    ProjectActivated(Project),
+    ProjectActivated((Project, UpdateParents)),
     GotProjects(Vec<Project>),
+    ProjectSelectedFromElsewhere(i32),
 }
 
 pub struct Model {
@@ -55,6 +62,14 @@ impl Widget for ProjectList {
                 self.model.projects = prjs;
                 self.update_projects_list();
             }
+            Msg::ProjectSelectedFromElsewhere(pid) => {
+                if let Some(prj) = self.model.projects.iter().find(|p| p.id == pid) {
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::ProjectActivated((prj.clone(), UpdateParents::No)));
+                }
+            }
         }
     }
 
@@ -87,13 +102,13 @@ impl Widget for ProjectList {
             relm::connect!(
                 child@ProjectBadgeMsg::Activate(ref project),
                 self.model.relm,
-                Msg::ProjectActivated(project.clone())
+                Msg::ProjectActivated((project.clone(), UpdateParents::Yes))
             );
             let relm = &self.model.relm;
             relm::connect!(
                 relm@Msg::ProjectActivated(ref project),
                 child,
-                ProjectBadgeMsg::ActiveProjectChanged(project.id));
+                ProjectBadgeMsg::ActiveProjectChanged(project.0.id));
             self.model.children_widgets.push(child);
         }
     }

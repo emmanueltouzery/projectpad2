@@ -62,6 +62,14 @@
   text-decoration: underline;
 }
 
+.server_item_header {
+  padding-left: 10px;
+  padding-top: 30px;
+  font-size: 15px;
+  font-weight: bold;
+  /* border-bottom: 1px solid black; */
+}
+
 /* https://elementaryos.stackexchange.com/a/22239/23318 */
 .scrollgradient undershoot.top {
   background: linear-gradient(

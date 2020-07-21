@@ -9,12 +9,15 @@ use projectpadsql::models::{
 };
 use relm::{Component, ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
+use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc;
+
+type ChannelData = (Vec<ServerItem>, HashMap<i32, String>);
 
 #[derive(Msg)]
 pub enum Msg {
     ServerSelected(Option<Server>),
-    GotItems(Vec<ServerItem>),
+    GotItems(ChannelData),
 }
 
 #[derive(Clone)]
@@ -26,12 +29,25 @@ pub enum ServerItem {
     Database(ServerDatabase),
 }
 
+impl ServerItem {
+    fn group_name(&self) -> Option<&str> {
+        match self {
+            ServerItem::Website(w) => w.group_name.as_deref(),
+            ServerItem::PointOfInterest(p) => p.group_name.as_deref(),
+            ServerItem::Note(n) => n.group_name.as_deref(),
+            ServerItem::ExtraUserAccount(u) => u.group_name.as_deref(),
+            ServerItem::Database(d) => d.group_name.as_deref(),
+        }
+    }
+}
+
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
-    sender: relm::Sender<Vec<ServerItem>>,
-    _channel: relm::Channel<Vec<ServerItem>>,
+    sender: relm::Sender<ChannelData>,
+    _channel: relm::Channel<ChannelData>,
     cur_project_item: Option<Server>,
     server_items: Vec<ServerItem>,
+    server_item_groups_start_indexes: HashMap<i32, String>,
     _children_components: Vec<Component<ServerItemListItem>>,
 }
 
@@ -49,7 +65,7 @@ impl Widget for ServerPoiContents {
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |items: Vec<ServerItem>| {
+        let (channel, sender) = relm::Channel::new(move |items: ChannelData| {
             stream.emit(Msg::GotItems(items));
         });
         Model {
@@ -58,6 +74,7 @@ impl Widget for ServerPoiContents {
             db_sender,
             cur_project_item: None,
             server_items: vec![],
+            server_item_groups_start_indexes: HashMap::new(),
             _children_components: vec![],
         }
     }
@@ -69,7 +86,8 @@ impl Widget for ServerPoiContents {
                 self.fetch_items();
             }
             Msg::GotItems(items) => {
-                self.model.server_items = items;
+                self.model.server_items = items.0;
+                self.model.server_item_groups_start_indexes = items.1;
                 self.update_contents_list();
             }
         }
@@ -86,6 +104,20 @@ impl Widget for ServerPoiContents {
                     .add_widget::<ServerItemListItem>(item.clone()),
             );
         }
+        let indexes = self.model.server_item_groups_start_indexes.clone();
+        self.contents_list
+            .set_header_func(Some(Box::new(move |row, _h| {
+                if let Some(group_name) = indexes.get(&row.get_index()) {
+                    let label = gtk::LabelBuilder::new()
+                        .label(group_name)
+                        .xalign(0.0)
+                        .build();
+                    label.get_style_context().add_class("server_item_header");
+                    row.set_header(Some(&label));
+                } else {
+                    row.set_header::<gtk::ListBoxRow>(None)
+                }
+            })));
         // need to keep the component alive else the event handling dies
         self.model._children_components = children_components;
     }
@@ -152,7 +184,27 @@ impl Widget for ServerPoiContents {
                     }
                     None => vec![],
                 };
-                s.send(items).unwrap();
+
+                let group_names: BTreeSet<&str> =
+                    items.iter().filter_map(|i| i.group_name()).collect();
+                let mut group_start_indexes = HashMap::new();
+
+                let mut grouped_items = vec![];
+                grouped_items.extend(items.iter().filter(|i| i.group_name() == None));
+                for group_name in &group_names {
+                    group_start_indexes.insert(grouped_items.len() as i32, group_name.to_string());
+                    grouped_items.extend(
+                        items
+                            .iter()
+                            .filter(|i| i.group_name().as_ref() == Some(group_name)),
+                    );
+                }
+
+                s.send((
+                    grouped_items.into_iter().map(|i| i.clone()).collect(),
+                    group_start_indexes,
+                ))
+                .unwrap();
             }))
             .unwrap();
     }

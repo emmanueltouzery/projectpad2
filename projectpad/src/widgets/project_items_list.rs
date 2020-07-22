@@ -35,6 +35,7 @@ pub enum Msg {
     ProjectItemIndexSelected(Option<usize>),
     ProjectItemSelected(Option<ProjectItem>),
     ProjectItemSelectedFromElsewhere((Project, Option<EnvironmentType>, Option<ProjectItem>)),
+    FocusRow(gtk::ListBoxRow),
 }
 
 pub struct Model {
@@ -239,8 +240,13 @@ impl Widget for ProjectItemsList {
                 let row = row_idx.and_then(|i| self.project_items_list.get_row_at_index(i as i32));
                 self.project_items_list.select_row(row.as_ref());
                 if let Some(r) = row {
-                    println!("ss {:?}", r);
-                    r.grab_focus();
+                    // we need the timeout. We've just added the rows to the listbox,
+                    // they are not realized yet. The scrolling doesn't work unless
+                    // we allow the gtk thread to realize the list items
+                    // https://discourse.gnome.org/t/listbox-programmatically-scroll-to-row/3844
+                    relm::timeout(self.model.relm.stream(), 100, move || {
+                        Msg::FocusRow(r.clone())
+                    });
                 }
             }
             Msg::ActiveEnvironmentChanged(env) => {
@@ -261,6 +267,9 @@ impl Widget for ProjectItemsList {
                     self.model.environment = e;
                 }
                 self.fetch_project_items(env, pi.clone());
+            }
+            Msg::FocusRow(r) => {
+                r.grab_focus();
             }
         }
     }

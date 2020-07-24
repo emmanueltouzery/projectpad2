@@ -35,6 +35,7 @@ pub enum Msg {
     SearchActiveChanged(bool),
     SearchTextChanged(String),
     DisplayItem((Project, Option<ProjectItem>, Option<ServerItem>)),
+    KeyPress(gdk::EventKey),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -149,6 +150,31 @@ impl Widget for Win {
                     .stream()
                     .emit(WinTitleBarMsg::SearchActiveChanged(false));
             }
+            Msg::KeyPress(e) => {
+                if e.get_keyval() == gdk::enums::key::Escape {
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::SearchActiveChanged(false));
+                    self.model
+                        .titlebar
+                        .stream()
+                        .emit(WinTitleBarMsg::SearchActiveChanged(false));
+                } else if let Some(k) = gdk::keyval_to_unicode(e.get_keyval()) {
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::SearchActiveChanged(true));
+                    self.search_view
+                        .emit(SearchViewMsg::FilterChanged(Some(k.to_string())));
+                    self.model
+                        .titlebar
+                        .emit(WinTitleBarMsg::SearchTextChangedFromElsewhere((
+                            k.to_string(),
+                            e,
+                        )));
+                }
+            }
         }
     }
 
@@ -224,6 +250,7 @@ impl Widget for Win {
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
+            key_press_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
         }
     }
 }

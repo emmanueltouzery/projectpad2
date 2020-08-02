@@ -1,6 +1,8 @@
 use nom::branch::alt;
 use nom::bytes::complete::*;
 use nom::combinator::*;
+#[cfg(test)]
+use nom::multi::many0;
 use nom::multi::many_till;
 use nom::IResult;
 
@@ -18,8 +20,8 @@ fn plaintext(input: &str) -> IResult<&str, LineItem> {
 
 fn bold(input: &str) -> IResult<&str, LineItem> {
     let (input, _) = tag("**")(input)?;
-    let (input, o) = map(many_till(line_item, tag("**")), |(r, _)| LineItem::Bold(r))(input)?;
-    Ok((input, o))
+    let (input, (o, _)) = many_till(line_item, tag("**"))(input)?;
+    Ok((input, LineItem::Bold(o)))
 }
 
 fn line_item(input: &str) -> IResult<&str, LineItem> {

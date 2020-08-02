@@ -10,7 +10,6 @@ use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
-use super::search_view::ProjectPadItem;
 use super::search_view::SearchView;
 use super::server_poi_contents::ServerItem;
 use super::wintitlebar::Msg as WinTitleBarMsg;
@@ -151,7 +150,7 @@ impl Widget for Win {
                     .emit(WinTitleBarMsg::SearchActiveChanged(false));
             }
             Msg::KeyPress(e) => {
-                if e.get_keyval() == gdk::enums::key::Escape {
+                if e.get_keyval() == gdk::keys::constants::Escape {
                     self.model
                         .relm
                         .stream()
@@ -160,7 +159,7 @@ impl Widget for Win {
                         .titlebar
                         .stream()
                         .emit(WinTitleBarMsg::SearchActiveChanged(false));
-                } else if let Some(k) = gdk::keyval_to_unicode(e.get_keyval()) {
+                } else if let Some(k) = e.get_keyval().to_unicode() {
                     self.model
                         .relm
                         .stream()

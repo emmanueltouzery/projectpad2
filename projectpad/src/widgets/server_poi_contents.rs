@@ -1,4 +1,3 @@
-use super::project_items_list::ProjectItem;
 use super::server_item_list_item::ServerItemListItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;

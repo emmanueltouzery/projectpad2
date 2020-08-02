@@ -1,5 +1,4 @@
 use diesel::backend::Backend;
-use diesel::prelude::*;
 use diesel::serialize::Output;
 use diesel::types::*;
 use std::io::Write;

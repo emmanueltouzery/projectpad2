@@ -280,7 +280,7 @@ impl Widget for ProjectPoiHeader {
                             pack_type: gtk::PackType::End,
                         },
                         always_show_image: true,
-                        image: Some(&gtk::Image::new_from_icon_name(
+                        image: Some(&gtk::Image::from_icon_name(
                             Some(Icon::COG.name()), gtk::IconSize::Menu)),
                         halign: gtk::Align::End,
                         valign: gtk::Align::Center,

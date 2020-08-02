@@ -642,9 +642,7 @@ fn draw_environment(
     let label_classname = format!("environment_label_{}", env_name);
     style_context.add_class(&label_classname);
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-    let pango_context = search_result_area
-        .create_pango_context()
-        .expect("failed getting pango context");
+    let pango_context = search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(&env_name.to_uppercase());
     let rect = layout.get_extents().1;
@@ -689,9 +687,7 @@ fn draw_title(
         .as_deref()
         .unwrap_or("search_result_item_title");
     style_context.add_class(clazz);
-    let pango_context = search_result_area
-        .create_pango_context()
-        .expect("failed getting pango context");
+    let pango_context = search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(text);
     layout.set_ellipsize(pango::EllipsizeMode::End);
@@ -723,9 +719,7 @@ fn draw_basic_layout(
     y: f64,
 ) -> (pango::Rectangle, f64, f64) {
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-    let pango_context = search_result_area
-        .create_pango_context()
-        .expect("failed getting pango context");
+    let pango_context = search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(text);
     layout.set_ellipsize(pango::EllipsizeMode::End);

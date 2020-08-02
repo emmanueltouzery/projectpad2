@@ -172,7 +172,7 @@ impl Widget for SearchView {
         let links_mmove = self.model.links.clone();
         let search_result_area_mmove = self.search_result_area.clone();
         let hand_cursor = gdk::Cursor::new_for_display(
-            &self.search_result_area.get_display().unwrap(),
+            &self.search_result_area.get_display(),
             gdk::CursorType::Hand2,
         );
         self.search_result_area
@@ -359,11 +359,8 @@ impl Widget for SearchView {
             }
             Msg::ScrollChanged => self.search_result_area.queue_draw(),
             Msg::CopyClicked(val) => {
-                if let Some(clip) = self
-                    .search_result_area
-                    .get_display()
-                    .as_ref()
-                    .and_then(gtk::Clipboard::get_default)
+                if let Some(clip) =
+                    gtk::Clipboard::get_default(&self.search_result_area.get_display())
                 {
                     clip.set_text(&val);
                 }

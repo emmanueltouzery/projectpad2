@@ -77,7 +77,7 @@ impl Widget for WinTitleBar {
             title: Some("Projectpad"),
             #[name="search_toggle"]
             gtk::ToggleButton {
-                image: Some(&gtk::Image::new_from_icon_name(Some("edit-find-symbolic"), gtk::IconSize::Menu)),
+                image: Some(&gtk::Image::from_icon_name(Some("edit-find-symbolic"), gtk::IconSize::Menu)),
                 child: {
                     pack_type: gtk::PackType::End
                 },
@@ -88,8 +88,7 @@ impl Widget for WinTitleBar {
                 child: {
                     pack_type: gtk::PackType::End
                 },
-                changed(entry) => Msg::SearchTextChanged(entry.get_text()
-                                                         .map(|t| t.to_string()).unwrap_or_else(|| "".to_string()))
+                changed(entry) => Msg::SearchTextChanged(entry.get_text().to_string())
             },
         }
     }

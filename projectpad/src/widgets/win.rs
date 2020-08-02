@@ -151,7 +151,7 @@ impl Widget for Win {
                     .emit(WinTitleBarMsg::SearchActiveChanged(false));
             }
             Msg::KeyPress(e) => {
-                if e.get_keyval() == gdk::enums::key::Escape {
+                if e.get_keyval() == gdk::keys::constants::Escape {
                     self.model
                         .relm
                         .stream()
@@ -160,7 +160,7 @@ impl Widget for Win {
                         .titlebar
                         .stream()
                         .emit(WinTitleBarMsg::SearchActiveChanged(false));
-                } else if let Some(k) = gdk::keyval_to_unicode(e.get_keyval()) {
+                } else if let Some(k) = e.get_keyval().to_unicode() {
                     self.model
                         .relm
                         .stream()

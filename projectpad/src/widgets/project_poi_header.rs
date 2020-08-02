@@ -204,12 +204,7 @@ impl Widget for ProjectPoiHeader {
                 self.load_project_item();
             }
             Msg::CopyClicked(val) => {
-                if let Some(clip) = self
-                    .header_grid
-                    .get_display()
-                    .as_ref()
-                    .and_then(gtk::Clipboard::get_default)
-                {
+                if let Some(clip) = gtk::Clipboard::get_default(&self.header_grid.get_display()) {
                     clip.set_text(&val);
                 }
             }
@@ -280,7 +275,7 @@ impl Widget for ProjectPoiHeader {
                             pack_type: gtk::PackType::End,
                         },
                         always_show_image: true,
-                        image: Some(&gtk::Image::new_from_icon_name(
+                        image: Some(&gtk::Image::from_icon_name(
                             Some(Icon::COG.name()), gtk::IconSize::Menu)),
                         halign: gtk::Align::End,
                         valign: gtk::Align::Center,

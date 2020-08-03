@@ -169,7 +169,12 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
                 Event::FootnoteReference(_) | Event::TaskListMarker(_) => {}
             },
             EventExt::Password(p) => {
-                result.push_str(&format!(r#"<a href="pass://{}">password</a>"#, p));
+                result.push_str(&format!(
+                    // the emoji doesn't look nice in the link on my machine, the underline
+                    // doesn't line up with the rest of the string => put it out of the link
+                    r#"<span size="x-small">🔒</span><a href="pass://{}">[Password]</a>"#,
+                    p
+                ));
             }
         }
     }

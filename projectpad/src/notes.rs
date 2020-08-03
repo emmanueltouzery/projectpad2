@@ -1,11 +1,6 @@
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
 // TODO
-// Github tricks
-// Podcasts
-// Zeal
-// hack _vimrc remote windows
-// typescript enums
 // bullets in "maps test asset" and in "Job"
 // passwords, eg LECIP SG teamviewer, VPN setup, LIT office VPN, VPN setup, Wifi passwords
 // <hr> doesn't exactly look great
@@ -14,7 +9,12 @@ use pulldown_cmark::{Event, Options, Parser, Tag};
 pub fn note_markdown_to_pango_markup(input: &str) -> String {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
-    let escaped_input = glib::markup_escape_text(input).to_string();
+    // escape html for pango
+    // https://stackoverflow.com/a/3705601/516188
+    let escaped_input = glib::markup_escape_text(input)
+        .to_string()
+        .replace("&", "&amp;")
+        .replace("'", "&apos;");
     let parser = Parser::new_ext(&escaped_input, options);
     let mut result = "".to_string();
     let mut list_cur_idx = None;

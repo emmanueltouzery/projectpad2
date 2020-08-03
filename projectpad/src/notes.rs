@@ -1,7 +1,6 @@
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
 // TODO
-// bullets in "maps test asset" and in "Job"
 // passwords, eg LECIP SG teamviewer, VPN setup, LIT office VPN, VPN setup, Wifi passwords
 // <hr> doesn't exactly look great
 
@@ -18,6 +17,7 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
     let parser = Parser::new_ext(&escaped_input, options);
     let mut result = "".to_string();
     let mut list_cur_idx = None;
+    let mut in_item = false; // paragraphs inside bullets don't look nice
     for event in parser {
         match event {
             Event::Start(Tag::Strong) => result.push_str("<b>"),
@@ -39,6 +39,7 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
                 list_cur_idx = None;
             }
             Event::Start(Tag::Item) => {
+                in_item = true;
                 if let Some(idx) = list_cur_idx {
                     result.push_str(format!("\n{}. ", idx).as_str());
                     list_cur_idx = Some(idx + 1);
@@ -46,9 +47,19 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
                     result.push_str("\n• ");
                 }
             }
-            Event::End(Tag::Item) => {}
-            Event::Start(Tag::Paragraph) => result.push_str("\n"),
-            Event::End(Tag::Paragraph) => result.push_str("\n"),
+            Event::End(Tag::Item) => {
+                in_item = false;
+            }
+            Event::Start(Tag::Paragraph) => {
+                if !in_item {
+                    result.push_str("\n")
+                }
+            }
+            Event::End(Tag::Paragraph) => {
+                if !in_item {
+                    result.push_str("\n")
+                }
+            }
             // color is accent yellow from https://developer.gnome.org/hig-book/unstable/design-color.html.en
             Event::Start(Tag::BlockQuote) => result.push_str(r##"<span background="#EED680">\n"##),
             Event::End(Tag::BlockQuote) => result.push_str("</span>\n"),

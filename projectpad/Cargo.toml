@@ -19,6 +19,7 @@ gdk = "0.13.0"
 projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "1.4.5", features = ["sqlite"] }
 pango = "0.9.0"
+pulldown-cmark = {version = "0.7.2", default-features=false }
 
 [dependencies.gtk]
 version = "0.9.1"

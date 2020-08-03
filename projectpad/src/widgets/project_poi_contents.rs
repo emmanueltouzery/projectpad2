@@ -53,7 +53,9 @@ impl Widget for ProjectPoiContents {
                         .cur_project_item
                         .as_ref()
                         .and_then(|pi| match pi {
-                            ProjectItem::ProjectNote(ref note) => Some(note.contents.clone()),
+                            ProjectItem::ProjectNote(ref note) => Some(
+                                crate::notes::note_markdown_to_pango_markup(note.contents.as_ref()),
+                            ),
                             _ => None,
                         });
                 self.contents_stack

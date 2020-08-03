@@ -1770,6 +1770,7 @@ dependencies = [
  "gtk",
  "pango",
  "projectpadsql",
+ "pulldown-cmark",
  "relm",
  "relm-derive",
  "reqwest",
@@ -1801,6 +1802,17 @@ dependencies = [
  "libsqlite3-sys",
  "strum",
  "strum_macros",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca36dea94d187597e104a5c8e4b07576a8a45aa5db48a65e12940d3eb7461f55"
+dependencies = [
+ "bitflags",
+ "memchr",
+ "unicase",
 ]
 
 [[package]]

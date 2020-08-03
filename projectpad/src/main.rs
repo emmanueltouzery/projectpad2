@@ -2,6 +2,7 @@
 extern crate diesel;
 
 pub mod icons;
+pub mod notes;
 mod sql_thread;
 mod widgets;
 

@@ -10,6 +10,7 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
+    ActivateLink(String),
 }
 
 pub struct Model {
@@ -64,6 +65,11 @@ impl Widget for ProjectPoiContents {
                         _ => CHILD_NAME_SERVER, // server is a list of items, handles None well (no items)
                     });
             }
+            Msg::ActivateLink(uri) => {
+                if uri.starts_with("pass://") {
+                    println!("activate pass {}", &uri[7..]);
+                }
+            }
         }
     }
 
@@ -87,8 +93,10 @@ impl Widget for ProjectPoiContents {
                     margin_bottom: 10,
                     xalign: 0.0,
                     yalign: 0.0,
+                    selectable: true,
                     markup: self.model.project_note_contents
-                                .as_ref().map(|c| c.as_str()).unwrap_or("")
+                                      .as_ref().map(|c| c.as_str()).unwrap_or(""),
+                    activate_link(_, uri) => (Msg::ActivateLink(uri.to_string()), Inhibit(false))
                 }
             }
         }

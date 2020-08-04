@@ -31,7 +31,6 @@ impl Widget for ProjectPoiContents {
     fn init_view(&mut self) {}
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
-        let stream = relm.stream().clone();
         Model {
             relm: relm.clone(),
             db_sender,
@@ -73,51 +72,69 @@ impl Widget for ProjectPoiContents {
             }
             Msg::ActivateLink(uri) => {
                 if uri.starts_with("pass://") {
-                    // i'd initialize the popover in the init & reuse it,
-                    // but i can't get the toplevel there, probably things
-                    // are not fully initialized yet.
-                    let popover = gtk::Popover::new(Some(
-                        &self
-                            .contents_stack
-                            .get_toplevel()
-                            .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
-                            .unwrap()
-                            .get_child()
-                            .unwrap(),
-                    ));
-                    popover.set_position(gtk::PositionType::Bottom);
-                    self.model.pass_popover = Some(popover.clone());
-                    let display = gdk::Display::get_default().unwrap();
-                    let seat = display.get_default_seat().unwrap();
-                    let mouse_device = seat.get_pointer().unwrap();
-                    let window = display.get_default_group();
-                    let (_, dev_x, dev_y, _) = window.get_device_position(&mouse_device);
-                    let (_, o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
-                    let (x, y) = (dev_x - o_x, dev_y - o_y);
-                    popover.set_pointing_to(&gtk::Rectangle {
-                        x,
-                        y,
-                        width: 50,
-                        height: 15,
-                    });
-                    let rlm = self.model.relm.clone();
-                    popover.connect_closed(move |_| {
-                        // this is a workaround, without that if you close
-                        // the popover by clicking on the label, the label's
-                        // text gets selected (select all)
-                        rlm.stream().emit(Msg::LabelUnselect);
-                    });
-                    popover.popup();
-                    // popover.grab_focus();
-
-                    // then display the popover 'copy' and 'reveal'
-                    // reveal presumably shows & hides a gtk infobar
-                    // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
-                    println!("activate pass {}", &uri[7..]);
+                    self.password_popover(&uri[7..]);
                 }
             }
             Msg::LabelUnselect => self.note_label.select_region(0, 0),
         }
+    }
+
+    fn password_popover(&mut self, password: &str) {
+        // i'd initialize the popover in the init & reuse it,
+        // but i can't get the toplevel there, probably things
+        // are not fully initialized yet.
+        let popover = gtk::Popover::new(Some(
+            &self
+                .contents_stack
+                .get_toplevel()
+                .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
+                .unwrap()
+                .get_child()
+                .unwrap(),
+        ));
+        popover.set_position(gtk::PositionType::Bottom);
+        self.model.pass_popover = Some(popover.clone());
+        let display = gdk::Display::get_default().unwrap();
+        let seat = display.get_default_seat().unwrap();
+        let mouse_device = seat.get_pointer().unwrap();
+        let window = display.get_default_group();
+        let (_, dev_x, dev_y, _) = window.get_device_position(&mouse_device);
+        let (_, o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
+        popover.set_pointing_to(&gtk::Rectangle {
+            x: dev_x - o_x,
+            y: dev_y - o_y,
+            width: 50,
+            height: 15,
+        });
+        let rlm = self.model.relm.clone();
+        popover.connect_closed(move |_| {
+            // this is a workaround, without that if you close
+            // the popover by clicking on the label, the label's
+            // text gets selected (select all)
+            rlm.stream().emit(Msg::LabelUnselect);
+        });
+        let popover_vbox = gtk::BoxBuilder::new()
+            .margin(10)
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        let popover_btn = gtk::ModelButtonBuilder::new()
+            .label("Copy password")
+            .build();
+        let lbl = self.note_label.clone();
+        let p = password.to_string();
+        popover_btn.connect_clicked(move |_| {
+            if let Some(clip) = gtk::Clipboard::get_default(&lbl.get_display()) {
+                clip.set_text(&p);
+            }
+        });
+        popover_vbox.add(&popover_btn);
+        popover_vbox.show_all();
+        popover.add(&popover_vbox);
+        popover.popup();
+
+        // then 'reveal'
+        // reveal presumably shows & hides a gtk infobar
+        // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
     }
 
     view! {

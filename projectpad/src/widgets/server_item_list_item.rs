@@ -222,9 +222,8 @@ impl Widget for ServerItemListItem {
                     clip.set_text(&val);
                 }
             }
-            Msg::ViewNote(n) => {
-                println!("view note {:?}", n);
-            }
+            // meant for my parent
+            Msg::ViewNote(n) => {}
         }
     }
 

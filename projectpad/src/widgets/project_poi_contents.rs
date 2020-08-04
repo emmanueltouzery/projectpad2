@@ -1,9 +1,11 @@
 use super::project_items_list::ProjectItem;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
+use super::server_poi_contents::Msg::ViewNote as ServerPoiContentsMsgViewNote;
 use super::server_poi_contents::ServerPoiContents;
 use crate::sql_thread::SqlFunc;
 use gdk::prelude::*;
 use gtk::prelude::*;
+use projectpadsql::models::ServerNote;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -14,6 +16,7 @@ pub enum Msg {
     UpdateNoteScroll(f64),
     ActivateLink(String),
     NoteLabelReset,
+    ViewServerNote(ServerNote),
 }
 
 pub struct Model {
@@ -104,6 +107,9 @@ impl Widget for ProjectPoiContents {
                     .unwrap()
                     .set_value(self.model.note_label_adj_value);
             }
+            Msg::ViewServerNote(n) => {
+                println!("view server note {:?}", n);
+            }
         }
     }
 
@@ -176,7 +182,8 @@ impl Widget for ProjectPoiContents {
             ServerPoiContents(self.model.db_sender.clone()) {
                 child: {
                     name: Some(CHILD_NAME_SERVER)
-                }
+                },
+                ServerPoiContentsMsgViewNote(ref n) => Msg::ViewServerNote(n.clone())
             },
             #[name="note_scroll"]
             gtk::ScrolledWindow {

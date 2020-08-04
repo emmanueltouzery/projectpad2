@@ -1,4 +1,5 @@
 use super::project_items_list::ProjectItem;
+use super::server_item_list_item::Msg as ServerItemListItemMsg;
 use super::server_item_list_item::ServerItemListItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -18,6 +19,7 @@ type ChannelData = (Vec<ServerItem>, HashMap<i32, String>);
 pub enum Msg {
     ServerSelected(Option<Server>),
     GotItems(ChannelData),
+    ViewNote(ServerNote),
 }
 
 #[derive(Clone)]
@@ -42,6 +44,7 @@ impl ServerItem {
 }
 
 pub struct Model {
+    relm: relm::Relm<ServerPoiContents>,
     db_sender: mpsc::Sender<SqlFunc>,
     sender: relm::Sender<ChannelData>,
     _channel: relm::Channel<ChannelData>,
@@ -69,6 +72,7 @@ impl Widget for ServerPoiContents {
             stream.emit(Msg::GotItems(items));
         });
         Model {
+            relm: relm.clone(),
             _channel: channel,
             sender,
             db_sender,
@@ -90,6 +94,8 @@ impl Widget for ServerPoiContents {
                 self.model.server_item_groups_start_indexes = items.1;
                 self.update_contents_list();
             }
+            // ViewNote is meant for my parent
+            Msg::ViewNote(_) => {}
         }
     }
 
@@ -99,10 +105,11 @@ impl Widget for ServerPoiContents {
         }
         let mut children_components = vec![];
         for item in &self.model.server_items {
-            children_components.push(
-                self.contents_list
-                    .add_widget::<ServerItemListItem>(item.clone()),
-            );
+            let component = self
+                .contents_list
+                .add_widget::<ServerItemListItem>(item.clone());
+            relm::connect!(component@ServerItemListItemMsg::ViewNote(ref n), self.model.relm, Msg::ViewNote(n.clone()));
+            children_components.push(component);
         }
         let indexes = self.model.server_item_groups_start_indexes.clone();
         self.contents_list

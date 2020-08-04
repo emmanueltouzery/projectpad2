@@ -1,13 +1,7 @@
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
 // TODO
-// to ask Dejan B when it's the good time <-- entities don't look nice. also in Github tricks. in VPN passwords the password gets &amp; !!! Link also bad in 'Documents'
 // <hr> doesn't exactly look great
-
-// https://stackoverflow.com/a/3705601/516188
-fn escape_entities(input: &str) -> String {
-    input.replace("&", "&amp;").replace("'", "&apos;")
-}
 
 // cmark parses the passwords like so:
 // Text(Borrowed("[")) <-- opening bracket
@@ -72,7 +66,6 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
     let mut result = "".to_string();
     let mut list_cur_idx = None;
     let mut in_item = false; // paragraphs inside bullets don't look nice
-    let mut in_preformat = false; // don't escape & and ' in preformat blocks
 
     let events_with_passwords = get_events_with_passwords(parser);
 
@@ -141,27 +134,17 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
                 Event::Start(Tag::Heading(3)) => result.push_str("\n<span size=\"large\">"),
                 Event::Start(Tag::Heading(_)) => result.push_str("\n<span size=\"large\">"),
                 Event::End(Tag::Heading(_)) => result.push_str("</span>\n"),
-                Event::Start(Tag::CodeBlock(_)) => {
-                    in_preformat = true;
-                    result.push_str("<tt>")
-                }
                 Event::End(Tag::CodeBlock(_)) => {
                     result.push_str("</tt>");
-                    in_preformat = false;
                 }
+                Event::Start(Tag::CodeBlock(_)) => result.push_str("<tt>"),
                 Event::Text(t) => {
-                    if in_preformat {
-                        // escape html for pango
-                        let escaped_input = glib::markup_escape_text(&t).to_string();
-                        result.push_str(&escaped_input);
-                    } else {
-                        let escaped = glib::markup_escape_text(&escape_entities(&t)).to_string();
-                        result.push_str(&escaped);
-                    }
+                    let escaped = glib::markup_escape_text(&t).to_string();
+                    result.push_str(&escaped);
                 }
                 Event::Code(t) => result.push_str(&t),
                 Event::Html(t) => {
-                    let escaped = glib::markup_escape_text(&escape_entities(&t)).to_string();
+                    let escaped = glib::markup_escape_text(&t).to_string();
                     result.push_str(&escaped);
                 }
                 Event::Rule => result.push_str("\n-----\n"),

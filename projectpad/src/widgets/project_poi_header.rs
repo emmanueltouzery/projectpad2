@@ -89,6 +89,8 @@ pub fn populate_grid(
                 .use_markup(true)
                 .label(&item.markup)
                 .xalign(0.0)
+                .single_line_mode(true)
+                .ellipsize(pango::EllipsizeMode::End)
                 .build();
 
             if let Some(icon) = &item.icon {

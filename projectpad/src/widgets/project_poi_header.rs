@@ -56,6 +56,7 @@ pub fn populate_popover(
         .build();
     for extra_btn in extra_btns {
         popover_vbox.add(extra_btn);
+        register_btn(&extra_btn, extra_btn.get_label().unwrap().to_string());
     }
     for item in fields {
         let popover_btn = gtk::ModelButtonBuilder::new()
@@ -72,6 +73,7 @@ pub fn populate_grid(
     header_grid: gtk::Grid,
     actions_popover: gtk::Popover,
     fields: &[GridItem],
+    extra_btns: Vec<gtk::ModelButton>,
     register_btn: &dyn Fn(&gtk::ModelButton, String),
 ) {
     for child in header_grid.get_children() {
@@ -114,12 +116,9 @@ pub fn populate_grid(
         }
     }
     header_grid.show_all();
-    populate_popover(
-        &actions_popover,
-        &vec![gtk::ModelButtonBuilder::new().label("Edit").build()],
-        fields,
-        register_btn,
-    );
+    let mut btns = vec![gtk::ModelButtonBuilder::new().label("Edit").build()];
+    btns.extend(extra_btns);
+    populate_popover(&actions_popover, &btns, fields, register_btn);
 }
 
 pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
@@ -245,6 +244,7 @@ impl Widget for ProjectPoiHeader {
             self.header_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
+            vec![],
             &|btn: &gtk::ModelButton, str_val: String| {
                 relm::connect!(
                     self.model.relm,

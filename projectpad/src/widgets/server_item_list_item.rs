@@ -12,6 +12,7 @@ use relm_derive::{widget, Msg};
 #[derive(Msg)]
 pub enum Msg {
     CopyClicked(String),
+    ViewNote(ServerNote),
 }
 
 pub struct Model {
@@ -122,17 +123,38 @@ impl Widget for ServerItemListItem {
         self.header_actions_btn
             .set_popover(Some(&self.model.header_popover));
         let fields = get_server_item_grid_items(&self.model.server_item);
+        let view_label = "View";
+        let extra_btns = match self.model.server_item {
+            ServerItem::Note(_) => vec![gtk::ModelButtonBuilder::new().label(view_label).build()],
+            _ => vec![],
+        };
+        let server_item = self.model.server_item.clone();
         populate_grid(
             self.items_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
+            extra_btns,
             &|btn: &gtk::ModelButton, str_val: String| {
-                relm::connect!(
-                    self.model.relm,
-                    &btn,
-                    connect_clicked(_),
-                    Msg::CopyClicked(str_val.clone())
-                );
+                if str_val == view_label {
+                    match server_item.clone() {
+                        ServerItem::Note(n) => relm::connect!(
+                            self.model.relm,
+                            &btn,
+                            connect_clicked(_),
+                            Msg::ViewNote(n.clone())
+                        ),
+                        _ => {
+                            assert!(false, "expected note, got something else");
+                        }
+                    }
+                } else {
+                    relm::connect!(
+                        self.model.relm,
+                        &btn,
+                        connect_clicked(_),
+                        Msg::CopyClicked(str_val.clone())
+                    );
+                }
             },
         );
         // TODO i don't like that note is special-cased here.
@@ -199,6 +221,9 @@ impl Widget for ServerItemListItem {
                 if let Some(clip) = gtk::Clipboard::get_default(&self.items_grid.get_display()) {
                     clip.set_text(&val);
                 }
+            }
+            Msg::ViewNote(n) => {
+                println!("view note {:?}", n);
             }
         }
     }

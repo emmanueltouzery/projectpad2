@@ -1,7 +1,6 @@
 use pulldown_cmark::{Event, Options, Parser, Tag};
 
 // TODO
-// passwords, eg LECIP SG teamviewer, VPN setup, LIT office VPN, VPN setup, Wifi passwords
 // to ask Dejan B when it's the good time <-- entities don't look nice. also in Github tricks. in VPN passwords the password gets &amp; !!! Link also bad in 'Documents'
 // <hr> doesn't exactly look great
 

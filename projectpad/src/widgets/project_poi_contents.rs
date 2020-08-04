@@ -11,12 +11,14 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
+    UpdateNoteScroll(f64),
     ActivateLink(String),
-    LabelUnselect,
+    NoteLabelReset(),
 }
 
 pub struct Model {
     relm: relm::Relm<ProjectPoiContents>,
+    note_label_adj_value: f64,
     db_sender: mpsc::Sender<SqlFunc>,
     cur_project_item: Option<ProjectItem>,
     project_note_contents: Option<String>,
@@ -28,11 +30,21 @@ const CHILD_NAME_NOTE: &str = "note";
 
 #[widget]
 impl Widget for ProjectPoiContents {
-    fn init_view(&mut self) {}
+    fn init_view(&mut self) {
+        let adj = self.note_scroll.get_vadjustment().unwrap().clone();
+        let relm = self.model.relm.clone();
+        self.note_scroll
+            .get_vadjustment()
+            .unwrap()
+            .connect_value_changed(move |_| {
+                relm.stream().emit(Msg::UpdateNoteScroll(adj.get_value()));
+            });
+    }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         Model {
             relm: relm.clone(),
+            note_label_adj_value: 0.0,
             db_sender,
             cur_project_item: None,
             project_note_contents: None,
@@ -70,12 +82,21 @@ impl Widget for ProjectPoiContents {
                         _ => CHILD_NAME_SERVER, // server is a list of items, handles None well (no items)
                     });
             }
+            Msg::UpdateNoteScroll(val) => {
+                self.model.note_label_adj_value = val;
+            }
             Msg::ActivateLink(uri) => {
                 if uri.starts_with("pass://") {
                     self.password_popover(&uri[7..]);
                 }
             }
-            Msg::LabelUnselect => self.note_label.select_region(0, 0),
+            Msg::NoteLabelReset() => {
+                self.note_label.select_region(0, 0);
+                self.note_scroll
+                    .get_vadjustment()
+                    .unwrap()
+                    .set_value(self.model.note_label_adj_value);
+            }
         }
     }
 
@@ -110,8 +131,9 @@ impl Widget for ProjectPoiContents {
         popover.connect_closed(move |_| {
             // this is a workaround, without that if you close
             // the popover by clicking on the label, the label's
-            // text gets selected (select all)
-            rlm.stream().emit(Msg::LabelUnselect);
+            // text gets selected (select all), and the scrollbar
+            // gets reset too => override both things
+            rlm.stream().emit(Msg::NoteLabelReset());
         });
         let popover_vbox = gtk::BoxBuilder::new()
             .margin(10)
@@ -130,6 +152,9 @@ impl Widget for ProjectPoiContents {
         popover_vbox.add(&popover_btn);
         popover_vbox.show_all();
         popover.add(&popover_vbox);
+        // workaround for the label scrolling up to the top when
+        // we open the popover
+        self.model.relm.stream().emit(Msg::NoteLabelReset());
         popover.popup();
 
         // then 'reveal'
@@ -146,6 +171,7 @@ impl Widget for ProjectPoiContents {
                     name: Some(CHILD_NAME_SERVER)
                 }
             },
+            #[name="note_scroll"]
             gtk::ScrolledWindow {
                 child: {
                     name: Some(CHILD_NAME_NOTE)

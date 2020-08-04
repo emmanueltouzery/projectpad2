@@ -17,6 +17,7 @@ pub enum Msg {
     ActivateLink(String),
     NoteLabelReset,
     ViewServerNote(ServerNote),
+    ServerNoteBack,
 }
 
 pub struct Model {
@@ -24,7 +25,7 @@ pub struct Model {
     note_label_adj_value: f64,
     db_sender: mpsc::Sender<SqlFunc>,
     cur_project_item: Option<ProjectItem>,
-    project_note_contents: Option<String>,
+    note_contents: Option<String>,
     pass_popover: Option<gtk::Popover>,
 }
 
@@ -34,6 +35,9 @@ const CHILD_NAME_NOTE: &str = "note";
 #[widget]
 impl Widget for ProjectPoiContents {
     fn init_view(&mut self) {
+        self.server_note_title
+            .get_style_context()
+            .add_class("server_note_title");
         let adj = self.note_scroll.get_vadjustment().unwrap().clone();
         let relm = self.model.relm.clone();
         self.note_scroll
@@ -50,7 +54,7 @@ impl Widget for ProjectPoiContents {
             note_label_adj_value: 0.0,
             db_sender,
             cur_project_item: None,
-            project_note_contents: None,
+            note_contents: None,
             pass_popover: None,
         }
     }
@@ -69,7 +73,7 @@ impl Widget for ProjectPoiContents {
                                 _ => None,
                             }),
                     ));
-                self.model.project_note_contents =
+                self.model.note_contents =
                     self.model
                         .cur_project_item
                         .as_ref()
@@ -108,7 +112,19 @@ impl Widget for ProjectPoiContents {
                     .set_value(self.model.note_label_adj_value);
             }
             Msg::ViewServerNote(n) => {
-                println!("view server note {:?}", n);
+                self.model.note_contents = Some(crate::notes::note_markdown_to_pango_markup(
+                    n.contents.as_ref(),
+                ));
+                self.server_note_title.set_text(&n.title);
+                self.server_note_back.set_visible(true);
+                self.contents_stack.set_visible_child_name(CHILD_NAME_NOTE);
+            }
+            Msg::ServerNoteBack => {
+                self.model.note_contents = None;
+                self.server_note_title.set_text("");
+                self.server_note_back.set_visible(false);
+                self.contents_stack
+                    .set_visible_child_name(CHILD_NAME_SERVER);
             }
         }
     }
@@ -185,23 +201,40 @@ impl Widget for ProjectPoiContents {
                 },
                 ServerPoiContentsMsgViewNote(ref n) => Msg::ViewServerNote(n.clone())
             },
-            #[name="note_scroll"]
-            gtk::ScrolledWindow {
+            gtk::Box {
                 child: {
-                    name: Some(CHILD_NAME_NOTE)
+                    name: Some(CHILD_NAME_NOTE),
                 },
-                #[name="note_label"]
-                gtk::Label {
-                    margin_top: 10,
-                    margin_start: 10,
-                    margin_end: 10,
-                    margin_bottom: 10,
-                    xalign: 0.0,
-                    yalign: 0.0,
-                    selectable: true,
-                    markup: self.model.project_note_contents
-                                      .as_ref().map(|c| c.as_str()).unwrap_or(""),
-                    activate_link(_, uri) => (Msg::ActivateLink(uri.to_string()), Inhibit(false))
+                orientation: gtk::Orientation::Vertical,
+                #[name="server_note_back"]
+                gtk::Box {
+                    visible: false,
+                    gtk::Button {
+                        image: Some(&gtk::Image::from_icon_name(Some("go-previous-symbolic"), gtk::IconSize::Menu)),
+                        button_press_event(_, _) => (Msg::ServerNoteBack, Inhibit(false)),
+                    },
+                    #[name="server_note_title"]
+                    gtk::Label {
+                    }
+                },
+                #[name="note_scroll"]
+                gtk::ScrolledWindow {
+                    child: {
+                        expand: true,
+                    },
+                    #[name="note_label"]
+                    gtk::Label {
+                        margin_top: 10,
+                        margin_start: 10,
+                        margin_end: 10,
+                        margin_bottom: 10,
+                        xalign: 0.0,
+                        yalign: 0.0,
+                        selectable: true,
+                        markup: self.model.note_contents
+                                          .as_ref().map(|c| c.as_str()).unwrap_or(""),
+                        activate_link(_, uri) => (Msg::ActivateLink(uri.to_string()), Inhibit(false))
+                    }
                 }
             }
         }

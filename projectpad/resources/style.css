@@ -78,6 +78,12 @@
   );
 }
 
+.server_note_title {
+  padding-left: 10px;
+  font-size: 15px;
+  font-weight: bold;
+}
+
 .search_view_parent.title {
   font-size: 15px;
 }

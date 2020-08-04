@@ -13,7 +13,7 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     UpdateNoteScroll(f64),
     ActivateLink(String),
-    NoteLabelReset(),
+    NoteLabelReset,
 }
 
 pub struct Model {
@@ -83,14 +83,21 @@ impl Widget for ProjectPoiContents {
                     });
             }
             Msg::UpdateNoteScroll(val) => {
-                self.model.note_label_adj_value = val;
+                if self.model.note_label_adj_value - val > 200.0 && val < 15.0 {
+                    // when you click on a password, the scrollbar is reset. I'm not sure why,
+                    // it may be the gtk code trying to open the link (like http://) & failing.
+                    // workarounding it for now. if there's a too large change at once and we
+                    // get to the beginning of the scroll area all at once, ignore the change
+                } else {
+                    self.model.note_label_adj_value = val;
+                }
             }
             Msg::ActivateLink(uri) => {
                 if uri.starts_with("pass://") {
                     self.password_popover(&uri[7..]);
                 }
             }
-            Msg::NoteLabelReset() => {
+            Msg::NoteLabelReset => {
                 self.note_label.select_region(0, 0);
                 self.note_scroll
                     .get_vadjustment()
@@ -133,7 +140,7 @@ impl Widget for ProjectPoiContents {
             // the popover by clicking on the label, the label's
             // text gets selected (select all), and the scrollbar
             // gets reset too => override both things
-            rlm.stream().emit(Msg::NoteLabelReset());
+            rlm.stream().emit(Msg::NoteLabelReset);
         });
         let popover_vbox = gtk::BoxBuilder::new()
             .margin(10)
@@ -154,7 +161,7 @@ impl Widget for ProjectPoiContents {
         popover.add(&popover_vbox);
         // workaround for the label scrolling up to the top when
         // we open the popover
-        self.model.relm.stream().emit(Msg::NoteLabelReset());
+        self.model.relm.stream().emit(Msg::NoteLabelReset);
         popover.popup();
 
         // then 'reveal'

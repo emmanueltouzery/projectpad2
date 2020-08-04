@@ -58,7 +58,6 @@ impl Widget for ProjectList {
         match event {
             Msg::ProjectActivated(ref _project) => {}
             Msg::GotProjects(prjs) => {
-                println!("got projects: {}", prjs.len());
                 self.model.projects = prjs;
                 self.update_projects_list();
             }
@@ -110,6 +109,13 @@ impl Widget for ProjectList {
                 child,
                 ProjectBadgeMsg::ActiveProjectChanged(project.0.id));
             self.model.children_widgets.push(child);
+        }
+        // if we have projects, select the first one
+        if let Some(prj) = self.model.projects.first() {
+            self.model
+                .relm
+                .stream()
+                .emit(Msg::ProjectActivated((prj.clone(), UpdateParents::Yes)));
         }
     }
 

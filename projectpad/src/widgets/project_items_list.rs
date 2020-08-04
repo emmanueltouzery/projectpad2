@@ -224,7 +224,6 @@ impl Widget for ProjectItemsList {
                 self.fetch_project_items(None, None);
             }
             Msg::GotProjectItems((items, env, project_item)) => {
-                println!("got items {:?} {:?}", env, project_item);
                 if let Some(vadj) = self.scroll.get_vadjustment() {
                     vadj.set_value(0.0);
                 }
@@ -235,18 +234,31 @@ impl Widget for ProjectItemsList {
                     .model
                     .project_items
                     .iter()
-                    .position(|cur_pi| Some(cur_pi) == project_item.as_ref());
-                println!("select position: {:?}", row_idx);
+                    .position(|cur_pi| Some(cur_pi) == project_item.as_ref())
+                    .or_else(|| {
+                        // the or_else is to select the first item if
+                        // no special selection was asked for
+                        if self.model.project_items.is_empty() {
+                            None
+                        } else {
+                            Some(0)
+                        }
+                    });
                 let row = row_idx.and_then(|i| self.project_items_list.get_row_at_index(i as i32));
                 self.project_items_list.select_row(row.as_ref());
                 if let Some(r) = row {
-                    // we need the timeout. We've just added the rows to the listbox,
-                    // they are not realized yet. The scrolling doesn't work unless
-                    // we allow the gtk thread to realize the list items
-                    // https://discourse.gnome.org/t/listbox-programmatically-scroll-to-row/3844
-                    relm::timeout(self.model.relm.stream(), 100, move || {
-                        Msg::FocusRow(r.clone())
-                    });
+                    // row_idx != 0 => workaround for Gtk-CRITICAL warnings at startup
+                    // I think the GUI is not ready yet. If we're interested in the first
+                    // row, nothing to do anyway
+                    if row_idx != Some(0) {
+                        // we need the timeout. We've just added the rows to the listbox,
+                        // they are not realized yet. The scrolling doesn't work unless
+                        // we allow the gtk thread to realize the list items
+                        // https://discourse.gnome.org/t/listbox-programmatically-scroll-to-row/3844
+                        relm::timeout(self.model.relm.stream(), 100, move || {
+                            Msg::FocusRow(r.clone())
+                        });
+                    }
                 }
             }
             Msg::ActiveEnvironmentChanged(env) => {

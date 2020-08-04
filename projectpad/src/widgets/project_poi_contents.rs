@@ -12,9 +12,11 @@ use std::sync::mpsc;
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     ActivateLink(String),
+    LabelUnselect,
 }
 
 pub struct Model {
+    relm: relm::Relm<ProjectPoiContents>,
     db_sender: mpsc::Sender<SqlFunc>,
     cur_project_item: Option<ProjectItem>,
     project_note_contents: Option<String>,
@@ -31,6 +33,7 @@ impl Widget for ProjectPoiContents {
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
         Model {
+            relm: relm.clone(),
             db_sender,
             cur_project_item: None,
             project_note_contents: None,
@@ -97,7 +100,15 @@ impl Widget for ProjectPoiContents {
                         width: 50,
                         height: 15,
                     });
+                    let rlm = self.model.relm.clone();
+                    popover.connect_closed(move |_| {
+                        // this is a workaround, without that if you close
+                        // the popover by clicking on the label, the label's
+                        // text gets selected (select all)
+                        rlm.stream().emit(Msg::LabelUnselect);
+                    });
                     popover.popup();
+                    // popover.grab_focus();
 
                     // then display the popover 'copy' and 'reveal'
                     // reveal presumably shows & hides a gtk infobar
@@ -105,6 +116,7 @@ impl Widget for ProjectPoiContents {
                     println!("activate pass {}", &uri[7..]);
                 }
             }
+            Msg::LabelUnselect => self.note_label.select_region(0, 0),
         }
     }
 
@@ -121,6 +133,7 @@ impl Widget for ProjectPoiContents {
                 child: {
                     name: Some(CHILD_NAME_NOTE)
                 },
+                #[name="note_label"]
                 gtk::Label {
                     margin_top: 10,
                     margin_start: 10,

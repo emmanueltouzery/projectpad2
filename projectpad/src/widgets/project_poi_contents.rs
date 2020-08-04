@@ -2,6 +2,7 @@ use super::project_items_list::ProjectItem;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
 use super::server_poi_contents::ServerPoiContents;
 use crate::sql_thread::SqlFunc;
+use gdk::prelude::*;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -17,6 +18,7 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     cur_project_item: Option<ProjectItem>,
     project_note_contents: Option<String>,
+    pass_popover: Option<gtk::Popover>,
 }
 
 const CHILD_NAME_SERVER: &str = "server";
@@ -32,6 +34,7 @@ impl Widget for ProjectPoiContents {
             db_sender,
             cur_project_item: None,
             project_note_contents: None,
+            pass_popover: None,
         }
     }
 
@@ -67,6 +70,38 @@ impl Widget for ProjectPoiContents {
             }
             Msg::ActivateLink(uri) => {
                 if uri.starts_with("pass://") {
+                    // i'd initialize the popover in the init & reuse it,
+                    // but i can't get the toplevel there, probably things
+                    // are not fully initialized yet.
+                    let popover = gtk::Popover::new(Some(
+                        &self
+                            .contents_stack
+                            .get_toplevel()
+                            .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
+                            .unwrap()
+                            .get_child()
+                            .unwrap(),
+                    ));
+                    popover.set_position(gtk::PositionType::Bottom);
+                    self.model.pass_popover = Some(popover.clone());
+                    let display = gdk::Display::get_default().unwrap();
+                    let seat = display.get_default_seat().unwrap();
+                    let mouse_device = seat.get_pointer().unwrap();
+                    let window = display.get_default_group();
+                    let (_, dev_x, dev_y, _) = window.get_device_position(&mouse_device);
+                    let (_, o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
+                    let (x, y) = (dev_x - o_x, dev_y - o_y);
+                    popover.set_pointing_to(&gtk::Rectangle {
+                        x,
+                        y,
+                        width: 50,
+                        height: 15,
+                    });
+                    popover.popup();
+
+                    // then display the popover 'copy' and 'reveal'
+                    // reveal presumably shows & hides a gtk infobar
+                    // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
                     println!("activate pass {}", &uri[7..]);
                 }
             }

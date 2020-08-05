@@ -25,17 +25,25 @@ pub struct GridItem {
     pub raw_value: String,
 }
 
+pub enum LabelText {
+    PlainText(String),
+    Markup(String),
+}
+
 impl GridItem {
     pub fn new(
         label_name: &'static str,
         icon: Option<Icon>,
-        markup: String,
+        label_text: LabelText,
         raw_value: String,
     ) -> GridItem {
         GridItem {
             label_name,
             icon,
-            markup,
+            markup: match label_text {
+                LabelText::PlainText(t) => glib::markup_escape_text(&t).to_string(),
+                LabelText::Markup(m) => m,
+            },
             raw_value,
         }
     }
@@ -88,7 +96,7 @@ pub fn populate_grid(
             label.get_style_context().add_class("item_label");
 
             let label = gtk::LabelBuilder::new()
-                .use_markup(true)
+                .use_markup(true) // for 'address' we put the link for instance
                 .label(&item.markup)
                 .xalign(0.0)
                 .single_line_mode(true)
@@ -130,31 +138,50 @@ pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
                 server_ip_display(&srv),
                 srv.ip.clone(),
             ),
-            GridItem::new("Username", None, srv.username.clone(), srv.username.clone()),
+            GridItem::new(
+                "Username",
+                None,
+                LabelText::PlainText(srv.username.clone()),
+                srv.username.clone(),
+            ),
             GridItem::new(
                 "Password",
                 None,
-                if srv.password.is_empty() {
+                LabelText::PlainText(if srv.password.is_empty() {
                     "".to_string()
                 } else {
                     "●●●●●".to_string()
-                },
+                }),
                 srv.password.clone(),
             ),
         ],
         ProjectItem::ProjectPointOfInterest(poi) => vec![
-            GridItem::new("Path", None, poi.path.clone(), poi.path.clone()),
-            GridItem::new("Text", None, poi.text.clone(), poi.path.clone()),
+            GridItem::new(
+                "Path",
+                None,
+                LabelText::PlainText(poi.path.clone()),
+                poi.path.clone(),
+            ),
+            GridItem::new(
+                "Text",
+                None,
+                LabelText::PlainText(poi.text.clone()),
+                poi.path.clone(),
+            ),
         ],
         _ => vec![],
     }
 }
 
-fn server_ip_display(srv: &Server) -> String {
+fn server_ip_display(srv: &Server) -> LabelText {
     if srv.access_type == ServerAccessType::SrvAccessWww {
-        format!("<a href=\"{}\">{}</a>", srv.ip, srv.ip)
+        LabelText::Markup(format!(
+            "<a href=\"{}\">{}</a>",
+            &glib::markup_escape_text(&srv.ip),
+            &glib::markup_escape_text(&srv.ip)
+        ))
     } else {
-        srv.ip.clone()
+        LabelText::PlainText(srv.ip.clone())
     }
 }
 

@@ -1,4 +1,4 @@
-use super::project_poi_header::{populate_grid, GridItem};
+use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
 use crate::icons::*;
 use gtk::prelude::*;
@@ -37,23 +37,27 @@ fn get_website_grid_items(website: &ServerWebsite) -> Vec<GridItem> {
         GridItem::new(
             "Address",
             Some(Icon::HTTP),
-            format!("<a href=\"{}\">{}</a>", website.url, website.url),
+            LabelText::Markup(format!(
+                "<a href=\"{}\">{}</a>",
+                glib::markup_escape_text(&website.url),
+                glib::markup_escape_text(&website.url)
+            )),
             website.url.clone(),
         ),
         GridItem::new(
             "Username",
             None,
-            website.username.clone(),
+            LabelText::PlainText(website.username.clone()),
             website.username.clone(),
         ),
         GridItem::new(
             "Password",
             None,
-            if website.username.is_empty() {
+            LabelText::PlainText(if website.username.is_empty() {
                 "".to_string()
             } else {
                 "●●●●●".to_string()
-            },
+            }),
             website.password.clone(),
         ),
     ]
@@ -62,8 +66,18 @@ fn get_website_grid_items(website: &ServerWebsite) -> Vec<GridItem> {
 fn get_poi_grid_items(poi: &ServerPointOfInterest) -> Vec<GridItem> {
     vec![
         // TODO lots of clones...
-        GridItem::new("Path", None, poi.path.clone(), poi.path.clone()),
-        GridItem::new("Text", None, poi.text.clone(), poi.text.clone()),
+        GridItem::new(
+            "Path",
+            None,
+            LabelText::PlainText(poi.path.clone()),
+            poi.path.clone(),
+        ),
+        GridItem::new(
+            "Text",
+            None,
+            LabelText::PlainText(poi.text.clone()),
+            poi.text.clone(),
+        ),
     ]
 }
 
@@ -76,17 +90,17 @@ fn get_user_grid_items(user: &ServerExtraUserAccount) -> Vec<GridItem> {
         GridItem::new(
             "Username",
             None,
-            user.username.clone(),
+            LabelText::PlainText(user.username.clone()),
             user.username.clone(),
         ),
         GridItem::new(
             "Password",
             None,
-            if user.password.is_empty() {
+            LabelText::PlainText(if user.password.is_empty() {
                 "".to_string()
             } else {
                 "●●●●●".to_string()
-            },
+            }),
             user.password.clone(),
         ),
     ]
@@ -94,17 +108,32 @@ fn get_user_grid_items(user: &ServerExtraUserAccount) -> Vec<GridItem> {
 
 fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
     vec![
-        GridItem::new("Name", None, db.name.clone(), db.name.clone()),
-        GridItem::new("Text", None, db.text.clone(), db.text.clone()),
-        GridItem::new("Username", None, db.username.clone(), db.username.clone()),
+        GridItem::new(
+            "Name",
+            None,
+            LabelText::PlainText(db.name.clone()),
+            db.name.clone(),
+        ),
         GridItem::new(
             "Text",
             None,
-            if db.password.is_empty() {
+            LabelText::PlainText(db.text.clone()),
+            db.text.clone(),
+        ),
+        GridItem::new(
+            "Username",
+            None,
+            LabelText::PlainText(db.username.clone()),
+            db.username.clone(),
+        ),
+        GridItem::new(
+            "Text",
+            None,
+            LabelText::PlainText(if db.password.is_empty() {
                 "".to_string()
             } else {
                 "●●●●●".to_string()
-            },
+            }),
             db.password.clone(),
         ),
     ]

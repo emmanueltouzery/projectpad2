@@ -537,7 +537,6 @@ impl Widget for SearchView {
             }
         }
         let upper = search_items.len() as i32 * SEARCH_RESULT_WIDGET_HEIGHT;
-        println!("adjustment upper is {}", upper);
         self.search_scroll.set_adjustment(&gtk::Adjustment::new(
             0.0,
             0.0,

@@ -1,7 +1,7 @@
 use glib::translate::ToGlib;
 use gtk::prelude::*;
 use pulldown_cmark::{Event, Options, Parser, Tag};
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 // TODO
 // <hr> doesn't exactly look great
@@ -133,13 +133,16 @@ pub fn build_tag_table() -> gtk::TextTagTable {
 }
 
 // https://developer.gnome.org/pygtk/stable/pango-markup-language.html
-pub fn note_markdown_to_pango_markup(input: &str) -> String {
+pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> gtk::TextBuffer {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     let parser = Parser::new_ext(&input, options);
     let mut list_cur_idx = None;
     let mut in_item = false; // paragraphs inside bullets don't look nice
-    let mut active_tags = HashSet::new();
+    let mut active_tags = HashMap::new();
+
+    let buf = gtk::TextBuffer::new(Some(table));
+    let mut end_iter = buf.get_end_iter();
 
     let events_with_passwords = get_events_with_passwords(parser);
 
@@ -147,17 +150,35 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
         // println!("{:?}", event);
         match event {
             EventExt::StandardEvent(std) => match std {
-                Event::Start(Tag::Strong) => active_tags.insert(TAG_BOLD),
-                Event::End(Tag::Strong) => active_tags.remove(TAG_BOLD),
-                Event::Start(Tag::Emphasis) => active_tags.insert(TAG_ITALICS),
-                Event::End(Tag::Emphasis) => active_tags.remove(TAG_ITALICS),
-                Event::Start(Tag::Strikethrough) => active_tags.insert(TAG_STRIKETHROUGH),
-                Event::End(Tag::Strikethrough) => active_tags.remove(TAG_STRIKETHROUGH),
-                Event::Start(Tag::Link(_, url, _title)) => {
-                    let escaped_url = url.replace("&", "&amp;").replace("'", "&apos;");
-                    result.push_str(format!(r#"<a href="{}">"#, &escaped_url).as_str())
+                // TODO code duplication
+                Event::Start(Tag::Strong) => {
+                    active_tags.insert(TAG_BOLD, end_iter);
                 }
-                Event::End(Tag::Link(_, _, _)) => result.push_str("</a>"),
+                Event::End(Tag::Strong) => {
+                    let start_iter = active_tags.remove(TAG_BOLD).unwrap();
+                    buf.apply_tag_by_name(TAG_BOLD, &start_iter, &end_iter);
+                }
+                Event::Start(Tag::Emphasis) => {
+                    active_tags.insert(TAG_ITALICS, end_iter);
+                }
+                Event::End(Tag::Emphasis) => {
+                    let start_iter = active_tags.remove(TAG_ITALICS).unwrap();
+                    buf.apply_tag_by_name(TAG_ITALICS, &start_iter, &end_iter);
+                }
+                Event::Start(Tag::Strikethrough) => {
+                    active_tags.insert(TAG_STRIKETHROUGH, end_iter);
+                }
+                Event::End(Tag::Strikethrough) => {
+                    let start_iter = active_tags.remove(TAG_STRIKETHROUGH).unwrap();
+                    buf.apply_tag_by_name(TAG_STRIKETHROUGH, &start_iter, &end_iter);
+                }
+                Event::Start(Tag::Link(_, url, _title)) => {
+                    // let escaped_url = url.replace("&", "&amp;").replace("'", "&apos;");
+                    // result.push_str(format!(r#"<a href="{}">"#, &escaped_url).as_str())
+                }
+                Event::End(Tag::Link(_, _, _)) => {
+                    // result.push_str("</a>")
+                }
                 Event::Start(Tag::Image(_, _, _)) => {}
                 Event::End(Tag::Image(_, _, _)) => {}
                 Event::Start(Tag::List(start_idx)) => {
@@ -167,32 +188,34 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
                     list_cur_idx = None;
                 }
                 Event::Start(Tag::Item) => {
-                    in_item = true;
-                    if let Some(idx) = list_cur_idx {
-                        result.push_str(format!("\n{}. ", idx).as_str());
-                        list_cur_idx = Some(idx + 1);
-                    } else {
-                        result.push_str("\n• ");
-                    }
+                    // in_item = true;
+                    // if let Some(idx) = list_cur_idx {
+                    //     result.push_str(format!("\n{}. ", idx).as_str());
+                    //     list_cur_idx = Some(idx + 1);
+                    // } else {
+                    //     result.push_str("\n• ");
+                    // }
                 }
                 Event::End(Tag::Item) => {
                     in_item = false;
                 }
                 Event::Start(Tag::Paragraph) => {
-                    if !in_item {
-                        result.push_str("\n")
-                    }
+                    // if !in_item {
+                    //     result.push_str("\n")
+                    // }
                 }
                 Event::End(Tag::Paragraph) => {
-                    if !in_item {
-                        result.push_str("\n")
-                    }
+                    // if !in_item {
+                    //     result.push_str("\n")
+                    // }
                 }
                 // color is accent yellow from https://developer.gnome.org/hig-book/unstable/design-color.html.en
                 Event::Start(Tag::BlockQuote) => {
-                    result.push_str(r##"<span background="#EED680">\n"##)
+                    // result.push_str(r##"<span background="#EED680">\n"##)
                 }
-                Event::End(Tag::BlockQuote) => result.push_str("</span>\n"),
+                Event::End(Tag::BlockQuote) => {
+                    // result.push_str("</span>\n")
+                }
                 Event::Start(Tag::FootnoteDefinition(_)) => {}
                 Event::End(Tag::FootnoteDefinition(_)) => {}
                 Event::Start(Tag::TableHead) => {}
@@ -203,38 +226,63 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
                 Event::End(Tag::TableCell) => {}
                 Event::Start(Tag::Table(_)) => {}
                 Event::End(Tag::Table(_)) => {}
-                Event::Start(Tag::Heading(1)) => active_tags.insert(TAG_HEADER1),
-                Event::Start(Tag::Heading(2)) => active_tags.insert(TAG_HEADER2),
-                Event::Start(Tag::Heading(3)) => active_tags.insert(TAG_HEADER3),
-                Event::End(Tag::Heading(1)) => active_tags.remove(TAG_HEADER1),
-                Event::End(Tag::Heading(2)) => active_tags.remove(TAG_HEADER2),
-                Event::End(Tag::Heading(3)) => active_tags.remove(TAG_HEADER3),
-                Event::Start(Tag::CodeBlock(_)) => active_tags.insert(TAG_CODE),
-                Event::End(Tag::CodeBlock(_)) => active_tags.remove(TAG_CODE),
+                Event::Start(Tag::Heading(1)) => {
+                    active_tags.insert(TAG_HEADER1, end_iter);
+                }
+                Event::Start(Tag::Heading(2)) => {
+                    active_tags.insert(TAG_HEADER2, end_iter);
+                }
+                Event::Start(Tag::Heading(3)) => {
+                    active_tags.insert(TAG_HEADER3, end_iter);
+                }
+                Event::End(Tag::Heading(1)) => {
+                    let start_iter = active_tags.remove(TAG_HEADER1).unwrap();
+                    buf.apply_tag_by_name(TAG_HEADER1, &start_iter, &end_iter);
+                }
+                Event::End(Tag::Heading(2)) => {
+                    let start_iter = active_tags.remove(TAG_HEADER2).unwrap();
+                    buf.apply_tag_by_name(TAG_HEADER2, &start_iter, &end_iter);
+                }
+                Event::End(Tag::Heading(3)) => {
+                    let start_iter = active_tags.remove(TAG_HEADER3).unwrap();
+                    buf.apply_tag_by_name(TAG_HEADER3, &start_iter, &end_iter);
+                }
+                Event::Start(Tag::CodeBlock(_)) => {
+                    active_tags.insert(TAG_CODE, end_iter);
+                }
+                Event::End(Tag::CodeBlock(_)) => {
+                    let start_iter = active_tags.remove(TAG_CODE).unwrap();
+                    buf.apply_tag_by_name(TAG_CODE, &start_iter, &end_iter);
+                }
                 Event::Text(t) => {
-                    let escaped = glib::markup_escape_text(&t).to_string();
-                    result.push_str(&escaped);
+                    buf.insert(&mut end_iter, &t);
                 }
-                Event::Code(t) => result.push_str(&t),
+                Event::Code(t) => {
+                    buf.insert(&mut end_iter, &t);
+                }
                 Event::Html(t) => {
-                    let escaped = glib::markup_escape_text(&t).to_string();
-                    result.push_str(&escaped);
+                    buf.insert(&mut end_iter, &t);
                 }
-                Event::Rule => result.push_str("\n-----\n"),
-                Event::HardBreak | Event::SoftBreak => result.push_str("\n"),
+                Event::Rule => {
+                    buf.insert(&mut end_iter, "---"); // TODO surely can do way better than that
+                }
+                Event::HardBreak | Event::SoftBreak => {
+                    buf.insert(&mut end_iter, "\n");
+                }
                 Event::FootnoteReference(_) | Event::TaskListMarker(_) => {}
             },
             EventExt::Password(p) => {
-                result.push_str(&format!(
-                    // the emoji doesn't look nice in the link on my machine, the underline
-                    // doesn't line up with the rest of the string => put it out of the link
-                    r#"<span size="x-small">🔒</span><a href="pass://{}">[Password]</a>"#,
-                    p
-                ));
+                buf.insert(&mut end_iter, "[PASSWORD]"); // TODO
+                                                         // result.push_str(&format!(
+                                                         //     // the emoji doesn't look nice in the link on my machine, the underline
+                                                         //     // doesn't line up with the rest of the string => put it out of the link
+                                                         //     r#"<span size="x-small">🔒</span><a href="pass://{}">[Password]</a>"#,
+                                                         //     p
+                                                         // ));
             }
         }
     }
-    result
+    buf
 }
 
 #[test]

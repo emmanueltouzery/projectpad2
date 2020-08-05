@@ -24,7 +24,6 @@ pub struct Model {
     note_label_adj_value: f64,
     db_sender: mpsc::Sender<SqlFunc>,
     cur_project_item: Option<ProjectItem>,
-    note_contents: Option<String>,
     pass_popover: Option<gtk::Popover>,
 }
 
@@ -53,7 +52,6 @@ impl Widget for ProjectPoiContents {
             note_label_adj_value: 0.0,
             db_sender,
             cur_project_item: None,
-            note_contents: None,
             pass_popover: None,
         }
     }
@@ -72,16 +70,19 @@ impl Widget for ProjectPoiContents {
                                 _ => None,
                             }),
                     ));
-                self.model.note_contents =
-                    self.model
-                        .cur_project_item
-                        .as_ref()
-                        .and_then(|pi| match pi {
-                            ProjectItem::ProjectNote(ref note) => Some(
-                                crate::notes::note_markdown_to_pango_markup(note.contents.as_ref()),
-                            ),
-                            _ => None,
-                        });
+                if let Some(pi) = self.model.cur_project_item.as_ref() {
+                    match pi {
+                        ProjectItem::ProjectNote(ref note) => {
+                            self.note_textview.set_buffer(Some(
+                                &crate::notes::note_markdown_to_text_buffer(
+                                    note.contents.as_ref(),
+                                    &crate::notes::build_tag_table(),
+                                ),
+                            ));
+                        }
+                        _ => {}
+                    }
+                }
                 self.contents_stack
                     .set_visible_child_name(match self.model.cur_project_item {
                         Some(ProjectItem::ProjectNote(_)) => CHILD_NAME_NOTE,
@@ -104,15 +105,17 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::ViewServerNote(n) => {
-                self.model.note_contents = Some(crate::notes::note_markdown_to_pango_markup(
-                    n.contents.as_ref(),
-                ));
+                self.note_textview
+                    .set_buffer(Some(&crate::notes::note_markdown_to_text_buffer(
+                        n.contents.as_ref(),
+                        &crate::notes::build_tag_table(),
+                    )));
                 self.server_note_title.set_text(&n.title);
                 self.server_note_back.set_visible(true);
                 self.contents_stack.set_visible_child_name(CHILD_NAME_NOTE);
             }
             Msg::ServerNoteBack => {
-                self.model.note_contents = None;
+                // self.model.note_contents = None;
                 self.server_note_title.set_text("");
                 self.server_note_back.set_visible(false);
                 self.contents_stack

@@ -74,6 +74,7 @@ const TAG_HEADER2: &str = "header2";
 const TAG_HEADER3: &str = "header3";
 const TAG_CODE: &str = "code";
 
+// TODO call only once in the app lifetime
 pub fn build_tag_table() -> gtk::TextTagTable {
     let tag_table = gtk::TextTagTable::new();
     tag_table.add(
@@ -152,21 +153,21 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
             EventExt::StandardEvent(std) => match std {
                 // TODO code duplication
                 Event::Start(Tag::Strong) => {
-                    active_tags.insert(TAG_BOLD, end_iter);
+                    active_tags.insert(TAG_BOLD, end_iter.clone());
                 }
                 Event::End(Tag::Strong) => {
                     let start_iter = active_tags.remove(TAG_BOLD).unwrap();
                     buf.apply_tag_by_name(TAG_BOLD, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Emphasis) => {
-                    active_tags.insert(TAG_ITALICS, end_iter);
+                    active_tags.insert(TAG_ITALICS, end_iter.clone());
                 }
                 Event::End(Tag::Emphasis) => {
                     let start_iter = active_tags.remove(TAG_ITALICS).unwrap();
                     buf.apply_tag_by_name(TAG_ITALICS, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Strikethrough) => {
-                    active_tags.insert(TAG_STRIKETHROUGH, end_iter);
+                    active_tags.insert(TAG_STRIKETHROUGH, end_iter.clone());
                 }
                 Event::End(Tag::Strikethrough) => {
                     let start_iter = active_tags.remove(TAG_STRIKETHROUGH).unwrap();
@@ -227,13 +228,13 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                 Event::Start(Tag::Table(_)) => {}
                 Event::End(Tag::Table(_)) => {}
                 Event::Start(Tag::Heading(1)) => {
-                    active_tags.insert(TAG_HEADER1, end_iter);
+                    active_tags.insert(TAG_HEADER1, end_iter.clone());
                 }
                 Event::Start(Tag::Heading(2)) => {
-                    active_tags.insert(TAG_HEADER2, end_iter);
+                    active_tags.insert(TAG_HEADER2, end_iter.clone());
                 }
-                Event::Start(Tag::Heading(3)) => {
-                    active_tags.insert(TAG_HEADER3, end_iter);
+                Event::Start(Tag::Heading(_)) => {
+                    active_tags.insert(TAG_HEADER3, end_iter.clone());
                 }
                 Event::End(Tag::Heading(1)) => {
                     let start_iter = active_tags.remove(TAG_HEADER1).unwrap();
@@ -243,12 +244,12 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                     let start_iter = active_tags.remove(TAG_HEADER2).unwrap();
                     buf.apply_tag_by_name(TAG_HEADER2, &start_iter, &end_iter);
                 }
-                Event::End(Tag::Heading(3)) => {
+                Event::End(Tag::Heading(_)) => {
                     let start_iter = active_tags.remove(TAG_HEADER3).unwrap();
                     buf.apply_tag_by_name(TAG_HEADER3, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::CodeBlock(_)) => {
-                    active_tags.insert(TAG_CODE, end_iter);
+                    active_tags.insert(TAG_CODE, end_iter.clone());
                 }
                 Event::End(Tag::CodeBlock(_)) => {
                     let start_iter = active_tags.remove(TAG_CODE).unwrap();

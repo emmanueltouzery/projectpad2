@@ -1,4 +1,7 @@
+use glib::translate::ToGlib;
+use gtk::prelude::*;
 use pulldown_cmark::{Event, Options, Parser, Tag};
+use std::collections::HashSet;
 
 // TODO
 // <hr> doesn't exactly look great
@@ -58,14 +61,85 @@ fn get_events_with_passwords(parser: Parser) -> Vec<EventExt> {
     })
 }
 
+// https://github.com/gtk-rs/pango/issues/193
+const PANGO_SCALE_LARGE: f64 = 1.2;
+const PANGO_SCALE_X_LARGE: f64 = 1.44;
+const PANGO_SCALE_XX_LARGE: f64 = 1.728;
+
+const TAG_BOLD: &str = "bold";
+const TAG_ITALICS: &str = "italics";
+const TAG_STRIKETHROUGH: &str = "strikethrough";
+const TAG_HEADER1: &str = "header1";
+const TAG_HEADER2: &str = "header2";
+const TAG_HEADER3: &str = "header3";
+const TAG_CODE: &str = "code";
+
+pub fn build_tag_table() -> gtk::TextTagTable {
+    let tag_table = gtk::TextTagTable::new();
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_BOLD)
+            .weight(pango::Weight::Bold.to_glib())
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_STRIKETHROUGH)
+            .strikethrough(true)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_ITALICS)
+            .style(pango::Style::Italic)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_HEADER1)
+            .weight(pango::Weight::Bold.to_glib())
+            .scale(PANGO_SCALE_XX_LARGE)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_HEADER2)
+            .weight(pango::Weight::Bold.to_glib())
+            .scale(PANGO_SCALE_X_LARGE)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_HEADER3)
+            .weight(pango::Weight::Bold.to_glib())
+            .scale(PANGO_SCALE_LARGE)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name("link")
+            .underline(pango::Underline::Single)
+            .foreground("blue")
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_CODE)
+            .family("monospace")
+            .wrap_mode(gtk::WrapMode::None)
+            .build(),
+    );
+    tag_table
+}
+
 // https://developer.gnome.org/pygtk/stable/pango-markup-language.html
 pub fn note_markdown_to_pango_markup(input: &str) -> String {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     let parser = Parser::new_ext(&input, options);
-    let mut result = "".to_string();
     let mut list_cur_idx = None;
     let mut in_item = false; // paragraphs inside bullets don't look nice
+    let mut active_tags = HashSet::new();
 
     let events_with_passwords = get_events_with_passwords(parser);
 
@@ -73,12 +147,12 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
         // println!("{:?}", event);
         match event {
             EventExt::StandardEvent(std) => match std {
-                Event::Start(Tag::Strong) => result.push_str("<b>"),
-                Event::End(Tag::Strong) => result.push_str("</b>"),
-                Event::Start(Tag::Emphasis) => result.push_str("<i>"),
-                Event::End(Tag::Emphasis) => result.push_str("</i>"),
-                Event::Start(Tag::Strikethrough) => result.push_str("<s>"),
-                Event::End(Tag::Strikethrough) => result.push_str("</s>"),
+                Event::Start(Tag::Strong) => active_tags.insert(TAG_BOLD),
+                Event::End(Tag::Strong) => active_tags.remove(TAG_BOLD),
+                Event::Start(Tag::Emphasis) => active_tags.insert(TAG_ITALICS),
+                Event::End(Tag::Emphasis) => active_tags.remove(TAG_ITALICS),
+                Event::Start(Tag::Strikethrough) => active_tags.insert(TAG_STRIKETHROUGH),
+                Event::End(Tag::Strikethrough) => active_tags.remove(TAG_STRIKETHROUGH),
                 Event::Start(Tag::Link(_, url, _title)) => {
                     let escaped_url = url.replace("&", "&amp;").replace("'", "&apos;");
                     result.push_str(format!(r#"<a href="{}">"#, &escaped_url).as_str())
@@ -129,15 +203,14 @@ pub fn note_markdown_to_pango_markup(input: &str) -> String {
                 Event::End(Tag::TableCell) => {}
                 Event::Start(Tag::Table(_)) => {}
                 Event::End(Tag::Table(_)) => {}
-                Event::Start(Tag::Heading(1)) => result.push_str("\n<span size=\"xx-large\">"),
-                Event::Start(Tag::Heading(2)) => result.push_str("\n<span size=\"x-large\">"),
-                Event::Start(Tag::Heading(3)) => result.push_str("\n<span size=\"large\">"),
-                Event::Start(Tag::Heading(_)) => result.push_str("\n<span size=\"large\">"),
-                Event::End(Tag::Heading(_)) => result.push_str("</span>\n"),
-                Event::End(Tag::CodeBlock(_)) => {
-                    result.push_str("</tt>");
-                }
-                Event::Start(Tag::CodeBlock(_)) => result.push_str("<tt>"),
+                Event::Start(Tag::Heading(1)) => active_tags.insert(TAG_HEADER1),
+                Event::Start(Tag::Heading(2)) => active_tags.insert(TAG_HEADER2),
+                Event::Start(Tag::Heading(3)) => active_tags.insert(TAG_HEADER3),
+                Event::End(Tag::Heading(1)) => active_tags.remove(TAG_HEADER1),
+                Event::End(Tag::Heading(2)) => active_tags.remove(TAG_HEADER2),
+                Event::End(Tag::Heading(3)) => active_tags.remove(TAG_HEADER3),
+                Event::Start(Tag::CodeBlock(_)) => active_tags.insert(TAG_CODE),
+                Event::End(Tag::CodeBlock(_)) => active_tags.remove(TAG_CODE),
                 Event::Text(t) => {
                     let escaped = glib::markup_escape_text(&t).to_string();
                     result.push_str(&escaped);

@@ -15,7 +15,6 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     UpdateNoteScroll(f64),
     ActivateLink(String),
-    NoteLabelReset,
     ViewServerNote(ServerNote),
     ServerNoteBack,
 }
@@ -104,13 +103,6 @@ impl Widget for ProjectPoiContents {
                     self.password_popover(&uri[7..]);
                 }
             }
-            Msg::NoteLabelReset => {
-                self.note_label.select_region(0, 0);
-                self.note_scroll
-                    .get_vadjustment()
-                    .unwrap()
-                    .set_value(self.model.note_label_adj_value);
-            }
             Msg::ViewServerNote(n) => {
                 self.model.note_contents = Some(crate::notes::note_markdown_to_pango_markup(
                     n.contents.as_ref(),
@@ -157,13 +149,6 @@ impl Widget for ProjectPoiContents {
             height: 15,
         });
         let rlm = self.model.relm.clone();
-        popover.connect_closed(move |_| {
-            // this is a workaround, without that if you close
-            // the popover by clicking on the label, the label's
-            // text gets selected (select all), and the scrollbar
-            // gets reset too => override both things
-            rlm.stream().emit(Msg::NoteLabelReset);
-        });
         let popover_vbox = gtk::BoxBuilder::new()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
@@ -171,20 +156,17 @@ impl Widget for ProjectPoiContents {
         let popover_btn = gtk::ModelButtonBuilder::new()
             .label("Copy password")
             .build();
-        let lbl = self.note_label.clone();
-        let p = password.to_string();
-        popover_btn.connect_clicked(move |_| {
-            if let Some(clip) = gtk::Clipboard::get_default(&lbl.get_display()) {
-                clip.set_text(&p);
-            }
-        });
-        popover_vbox.add(&popover_btn);
-        popover_vbox.show_all();
-        popover.add(&popover_vbox);
-        // workaround for the label scrolling up to the top when
-        // we open the popover
-        self.model.relm.stream().emit(Msg::NoteLabelReset);
-        popover.popup();
+        // let lbl = self.note_label.clone();
+        // let p = password.to_string();
+        // popover_btn.connect_clicked(move |_| {
+        //     if let Some(clip) = gtk::Clipboard::get_default(&lbl.get_display()) {
+        //         clip.set_text(&p);
+        //     }
+        // });
+        // popover_vbox.add(&popover_btn);
+        // popover_vbox.show_all();
+        // popover.add(&popover_vbox);
+        // popover.popup();
 
         // then 'reveal'
         // reveal presumably shows & hides a gtk infobar
@@ -222,18 +204,18 @@ impl Widget for ProjectPoiContents {
                     child: {
                         expand: true,
                     },
-                    #[name="note_label"]
-                    gtk::Label {
+                    #[name="note_textview"]
+                    gtk::TextView {
                         margin_top: 10,
                         margin_start: 10,
                         margin_end: 10,
                         margin_bottom: 10,
-                        xalign: 0.0,
-                        yalign: 0.0,
-                        selectable: true,
-                        markup: self.model.note_contents
-                                          .as_ref().map(|c| c.as_str()).unwrap_or(""),
-                        activate_link(_, uri) => (Msg::ActivateLink(uri.to_string()), Inhibit(false))
+                        // xalign: 0.0,
+                        // yalign: 0.0,
+                        // selectable: true,
+                        // markup: self.model.note_contents
+                        //                   .as_ref().map(|c| c.as_str()).unwrap_or(""),
+                        // activate_link(_, uri) => (Msg::ActivateLink(uri.to_string()), Inhibit(false))
                     }
                 }
             }

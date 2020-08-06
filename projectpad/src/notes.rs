@@ -153,24 +153,26 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
             EventExt::StandardEvent(std) => match std {
                 // TODO code duplication
                 Event::Start(Tag::Strong) => {
-                    active_tags.insert(TAG_BOLD, end_iter.clone());
+                    active_tags.insert(TAG_BOLD, end_iter.get_offset());
                 }
                 Event::End(Tag::Strong) => {
-                    let start_iter = active_tags.remove(TAG_BOLD).unwrap();
+                    let start_iter = buf.get_iter_at_offset(active_tags.remove(TAG_BOLD).unwrap());
                     buf.apply_tag_by_name(TAG_BOLD, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Emphasis) => {
-                    active_tags.insert(TAG_ITALICS, end_iter.clone());
+                    active_tags.insert(TAG_ITALICS, end_iter.get_offset());
                 }
                 Event::End(Tag::Emphasis) => {
-                    let start_iter = active_tags.remove(TAG_ITALICS).unwrap();
+                    let start_iter =
+                        buf.get_iter_at_offset(active_tags.remove(TAG_ITALICS).unwrap());
                     buf.apply_tag_by_name(TAG_ITALICS, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Strikethrough) => {
-                    active_tags.insert(TAG_STRIKETHROUGH, end_iter.clone());
+                    active_tags.insert(TAG_STRIKETHROUGH, end_iter.get_offset());
                 }
                 Event::End(Tag::Strikethrough) => {
-                    let start_iter = active_tags.remove(TAG_STRIKETHROUGH).unwrap();
+                    let start_iter =
+                        buf.get_iter_at_offset(active_tags.remove(TAG_STRIKETHROUGH).unwrap());
                     buf.apply_tag_by_name(TAG_STRIKETHROUGH, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Link(_, url, _title)) => {
@@ -228,31 +230,34 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                 Event::Start(Tag::Table(_)) => {}
                 Event::End(Tag::Table(_)) => {}
                 Event::Start(Tag::Heading(1)) => {
-                    active_tags.insert(TAG_HEADER1, end_iter.clone());
+                    active_tags.insert(TAG_HEADER1, end_iter.get_offset());
                 }
                 Event::Start(Tag::Heading(2)) => {
-                    active_tags.insert(TAG_HEADER2, end_iter.clone());
+                    active_tags.insert(TAG_HEADER2, end_iter.get_offset());
                 }
                 Event::Start(Tag::Heading(_)) => {
-                    active_tags.insert(TAG_HEADER3, end_iter.clone());
+                    active_tags.insert(TAG_HEADER3, end_iter.get_offset());
                 }
                 Event::End(Tag::Heading(1)) => {
-                    let start_iter = active_tags.remove(TAG_HEADER1).unwrap();
+                    let start_iter =
+                        buf.get_iter_at_offset(active_tags.remove(TAG_HEADER1).unwrap());
                     buf.apply_tag_by_name(TAG_HEADER1, &start_iter, &end_iter);
                 }
                 Event::End(Tag::Heading(2)) => {
-                    let start_iter = active_tags.remove(TAG_HEADER2).unwrap();
+                    let start_iter =
+                        buf.get_iter_at_offset(active_tags.remove(TAG_HEADER2).unwrap());
                     buf.apply_tag_by_name(TAG_HEADER2, &start_iter, &end_iter);
                 }
                 Event::End(Tag::Heading(_)) => {
-                    let start_iter = active_tags.remove(TAG_HEADER3).unwrap();
+                    let start_iter =
+                        buf.get_iter_at_offset(active_tags.remove(TAG_HEADER3).unwrap());
                     buf.apply_tag_by_name(TAG_HEADER3, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::CodeBlock(_)) => {
-                    active_tags.insert(TAG_CODE, end_iter.clone());
+                    active_tags.insert(TAG_CODE, end_iter.get_offset());
                 }
                 Event::End(Tag::CodeBlock(_)) => {
-                    let start_iter = active_tags.remove(TAG_CODE).unwrap();
+                    let start_iter = buf.get_iter_at_offset(active_tags.remove(TAG_CODE).unwrap());
                     buf.apply_tag_by_name(TAG_CODE, &start_iter, &end_iter);
                 }
                 Event::Text(t) => {

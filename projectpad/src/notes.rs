@@ -73,6 +73,9 @@ const TAG_HEADER1: &str = "header1";
 const TAG_HEADER2: &str = "header2";
 const TAG_HEADER3: &str = "header3";
 const TAG_CODE: &str = "code";
+const TAG_LINK: &str = "link";
+const TAG_LIST_ITEM: &str = "list_item";
+const TAG_PARAGRAPH: &str = "paragraph";
 
 // TODO call only once in the app lifetime
 pub fn build_tag_table() -> gtk::TextTagTable {
@@ -118,7 +121,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
     );
     tag_table.add(
         &gtk::TextTagBuilder::new()
-            .name("link")
+            .name(TAG_LINK)
             .underline(pango::Underline::Single)
             .foreground("blue")
             .build(),
@@ -128,6 +131,20 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .name(TAG_CODE)
             .family("monospace")
             .wrap_mode(gtk::WrapMode::None)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_LIST_ITEM)
+            .indent(-10)
+            .left_margin(10)
+            .wrap_mode(gtk::WrapMode::Word) // this should be the default...
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_PARAGRAPH)
+            .wrap_mode(gtk::WrapMode::Word)
             .build(),
     );
     tag_table
@@ -176,11 +193,14 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                     buf.apply_tag_by_name(TAG_STRIKETHROUGH, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Link(_, url, _title)) => {
+                    active_tags.insert(TAG_LINK, end_iter.get_offset());
                     // let escaped_url = url.replace("&", "&amp;").replace("'", "&apos;");
                     // result.push_str(format!(r#"<a href="{}">"#, &escaped_url).as_str())
                 }
                 Event::End(Tag::Link(_, _, _)) => {
                     // result.push_str("</a>")
+                    let start_iter = buf.get_iter_at_offset(active_tags.remove(TAG_LINK).unwrap());
+                    buf.apply_tag_by_name(TAG_LINK, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Image(_, _, _)) => {}
                 Event::End(Tag::Image(_, _, _)) => {}
@@ -191,25 +211,33 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                     list_cur_idx = None;
                 }
                 Event::Start(Tag::Item) => {
+                    active_tags.insert(TAG_LIST_ITEM, end_iter.get_offset());
                     // in_item = true;
-                    // if let Some(idx) = list_cur_idx {
-                    //     result.push_str(format!("\n{}. ", idx).as_str());
-                    //     list_cur_idx = Some(idx + 1);
-                    // } else {
-                    //     result.push_str("\n• ");
-                    // }
+                    if let Some(idx) = list_cur_idx {
+                        buf.insert(&mut end_iter, format!("\n{}. ", idx).as_str());
+                        list_cur_idx = Some(idx + 1);
+                    } else {
+                        buf.insert(&mut end_iter, "\n• ");
+                    }
                 }
                 Event::End(Tag::Item) => {
+                    let start_iter =
+                        buf.get_iter_at_offset(active_tags.remove(TAG_LIST_ITEM).unwrap());
+                    buf.apply_tag_by_name(TAG_LIST_ITEM, &start_iter, &end_iter);
                     in_item = false;
                 }
                 Event::Start(Tag::Paragraph) => {
                     // if !in_item {
-                    //     result.push_str("\n")
+                    buf.insert(&mut end_iter, "\n");
+                    active_tags.insert(TAG_PARAGRAPH, end_iter.get_offset());
                     // }
                 }
                 Event::End(Tag::Paragraph) => {
                     // if !in_item {
-                    //     result.push_str("\n")
+                    let start_iter =
+                        buf.get_iter_at_offset(active_tags.remove(TAG_PARAGRAPH).unwrap());
+                    buf.apply_tag_by_name(TAG_PARAGRAPH, &start_iter, &end_iter);
+                    buf.insert(&mut end_iter, "\n");
                     // }
                 }
                 // color is accent yellow from https://developer.gnome.org/hig-book/unstable/design-color.html.en
@@ -237,6 +265,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                 }
                 Event::Start(Tag::Heading(_)) => {
                     active_tags.insert(TAG_HEADER3, end_iter.get_offset());
+                    buf.insert(&mut end_iter, "\n");
                 }
                 Event::End(Tag::Heading(1)) => {
                     let start_iter =
@@ -252,6 +281,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                     let start_iter =
                         buf.get_iter_at_offset(active_tags.remove(TAG_HEADER3).unwrap());
                     buf.apply_tag_by_name(TAG_HEADER3, &start_iter, &end_iter);
+                    buf.insert(&mut end_iter, "\n");
                 }
                 Event::Start(Tag::CodeBlock(_)) => {
                     active_tags.insert(TAG_CODE, end_iter.get_offset());

@@ -133,12 +133,19 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .wrap_mode(gtk::WrapMode::None)
             .build(),
     );
+
+    // explanation on how the list items are implemented:
+    // https://stackoverflow.com/a/63291090/516188
+    let mut tab_ar = pango::TabArray::new(2, true);
+    tab_ar.set_tab(0, pango::TabAlign::Left, 0);
+    tab_ar.set_tab(1, pango::TabAlign::Left, 14);
     tag_table.add(
         &gtk::TextTagBuilder::new()
             .name(TAG_LIST_ITEM)
-            .indent(-10)
-            .left_margin(10)
+            .indent(-14)
+            .left_margin(14)
             .wrap_mode(gtk::WrapMode::Word) // this should be the default...
+            .tabs(&tab_ar)
             .build(),
     );
     tag_table.add(
@@ -214,10 +221,10 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                     active_tags.insert(TAG_LIST_ITEM, end_iter.get_offset());
                     // in_item = true;
                     if let Some(idx) = list_cur_idx {
-                        buf.insert(&mut end_iter, format!("\n{}. ", idx).as_str());
+                        buf.insert(&mut end_iter, format!("\n{}.\t", idx).as_str());
                         list_cur_idx = Some(idx + 1);
                     } else {
-                        buf.insert(&mut end_iter, "\n• ");
+                        buf.insert(&mut end_iter, "\n•\t");
                     }
                 }
                 Event::End(Tag::Item) => {

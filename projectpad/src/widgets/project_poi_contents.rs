@@ -213,6 +213,8 @@ impl Widget for ProjectPoiContents {
                         margin_start: 10,
                         margin_end: 10,
                         margin_bottom: 10,
+                        editable: false,
+                        cursor_visible: false,
                         // xalign: 0.0,
                         // yalign: 0.0,
                         // selectable: true,

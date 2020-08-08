@@ -76,6 +76,9 @@ const TAG_CODE: &str = "code";
 pub const TAG_LINK: &str = "link";
 const TAG_LIST_ITEM: &str = "list_item";
 const TAG_PARAGRAPH: &str = "paragraph";
+const TAG_BLOCKQUOTE1: &str = "blockquote1";
+const TAG_BLOCKQUOTE2: &str = "blockquote2";
+const TAG_BLOCKQUOTE3: &str = "blockquote3";
 
 // TODO call only once in the app lifetime
 pub fn build_tag_table() -> gtk::TextTagTable {
@@ -83,18 +86,21 @@ pub fn build_tag_table() -> gtk::TextTagTable {
     tag_table.add(
         &gtk::TextTagBuilder::new()
             .name(TAG_BOLD)
+            .wrap_mode(gtk::WrapMode::Word)
             .weight(pango::Weight::Bold.to_glib())
             .build(),
     );
     tag_table.add(
         &gtk::TextTagBuilder::new()
             .name(TAG_STRIKETHROUGH)
+            .wrap_mode(gtk::WrapMode::Word)
             .strikethrough(true)
             .build(),
     );
     tag_table.add(
         &gtk::TextTagBuilder::new()
             .name(TAG_ITALICS)
+            .wrap_mode(gtk::WrapMode::Word)
             .style(pango::Style::Italic)
             .build(),
     );
@@ -102,6 +108,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
         &gtk::TextTagBuilder::new()
             .name(TAG_HEADER1)
             .weight(pango::Weight::Bold.to_glib())
+            .wrap_mode(gtk::WrapMode::Word)
             .scale(PANGO_SCALE_XX_LARGE)
             .build(),
     );
@@ -109,6 +116,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
         &gtk::TextTagBuilder::new()
             .name(TAG_HEADER2)
             .weight(pango::Weight::Bold.to_glib())
+            .wrap_mode(gtk::WrapMode::Word)
             .scale(PANGO_SCALE_X_LARGE)
             .build(),
     );
@@ -116,6 +124,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
         &gtk::TextTagBuilder::new()
             .name(TAG_HEADER3)
             .weight(pango::Weight::Bold.to_glib())
+            .wrap_mode(gtk::WrapMode::Word)
             .scale(PANGO_SCALE_LARGE)
             .build(),
     );
@@ -123,6 +132,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
         &gtk::TextTagBuilder::new()
             .name(TAG_LINK)
             .underline(pango::Underline::Single)
+            .wrap_mode(gtk::WrapMode::Word)
             .foreground("blue")
             .build(),
     );
@@ -131,6 +141,30 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .name(TAG_CODE)
             .family("monospace")
             .wrap_mode(gtk::WrapMode::None)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_BLOCKQUOTE1)
+            .wrap_mode(gtk::WrapMode::Word)
+            .left_margin(30)
+            .left_margin(30)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_BLOCKQUOTE2)
+            .wrap_mode(gtk::WrapMode::Word)
+            .left_margin(40)
+            .left_margin(40)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
+            .name(TAG_BLOCKQUOTE3)
+            .wrap_mode(gtk::WrapMode::Word)
+            .left_margin(50)
+            .left_margin(50)
             .build(),
     );
 
@@ -181,6 +215,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
     let buffer = gtk::TextBuffer::new(Some(table));
     let mut end_iter = buffer.get_end_iter();
     let mut links = vec![];
+    let mut blockquote_level = 0;
 
     let events_with_passwords = get_events_with_passwords(parser);
 
@@ -215,8 +250,6 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 }
                 Event::Start(Tag::Link(_, _, _title)) => {
                     active_tags.insert(TAG_LINK, end_iter.get_offset());
-                    // let escaped_url = url.replace("&", "&amp;").replace("'", "&apos;");
-                    // result.push_str(format!(r#"<a href="{}">"#, &escaped_url).as_str())
                 }
                 Event::End(Tag::Link(_, url, _)) => {
                     // result.push_str("</a>")
@@ -267,12 +300,19 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     buffer.insert(&mut end_iter, "\n");
                     // }
                 }
-                // color is accent yellow from https://developer.gnome.org/hig-book/unstable/design-color.html.en
                 Event::Start(Tag::BlockQuote) => {
-                    // result.push_str(r##"<span background="#EED680">\n"##)
+                    blockquote_level += 1;
+                    if let Some(tag) = get_blockquote_tag(blockquote_level) {
+                        active_tags.insert(tag, end_iter.get_offset());
+                    }
                 }
                 Event::End(Tag::BlockQuote) => {
-                    // result.push_str("</span>\n")
+                    if let Some(tag) = get_blockquote_tag(blockquote_level) {
+                        let start_iter =
+                            buffer.get_iter_at_offset(active_tags.remove(tag).unwrap());
+                        buffer.apply_tag_by_name(tag, &start_iter, &end_iter);
+                    }
+                    blockquote_level -= 1;
                 }
                 Event::Start(Tag::FootnoteDefinition(_)) => {}
                 Event::End(Tag::FootnoteDefinition(_)) => {}
@@ -347,6 +387,16 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
         }
     }
     NoteBufferInfo { buffer, links }
+}
+
+fn get_blockquote_tag(blockquote_level: i32) -> Option<&'static str> {
+    match blockquote_level {
+        1 => Some(TAG_BLOCKQUOTE1),
+        2 => Some(TAG_BLOCKQUOTE2),
+        3 => Some(TAG_BLOCKQUOTE3),
+        4..=i32::MAX => Some(TAG_BLOCKQUOTE3),
+        i32::MIN..=0 => None,
+    }
 }
 
 #[test]

@@ -252,7 +252,6 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     active_tags.insert(TAG_LINK, end_iter.get_offset());
                 }
                 Event::End(Tag::Link(_, url, _)) => {
-                    // result.push_str("</a>")
                     let start_offset = active_tags.remove(TAG_LINK).unwrap();
                     let start_iter = buffer.get_iter_at_offset(start_offset);
                     buffer.apply_tag_by_name(TAG_LINK, &start_iter, &end_iter);
@@ -272,7 +271,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 }
                 Event::Start(Tag::Item) => {
                     active_tags.insert(TAG_LIST_ITEM, end_iter.get_offset());
-                    // in_item = true;
+                    in_item = true;
                     if let Some(idx) = list_cur_idx {
                         buffer.insert(&mut end_iter, format!("\n{}.\t", idx).as_str());
                         list_cur_idx = Some(idx + 1);
@@ -287,18 +286,18 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     in_item = false;
                 }
                 Event::Start(Tag::Paragraph) => {
-                    // if !in_item {
-                    buffer.insert(&mut end_iter, "\n");
-                    active_tags.insert(TAG_PARAGRAPH, end_iter.get_offset());
-                    // }
+                    if !in_item {
+                        buffer.insert(&mut end_iter, "\n");
+                        active_tags.insert(TAG_PARAGRAPH, end_iter.get_offset());
+                    }
                 }
                 Event::End(Tag::Paragraph) => {
-                    // if !in_item {
-                    let start_iter =
-                        buffer.get_iter_at_offset(active_tags.remove(TAG_PARAGRAPH).unwrap());
-                    buffer.apply_tag_by_name(TAG_PARAGRAPH, &start_iter, &end_iter);
-                    buffer.insert(&mut end_iter, "\n");
-                    // }
+                    if !in_item {
+                        let start_iter =
+                            buffer.get_iter_at_offset(active_tags.remove(TAG_PARAGRAPH).unwrap());
+                        buffer.apply_tag_by_name(TAG_PARAGRAPH, &start_iter, &end_iter);
+                        buffer.insert(&mut end_iter, "\n");
+                    }
                 }
                 Event::Start(Tag::BlockQuote) => {
                     blockquote_level += 1;
@@ -325,24 +324,28 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 Event::Start(Tag::Table(_)) => {}
                 Event::End(Tag::Table(_)) => {}
                 Event::Start(Tag::Heading(1)) => {
+                    buffer.insert(&mut end_iter, "\n");
                     active_tags.insert(TAG_HEADER1, end_iter.get_offset());
                 }
                 Event::Start(Tag::Heading(2)) => {
+                    buffer.insert(&mut end_iter, "\n");
                     active_tags.insert(TAG_HEADER2, end_iter.get_offset());
                 }
                 Event::Start(Tag::Heading(_)) => {
-                    active_tags.insert(TAG_HEADER3, end_iter.get_offset());
                     buffer.insert(&mut end_iter, "\n");
+                    active_tags.insert(TAG_HEADER3, end_iter.get_offset());
                 }
                 Event::End(Tag::Heading(1)) => {
                     let start_iter =
                         buffer.get_iter_at_offset(active_tags.remove(TAG_HEADER1).unwrap());
                     buffer.apply_tag_by_name(TAG_HEADER1, &start_iter, &end_iter);
+                    buffer.insert(&mut end_iter, "\n");
                 }
                 Event::End(Tag::Heading(2)) => {
                     let start_iter =
                         buffer.get_iter_at_offset(active_tags.remove(TAG_HEADER2).unwrap());
                     buffer.apply_tag_by_name(TAG_HEADER2, &start_iter, &end_iter);
+                    buffer.insert(&mut end_iter, "\n");
                 }
                 Event::End(Tag::Heading(_)) => {
                     let start_iter =

@@ -248,7 +248,7 @@ fn draw_project(
 
     if let Some(icon) = &project.icon {
         if icon.len() > 0 {
-            let translate_x = x + (title_extents.width / 1024) as f64 + padding.left as f64;
+            let translate_x = x + (title_extents.width / pango::SCALE) as f64 + padding.left as f64;
             let translate_y = y + padding.top as f64 + SEARCH_RESULT_WIDGET_HEIGHT as f64
                 - PROJECT_ICON_SIZE as f64;
             context.translate(translate_x, translate_y);
@@ -342,7 +342,7 @@ fn draw_server_website(
         search_result_area,
         &website.url,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
         links,
     );
 }
@@ -377,7 +377,7 @@ fn draw_server_extra_user(
         search_result_area,
         &user.desc,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
     );
 }
 
@@ -411,7 +411,7 @@ fn draw_server_poi(
         search_result_area,
         &poi.text,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
     );
 }
 
@@ -445,7 +445,7 @@ fn draw_project_poi(
         search_result_area,
         &poi.text,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
     );
 }
 
@@ -479,7 +479,7 @@ fn draw_server_database(
         search_result_area,
         &format!("{} {}", db.text, db.username),
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / 1024) as f64 + padding.top as f64,
+        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
     );
 }
 
@@ -598,7 +598,7 @@ fn draw_server(
         context,
         search_result_area,
         x + padding.left as f64,
-        y + (title_rect.height / 1024) as f64 + padding.top as f64 + margin.top as f64,
+        y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64 + margin.top as f64,
         &match server.environment {
             EnvironmentType::EnvUat => "uat",
             EnvironmentType::EnvProd => "prod",
@@ -613,7 +613,7 @@ fn draw_server(
             search_result_area,
             &server.ip,
             (env_rect.x + env_rect.width) as f64,
-            y + (title_rect.height / 1024) as f64 + padding.top as f64,
+            y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
             links,
         );
     }
@@ -646,8 +646,8 @@ fn draw_environment(
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(&env_name.to_uppercase());
     let rect = layout.get_extents().1;
-    let text_w = (rect.width / 1024) as f64;
-    let text_h = (rect.height / 1024) as f64;
+    let text_w = (rect.width / pango::SCALE) as f64;
+    let text_h = (rect.height / pango::SCALE) as f64;
 
     let total_width = text_w + padding.left as f64 + padding.right as f64;
     let total_height = text_h + padding.top as f64 + padding.bottom as f64;
@@ -691,9 +691,9 @@ fn draw_title(
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(text);
     layout.set_ellipsize(pango::EllipsizeMode::End);
-    layout.set_width(350 * 1024);
+    layout.set_width(350 * pango::SCALE);
     let extra_y = if let Some(h) = height {
-        let layout_height = layout.get_extents().1.height as f64 / 1024.0;
+        let layout_height = layout.get_extents().1.height as f64 / pango::SCALE as f64;
         (h as f64 - layout_height) / 2.0
     } else {
         0.0
@@ -723,7 +723,7 @@ fn draw_basic_layout(
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(text);
     layout.set_ellipsize(pango::EllipsizeMode::End);
-    layout.set_width(350 * 1024);
+    layout.set_width(350 * pango::SCALE);
     let left = x + padding.left as f64;
     let top = y + padding.top as f64;
     gtk::render_layout(style_context, context, left, top, &layout);
@@ -748,8 +748,8 @@ fn draw_link(
         Area::new(
             left as i32,
             top as i32,
-            extents.width / 1024,
-            extents.height / 1024,
+            extents.width / pango::SCALE,
+            extents.height / pango::SCALE,
         ),
         text.to_string(),
     ));

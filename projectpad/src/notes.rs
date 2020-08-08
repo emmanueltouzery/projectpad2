@@ -74,6 +74,7 @@ const TAG_HEADER2: &str = "header2";
 const TAG_HEADER3: &str = "header3";
 const TAG_CODE: &str = "code";
 pub const TAG_LINK: &str = "link";
+pub const TAG_PASSWORD: &str = "password";
 const TAG_LIST_ITEM: &str = "list_item";
 const TAG_PARAGRAPH: &str = "paragraph";
 const TAG_BLOCKQUOTE1: &str = "blockquote1";
@@ -138,6 +139,13 @@ pub fn build_tag_table() -> gtk::TextTagTable {
     );
     tag_table.add(
         &gtk::TextTagBuilder::new()
+            .name(TAG_PASSWORD)
+            .wrap_mode(gtk::WrapMode::Word)
+            .foreground("orange")
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTagBuilder::new()
             .name(TAG_CODE)
             .family("monospace")
             .wrap_mode(gtk::WrapMode::None)
@@ -192,15 +200,16 @@ pub fn build_tag_table() -> gtk::TextTagTable {
 }
 
 #[derive(Debug)]
-pub struct LinkInfo {
+pub struct ItemDataInfo {
     pub start_offset: i32,
     pub end_offset: i32,
-    pub url: String,
+    pub data: String,
 }
 
 pub struct NoteBufferInfo {
     pub buffer: gtk::TextBuffer,
-    pub links: Vec<LinkInfo>,
+    pub links: Vec<ItemDataInfo>,
+    pub passwords: Vec<ItemDataInfo>,
 }
 
 // https://developer.gnome.org/pygtk/stable/pango-markup-language.html
@@ -215,6 +224,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
     let buffer = gtk::TextBuffer::new(Some(table));
     let mut end_iter = buffer.get_end_iter();
     let mut links = vec![];
+    let mut passwords = vec![];
     let mut blockquote_level = 0;
 
     let events_with_passwords = get_events_with_passwords(parser);
@@ -255,10 +265,10 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     let start_offset = active_tags.remove(TAG_LINK).unwrap();
                     let start_iter = buffer.get_iter_at_offset(start_offset);
                     buffer.apply_tag_by_name(TAG_LINK, &start_iter, &end_iter);
-                    links.push(LinkInfo {
+                    links.push(ItemDataInfo {
                         start_offset,
                         end_offset: end_iter.get_offset(),
-                        url: url.to_string(),
+                        data: url.to_string(),
                     });
                 }
                 Event::Start(Tag::Image(_, _, _)) => {}
@@ -379,17 +389,26 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 Event::FootnoteReference(_) | Event::TaskListMarker(_) => {}
             },
             EventExt::Password(p) => {
-                buffer.insert(&mut end_iter, "[PASSWORD]"); // TODO
-                                                            // result.push_str(&format!(
-                                                            //     // the emoji doesn't look nice in the link on my machine, the underline
-                                                            //     // doesn't line up with the rest of the string => put it out of the link
-                                                            //     r#"<span size="x-small">🔒</span><a href="pass://{}">[Password]</a>"#,
-                                                            //     p
-                                                            // ));
+                let start_offset = end_iter.get_offset();
+                buffer.insert(&mut end_iter, "🔒[Password]");
+                buffer.apply_tag_by_name(
+                    TAG_PASSWORD,
+                    &buffer.get_iter_at_offset(start_offset),
+                    &end_iter,
+                );
+                passwords.push(ItemDataInfo {
+                    start_offset,
+                    end_offset: end_iter.get_offset(),
+                    data: p,
+                });
             }
         }
     }
-    NoteBufferInfo { buffer, links }
+    NoteBufferInfo {
+        buffer,
+        links,
+        passwords,
+    }
 }
 
 fn get_blockquote_tag(blockquote_level: i32) -> Option<&'static str> {

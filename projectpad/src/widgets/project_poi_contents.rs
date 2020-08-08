@@ -2,7 +2,7 @@ use super::project_items_list::ProjectItem;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
 use super::server_poi_contents::Msg::ViewNote as ServerPoiContentsMsgViewNote;
 use super::server_poi_contents::ServerPoiContents;
-use crate::notes::LinkInfo;
+use crate::notes::ItemDataInfo;
 use crate::sql_thread::SqlFunc;
 use gdk::prelude::*;
 use gtk::prelude::*;
@@ -14,8 +14,6 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
-    UpdateNoteScroll(f64),
-    ActivateLink(String),
     ViewServerNote(ServerNote),
     ServerNoteBack,
     TextViewMoveCursor(f64, f64),
@@ -24,11 +22,11 @@ pub enum Msg {
 
 pub struct Model {
     relm: relm::Relm<ProjectPoiContents>,
-    note_label_adj_value: f64,
     db_sender: mpsc::Sender<SqlFunc>,
     cur_project_item: Option<ProjectItem>,
     pass_popover: Option<gtk::Popover>,
-    note_links: Vec<LinkInfo>,
+    note_links: Vec<ItemDataInfo>,
+    note_passwords: Vec<ItemDataInfo>,
     hand_cursor: Option<gdk::Cursor>,
     text_cursor: Option<gdk::Cursor>,
 }
@@ -47,22 +45,16 @@ impl Widget for ProjectPoiContents {
             .add_class("server_note_title");
         let adj = self.note_scroll.get_vadjustment().unwrap().clone();
         let relm = self.model.relm.clone();
-        self.note_scroll
-            .get_vadjustment()
-            .unwrap()
-            .connect_value_changed(move |_| {
-                relm.stream().emit(Msg::UpdateNoteScroll(adj.get_value()));
-            });
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         Model {
             relm: relm.clone(),
-            note_label_adj_value: 0.0,
             db_sender,
             cur_project_item: None,
             pass_popover: None,
             note_links: vec![],
+            note_passwords: vec![],
             hand_cursor: None,
             text_cursor: None,
         }
@@ -96,21 +88,6 @@ impl Widget for ProjectPoiContents {
                         _ => CHILD_NAME_SERVER, // server is a list of items, handles None well (no items)
                     });
             }
-            Msg::UpdateNoteScroll(val) => {
-                if self.model.note_label_adj_value - val > 200.0 && val < 15.0 {
-                    // when you click on a password, the scrollbar is reset. I'm not sure why,
-                    // it may be the gtk code trying to open the link (like http://) & failing.
-                    // workarounding it for now. if there's a too large change at once and we
-                    // get to the beginning of the scroll area all at once, ignore the change
-                } else {
-                    self.model.note_label_adj_value = val;
-                }
-            }
-            Msg::ActivateLink(uri) => {
-                if uri.starts_with("pass://") {
-                    self.password_popover(&uri[7..]);
-                }
-            }
             Msg::ViewServerNote(n) => {
                 self.display_note(&n.contents);
                 self.server_note_title.set_text(&n.title);
@@ -125,8 +102,13 @@ impl Widget for ProjectPoiContents {
                     .set_visible_child_name(CHILD_NAME_SERVER);
             }
             Msg::TextViewMoveCursor(x, y) => {
-                if let Some(iter) = self.note_textview.get_iter_at_location(x as i32, y as i32) {
-                    if Self::iter_is_link(&iter) {
+                let (bx, by) = self.note_textview.window_to_buffer_coords(
+                    gtk::TextWindowType::Widget,
+                    x as i32,
+                    y as i32,
+                );
+                if let Some(iter) = self.note_textview.get_iter_at_location(bx, by) {
+                    if Self::iter_is_link_or_password(&iter) {
                         self.text_note_set_cursor(&self.model.hand_cursor);
                     } else {
                         self.text_note_set_cursor(&self.model.text_cursor);
@@ -137,7 +119,7 @@ impl Widget for ProjectPoiContents {
             }
             Msg::TextViewEventAfter(evt) => {
                 if let Some(iter) = self.text_note_event_get_position_if_click_or_tap(&evt) {
-                    if Self::iter_is_link(&iter) {
+                    if Self::iter_is_link_or_password(&iter) {
                         let offset = iter.get_offset();
                         if let Some(link) = self
                             .model
@@ -147,11 +129,19 @@ impl Widget for ProjectPoiContents {
                         {
                             if let Result::Err(e) = gtk::show_uri_on_window(
                                 None::<&gtk::Window>,
-                                &link.url,
+                                &link.data,
                                 evt.get_time(),
                             ) {
                                 eprintln!("Error opening url in browser: {:?}", e);
                             }
+                        } else if let Some(pass) = self
+                            .model
+                            .note_passwords
+                            .iter()
+                            .find(|l| l.start_offset <= offset && l.end_offset > offset)
+                        {
+                            let p = pass.data.clone();
+                            self.password_popover(&p);
                         }
                     }
                 }
@@ -168,8 +158,14 @@ impl Widget for ProjectPoiContents {
             evt.get_event_type() == gdk::EventType::ButtonRelease && evt.get_button() == Some(1); // GDK_BUTTON_PRIMARY; https://github.com/gtk-rs/gtk/issues/1044
         let is_tap = evt.get_event_type() == gdk::EventType::TouchEnd;
         if is_click || is_tap {
-            evt.get_coords()
-                .and_then(|(x, y)| self.note_textview.get_iter_at_location(x as i32, y as i32))
+            evt.get_coords().and_then(|(x, y)| {
+                let (bx, by) = self.note_textview.window_to_buffer_coords(
+                    gtk::TextWindowType::Widget,
+                    x as i32,
+                    y as i32,
+                );
+                self.note_textview.get_iter_at_location(bx, by)
+            })
         } else {
             None
         }
@@ -181,13 +177,14 @@ impl Widget for ProjectPoiContents {
             .set_cursor(cursor.as_ref());
     }
 
-    fn iter_is_link(iter: &gtk::TextIter) -> bool {
+    fn iter_is_link_or_password(iter: &gtk::TextIter) -> bool {
         iter.get_tags()
             .iter()
             .find(|t| {
                 if let Some(prop_name) = t.get_property_name() {
                     let prop_name_str = prop_name.as_str();
                     prop_name_str == crate::notes::TAG_LINK
+                        || prop_name_str == crate::notes::TAG_PASSWORD
                 } else {
                     false
                 }
@@ -201,6 +198,7 @@ impl Widget for ProjectPoiContents {
             &crate::notes::build_tag_table(),
         );
         self.model.note_links = note_buffer_info.links;
+        self.model.note_passwords = note_buffer_info.passwords;
         self.note_textview
             .set_buffer(Some(&note_buffer_info.buffer));
     }
@@ -240,17 +238,17 @@ impl Widget for ProjectPoiContents {
         let popover_btn = gtk::ModelButtonBuilder::new()
             .label("Copy password")
             .build();
-        // let lbl = self.note_label.clone();
-        // let p = password.to_string();
-        // popover_btn.connect_clicked(move |_| {
-        //     if let Some(clip) = gtk::Clipboard::get_default(&lbl.get_display()) {
-        //         clip.set_text(&p);
-        //     }
-        // });
-        // popover_vbox.add(&popover_btn);
-        // popover_vbox.show_all();
-        // popover.add(&popover_vbox);
-        // popover.popup();
+        let textview = self.note_textview.clone();
+        let p = password.to_string();
+        popover_btn.connect_clicked(move |_| {
+            if let Some(clip) = gtk::Clipboard::get_default(&textview.get_display()) {
+                clip.set_text(&p);
+            }
+        });
+        popover_vbox.add(&popover_btn);
+        popover_vbox.show_all();
+        popover.add(&popover_vbox);
+        popover.popup();
 
         // then 'reveal'
         // reveal presumably shows & hides a gtk infobar

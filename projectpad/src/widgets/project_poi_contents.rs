@@ -296,12 +296,6 @@ impl Widget for ProjectPoiContents {
                         cursor_visible: false,
                         motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
                         event_after(_, event) => Msg::TextViewEventAfter(event.clone())
-                        // xalign: 0.0,
-                        // yalign: 0.0,
-                        // selectable: true,
-                        // markup: self.model.note_contents
-                        //                   .as_ref().map(|c| c.as_str()).unwrap_or(""),
-                        // activate_link(_, uri) => (Msg::ActivateLink(uri.to_string()), Inhibit(false))
                     }
                 }
             }

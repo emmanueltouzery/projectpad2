@@ -2,6 +2,7 @@ use super::project_items_list::ProjectItem;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
 use super::server_poi_contents::Msg::ViewNote as ServerPoiContentsMsgViewNote;
 use super::server_poi_contents::ServerPoiContents;
+use crate::notes::LinkInfo;
 use crate::sql_thread::SqlFunc;
 use gdk::prelude::*;
 use gtk::prelude::*;
@@ -17,6 +18,8 @@ pub enum Msg {
     ActivateLink(String),
     ViewServerNote(ServerNote),
     ServerNoteBack,
+    TextViewMoveCursor(f64, f64),
+    TextViewEventAfter(gdk::Event),
 }
 
 pub struct Model {
@@ -25,6 +28,9 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     cur_project_item: Option<ProjectItem>,
     pass_popover: Option<gtk::Popover>,
+    note_links: Vec<LinkInfo>,
+    hand_cursor: Option<gdk::Cursor>,
+    text_cursor: Option<gdk::Cursor>,
 }
 
 const CHILD_NAME_SERVER: &str = "server";
@@ -33,6 +39,9 @@ const CHILD_NAME_NOTE: &str = "note";
 #[widget]
 impl Widget for ProjectPoiContents {
     fn init_view(&mut self) {
+        let display = self.note_textview.get_display();
+        self.model.hand_cursor = gdk::Cursor::from_name(&display, "pointer");
+        self.model.text_cursor = gdk::Cursor::from_name(&display, "text");
         self.server_note_title
             .get_style_context()
             .add_class("server_note_title");
@@ -53,6 +62,9 @@ impl Widget for ProjectPoiContents {
             db_sender,
             cur_project_item: None,
             pass_popover: None,
+            note_links: vec![],
+            hand_cursor: None,
+            text_cursor: None,
         }
     }
 
@@ -70,15 +82,10 @@ impl Widget for ProjectPoiContents {
                                 _ => None,
                             }),
                     ));
-                if let Some(pi) = self.model.cur_project_item.as_ref() {
+                if let Some(pi) = self.model.cur_project_item.clone() {
                     match pi {
                         ProjectItem::ProjectNote(ref note) => {
-                            self.note_textview.set_buffer(Some(
-                                &crate::notes::note_markdown_to_text_buffer(
-                                    note.contents.as_ref(),
-                                    &crate::notes::build_tag_table(),
-                                ),
-                            ));
+                            self.display_note(&note.contents);
                         }
                         _ => {}
                     }
@@ -105,11 +112,7 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::ViewServerNote(n) => {
-                self.note_textview
-                    .set_buffer(Some(&crate::notes::note_markdown_to_text_buffer(
-                        n.contents.as_ref(),
-                        &crate::notes::build_tag_table(),
-                    )));
+                self.display_note(&n.contents);
                 self.server_note_title.set_text(&n.title);
                 self.server_note_back.set_visible(true);
                 self.contents_stack.set_visible_child_name(CHILD_NAME_NOTE);
@@ -121,7 +124,85 @@ impl Widget for ProjectPoiContents {
                 self.contents_stack
                     .set_visible_child_name(CHILD_NAME_SERVER);
             }
+            Msg::TextViewMoveCursor(x, y) => {
+                if let Some(iter) = self.note_textview.get_iter_at_location(x as i32, y as i32) {
+                    if Self::iter_is_link(&iter) {
+                        self.text_note_set_cursor(&self.model.hand_cursor);
+                    } else {
+                        self.text_note_set_cursor(&self.model.text_cursor);
+                    }
+                } else {
+                    self.text_note_set_cursor(&self.model.text_cursor);
+                }
+            }
+            Msg::TextViewEventAfter(evt) => {
+                if let Some(iter) = self.text_note_event_get_position_if_click_or_tap(&evt) {
+                    if Self::iter_is_link(&iter) {
+                        let offset = iter.get_offset();
+                        if let Some(link) = self
+                            .model
+                            .note_links
+                            .iter()
+                            .find(|l| l.start_offset <= offset && l.end_offset > offset)
+                        {
+                            if let Result::Err(e) = gtk::show_uri_on_window(
+                                None::<&gtk::Window>,
+                                &link.url,
+                                evt.get_time(),
+                            ) {
+                                eprintln!("Error opening url in browser: {:?}", e);
+                            }
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    // inspired by the gtk3-demo TextView/Hypertext code
+    fn text_note_event_get_position_if_click_or_tap(
+        &self,
+        evt: &gdk::Event,
+    ) -> Option<gtk::TextIter> {
+        let is_click =
+            evt.get_event_type() == gdk::EventType::ButtonRelease && evt.get_button() == Some(1); // GDK_BUTTON_PRIMARY; https://github.com/gtk-rs/gtk/issues/1044
+        let is_tap = evt.get_event_type() == gdk::EventType::TouchEnd;
+        if is_click || is_tap {
+            evt.get_coords()
+                .and_then(|(x, y)| self.note_textview.get_iter_at_location(x as i32, y as i32))
+        } else {
+            None
+        }
+    }
+
+    fn text_note_set_cursor(&self, cursor: &Option<gdk::Cursor>) {
+        gtk::TextViewExt::get_window(&self.note_textview, gtk::TextWindowType::Text)
+            .unwrap()
+            .set_cursor(cursor.as_ref());
+    }
+
+    fn iter_is_link(iter: &gtk::TextIter) -> bool {
+        iter.get_tags()
+            .iter()
+            .find(|t| {
+                if let Some(prop_name) = t.get_property_name() {
+                    let prop_name_str = prop_name.as_str();
+                    prop_name_str == crate::notes::TAG_LINK
+                } else {
+                    false
+                }
+            })
+            .is_some()
+    }
+
+    fn display_note(&mut self, note_contents: &str) {
+        let note_buffer_info = crate::notes::note_markdown_to_text_buffer(
+            note_contents.as_ref(),
+            &crate::notes::build_tag_table(),
+        );
+        self.model.note_links = note_buffer_info.links;
+        self.note_textview
+            .set_buffer(Some(&note_buffer_info.buffer));
     }
 
     fn password_popover(&mut self, password: &str) {
@@ -215,6 +296,8 @@ impl Widget for ProjectPoiContents {
                         margin_bottom: 10,
                         editable: false,
                         cursor_visible: false,
+                        motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
+                        event_after(_, event) => Msg::TextViewEventAfter(event.clone())
                         // xalign: 0.0,
                         // yalign: 0.0,
                         // selectable: true,

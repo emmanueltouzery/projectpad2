@@ -73,7 +73,7 @@ const TAG_HEADER1: &str = "header1";
 const TAG_HEADER2: &str = "header2";
 const TAG_HEADER3: &str = "header3";
 const TAG_CODE: &str = "code";
-const TAG_LINK: &str = "link";
+pub const TAG_LINK: &str = "link";
 const TAG_LIST_ITEM: &str = "list_item";
 const TAG_PARAGRAPH: &str = "paragraph";
 
@@ -157,8 +157,20 @@ pub fn build_tag_table() -> gtk::TextTagTable {
     tag_table
 }
 
+#[derive(Debug)]
+pub struct LinkInfo {
+    pub start_offset: i32,
+    pub end_offset: i32,
+    pub url: String,
+}
+
+pub struct NoteBufferInfo {
+    pub buffer: gtk::TextBuffer,
+    pub links: Vec<LinkInfo>,
+}
+
 // https://developer.gnome.org/pygtk/stable/pango-markup-language.html
-pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> gtk::TextBuffer {
+pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> NoteBufferInfo {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     let parser = Parser::new_ext(&input, options);
@@ -166,8 +178,9 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
     let mut in_item = false; // paragraphs inside bullets don't look nice
     let mut active_tags = HashMap::new();
 
-    let buf = gtk::TextBuffer::new(Some(table));
-    let mut end_iter = buf.get_end_iter();
+    let buffer = gtk::TextBuffer::new(Some(table));
+    let mut end_iter = buffer.get_end_iter();
+    let mut links = vec![];
 
     let events_with_passwords = get_events_with_passwords(parser);
 
@@ -180,34 +193,41 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                     active_tags.insert(TAG_BOLD, end_iter.get_offset());
                 }
                 Event::End(Tag::Strong) => {
-                    let start_iter = buf.get_iter_at_offset(active_tags.remove(TAG_BOLD).unwrap());
-                    buf.apply_tag_by_name(TAG_BOLD, &start_iter, &end_iter);
+                    let start_iter =
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_BOLD).unwrap());
+                    buffer.apply_tag_by_name(TAG_BOLD, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Emphasis) => {
                     active_tags.insert(TAG_ITALICS, end_iter.get_offset());
                 }
                 Event::End(Tag::Emphasis) => {
                     let start_iter =
-                        buf.get_iter_at_offset(active_tags.remove(TAG_ITALICS).unwrap());
-                    buf.apply_tag_by_name(TAG_ITALICS, &start_iter, &end_iter);
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_ITALICS).unwrap());
+                    buffer.apply_tag_by_name(TAG_ITALICS, &start_iter, &end_iter);
                 }
                 Event::Start(Tag::Strikethrough) => {
                     active_tags.insert(TAG_STRIKETHROUGH, end_iter.get_offset());
                 }
                 Event::End(Tag::Strikethrough) => {
                     let start_iter =
-                        buf.get_iter_at_offset(active_tags.remove(TAG_STRIKETHROUGH).unwrap());
-                    buf.apply_tag_by_name(TAG_STRIKETHROUGH, &start_iter, &end_iter);
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_STRIKETHROUGH).unwrap());
+                    buffer.apply_tag_by_name(TAG_STRIKETHROUGH, &start_iter, &end_iter);
                 }
-                Event::Start(Tag::Link(_, url, _title)) => {
+                Event::Start(Tag::Link(_, _, _title)) => {
                     active_tags.insert(TAG_LINK, end_iter.get_offset());
                     // let escaped_url = url.replace("&", "&amp;").replace("'", "&apos;");
                     // result.push_str(format!(r#"<a href="{}">"#, &escaped_url).as_str())
                 }
-                Event::End(Tag::Link(_, _, _)) => {
+                Event::End(Tag::Link(_, url, _)) => {
                     // result.push_str("</a>")
-                    let start_iter = buf.get_iter_at_offset(active_tags.remove(TAG_LINK).unwrap());
-                    buf.apply_tag_by_name(TAG_LINK, &start_iter, &end_iter);
+                    let start_offset = active_tags.remove(TAG_LINK).unwrap();
+                    let start_iter = buffer.get_iter_at_offset(start_offset);
+                    buffer.apply_tag_by_name(TAG_LINK, &start_iter, &end_iter);
+                    links.push(LinkInfo {
+                        start_offset,
+                        end_offset: end_iter.get_offset(),
+                        url: url.to_string(),
+                    });
                 }
                 Event::Start(Tag::Image(_, _, _)) => {}
                 Event::End(Tag::Image(_, _, _)) => {}
@@ -221,30 +241,30 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                     active_tags.insert(TAG_LIST_ITEM, end_iter.get_offset());
                     // in_item = true;
                     if let Some(idx) = list_cur_idx {
-                        buf.insert(&mut end_iter, format!("\n{}.\t", idx).as_str());
+                        buffer.insert(&mut end_iter, format!("\n{}.\t", idx).as_str());
                         list_cur_idx = Some(idx + 1);
                     } else {
-                        buf.insert(&mut end_iter, "\n•\t");
+                        buffer.insert(&mut end_iter, "\n•\t");
                     }
                 }
                 Event::End(Tag::Item) => {
                     let start_iter =
-                        buf.get_iter_at_offset(active_tags.remove(TAG_LIST_ITEM).unwrap());
-                    buf.apply_tag_by_name(TAG_LIST_ITEM, &start_iter, &end_iter);
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_LIST_ITEM).unwrap());
+                    buffer.apply_tag_by_name(TAG_LIST_ITEM, &start_iter, &end_iter);
                     in_item = false;
                 }
                 Event::Start(Tag::Paragraph) => {
                     // if !in_item {
-                    buf.insert(&mut end_iter, "\n");
+                    buffer.insert(&mut end_iter, "\n");
                     active_tags.insert(TAG_PARAGRAPH, end_iter.get_offset());
                     // }
                 }
                 Event::End(Tag::Paragraph) => {
                     // if !in_item {
                     let start_iter =
-                        buf.get_iter_at_offset(active_tags.remove(TAG_PARAGRAPH).unwrap());
-                    buf.apply_tag_by_name(TAG_PARAGRAPH, &start_iter, &end_iter);
-                    buf.insert(&mut end_iter, "\n");
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_PARAGRAPH).unwrap());
+                    buffer.apply_tag_by_name(TAG_PARAGRAPH, &start_iter, &end_iter);
+                    buffer.insert(&mut end_iter, "\n");
                     // }
                 }
                 // color is accent yellow from https://developer.gnome.org/hig-book/unstable/design-color.html.en
@@ -272,60 +292,61 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> g
                 }
                 Event::Start(Tag::Heading(_)) => {
                     active_tags.insert(TAG_HEADER3, end_iter.get_offset());
-                    buf.insert(&mut end_iter, "\n");
+                    buffer.insert(&mut end_iter, "\n");
                 }
                 Event::End(Tag::Heading(1)) => {
                     let start_iter =
-                        buf.get_iter_at_offset(active_tags.remove(TAG_HEADER1).unwrap());
-                    buf.apply_tag_by_name(TAG_HEADER1, &start_iter, &end_iter);
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_HEADER1).unwrap());
+                    buffer.apply_tag_by_name(TAG_HEADER1, &start_iter, &end_iter);
                 }
                 Event::End(Tag::Heading(2)) => {
                     let start_iter =
-                        buf.get_iter_at_offset(active_tags.remove(TAG_HEADER2).unwrap());
-                    buf.apply_tag_by_name(TAG_HEADER2, &start_iter, &end_iter);
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_HEADER2).unwrap());
+                    buffer.apply_tag_by_name(TAG_HEADER2, &start_iter, &end_iter);
                 }
                 Event::End(Tag::Heading(_)) => {
                     let start_iter =
-                        buf.get_iter_at_offset(active_tags.remove(TAG_HEADER3).unwrap());
-                    buf.apply_tag_by_name(TAG_HEADER3, &start_iter, &end_iter);
-                    buf.insert(&mut end_iter, "\n");
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_HEADER3).unwrap());
+                    buffer.apply_tag_by_name(TAG_HEADER3, &start_iter, &end_iter);
+                    buffer.insert(&mut end_iter, "\n");
                 }
                 Event::Start(Tag::CodeBlock(_)) => {
                     active_tags.insert(TAG_CODE, end_iter.get_offset());
                 }
                 Event::End(Tag::CodeBlock(_)) => {
-                    let start_iter = buf.get_iter_at_offset(active_tags.remove(TAG_CODE).unwrap());
-                    buf.apply_tag_by_name(TAG_CODE, &start_iter, &end_iter);
+                    let start_iter =
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_CODE).unwrap());
+                    buffer.apply_tag_by_name(TAG_CODE, &start_iter, &end_iter);
                 }
                 Event::Text(t) => {
-                    buf.insert(&mut end_iter, &t);
+                    buffer.insert(&mut end_iter, &t);
                 }
                 Event::Code(t) => {
-                    buf.insert(&mut end_iter, &t);
+                    buffer.insert(&mut end_iter, &t);
                 }
                 Event::Html(t) => {
-                    buf.insert(&mut end_iter, &t);
+                    buffer.insert(&mut end_iter, &t);
                 }
                 Event::Rule => {
-                    buf.insert(&mut end_iter, "---"); // TODO surely can do way better than that
+                    buffer.insert(&mut end_iter, "---"); // TODO surely can do way better than that
                 }
                 Event::HardBreak | Event::SoftBreak => {
-                    buf.insert(&mut end_iter, "\n");
+                    buffer.insert(&mut end_iter, "\n");
                 }
                 Event::FootnoteReference(_) | Event::TaskListMarker(_) => {}
             },
             EventExt::Password(p) => {
-                buf.insert(&mut end_iter, "[PASSWORD]"); // TODO
-                                                         // result.push_str(&format!(
-                                                         //     // the emoji doesn't look nice in the link on my machine, the underline
-                                                         //     // doesn't line up with the rest of the string => put it out of the link
-                                                         //     r#"<span size="x-small">🔒</span><a href="pass://{}">[Password]</a>"#,
-                                                         //     p
-                                                         // ));
+                buffer.insert(&mut end_iter, "[PASSWORD]"); // TODO
+                                                            // result.push_str(&format!(
+                                                            //     // the emoji doesn't look nice in the link on my machine, the underline
+                                                            //     // doesn't line up with the rest of the string => put it out of the link
+                                                            //     r#"<span size="x-small">🔒</span><a href="pass://{}">[Password]</a>"#,
+                                                            //     p
+                                                            // ));
             }
         }
     }
-    buf
+    NoteBufferInfo { buffer, links }
 }
 
 #[test]

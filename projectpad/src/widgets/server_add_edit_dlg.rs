@@ -15,11 +15,17 @@ pub struct Model {
     username: String,
     password: String,
     server_type: ServerType,
+    server_access_type: ServerAccessType,
 }
 
 #[widget]
 impl Widget for ServerAddEditDialog {
     fn init_view(&mut self) {
+        self.init_server_type();
+        self.init_server_access_type();
+    }
+
+    fn init_server_type(&self) {
         self.server_type
             .append(Some(&ServerType::SrvApplication.to_string()), "Application");
         self.server_type
@@ -34,6 +40,23 @@ impl Widget for ServerAddEditDialog {
             .append(Some(&ServerType::SrvReporting.to_string()), "Reporting");
         self.server_type
             .set_active_id(Some(&self.model.server_type.to_string()));
+    }
+
+    fn init_server_access_type(&self) {
+        self.server_access_type
+            .append(Some(&ServerAccessType::SrvAccessSsh.to_string()), "SSH");
+        self.server_access_type.append(
+            Some(&ServerAccessType::SrvAccessRdp.to_string()),
+            "Remote Desktop (RDP)",
+        );
+        self.server_access_type
+            .append(Some(&ServerAccessType::SrvAccessWww.to_string()), "Website");
+        self.server_access_type.append(
+            Some(&ServerAccessType::SrvAccessSshTunnel.to_string()),
+            "SSH tunnel",
+        );
+        self.server_access_type
+            .set_active_id(Some(&self.model.server_access_type.to_string()));
     }
 
     // TODO probably could take an Option<&Server> and drop some cloning
@@ -65,6 +88,10 @@ impl Widget for ServerAddEditDialog {
                 .as_ref()
                 .map(|s| s.server_type)
                 .unwrap_or(ServerType::SrvApplication),
+            server_access_type: server
+                .as_ref()
+                .map(|s| s.access_type)
+                .unwrap_or(ServerAccessType::SrvAccessSsh),
         }
     }
 
@@ -182,6 +209,21 @@ impl Widget for ServerAddEditDialog {
                 cell: {
                     left_attach: 1,
                     top_attach: 6,
+                },
+            },
+            gtk::Label {
+                text: "Access type:",
+                cell: {
+                    left_attach: 0,
+                    top_attach: 7,
+                },
+            },
+            #[name="server_access_type"]
+            gtk::ComboBoxText {
+                hexpand: true,
+                cell: {
+                    left_attach: 1,
+                    top_attach: 7,
                 },
             },
         }

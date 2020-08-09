@@ -9,6 +9,7 @@ mod project_search_header;
 mod project_summary;
 mod search_view;
 mod search_view_render;
+mod server_add_edit_dlg;
 mod server_item_list_item;
 mod server_poi_contents;
 pub mod win;

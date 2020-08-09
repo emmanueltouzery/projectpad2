@@ -1,4 +1,5 @@
 use super::project_items_list::ProjectItem;
+use super::server_add_edit_dlg::ServerAddEditDialog;
 use crate::icons::Icon;
 use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType};
@@ -252,10 +253,47 @@ impl Widget for ProjectPoiHeader {
                     clip.set_text(&val);
                 }
             }
-            Msg::HeaderActionClicked((ActionTypes::Edit, val)) => {
-                println!("edit!!");
+            Msg::HeaderActionClicked((ActionTypes::Edit, _)) => {
+                match self.model.project_item {
+                    Some(ProjectItem::Server(ref srv)) => {
+                        self.edit_server(Some(srv));
+                    }
+                    Some(_) => {
+                        eprintln!("TODO");
+                    }
+                    None => {}
+                };
             }
         }
+    }
+
+    fn get_main_window(&self) -> gtk::Window {
+        self.items_frame
+            .get_toplevel()
+            .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
+            .unwrap()
+    }
+
+    fn edit_server(&self, server: Option<&Server>) {
+        let main_win = self.get_main_window();
+        let dialog = gtk::DialogBuilder::new()
+            .use_header_bar(1)
+            .default_width(400)
+            .default_height(250)
+            .title(if server.is_some() {
+                "Edit server"
+            } else {
+                "Add server"
+            })
+            .transient_for(&main_win)
+            .build();
+
+        let dialog_contents = relm::init::<ServerAddEditDialog>(())
+            .expect("error initializing the server add edit modal");
+        dialog
+            .get_content_area()
+            .pack_start(dialog_contents.widget(), true, true, 0);
+        let resp = dialog.run();
     }
 
     fn load_project_item(&self) {

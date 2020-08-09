@@ -288,7 +288,7 @@ impl Widget for ProjectPoiHeader {
             .transient_for(&main_win)
             .build();
 
-        let dialog_contents = relm::init::<ServerAddEditDialog>(())
+        let dialog_contents = relm::init::<ServerAddEditDialog>(server.cloned())
             .expect("error initializing the server add edit modal");
         dialog
             .get_content_area()

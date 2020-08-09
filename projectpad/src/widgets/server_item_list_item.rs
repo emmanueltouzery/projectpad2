@@ -173,7 +173,7 @@ impl Widget for ServerItemListItem {
             self.model.header_popover.clone(),
             &fields,
             ActionTypes::Copy,
-            extra_btns,
+            &extra_btns,
             &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
                 if str_val == view_label {
                     // <-- TODO use the action_type rather

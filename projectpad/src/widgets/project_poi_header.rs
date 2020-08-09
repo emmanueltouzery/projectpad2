@@ -93,7 +93,7 @@ pub fn populate_grid<T: Copy + PartialEq + Eq>(
     actions_popover: gtk::Popover,
     fields: &[GridItem],
     copy_action_type: T,
-    extra_btns: Vec<(gtk::ModelButton, T)>,
+    extra_btns: &[(gtk::ModelButton, T)],
     register_btn: &dyn Fn(&gtk::ModelButton, T, String),
 ) {
     for child in header_grid.get_children() {
@@ -136,15 +136,10 @@ pub fn populate_grid<T: Copy + PartialEq + Eq>(
         }
     }
     header_grid.show_all();
-    let mut btns = vec![(
-        gtk::ModelButtonBuilder::new().label("Copy").build(),
-        copy_action_type,
-    )];
-    btns.extend(extra_btns);
     populate_popover(
         &actions_popover,
         copy_action_type,
-        &btns,
+        &extra_btns,
         fields,
         register_btn,
     );
@@ -291,12 +286,16 @@ impl Widget for ProjectPoiHeader {
             .as_ref()
             .map(get_project_item_fields)
             .unwrap_or_else(|| vec![]);
+        let extra_btns = [(
+            gtk::ModelButtonBuilder::new().label("Edit").build(),
+            ActionTypes::Edit,
+        )];
         populate_grid(
             self.header_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
             ActionTypes::Copy,
-            vec![],
+            &extra_btns,
             &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
                 relm::connect!(
                     self.model.relm,

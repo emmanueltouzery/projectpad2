@@ -5,10 +5,16 @@ use projectpadsql::models::{Server, ServerAccessType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum ActionTypes {
+    Edit,
+    Copy,
+}
+
 #[derive(Msg)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
-    CopyClicked(String),
+    HeaderActionClicked((ActionTypes, String)),
 }
 
 pub struct Model {
@@ -49,11 +55,12 @@ impl GridItem {
     }
 }
 
-pub fn populate_popover(
+pub fn populate_popover<T: Copy + PartialEq + Eq>(
     actions_popover: &gtk::Popover,
-    extra_btns: &[gtk::ModelButton],
+    copy_action_type: T,
+    extra_btns: &[(gtk::ModelButton, T)],
     fields: &[GridItem],
-    register_btn: &dyn Fn(&gtk::ModelButton, String),
+    register_btn: &dyn Fn(&gtk::ModelButton, T, String),
 ) {
     for child in actions_popover.get_children() {
         actions_popover.remove(&child);
@@ -62,27 +69,32 @@ pub fn populate_popover(
         .margin(10)
         .orientation(gtk::Orientation::Vertical)
         .build();
-    for extra_btn in extra_btns {
+    for (extra_btn, extra_btn_action_type) in extra_btns {
         popover_vbox.add(extra_btn);
-        register_btn(&extra_btn, extra_btn.get_label().unwrap().to_string());
+        register_btn(
+            &extra_btn,
+            *extra_btn_action_type,
+            extra_btn.get_label().unwrap().to_string(),
+        );
     }
     for item in fields {
         let popover_btn = gtk::ModelButtonBuilder::new()
             .label(&format!("Copy {}", item.label_name))
             .build();
-        register_btn(&popover_btn, item.raw_value.clone());
+        register_btn(&popover_btn, copy_action_type, item.raw_value.clone());
         popover_vbox.add(&popover_btn);
     }
     popover_vbox.show_all();
     actions_popover.add(&popover_vbox);
 }
 
-pub fn populate_grid(
+pub fn populate_grid<T: Copy + PartialEq + Eq>(
     header_grid: gtk::Grid,
     actions_popover: gtk::Popover,
     fields: &[GridItem],
-    extra_btns: Vec<gtk::ModelButton>,
-    register_btn: &dyn Fn(&gtk::ModelButton, String),
+    copy_action_type: T,
+    extra_btns: Vec<(gtk::ModelButton, T)>,
+    register_btn: &dyn Fn(&gtk::ModelButton, T, String),
 ) {
     for child in header_grid.get_children() {
         header_grid.remove(&child);
@@ -124,9 +136,18 @@ pub fn populate_grid(
         }
     }
     header_grid.show_all();
-    let mut btns = vec![gtk::ModelButtonBuilder::new().label("Edit").build()];
+    let mut btns = vec![(
+        gtk::ModelButtonBuilder::new().label("Copy").build(),
+        copy_action_type,
+    )];
     btns.extend(extra_btns);
-    populate_popover(&actions_popover, &btns, fields, register_btn);
+    populate_popover(
+        &actions_popover,
+        copy_action_type,
+        &btns,
+        fields,
+        register_btn,
+    );
 }
 
 pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
@@ -231,10 +252,13 @@ impl Widget for ProjectPoiHeader {
                 self.model.project_item = pi;
                 self.load_project_item();
             }
-            Msg::CopyClicked(val) => {
+            Msg::HeaderActionClicked((ActionTypes::Copy, val)) => {
                 if let Some(clip) = gtk::Clipboard::get_default(&self.header_grid.get_display()) {
                     clip.set_text(&val);
                 }
+            }
+            Msg::HeaderActionClicked((ActionTypes::Edit, val)) => {
+                println!("edit!!");
             }
         }
     }
@@ -271,13 +295,14 @@ impl Widget for ProjectPoiHeader {
             self.header_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
+            ActionTypes::Copy,
             vec![],
-            &|btn: &gtk::ModelButton, str_val: String| {
+            &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
                 relm::connect!(
                     self.model.relm,
                     btn,
                     connect_clicked(_),
-                    Msg::CopyClicked(str_val.clone())
+                    Msg::HeaderActionClicked((action_type, str_val.clone()))
                 );
             },
         );

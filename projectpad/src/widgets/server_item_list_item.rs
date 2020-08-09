@@ -139,6 +139,13 @@ fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
     ]
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum ActionTypes {
+    Copy,
+    Edit,
+    View,
+}
+
 #[widget]
 impl Widget for ServerItemListItem {
     fn init_view(&mut self) {
@@ -154,7 +161,10 @@ impl Widget for ServerItemListItem {
         let fields = get_server_item_grid_items(&self.model.server_item);
         let view_label = "View";
         let extra_btns = match self.model.server_item {
-            ServerItem::Note(_) => vec![gtk::ModelButtonBuilder::new().label(view_label).build()],
+            ServerItem::Note(_) => vec![(
+                gtk::ModelButtonBuilder::new().label(view_label).build(),
+                ActionTypes::View,
+            )],
             _ => vec![],
         };
         let server_item = self.model.server_item.clone();
@@ -162,9 +172,11 @@ impl Widget for ServerItemListItem {
             self.items_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
+            ActionTypes::Copy,
             extra_btns,
-            &|btn: &gtk::ModelButton, str_val: String| {
+            &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
                 if str_val == view_label {
+                    // <-- TODO use the action_type rather
                     match server_item.clone() {
                         ServerItem::Note(n) => relm::connect!(
                             self.model.relm,

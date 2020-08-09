@@ -69,6 +69,13 @@ impl Area {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum ActionTypes {
+    Copy,
+    Edit,
+    Open,
+}
+
 #[derive(Msg)]
 pub enum Msg {
     FilterChanged(Option<String>),
@@ -249,9 +256,11 @@ impl Widget for SearchView {
         let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
         project_poi_header::populate_popover(
             popover,
-            &vec![open_btn, edit_btn],
+            ActionTypes::Copy,
+            &vec![(open_btn, ActionTypes::Open), (edit_btn, ActionTypes::Edit)],
             &grid_items,
-            &move |btn: &gtk::ModelButton, str_val: String| {
+            &move |btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
+                // TODO not necessarily copy...
                 relm::connect!(
                     relm,
                     btn,

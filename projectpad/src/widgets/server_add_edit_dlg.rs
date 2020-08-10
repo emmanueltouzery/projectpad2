@@ -22,6 +22,7 @@ pub struct Model {
     is_retired: bool,
     address: String,
     text: String,
+    group_name: Option<String>,
     username: String,
     password: String,
     server_type: ServerType,
@@ -157,6 +158,7 @@ impl Widget for ServerAddEditDialog {
                 .as_ref()
                 .map(|s| s.text.clone())
                 .unwrap_or_else(|| "".to_string()),
+            group_name: server.as_ref().and_then(|s| s.group_name.clone()),
             username: server
                 .as_ref()
                 .map(|s| s.username.clone())
@@ -185,6 +187,15 @@ impl Widget for ServerAddEditDialog {
                         .groups_store
                         .set_value(&iter, 0, &glib::Value::from(&group));
                     self.group.append_text(&group);
+                }
+
+                if let Some(t) = self.model.group_name.as_deref() {
+                    self.group
+                        .get_child()
+                        .unwrap()
+                        .dynamic_cast::<gtk::Entry>()
+                        .unwrap()
+                        .set_text(t);
                 }
             }
         }

@@ -211,7 +211,8 @@ impl Widget for ServerAddEditDialog {
             row_spacing: 5,
             column_spacing: 10,
             gtk::Label {
-                text: "Description:",
+                text: "Description",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 0,
@@ -236,7 +237,8 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Address:",
+                text: "Address",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 2,
@@ -252,7 +254,8 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Text:",
+                text: "Text",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 3,
@@ -268,7 +271,8 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Group:",
+                text: "Group",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 4,
@@ -283,7 +287,8 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Username:",
+                text: "Username",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 5,
@@ -299,7 +304,8 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Password:",
+                text: "Password",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 6,
@@ -317,7 +323,8 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Server type:",
+                text: "Server type",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 7,
@@ -332,7 +339,8 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Access type:",
+                text: "Access type",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 8,

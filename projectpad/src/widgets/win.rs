@@ -10,7 +10,6 @@ use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
-use super::search_view::ProjectPadItem;
 use super::search_view::SearchView;
 use super::server_poi_contents::ServerItem;
 use super::wintitlebar::Msg as WinTitleBarMsg;
@@ -231,7 +230,7 @@ impl Widget for Win {
                             expand: true,
                         },
                         #[name="project_poi_header"]
-                        ProjectPoiHeader(None),
+                        ProjectPoiHeader((self.model.db_sender.clone(), None)),
                         #[name="project_poi_contents"]
                         ProjectPoiContents(self.model.db_sender.clone()) {
                             child: {

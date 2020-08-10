@@ -1,10 +1,12 @@
 use super::project_items_list::ProjectItem;
 use super::server_add_edit_dlg::ServerAddEditDialog;
 use crate::icons::Icon;
+use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::sync::mpsc;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum ActionTypes {
@@ -20,6 +22,7 @@ pub enum Msg {
 
 pub struct Model {
     relm: relm::Relm<ProjectPoiHeader>,
+    db_sender: mpsc::Sender<SqlFunc>,
     project_item: Option<ProjectItem>,
     header_popover: gtk::Popover,
     title: gtk::Label,
@@ -229,9 +232,14 @@ impl Widget for ProjectPoiHeader {
             .set_popover(Some(&self.model.header_popover));
     }
 
-    fn model(relm: &relm::Relm<Self>, project_item: Option<ProjectItem>) -> Model {
+    fn model(
+        relm: &relm::Relm<Self>,
+        params: (mpsc::Sender<SqlFunc>, Option<ProjectItem>),
+    ) -> Model {
+        let (db_sender, project_item) = params;
         Model {
             relm: relm.clone(),
+            db_sender,
             project_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             title: gtk::LabelBuilder::new()
@@ -298,8 +306,12 @@ impl Widget for ProjectPoiHeader {
         btn.show();
         dialog.add_button("Cancel", gtk::ResponseType::Cancel);
 
-        let dialog_contents = relm::init::<ServerAddEditDialog>(server.cloned())
-            .expect("error initializing the server add edit modal");
+        let dialog_contents = relm::init::<ServerAddEditDialog>((
+            self.model.db_sender.clone(),
+            server.unwrap().project_id,
+            server.cloned(),
+        ))
+        .expect("error initializing the server add edit modal");
         dialog
             .get_content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);

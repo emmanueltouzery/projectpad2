@@ -1,13 +1,23 @@
+use crate::sql_thread::SqlFunc;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType, ServerType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::sync::mpsc;
 
 #[derive(Msg, Debug)]
-pub enum Msg {}
+pub enum Msg {
+    GotGroups(Vec<String>),
+}
 
 pub struct Model {
     relm: relm::Relm<ServerAddEditDialog>,
+    db_sender: mpsc::Sender<SqlFunc>,
+    _channel: relm::Channel<Vec<String>>,
+    sender: relm::Sender<Vec<String>>,
+    groups_store: gtk::ListStore,
+    project_id: i32,
     description: String,
     is_retired: bool,
     address: String,
@@ -60,16 +70,52 @@ impl Widget for ServerAddEditDialog {
             .set_active_id(Some(&self.model.server_access_type.to_string()));
     }
 
+    pub fn get_project_group_names(
+        sql_conn: &diesel::SqliteConnection,
+        project_id: i32,
+    ) -> Vec<String> {
+        use projectpadsql::schema::project_point_of_interest::dsl as ppoi;
+        use projectpadsql::schema::server::dsl as srv;
+        let mut server_group_names: Vec<Option<String>> = srv::server
+            .filter(
+                srv::project_id
+                    .eq(project_id)
+                    .and(srv::group_name.is_not_null()),
+            )
+            .order(srv::group_name.asc())
+            .select(srv::group_name)
+            .load(sql_conn)
+            .unwrap();
+        let mut prj_poi_group_names = ppoi::project_point_of_interest
+            .filter(
+                ppoi::project_id
+                    .eq(project_id)
+                    .and(ppoi::group_name.is_not_null()),
+            )
+            .order(ppoi::group_name.asc())
+            .select(ppoi::group_name)
+            .load(sql_conn)
+            .unwrap();
+        server_group_names.append(&mut prj_poi_group_names);
+        let mut server_group_names_no_options: Vec<_> =
+            server_group_names.into_iter().map(|n| n.unwrap()).collect();
+        server_group_names_no_options.sort();
+        server_group_names_no_options.dedup();
+        server_group_names_no_options
+    }
+
     fn init_group(&self) {
-        self.group.append_text("My group");
-        self.group.append_text("Another group");
-        let store = gtk::ListStore::new(&[glib::Type::String]);
-        let iter = store.append();
-        store.set_value(&iter, 0, &glib::Value::from("My group"));
-        let iter = store.append();
-        store.set_value(&iter, 0, &glib::Value::from("Another group"));
+        let s = self.model.sender.clone();
+        let pid = self.model.project_id;
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                s.send(Self::get_project_group_names(sql_conn, pid))
+                    .unwrap();
+            }))
+            .unwrap();
         let completion = gtk::EntryCompletion::new();
-        completion.set_model(Some(&store));
+        completion.set_model(Some(&self.model.groups_store));
         completion.set_text_column(0);
         self.group
             .get_child()
@@ -80,9 +126,24 @@ impl Widget for ServerAddEditDialog {
     }
 
     // TODO probably could take an Option<&Server> and drop some cloning
-    fn model(relm: &relm::Relm<Self>, server: Option<Server>) -> Model {
+    // I take the project_id because I may not get a server to get the
+    // project_id from.
+    fn model(
+        relm: &relm::Relm<Self>,
+        params: (mpsc::Sender<SqlFunc>, i32, Option<Server>),
+    ) -> Model {
+        let (db_sender, project_id, server) = params;
+        let stream = relm.stream().clone();
+        let (channel, sender) = relm::Channel::new(move |groups: Vec<String>| {
+            stream.emit(Msg::GotGroups(groups));
+        });
         Model {
             relm: relm.clone(),
+            db_sender,
+            _channel: channel,
+            sender,
+            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            project_id,
             description: server
                 .as_ref()
                 .map(|s| s.desc.clone())
@@ -115,7 +176,19 @@ impl Widget for ServerAddEditDialog {
         }
     }
 
-    fn update(&mut self, msg: Msg) {}
+    fn update(&mut self, event: Msg) {
+        match event {
+            Msg::GotGroups(groups) => {
+                for group in groups {
+                    let iter = self.model.groups_store.append();
+                    self.model
+                        .groups_store
+                        .set_value(&iter, 0, &glib::Value::from(&group));
+                    self.group.append_text(&group);
+                }
+            }
+        }
+    }
 
     view! {
         #[name="grid"]

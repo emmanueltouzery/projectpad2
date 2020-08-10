@@ -23,6 +23,7 @@ impl Widget for ServerAddEditDialog {
     fn init_view(&mut self) {
         self.init_server_type();
         self.init_server_access_type();
+        self.init_group();
     }
 
     fn init_server_type(&self) {
@@ -57,6 +58,28 @@ impl Widget for ServerAddEditDialog {
         );
         self.server_access_type
             .set_active_id(Some(&self.model.server_access_type.to_string()));
+    }
+
+    fn init_group(&self) {
+        let group = gtk::ComboBoxText::with_entry();
+        self.grid.attach(&group, 1, 4, 1, 1);
+        group.append_text("My group");
+        group.append_text("Another group");
+        let store = gtk::ListStore::new(&[glib::Type::String]);
+        let iter = store.append();
+        store.set_value(&iter, 0, &glib::Value::from("My group"));
+        let iter = store.append();
+        store.set_value(&iter, 0, &glib::Value::from("Another group"));
+        let completion = gtk::EntryCompletion::new();
+        completion.set_model(Some(&store));
+        completion.set_text_column(0);
+        group
+            .get_child()
+            .unwrap()
+            .dynamic_cast::<gtk::Entry>()
+            .unwrap()
+            .set_completion(Some(&completion));
+        group.show_all();
     }
 
     // TODO probably could take an Option<&Server> and drop some cloning
@@ -98,6 +121,7 @@ impl Widget for ServerAddEditDialog {
     fn update(&mut self, msg: Msg) {}
 
     view! {
+        #[name="grid"]
         gtk::Grid {
             margin_start: 30,
             margin_end: 30,
@@ -163,10 +187,17 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Username:",
+                text: "Group:",
                 cell: {
                     left_attach: 0,
                     top_attach: 4,
+                },
+            },
+            gtk::Label {
+                text: "Username:",
+                cell: {
+                    left_attach: 0,
+                    top_attach: 5,
                 },
             },
             #[name="username_entry"]
@@ -175,14 +206,14 @@ impl Widget for ServerAddEditDialog {
                 text: &self.model.username,
                 cell: {
                     left_attach: 1,
-                    top_attach: 4,
+                    top_attach: 5,
                 },
             },
             gtk::Label {
                 text: "Password:",
                 cell: {
                     left_attach: 0,
-                    top_attach: 5,
+                    top_attach: 6,
                 },
             },
             #[name="password_entry"]
@@ -193,14 +224,14 @@ impl Widget for ServerAddEditDialog {
                 input_purpose: gtk::InputPurpose::Password,
                 cell: {
                     left_attach: 1,
-                    top_attach: 5,
+                    top_attach: 6,
                 },
             },
             gtk::Label {
                 text: "Server type:",
                 cell: {
                     left_attach: 0,
-                    top_attach: 6,
+                    top_attach: 7,
                 },
             },
             #[name="server_type"]
@@ -208,14 +239,14 @@ impl Widget for ServerAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 6,
+                    top_attach: 7,
                 },
             },
             gtk::Label {
                 text: "Access type:",
                 cell: {
                     left_attach: 0,
-                    top_attach: 7,
+                    top_attach: 8,
                 },
             },
             #[name="server_access_type"]
@@ -223,7 +254,7 @@ impl Widget for ServerAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 7,
+                    top_attach: 8,
                 },
             },
         }

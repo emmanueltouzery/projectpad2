@@ -61,10 +61,8 @@ impl Widget for ServerAddEditDialog {
     }
 
     fn init_group(&self) {
-        let group = gtk::ComboBoxText::with_entry();
-        self.grid.attach(&group, 1, 4, 1, 1);
-        group.append_text("My group");
-        group.append_text("Another group");
+        self.group.append_text("My group");
+        self.group.append_text("Another group");
         let store = gtk::ListStore::new(&[glib::Type::String]);
         let iter = store.append();
         store.set_value(&iter, 0, &glib::Value::from("My group"));
@@ -73,13 +71,12 @@ impl Widget for ServerAddEditDialog {
         let completion = gtk::EntryCompletion::new();
         completion.set_model(Some(&store));
         completion.set_text_column(0);
-        group
+        self.group
             .get_child()
             .unwrap()
             .dynamic_cast::<gtk::Entry>()
             .unwrap()
             .set_completion(Some(&completion));
-        group.show_all();
     }
 
     // TODO probably could take an Option<&Server> and drop some cloning
@@ -190,6 +187,14 @@ impl Widget for ServerAddEditDialog {
                 text: "Group:",
                 cell: {
                     left_attach: 0,
+                    top_attach: 4,
+                },
+            },
+            #[name="group"]
+            gtk::ComboBoxText({has_entry: true}) {
+                hexpand: true,
+                cell: {
+                    left_attach: 1,
                     top_attach: 4,
                 },
             },

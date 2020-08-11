@@ -1,14 +1,19 @@
+use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType, ServerType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::path::Path;
 use std::sync::mpsc;
 
 #[derive(Msg, Debug)]
 pub enum Msg {
     GotGroups(Vec<String>),
+    RemoveAuthFile,
+    SaveAuthFile,
+    AuthFilePicked,
 }
 
 pub struct Model {
@@ -27,6 +32,7 @@ pub struct Model {
     password: String,
     server_type: ServerType,
     server_access_type: ServerAccessType,
+    auth_key_filename: Option<String>,
 }
 
 #[widget]
@@ -35,6 +41,7 @@ impl Widget for ServerAddEditDialog {
         self.init_server_type();
         self.init_server_access_type();
         self.init_group();
+        self.update_auth_file();
     }
 
     fn init_server_type(&self) {
@@ -126,6 +133,15 @@ impl Widget for ServerAddEditDialog {
             .set_completion(Some(&completion));
     }
 
+    fn update_auth_file(&self) {
+        self.auth_key_stack
+            .set_visible_child_name(if self.model.auth_key_filename.is_some() {
+                "file"
+            } else {
+                "no_file"
+            });
+    }
+
     // TODO probably could take an Option<&Server> and drop some cloning
     // I take the project_id because I may not get a server to get the
     // project_id from.
@@ -175,6 +191,7 @@ impl Widget for ServerAddEditDialog {
                 .as_ref()
                 .map(|s| s.access_type)
                 .unwrap_or(ServerAccessType::SrvAccessSsh),
+            auth_key_filename: server.as_ref().and_then(|s| s.auth_key_filename.clone()),
         }
     }
 
@@ -197,6 +214,38 @@ impl Widget for ServerAddEditDialog {
                         .unwrap()
                         .set_text(t);
                 }
+            }
+            Msg::RemoveAuthFile => {
+                self.model.auth_key_filename = None;
+                self.update_auth_file();
+            }
+            Msg::AuthFilePicked => {
+                // doing Some(x.unwrap()) because I assume that I get a Some here
+                // i want it to blow if that's not the case
+                self.model.auth_key_filename = Some(
+                    Path::new(&self.auth_key.get_filename().unwrap())
+                        .file_name()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .to_string(),
+                );
+                self.update_auth_file();
+            }
+            Msg::SaveAuthFile => {
+                let win = self
+                    .grid
+                    .get_toplevel()
+                    .and_then(|w| w.dynamic_cast::<gtk::Window>().ok());
+                // https://stackoverflow.com/questions/54487052/how-do-i-add-a-save-button-to-the-gtk-filechooser-dialog
+                let dialog = gtk::FileChooserDialog::new(
+                    None,
+                    win.as_ref(),
+                    gtk::FileChooserAction::SelectFolder,
+                );
+                dialog.add_button("Cancel", gtk::ResponseType::Cancel);
+                dialog.add_button("Save", gtk::ResponseType::Ok);
+                dialog.run();
             }
         }
     }
@@ -323,11 +372,61 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Server type",
+                text: "Authentication key",
                 halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 7,
+                },
+            },
+            #[name="auth_key_stack"]
+            gtk::Stack {
+                cell: {
+                    left_attach: 1,
+                    top_attach: 7,
+                },
+                // visible_child_name: if self.model.auth_key_filename.is_some() { "file" } else { "no_file" },
+                // if there is no file, a file picker...
+                #[name="auth_key"]
+                gtk::FileChooserButton({action: gtk::FileChooserAction::Open}) {
+                    child: {
+                        name: Some("no_file")
+                    },
+                    hexpand: true,
+                    selection_changed(_) => Msg::AuthFilePicked,
+                },
+                // if there is a file, a label with the filename,
+                // and a button to remove the file
+                gtk::Box {
+                    orientation: gtk::Orientation::Horizontal,
+                    child: {
+                        name: Some("file")
+                    },
+                    gtk::Label {
+                        hexpand: true,
+                        text: self.model.auth_key_filename.as_deref().unwrap_or_else(|| "")
+                    },
+                    gtk::Button {
+                        always_show_image: true,
+                        image: Some(&gtk::Image::from_icon_name(
+                            Some("document-save-symbolic"), gtk::IconSize::Menu)),
+                        button_press_event(_, _) => (Msg::SaveAuthFile, Inhibit(false)),
+                    },
+                    gtk::Button {
+                        always_show_image: true,
+                        image: Some(&gtk::Image::from_icon_name(
+                            // Some(Icon::TRASH.name()), gtk::IconSize::Menu)),
+                            Some("edit-delete-symbolic"), gtk::IconSize::Menu)),
+                        button_press_event(_, _) => (Msg::RemoveAuthFile, Inhibit(false)),
+                    },
+                },
+            },
+            gtk::Label {
+                text: "Server type",
+                halign: gtk::Align::End,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 8,
                 },
             },
             #[name="server_type"]
@@ -335,7 +434,7 @@ impl Widget for ServerAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 7,
+                    top_attach: 8,
                 },
             },
             gtk::Label {
@@ -343,7 +442,7 @@ impl Widget for ServerAddEditDialog {
                 halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
-                    top_attach: 8,
+                    top_attach: 9,
                 },
             },
             #[name="server_access_type"]
@@ -351,7 +450,7 @@ impl Widget for ServerAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 8,
+                    top_attach: 9,
                 },
             },
         }

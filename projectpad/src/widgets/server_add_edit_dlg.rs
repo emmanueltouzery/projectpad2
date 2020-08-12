@@ -5,7 +5,10 @@ use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType, ServerType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::mpsc;
 
 #[derive(Msg, Debug)]
@@ -33,6 +36,7 @@ pub struct Model {
     server_type: ServerType,
     server_access_type: ServerAccessType,
     auth_key_filename: Option<String>,
+    auth_key: Option<Vec<u8>>,
 }
 
 #[widget]
@@ -192,6 +196,7 @@ impl Widget for ServerAddEditDialog {
                 .map(|s| s.access_type)
                 .unwrap_or(ServerAccessType::SrvAccessSsh),
             auth_key_filename: server.as_ref().and_then(|s| s.auth_key_filename.clone()),
+            auth_key: server.as_ref().and_then(|s| s.auth_key.clone()),
         }
     }
 
@@ -245,8 +250,47 @@ impl Widget for ServerAddEditDialog {
                 );
                 dialog.add_button("Cancel", gtk::ResponseType::Cancel);
                 dialog.add_button("Save", gtk::ResponseType::Ok);
-                dialog.run();
+                let r = dialog.run();
+                let mut fname = None;
+                if r == gtk::ResponseType::Ok {
+                    if let Some(filename) = dialog.get_filename() {
+                        fname = Some(filename);
+                    }
+                }
+                unsafe {
+                    dialog.destroy();
+                }
+                if let Some(fname) = fname {
+                    if let Err(e) = self.write_auth_key(fname) {
+                        Self::display_error("Error writing the file", e);
+                    }
+                }
             }
+        }
+    }
+
+    fn display_error(msg: &str, e: std::io::Error) {
+        let dlg = gtk::MessageDialogBuilder::new()
+            .buttons(gtk::ButtonsType::Ok)
+            .message_type(gtk::MessageType::Error)
+            .text(msg)
+            .secondary_text(&e.to_string())
+            .build();
+        dlg.run();
+        unsafe {
+            dlg.destroy();
+        }
+    }
+
+    fn write_auth_key(&self, folder: PathBuf) -> std::io::Result<()> {
+        if let (Some(data), Some(fname)) = (
+            self.model.auth_key.as_ref(),
+            self.model.auth_key_filename.as_ref(),
+        ) {
+            let mut file = File::create(folder.join(fname))?;
+            file.write_all(&data)
+        } else {
+            Ok(())
         }
     }
 

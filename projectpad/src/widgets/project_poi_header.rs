@@ -316,6 +316,7 @@ impl Widget for ProjectPoiHeader {
             .get_content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);
         let resp = dialog.run();
+        dialog.close();
     }
 
     fn load_project_item(&self) {

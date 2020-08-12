@@ -321,13 +321,20 @@ impl Widget for ServerAddEditDialog {
                     top_attach: 0,
                 },
             },
-            gtk::CheckButton {
-                label: "Is retired",
-                active: self.model.is_retired,
+            gtk::Label {
+                text: "Is retired",
+                halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 1,
-                    width: 2,
+                },
+            },
+            gtk::CheckButton {
+                label: "",
+                active: self.model.is_retired,
+                cell: {
+                    left_attach: 1,
+                    top_attach: 1,
                 },
             },
             gtk::Label {

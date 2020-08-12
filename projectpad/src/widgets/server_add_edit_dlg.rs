@@ -238,16 +238,12 @@ impl Widget for ServerAddEditDialog {
                 self.update_auth_file();
             }
             Msg::SaveAuthFile => {
-                let win = self
-                    .grid
-                    .get_toplevel()
-                    .and_then(|w| w.dynamic_cast::<gtk::Window>().ok());
                 // https://stackoverflow.com/questions/54487052/how-do-i-add-a-save-button-to-the-gtk-filechooser-dialog
-                let dialog = gtk::FileChooserDialog::new(
-                    None,
-                    win.as_ref(),
-                    gtk::FileChooserAction::SelectFolder,
-                );
+                let dialog = gtk::FileChooserDialogBuilder::new()
+                    .title("Select destination folder")
+                    .action(gtk::FileChooserAction::SelectFolder)
+                    .use_header_bar(1)
+                    .build();
                 let auth_key = self.model.auth_key.clone();
                 let auth_key_filename = self.model.auth_key_filename.clone();
                 dialog.add_button("Cancel", gtk::ResponseType::Cancel);

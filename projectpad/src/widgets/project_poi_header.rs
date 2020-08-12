@@ -26,6 +26,7 @@ pub struct Model {
     project_item: Option<ProjectItem>,
     header_popover: gtk::Popover,
     title: gtk::Label,
+    server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
 }
 
 pub struct GridItem {
@@ -247,6 +248,7 @@ impl Widget for ProjectPoiHeader {
                 .margin_bottom(8)
                 .hexpand(true)
                 .build(),
+            server_add_edit_dialog: None,
         }
     }
 
@@ -262,7 +264,7 @@ impl Widget for ProjectPoiHeader {
                 }
             }
             Msg::HeaderActionClicked((ActionTypes::Edit, _)) => {
-                match self.model.project_item {
+                match self.model.project_item.clone() {
                     Some(ProjectItem::Server(ref srv)) => {
                         self.edit_server(Some(srv));
                     }
@@ -282,7 +284,7 @@ impl Widget for ProjectPoiHeader {
             .unwrap()
     }
 
-    fn edit_server(&self, server: Option<&Server>) {
+    fn edit_server(&mut self, server: Option<&Server>) {
         let main_win = self.get_main_window();
         let dialog = gtk::DialogBuilder::new()
             .use_header_bar(1)
@@ -295,28 +297,29 @@ impl Widget for ProjectPoiHeader {
             })
             .transient_for(&main_win)
             .build();
-        let header_bar = dialog
-            .get_header_bar()
-            .unwrap()
-            .dynamic_cast::<gtk::HeaderBar>()
-            .unwrap();
-        let btn = gtk::Button::with_label("Save");
-        btn.get_style_context().add_class("suggested-action");
-        header_bar.pack_end(&btn);
-        btn.show();
-        dialog.add_button("Cancel", gtk::ResponseType::Cancel);
 
-        let dialog_contents = relm::init::<ServerAddEditDialog>((
-            self.model.db_sender.clone(),
-            server.unwrap().project_id,
-            server.cloned(),
-        ))
-        .expect("error initializing the server add edit modal");
+        // need to keep a reference else event processing dies when
+        // the component gets dropped
+        self.model.server_add_edit_dialog = Some(
+            relm::init::<ServerAddEditDialog>((
+                self.model.db_sender.clone(),
+                server.unwrap().project_id,
+                server.cloned(),
+            ))
+            .expect("error initializing the server add edit modal"),
+        );
+        let dialog_contents = self.model.server_add_edit_dialog.as_ref().unwrap();
         dialog
             .get_content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);
-        let resp = dialog.run();
-        dialog.close();
+        dialog.add_button("Cancel", gtk::ResponseType::Cancel);
+        let save = dialog.add_button("Save", gtk::ResponseType::Ok);
+        save.get_style_context().add_class("suggested-action");
+        dialog.connect_response(move |d, r| {
+            println!("got {:?}", r);
+            d.close();
+        });
+        dialog.show_all();
     }
 
     fn load_project_item(&self) {

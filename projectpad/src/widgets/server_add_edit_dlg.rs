@@ -248,23 +248,25 @@ impl Widget for ServerAddEditDialog {
                     win.as_ref(),
                     gtk::FileChooserAction::SelectFolder,
                 );
+                let auth_key = self.model.auth_key.clone();
+                let auth_key_filename = self.model.auth_key_filename.clone();
                 dialog.add_button("Cancel", gtk::ResponseType::Cancel);
                 dialog.add_button("Save", gtk::ResponseType::Ok);
-                let r = dialog.run();
-                let mut fname = None;
-                if r == gtk::ResponseType::Ok {
-                    if let Some(filename) = dialog.get_filename() {
-                        fname = Some(filename);
+                dialog.connect_response(move |d, r| {
+                    d.close();
+                    let mut fname = None;
+                    if r == gtk::ResponseType::Ok {
+                        if let Some(filename) = d.get_filename() {
+                            fname = Some(filename);
+                        }
                     }
-                }
-                unsafe {
-                    dialog.destroy();
-                }
-                if let Some(fname) = fname {
-                    if let Err(e) = self.write_auth_key(fname) {
-                        Self::display_error("Error writing the file", e);
+                    if let Some(fname) = fname {
+                        if let Err(e) = Self::write_auth_key(&auth_key, &auth_key_filename, fname) {
+                            Self::display_error("Error writing the file", e);
+                        }
                     }
-                }
+                });
+                dialog.show_all();
             }
         }
     }
@@ -276,17 +278,16 @@ impl Widget for ServerAddEditDialog {
             .text(msg)
             .secondary_text(&e.to_string())
             .build();
-        dlg.run();
-        unsafe {
-            dlg.destroy();
-        }
+        dlg.connect_response(|d, r| d.close());
+        dlg.show_all();
     }
 
-    fn write_auth_key(&self, folder: PathBuf) -> std::io::Result<()> {
-        if let (Some(data), Some(fname)) = (
-            self.model.auth_key.as_ref(),
-            self.model.auth_key_filename.as_ref(),
-        ) {
+    fn write_auth_key(
+        auth_key: &Option<Vec<u8>>,
+        auth_key_filename: &Option<String>,
+        folder: PathBuf,
+    ) -> std::io::Result<()> {
+        if let (Some(data), Some(fname)) = (auth_key, auth_key_filename) {
             let mut file = File::create(folder.join(fname))?;
             file.write_all(&data)
         } else {

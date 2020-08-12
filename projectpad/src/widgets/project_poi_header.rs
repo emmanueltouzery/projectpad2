@@ -82,7 +82,10 @@ pub fn populate_popover<T: Copy + PartialEq + Eq>(
             extra_btn.get_label().unwrap().to_string(),
         );
     }
-    for item in fields {
+    for item in fields
+        .iter()
+        .filter(|cur_item| !cur_item.raw_value.is_empty())
+    {
         let popover_btn = gtk::ModelButtonBuilder::new()
             .label(&format!("Copy {}", item.label_name))
             .build();
@@ -108,7 +111,10 @@ pub fn populate_grid<T: Copy + PartialEq + Eq>(
     let mut i = 0;
     for item in fields {
         if !item.markup.is_empty() {
-            let label = gtk::LabelBuilder::new().label(&item.label_name).build();
+            let label = gtk::LabelBuilder::new()
+                .label(&item.label_name)
+                .halign(gtk::Align::End) // right align as per gnome HIG
+                .build();
             header_grid.attach(&label, 0, i, 1, 1);
             label.get_style_context().add_class("item_label");
 

@@ -1,4 +1,3 @@
-use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -17,15 +16,22 @@ pub enum Msg {
     RemoveAuthFile,
     SaveAuthFile,
     AuthFilePicked,
+    OkPressed,
+    ServerUpdated(Server),
 }
 
 pub struct Model {
     relm: relm::Relm<ServerAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
+    _server_updated_channel: relm::Channel<Server>,
+    server_updated_sender: relm::Sender<Server>,
     _channel: relm::Channel<Vec<String>>,
     sender: relm::Sender<Vec<String>>,
     groups_store: gtk::ListStore,
     project_id: i32,
+    server_id: Option<i32>,
+
+    // TODO i don't think i need all these fields in the model!!
     description: String,
     is_retired: bool,
     address: String,
@@ -158,13 +164,21 @@ impl Widget for ServerAddEditDialog {
         let (channel, sender) = relm::Channel::new(move |groups: Vec<String>| {
             stream.emit(Msg::GotGroups(groups));
         });
+        let stream2 = relm.stream().clone();
+        let (server_updated_channel, server_updated_sender) =
+            relm::Channel::new(move |srv: Server| {
+                stream2.emit(Msg::ServerUpdated(srv));
+            });
         Model {
             relm: relm.clone(),
             db_sender,
             _channel: channel,
             sender,
+            _server_updated_channel: server_updated_channel,
+            server_updated_sender,
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             project_id,
+            server_id: server.as_ref().map(|s| s.id),
             description: server
                 .as_ref()
                 .map(|s| s.desc.clone())
@@ -258,16 +272,56 @@ impl Widget for ServerAddEditDialog {
                     }
                     if let Some(fname) = fname {
                         if let Err(e) = Self::write_auth_key(&auth_key, &auth_key_filename, fname) {
-                            Self::display_error("Error writing the file", e);
+                            Self::display_error("Error writing the file", Box::new(e));
                         }
                     }
                 });
                 dialog.show_all();
             }
+            Msg::OkPressed => {
+                self.update_server();
+            }
+            Msg::ServerUpdated(_) => {} // meant for my parent, not me
         }
     }
 
-    fn display_error(msg: &str, e: std::io::Error) {
+    fn update_server(&self) {
+        let server_id = self.model.server_id;
+        let new_desc = self.desc_entry.get_text().to_string();
+        let s = self.model.server_updated_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server::dsl as srv;
+                let row_id = match server_id {
+                    Some(id) => {
+                        // update
+                        if let Err(e) = diesel::update(srv::server.filter(srv::id.eq(id)))
+                            // TODO obviously update the other fields :)
+                            .set(srv::desc.eq(&new_desc))
+                            .execute(sql_conn)
+                        // get_result not supported on sqlite
+                        {
+                            Self::display_error("Error saving server", Box::new(e));
+                        }
+                        id
+                    }
+                    None => {
+                        // insert
+                        panic!();
+                    }
+                };
+                // re-read back the server
+                let server_after = srv::server
+                    .filter(srv::id.eq(row_id))
+                    .first::<Server>(sql_conn)
+                    .expect("Error loading server");
+                s.send(server_after).unwrap();
+            }))
+            .unwrap();
+    }
+
+    fn display_error(msg: &str, e: Box<dyn std::error::Error>) {
         let dlg = gtk::MessageDialogBuilder::new()
             .buttons(gtk::ButtonsType::Ok)
             .message_type(gtk::MessageType::Error)

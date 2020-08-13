@@ -1,4 +1,5 @@
 use super::project_items_list::ProjectItem;
+use super::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::server_add_edit_dlg::ServerAddEditDialog;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
@@ -18,6 +19,7 @@ enum ActionTypes {
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     HeaderActionClicked((ActionTypes, String)),
+    ServerUpdated(Server),
 }
 
 pub struct Model {
@@ -280,6 +282,16 @@ impl Widget for ProjectPoiHeader {
                     None => {}
                 };
             }
+            Msg::ServerUpdated(server) => {
+                match self.model.project_item.as_ref() {
+                    Some(ProjectItem::Server(srv)) => {
+                        self.model.project_item = Some(ProjectItem::Server(server));
+                        self.load_project_item();
+                        // TODO refresh also the server list..
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 
@@ -315,15 +327,23 @@ impl Widget for ProjectPoiHeader {
             .expect("error initializing the server add edit modal"),
         );
         let dialog_contents = self.model.server_add_edit_dialog.as_ref().unwrap();
+        relm::connect!(
+            dialog_contents@MsgServerAddEditDialog::ServerUpdated(ref srv),
+            self.model.relm,
+            Msg::ServerUpdated(srv.clone())
+        );
         dialog
             .get_content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);
         dialog.add_button("Cancel", gtk::ResponseType::Cancel);
         let save = dialog.add_button("Save", gtk::ResponseType::Ok);
         save.get_style_context().add_class("suggested-action");
+        let d_c = dialog_contents.clone();
         dialog.connect_response(move |d, r| {
-            println!("got {:?}", r);
             d.close();
+            if r == gtk::ResponseType::Ok {
+                d_c.stream().emit(MsgServerAddEditDialog::OkPressed);
+            }
         });
         dialog.show_all();
     }

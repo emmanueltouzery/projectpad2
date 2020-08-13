@@ -5,6 +5,7 @@ use super::project_list::{Msg::ProjectActivated, ProjectList, UpdateParents};
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
+use super::project_poi_header::Msg::ServerUpdated as ProjectPoiHeaderServerUpdatedMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::ProjectSummary;
@@ -18,7 +19,7 @@ use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use gtk::prelude::*;
-use projectpadsql::models::{EnvironmentType, Project};
+use projectpadsql::models::{EnvironmentType, Project, Server};
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -35,6 +36,7 @@ pub enum Msg {
     SearchTextChanged(String),
     DisplayItem((Project, Option<ProjectItem>, Option<ServerItem>)),
     KeyPress(gdk::EventKey),
+    ServerUpdated(Server),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -174,6 +176,13 @@ impl Widget for Win {
                         )));
                 }
             }
+            Msg::ServerUpdated(ref srv) => {
+                self.project_items_list
+                    .stream()
+                    .emit(ProjectItemsListMsg::RefreshItemList(ProjectItem::Server(
+                        srv.clone(),
+                    )));
+            }
         }
     }
 
@@ -230,7 +239,9 @@ impl Widget for Win {
                             expand: true,
                         },
                         #[name="project_poi_header"]
-                        ProjectPoiHeader((self.model.db_sender.clone(), None)),
+                        ProjectPoiHeader((self.model.db_sender.clone(), None)) {
+                            ProjectPoiHeaderServerUpdatedMsg(ref srv) => Msg::ServerUpdated(srv.clone()),
+                        },
                         #[name="project_poi_contents"]
                         ProjectPoiContents(self.model.db_sender.clone()) {
                             child: {

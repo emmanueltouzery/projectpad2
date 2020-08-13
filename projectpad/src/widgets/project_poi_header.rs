@@ -282,16 +282,13 @@ impl Widget for ProjectPoiHeader {
                     None => {}
                 };
             }
-            Msg::ServerUpdated(server) => {
-                match self.model.project_item.as_ref() {
-                    Some(ProjectItem::Server(srv)) => {
-                        self.model.project_item = Some(ProjectItem::Server(server));
-                        self.load_project_item();
-                        // TODO refresh also the server list..
-                    }
-                    _ => {}
+            Msg::ServerUpdated(server) => match self.model.project_item.as_ref() {
+                Some(ProjectItem::Server(srv)) => {
+                    self.model.project_item = Some(ProjectItem::Server(server));
+                    self.load_project_item();
                 }
-            }
+                _ => {}
+            },
         }
     }
 

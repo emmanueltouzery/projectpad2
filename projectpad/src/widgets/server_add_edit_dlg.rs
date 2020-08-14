@@ -333,7 +333,11 @@ impl Widget for ServerAddEditDialog {
                     srv::is_retired.eq(new_is_retired),
                     srv::ip.eq(new_address.as_str()),
                     srv::text.eq(new_text.as_str()),
-                    // srv::group_name.eq(new_group.as_ref().map(|s| s.as_str()).unwrap_or("")),
+                    // never store Some("") for group, we want None then.
+                    srv::group_name.eq(new_group
+                        .as_ref()
+                        .map(|s| s.as_str())
+                        .filter(|s| !s.is_empty())),
                     srv::username.eq(new_username.as_str()),
                     srv::password.eq(new_password.as_str()),
                     srv::auth_key.eq(new_authkey.as_ref()),

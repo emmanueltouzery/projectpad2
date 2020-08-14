@@ -4,6 +4,7 @@ use crate::icons::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use itertools::Itertools;
 use projectpadsql::models::{
     EnvironmentType, InterestType, Project, ProjectNote, ProjectPointOfInterest, Server,
     ServerAccessType, ServerLink, ServerType,
@@ -75,32 +76,37 @@ impl Widget for ProjectItemsList {
         }
     }
 
-    fn add_items(
+    fn add_items<SI, SL, SN, SP>(
         items: &mut Vec<ProjectItem>,
-        servers: &mut dyn Iterator<Item = Server>,
-        lsrvs: &mut dyn Iterator<Item = ServerLink>,
-        prj_notes: &mut dyn Iterator<Item = ProjectNote>,
-        prj_pois: &mut dyn Iterator<Item = ProjectPointOfInterest>,
+        servers: &mut SI,
+        lsrvs: &mut SL,
+        prj_notes: &mut SN,
+        prj_pois: &mut SP,
         group_name: Option<String>,
-    ) {
+    ) where
+        SI: Iterator<Item = Server> + Clone,
+        SL: Iterator<Item = ServerLink> + Clone,
+        SN: Iterator<Item = ProjectNote> + Clone,
+        SP: Iterator<Item = ProjectPointOfInterest> + Clone,
+    {
         items.extend(
             servers
-                .take_while(|s| s.group_name == group_name)
+                .take_while_ref(|s| s.group_name == group_name)
                 .map(ProjectItem::Server),
         );
         items.extend(
             lsrvs
-                .take_while(|s| s.group_name == group_name)
+                .take_while_ref(|s| s.group_name == group_name)
                 .map(ProjectItem::ServerLink),
         );
         items.extend(
             prj_notes
-                .take_while(|s| s.group_name == group_name)
+                .take_while_ref(|s| s.group_name == group_name)
                 .map(ProjectItem::ProjectNote),
         );
         items.extend(
             prj_pois
-                .take_while(|s| s.group_name == group_name)
+                .take_while_ref(|s| s.group_name == group_name)
                 .map(ProjectItem::ProjectPointOfInterest),
         );
     }

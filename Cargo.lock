@@ -1768,6 +1768,7 @@ dependencies = [
  "gio",
  "glib",
  "gtk",
+ "itertools",
  "pango",
  "projectpadsql",
  "pulldown-cmark",

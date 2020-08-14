@@ -4,6 +4,7 @@ use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType, ServerType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -20,11 +21,14 @@ pub enum Msg {
     ServerUpdated(Server),
 }
 
+// String for details, because I can't pass Error across threads
+type SaveResult = Result<Server, (String, Option<String>)>;
+
 pub struct Model {
     relm: relm::Relm<ServerAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
-    _server_updated_channel: relm::Channel<Server>,
-    server_updated_sender: relm::Sender<Server>,
+    _server_updated_channel: relm::Channel<SaveResult>,
+    server_updated_sender: relm::Sender<SaveResult>,
     _channel: relm::Channel<Vec<String>>,
     sender: relm::Sender<Vec<String>>,
     groups_store: gtk::ListStore,
@@ -166,8 +170,9 @@ impl Widget for ServerAddEditDialog {
         });
         let stream2 = relm.stream().clone();
         let (server_updated_channel, server_updated_sender) =
-            relm::Channel::new(move |srv: Server| {
-                stream2.emit(Msg::ServerUpdated(srv));
+            relm::Channel::new(move |r: SaveResult| match r {
+                Ok(srv) => stream2.emit(Msg::ServerUpdated(srv)),
+                Err((msg, e)) => Self::display_error_str(&msg, e),
             });
         Model {
             relm: relm.clone(),
@@ -272,7 +277,7 @@ impl Widget for ServerAddEditDialog {
                     }
                     if let Some(fname) = fname {
                         if let Err(e) = Self::write_auth_key(&auth_key, &auth_key_filename, fname) {
-                            Self::display_error("Error writing the file", Box::new(e));
+                            Self::display_error("Error writing the file", Some(Box::new(e)));
                         }
                     }
                 });
@@ -287,24 +292,61 @@ impl Widget for ServerAddEditDialog {
 
     fn update_server(&self) {
         let server_id = self.model.server_id;
-        let new_desc = self.desc_entry.get_text().to_string();
+        let new_desc = self.desc_entry.get_text();
+        let new_is_retired = self.is_retired_check.get_active();
+        let new_address = self.address_entry.get_text();
+        let new_text = self.text_entry.get_text();
+        let new_group = self.group.get_active_text();
+        let new_username = self.username_entry.get_text();
+        let new_password = self.password_entry.get_text();
+        let (new_authkey, new_authkey_filename) =
+            match self.model.auth_key_filename.as_ref().map(|f| {
+                (
+                    std::fs::read(f),
+                    Path::new(f)
+                        .file_name()
+                        .and_then(|f| f.to_str())
+                        .map(|s| s.to_string()),
+                )
+            }) {
+                Some((Ok(contents), Some(filename))) => (Some(contents), Some(filename)),
+                None => (None, None),
+                Some((Err(e), _)) => {
+                    Self::display_error("Error reading authentication key", Some(Box::new(e)));
+                    return;
+                }
+                Some((Ok(_), None)) => {
+                    Self::display_error(
+                        "Error getting the filename for the authentication key",
+                        None,
+                    );
+                    return;
+                }
+            };
         let s = self.model.server_updated_sender.clone();
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
                 use projectpadsql::schema::server::dsl as srv;
-                let row_id = match server_id {
+                let changeset = (
+                    srv::desc.eq(new_desc.as_str()),
+                    srv::is_retired.eq(new_is_retired),
+                    srv::ip.eq(new_address.as_str()),
+                    srv::text.eq(new_text.as_str()),
+                    // srv::group_name.eq(new_group.as_ref().map(|s| s.as_str()).unwrap_or("")),
+                    srv::username.eq(new_username.as_str()),
+                    srv::password.eq(new_password.as_str()),
+                    srv::auth_key.eq(new_authkey.as_ref()),
+                    srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
+                );
+                let row_id_result = match server_id {
                     Some(id) => {
                         // update
-                        if let Err(e) = diesel::update(srv::server.filter(srv::id.eq(id)))
-                            // TODO obviously update the other fields :)
-                            .set(srv::desc.eq(&new_desc))
+                        diesel::update(srv::server.filter(srv::id.eq(id)))
+                            .set(changeset)
                             .execute(sql_conn)
-                        // get_result not supported on sqlite
-                        {
-                            Self::display_error("Error saving server", Box::new(e));
-                        }
-                        id
+                            .map_err(|e| ("Error updating server".to_string(), Some(e.to_string())))
+                            .map(|_| id)
                     }
                     None => {
                         // insert
@@ -312,23 +354,34 @@ impl Widget for ServerAddEditDialog {
                     }
                 };
                 // re-read back the server
-                let server_after = srv::server
-                    .filter(srv::id.eq(row_id))
-                    .first::<Server>(sql_conn)
-                    .expect("Error loading server");
-                s.send(server_after).unwrap();
+                let server_after_result = row_id_result.and_then(|row_id| {
+                    srv::server
+                        .filter(srv::id.eq(row_id))
+                        .first::<Server>(sql_conn)
+                        .map_err(|e| ("Error reading back server".to_string(), Some(e.to_string())))
+                });
+                s.send(server_after_result).unwrap();
+                println!("after send");
             }))
             .unwrap();
     }
 
-    fn display_error(msg: &str, e: Box<dyn std::error::Error>) {
-        let dlg = gtk::MessageDialogBuilder::new()
+    fn display_error(msg: &str, e: Option<Box<dyn Error>>) {
+        Self::display_error_str(msg, e.map(|e| e.to_string()))
+    }
+
+    fn display_error_str(msg: &str, e: Option<String>) {
+        let builder = gtk::MessageDialogBuilder::new()
             .buttons(gtk::ButtonsType::Ok)
             .message_type(gtk::MessageType::Error)
-            .text(msg)
-            .secondary_text(&e.to_string())
-            .build();
-        dlg.connect_response(|d, r| d.close());
+            .text(msg);
+        let dlg = if let Some(err) = e {
+            builder.secondary_text(&err)
+        } else {
+            builder
+        }
+        .build();
+        dlg.connect_response(|d, _r| d.close());
         dlg.show_all();
     }
 
@@ -379,6 +432,7 @@ impl Widget for ServerAddEditDialog {
                     top_attach: 1,
                 },
             },
+            #[name="is_retired_check"]
             gtk::CheckButton {
                 label: "",
                 active: self.model.is_retired,

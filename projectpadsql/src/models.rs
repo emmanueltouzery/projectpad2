@@ -19,6 +19,7 @@ pub struct Project {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[sql_type = "Varchar"]
 pub enum ServerType {
     SrvDatabase,
     SrvApplication,
@@ -28,6 +29,7 @@ pub enum ServerType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[sql_type = "Varchar"]
 pub enum ServerAccessType {
     SrvAccessSsh,
     SrvAccessRdp,
@@ -45,6 +47,7 @@ pub enum EnvironmentType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[sql_type = "Varchar"]
 pub enum InterestType {
     PoiApplication,
     PoiLogFile,
@@ -55,6 +58,7 @@ pub enum InterestType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[sql_type = "Varchar"]
 pub enum RunOn {
     RunOnServer,
     RunOnClient,

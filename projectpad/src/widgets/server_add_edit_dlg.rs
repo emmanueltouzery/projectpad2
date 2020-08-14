@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::mpsc;
 
 #[derive(Msg, Debug)]
@@ -323,6 +324,19 @@ impl Widget for ServerAddEditDialog {
                     return;
                 }
             };
+        let new_servertype = self
+            .server_type
+            .get_active_id()
+            .map(|s| ServerType::from_str(s.as_str()).expect("Error parsing the server type!?"))
+            .expect("server type not specified!?");
+        let new_server_accesstype = self
+            .server_access_type
+            .get_active_id()
+            .map(|s| {
+                ServerAccessType::from_str(s.as_str())
+                    .expect("Error parsing the server access type!?")
+            })
+            .expect("server access type not specified!?");
         let s = self.model.server_updated_sender.clone();
         self.model
             .db_sender
@@ -342,6 +356,8 @@ impl Widget for ServerAddEditDialog {
                     srv::password.eq(new_password.as_str()),
                     srv::auth_key.eq(new_authkey.as_ref()),
                     srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
+                    srv::server_type.eq(new_servertype),
+                    srv::access_type.eq(new_server_accesstype),
                 );
                 let row_id_result = match server_id {
                     Some(id) => {

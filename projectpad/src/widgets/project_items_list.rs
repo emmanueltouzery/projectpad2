@@ -76,19 +76,14 @@ impl Widget for ProjectItemsList {
         }
     }
 
-    fn add_items<SI, SL, SN, SP>(
+    fn add_items(
         items: &mut Vec<ProjectItem>,
-        servers: &mut SI,
-        lsrvs: &mut SL,
-        prj_notes: &mut SN,
-        prj_pois: &mut SP,
+        servers: &mut (impl Iterator<Item = Server> + Clone),
+        lsrvs: &mut (impl Iterator<Item = ServerLink> + Clone),
+        prj_notes: &mut (impl Iterator<Item = ProjectNote> + Clone),
+        prj_pois: &mut (impl Iterator<Item = ProjectPointOfInterest> + Clone),
         group_name: Option<String>,
-    ) where
-        SI: Iterator<Item = Server> + Clone,
-        SL: Iterator<Item = ServerLink> + Clone,
-        SN: Iterator<Item = ProjectNote> + Clone,
-        SP: Iterator<Item = ProjectPointOfInterest> + Clone,
-    {
+    ) {
         items.extend(
             servers
                 .take_while_ref(|s| s.group_name == group_name)

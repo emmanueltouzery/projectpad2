@@ -14,11 +14,11 @@ pub struct Model {
 impl Widget for ProjectSearchHeader {
     fn init_view(&mut self) {}
 
-    fn model(relm: &relm::Relm<Self>, project: Project) -> Model {
+    fn model(_relm: &relm::Relm<Self>, project: Project) -> Model {
         Model { project }
     }
 
-    fn update(&mut self, event: Msg) {}
+    fn update(&mut self, _event: Msg) {}
 
     view! {
         gtk::Box {

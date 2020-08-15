@@ -494,7 +494,7 @@ fn draw_linked_server(
     srv: &ServerLink,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
 ) {
-    let (padding, margin, title_rect) = draw_server_item_common(
+    let (_padding, _margin, _title_rect) = draw_server_item_common(
         style_context,
         context,
         search_result_area,

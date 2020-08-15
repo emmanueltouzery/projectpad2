@@ -18,7 +18,7 @@ impl Widget for ProjectPoiItemListItem {
             .add_class("items_frame");
     }
 
-    fn model(relm: &relm::Relm<Self>, project_poi_item: ProjectPoiItem) -> Model {
+    fn model(_relm: &relm::Relm<Self>, project_poi_item: ProjectPoiItem) -> Model {
         Model { project_poi_item }
     }
 

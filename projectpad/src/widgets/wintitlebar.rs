@@ -46,7 +46,7 @@ impl Widget for WinTitleBar {
                 self.search_entry.set_visible(is_active);
             }
             Msg::SearchTextChanged(_) => {} // meant for my parent
-            Msg::SearchTextChangedFromElsewhere((txt, evt)) => {
+            Msg::SearchTextChangedFromElsewhere((txt, _evt)) => {
                 if !self.search_toggle.get_active() {
                     // we want to block the signal of the search button toggle,
                     // because when you click the search button we set the focus

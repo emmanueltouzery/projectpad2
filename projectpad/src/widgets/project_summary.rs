@@ -218,7 +218,7 @@ impl Widget for ProjectSummary {
                 dialog.show_all();
             }
             // meant for my parent
-            Msg::ServerAdded(server) => {}
+            Msg::ServerAdded(_) => {}
         }
     }
 

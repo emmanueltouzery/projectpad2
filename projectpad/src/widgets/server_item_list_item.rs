@@ -81,7 +81,7 @@ fn get_poi_grid_items(poi: &ServerPointOfInterest) -> Vec<GridItem> {
     ]
 }
 
-fn get_note_grid_items(note: &ServerNote) -> Vec<GridItem> {
+fn get_note_grid_items(_note: &ServerNote) -> Vec<GridItem> {
     vec![]
 }
 
@@ -264,7 +264,7 @@ impl Widget for ServerItemListItem {
                 }
             }
             // meant for my parent
-            Msg::ViewNote(n) => {}
+            Msg::ViewNote(_) => {}
         }
     }
 

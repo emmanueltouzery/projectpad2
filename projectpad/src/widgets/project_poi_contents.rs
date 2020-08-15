@@ -43,8 +43,6 @@ impl Widget for ProjectPoiContents {
         self.server_note_title
             .get_style_context()
             .add_class("server_note_title");
-        let adj = self.note_scroll.get_vadjustment().unwrap().clone();
-        let relm = self.model.relm.clone();
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -230,7 +228,6 @@ impl Widget for ProjectPoiContents {
             width: 50,
             height: 15,
         });
-        let rlm = self.model.relm.clone();
         let popover_vbox = gtk::BoxBuilder::new()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)

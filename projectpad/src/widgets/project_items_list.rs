@@ -345,7 +345,7 @@ impl Widget for ProjectItemsList {
         }
         let indexes = self.model.project_item_groups_start_indexes.clone();
         self.project_items_list
-            .set_header_func(Some(Box::new(move |row, h| {
+            .set_header_func(Some(Box::new(move |row, _h| {
                 if let Some(group_name) = indexes.get(&row.get_index()) {
                     let label = gtk::Label::new(Some(group_name));
                     label.get_style_context().add_class("project_item_header");

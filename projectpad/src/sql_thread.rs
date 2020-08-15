@@ -34,7 +34,7 @@ pub fn start_sql_thread() -> mpsc::Sender<SqlFunc> {
                 projectpadsql::get_pass_from_keyring().unwrap()
             ))
             .unwrap();
-        // TODO foreign key pragma, check what the original PP does
+        db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
         rx.into_iter().for_each(|fun| (fun.0)(&db_conn));
     });
 

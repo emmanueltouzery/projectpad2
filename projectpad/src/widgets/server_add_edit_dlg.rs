@@ -22,6 +22,12 @@ pub enum Msg {
     ServerUpdated(Server),
 }
 
+no_arg_sql_function!(
+    last_insert_rowid,
+    diesel::sql_types::Integer,
+    "Represents the SQL last_insert_row() function"
+);
+
 // String for details, because I can't pass Error across threads
 type SaveResult = Result<Server, (String, Option<String>)>;
 
@@ -307,6 +313,7 @@ impl Widget for ServerAddEditDialog {
 
     fn update_server(&self) {
         let server_id = self.model.server_id;
+        let project_id = self.model.project_id;
         let new_desc = self.desc_entry.get_text();
         let new_is_retired = self.is_retired_check.get_active();
         let new_address = self.address_entry.get_text();
@@ -350,6 +357,7 @@ impl Widget for ServerAddEditDialog {
                     srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
                     srv::server_type.eq(new_servertype),
                     srv::access_type.eq(new_server_accesstype),
+                    srv::project_id.eq(project_id),
                 );
                 let row_id_result = match server_id {
                     Some(id) => {
@@ -362,7 +370,34 @@ impl Widget for ServerAddEditDialog {
                     }
                     None => {
                         // insert
-                        panic!();
+                        let insert_result = diesel::insert_into(srv::server)
+                            .values(changeset)
+                            .execute(sql_conn)
+                            .map_err(|e| {
+                                ("Error inserting server".to_string(), Some(e.to_string()))
+                            });
+                        match insert_result {
+                            Ok(1) => {
+                                // https://github.com/diesel-rs/diesel/issues/771
+                                // http://www.sqlite.org/c3ref/last_insert_rowid.html
+                                // caveats of last_insert_rowid seem to be in case of multiple
+                                // threads sharing a connection (which we don't do), and triggers
+                                // and other things (which we don't have).
+                                diesel::select(last_insert_rowid)
+                                    .get_result::<i32>(sql_conn)
+                                    .map_err(|e| {
+                                        (
+                                            "Error getting inserted server id".to_string(),
+                                            Some(e.to_string()),
+                                        )
+                                    })
+                            }
+                            Ok(x) => Err((
+                                format!("Expected 1 row modified after insert, got {}!?", x),
+                                None,
+                            )),
+                            Err(e) => Err(e),
+                        }
                     }
                 };
                 // re-read back the server

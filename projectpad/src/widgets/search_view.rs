@@ -5,6 +5,9 @@
 
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
+use super::project_poi_header::{prepare_add_edit_server_dialog, AddEditServerInfo};
+use super::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
+use super::server_add_edit_dlg::ServerAddEditDialog;
 use super::server_item_list_item;
 use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
@@ -84,7 +87,9 @@ pub enum Msg {
     ScrollChanged,
     CopyClicked(String),
     OpenItem(ProjectPadItem),
+    EditItem(ProjectPadItem),
     OpenItemFull((Project, Option<ProjectItem>, Option<ServerItem>)),
+    ServerUpdated(Server),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -135,6 +140,7 @@ pub struct Model {
     action_buttons: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
+    server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
 }
 
 #[widget]
@@ -254,19 +260,28 @@ impl Widget for SearchView {
             Msg::OpenItem(ppitem.clone())
         );
         let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+        let ppitem2 = projectpad_item.clone();
+        relm::connect!(
+            relm,
+            edit_btn,
+            connect_clicked(_),
+            Msg::EditItem(ppitem2.clone())
+        );
+
         project_poi_header::populate_popover(
             popover,
             ActionTypes::Copy,
             &vec![(open_btn, ActionTypes::Open), (edit_btn, ActionTypes::Edit)],
             &grid_items,
             &move |btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
-                // TODO not necessarily copy...
-                relm::connect!(
-                    relm,
-                    btn,
-                    connect_clicked(_),
-                    Msg::CopyClicked(str_val.clone())
-                );
+                if action_type == ActionTypes::Copy {
+                    relm::connect!(
+                        relm,
+                        btn,
+                        connect_clicked(_),
+                        Msg::CopyClicked(str_val.clone())
+                    );
+                }
             },
         );
     }
@@ -340,6 +355,7 @@ impl Widget for SearchView {
             action_buttons: Rc::new(RefCell::new(vec![])),
             action_popover: None,
             item_with_depressed_action: Rc::new(RefCell::new(None)),
+            server_add_edit_dialog: None,
         }
     }
 
@@ -379,6 +395,28 @@ impl Widget for SearchView {
             }
             Msg::OpenItemFull(item) => {
                 // meant for my parent
+            }
+            Msg::EditItem(item) => match item {
+                ProjectPadItem::Server(srv) => {
+                    let (dialog, component) = prepare_add_edit_server_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        self.model.db_sender.clone(),
+                        AddEditServerInfo::EditServer(&srv),
+                    );
+                    relm::connect!(
+                        component@MsgServerAddEditDialog::ServerUpdated(ref srv),
+                        self.model.relm,
+                        Msg::ServerUpdated(srv.clone())
+                    );
+                    self.model.server_add_edit_dialog = Some(component);
+                    dialog.show_all();
+                }
+                _ => {
+                    eprintln!("edit not implemented yet for that item type");
+                }
+            },
+            Msg::ServerUpdated(_) => {
+                self.fetch_search_results();
             }
         }
     }

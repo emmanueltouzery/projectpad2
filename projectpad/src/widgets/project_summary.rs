@@ -1,3 +1,4 @@
+use crate::icons::Icon;
 use gtk::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project};
 use relm::Widget;
@@ -14,12 +15,15 @@ pub enum Msg {
 pub struct Model {
     relm: relm::Relm<ProjectSummary>,
     project: Option<Project>,
+    title: gtk::Label,
     btn_and_handler: Vec<(gtk::RadioButton, glib::SignalHandlerId)>,
 }
 
 #[widget]
 impl Widget for ProjectSummary {
     fn init_view(&mut self) {
+        self.model.title.show_all();
+
         self.radio_stg.join_group(Some(&self.radio_dev));
         self.radio_uat.join_group(Some(&self.radio_stg));
         self.radio_prd.join_group(Some(&self.radio_uat));
@@ -64,6 +68,10 @@ impl Widget for ProjectSummary {
         Model {
             project: None,
             relm: relm.clone(),
+            title: gtk::LabelBuilder::new()
+                .margin_top(8)
+                .margin_bottom(8)
+                .build(),
             btn_and_handler: vec![],
         }
     }
@@ -101,6 +109,14 @@ impl Widget for ProjectSummary {
                         .emit(Msg::EnvironmentChanged(EnvironmentType::EnvDevelopment));
                 }
                 self.model.project = Some(prj);
+                self.model.title.set_markup(
+                    &self
+                        .model
+                        .project
+                        .as_ref()
+                        .map(|p| format!("<b>{}</b>", &p.name))
+                        .unwrap_or("".to_string()),
+                );
             }
             Msg::EnvironmentToggled(env) => match env {
                 // sadly the radio button api is a bit of mess, toggled is emitted
@@ -159,12 +175,21 @@ impl Widget for ProjectSummary {
     view! {
         gtk::Box {
             orientation: gtk::Orientation::Vertical,
-            gtk::Label {
-                margin_top: 8,
-                margin_bottom: 8,
-                markup: &self.model.project.as_ref()
-                            .map(|p| format!("<b>{}</b>", &p.name))
-                            .unwrap_or("".to_string())
+            gtk::Box {
+                center_widget: Some(&self.model.title),
+                #[name="header_actions_btn"]
+                gtk::MenuButton {
+                    child: {
+                        pack_type: gtk::PackType::End,
+                    },
+                    always_show_image: true,
+                    image: Some(&gtk::Image::from_icon_name(
+                        Some(Icon::COG.name()), gtk::IconSize::Menu)),
+                    halign: gtk::Align::End,
+                    valign: gtk::Align::Center,
+                    margin_top: 5,
+                    margin_end: 5,
+                },
             },
             gtk::Box {
                 homogeneous: true,

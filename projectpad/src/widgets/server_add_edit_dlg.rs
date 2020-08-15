@@ -47,6 +47,9 @@ pub struct Model {
     server_type: ServerType,
     server_access_type: ServerAccessType,
     auth_key_filename: Option<String>,
+    // store the auth key & not the Path, because it's what I have
+    // when reading from SQL. So by storing it also when adding a new
+    // server, I have the same data for add & edit.
     auth_key: Option<Vec<u8>>,
 }
 
@@ -245,17 +248,27 @@ impl Widget for ServerAddEditDialog {
                 self.update_auth_file();
             }
             Msg::AuthFilePicked => {
-                // doing Some(x.unwrap()) because I assume that I get a Some here
-                // i want it to blow if that's not the case
-                self.model.auth_key_filename = Some(
-                    Path::new(&self.auth_key.get_filename().unwrap())
+                match self.auth_key.get_filename().and_then(|f| {
+                    let path = Path::new(&f);
+                    let fname = path
                         .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .to_string(),
-                );
-                self.update_auth_file();
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.to_string());
+                    let contents = std::fs::read(path).ok();
+                    match (fname, contents) {
+                        (Some(f), Some(c)) => Some((f, c)),
+                        _ => None,
+                    }
+                }) {
+                    Some((f, c)) => {
+                        self.model.auth_key_filename = Some(f);
+                        self.model.auth_key = Some(c);
+                        self.update_auth_file();
+                    }
+                    None => {
+                        Self::display_error("Error loading the authentication key", None);
+                    }
+                }
             }
             Msg::SaveAuthFile => {
                 // https://stackoverflow.com/questions/54487052/how-do-i-add-a-save-button-to-the-gtk-filechooser-dialog
@@ -263,6 +276,7 @@ impl Widget for ServerAddEditDialog {
                     .title("Select destination folder")
                     .action(gtk::FileChooserAction::SelectFolder)
                     .use_header_bar(1)
+                    .modal(true)
                     .build();
                 let auth_key = self.model.auth_key.clone();
                 let auth_key_filename = self.model.auth_key_filename.clone();
@@ -300,30 +314,8 @@ impl Widget for ServerAddEditDialog {
         let new_group = self.group.get_active_text();
         let new_username = self.username_entry.get_text();
         let new_password = self.password_entry.get_text();
-        let (new_authkey, new_authkey_filename) =
-            match self.model.auth_key_filename.as_ref().map(|f| {
-                (
-                    std::fs::read(f),
-                    Path::new(f)
-                        .file_name()
-                        .and_then(|f| f.to_str())
-                        .map(|s| s.to_string()),
-                )
-            }) {
-                Some((Ok(contents), Some(filename))) => (Some(contents), Some(filename)),
-                None => (None, None),
-                Some((Err(e), _)) => {
-                    Self::display_error("Error reading authentication key", Some(Box::new(e)));
-                    return;
-                }
-                Some((Ok(_), None)) => {
-                    Self::display_error(
-                        "Error getting the filename for the authentication key",
-                        None,
-                    );
-                    return;
-                }
-            };
+        let new_authkey = self.model.auth_key.clone();
+        let new_authkey_filename = self.model.auth_key_filename.clone();
         let new_servertype = self
             .server_type
             .get_active_id()
@@ -394,6 +386,7 @@ impl Widget for ServerAddEditDialog {
         let builder = gtk::MessageDialogBuilder::new()
             .buttons(gtk::ButtonsType::Ok)
             .message_type(gtk::MessageType::Error)
+            .modal(true)
             .text(msg);
         let dlg = if let Some(err) = e {
             builder.secondary_text(&err)

@@ -218,7 +218,7 @@ impl Widget for Win {
                     gtk::Box {
                         orientation: gtk::Orientation::Vertical,
                         #[name="project_summary"]
-                        ProjectSummary() {
+                        ProjectSummary(self.model.db_sender.clone()) {
                             EnvironmentChanged(env) => Msg::EnvironmentChanged(env)
                         },
                         #[name="project_items_list"]

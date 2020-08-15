@@ -4,7 +4,7 @@ use super::server_add_edit_dlg::ServerAddEditDialog;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
-use projectpadsql::models::{Server, ServerAccessType};
+use projectpadsql::models::{Project, Server, ServerAccessType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -223,6 +223,84 @@ fn server_access_icon(srv: &Server) -> Icon {
     }
 }
 
+fn get_main_window(widget_for_window: gtk::Widget) -> gtk::Window {
+    widget_for_window
+        .get_toplevel()
+        .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
+        .unwrap()
+}
+
+pub enum AddEditServerInfo<'a> {
+    EditServer(&'a Server),
+    AddServer(&'a Project),
+}
+
+impl AddEditServerInfo<'_> {
+    fn is_edit(&self) -> bool {
+        match self {
+            AddEditServerInfo::EditServer(_) => true,
+            _ => false,
+        }
+    }
+
+    fn project_id(&self) -> i32 {
+        match self {
+            AddEditServerInfo::EditServer(srv) => srv.project_id,
+            AddEditServerInfo::AddServer(prj) => prj.id,
+        }
+    }
+
+    fn server(&self) -> Option<&Server> {
+        match self {
+            AddEditServerInfo::EditServer(srv) => Some(srv),
+            _ => None,
+        }
+    }
+}
+
+/// you must keep a reference to the component in your model,
+/// otherwise event processing will die when the component gets dropped
+pub fn prepare_add_edit_server_dialog(
+    widget_for_window: gtk::Widget,
+    db_sender: mpsc::Sender<SqlFunc>,
+    add_edit_info: AddEditServerInfo,
+) -> (gtk::Dialog, relm::Component<ServerAddEditDialog>) {
+    let main_win = get_main_window(widget_for_window);
+    let dialog = gtk::DialogBuilder::new()
+        .use_header_bar(1)
+        .default_width(600)
+        .default_height(350)
+        .title(if add_edit_info.is_edit() {
+            "Edit server"
+        } else {
+            "Add server"
+        })
+        .transient_for(&main_win)
+        .build();
+
+    let dialog_contents = relm::init::<ServerAddEditDialog>((
+        db_sender,
+        add_edit_info.project_id(),
+        add_edit_info.server().cloned(),
+    ))
+    .expect("error initializing the server add edit modal");
+    dialog
+        .get_content_area()
+        .pack_start(dialog_contents.widget(), true, true, 0);
+    dialog.add_button("Cancel", gtk::ResponseType::Cancel);
+    let save = dialog.add_button("Save", gtk::ResponseType::Ok);
+    save.get_style_context().add_class("suggested-action");
+    let d_c = dialog_contents.clone();
+    dialog.connect_response(move |d, r| {
+        d.close();
+        if r == gtk::ResponseType::Ok {
+            d_c.stream().emit(MsgServerAddEditDialog::OkPressed);
+        }
+    });
+    dialog.set_modal(true);
+    (dialog, dialog_contents)
+}
+
 #[widget]
 impl Widget for ProjectPoiHeader {
     fn init_view(&mut self) {
@@ -274,7 +352,18 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::Edit, _)) => {
                 match self.model.project_item.clone() {
                     Some(ProjectItem::Server(ref srv)) => {
-                        self.edit_server(Some(srv));
+                        let (dialog, component) = prepare_add_edit_server_dialog(
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            self.model.db_sender.clone(),
+                            AddEditServerInfo::EditServer(srv),
+                        );
+                        relm::connect!(
+                            component@MsgServerAddEditDialog::ServerUpdated(ref srv),
+                            self.model.relm,
+                            Msg::ServerUpdated(srv.clone())
+                        );
+                        self.model.server_add_edit_dialog = Some(component);
+                        dialog.show_all();
                     }
                     Some(_) => {
                         eprintln!("TODO");
@@ -290,60 +379,6 @@ impl Widget for ProjectPoiHeader {
                 _ => {}
             },
         }
-    }
-
-    fn get_main_window(&self) -> gtk::Window {
-        self.items_frame
-            .get_toplevel()
-            .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
-            .unwrap()
-    }
-
-    fn edit_server(&mut self, server: Option<&Server>) {
-        let main_win = self.get_main_window();
-        let dialog = gtk::DialogBuilder::new()
-            .use_header_bar(1)
-            .default_width(600)
-            .default_height(350)
-            .title(if server.is_some() {
-                "Edit server"
-            } else {
-                "Add server"
-            })
-            .transient_for(&main_win)
-            .build();
-
-        // need to keep a reference else event processing dies when
-        // the component gets dropped
-        self.model.server_add_edit_dialog = Some(
-            relm::init::<ServerAddEditDialog>((
-                self.model.db_sender.clone(),
-                server.unwrap().project_id,
-                server.cloned(),
-            ))
-            .expect("error initializing the server add edit modal"),
-        );
-        let dialog_contents = self.model.server_add_edit_dialog.as_ref().unwrap();
-        relm::connect!(
-            dialog_contents@MsgServerAddEditDialog::ServerUpdated(ref srv),
-            self.model.relm,
-            Msg::ServerUpdated(srv.clone())
-        );
-        dialog
-            .get_content_area()
-            .pack_start(dialog_contents.widget(), true, true, 0);
-        dialog.add_button("Cancel", gtk::ResponseType::Cancel);
-        let save = dialog.add_button("Save", gtk::ResponseType::Ok);
-        save.get_style_context().add_class("suggested-action");
-        let d_c = dialog_contents.clone();
-        dialog.connect_response(move |d, r| {
-            d.close();
-            if r == gtk::ResponseType::Ok {
-                d_c.stream().emit(MsgServerAddEditDialog::OkPressed);
-            }
-        });
-        dialog.set_modal(true);
-        dialog.show_all();
     }
 
     fn load_project_item(&self) {

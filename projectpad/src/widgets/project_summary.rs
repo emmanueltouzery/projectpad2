@@ -1,8 +1,14 @@
+use super::project_poi_header::{prepare_add_edit_server_dialog, AddEditServerInfo};
+use super::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
+use super::server_add_edit_dlg::ServerAddEditDialog;
 use crate::icons::Icon;
+use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
+use projectpadsql::models::Server;
 use projectpadsql::models::{EnvironmentType, Project};
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::sync::mpsc;
 
 #[derive(Msg)]
 pub enum Msg {
@@ -10,13 +16,18 @@ pub enum Msg {
     EnvironmentToggled(EnvironmentType), // implementation detail
     EnvironmentChanged(EnvironmentType),
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
+    AddServer,
+    ServerAdded(Server),
 }
 
 pub struct Model {
     relm: relm::Relm<ProjectSummary>,
+    db_sender: mpsc::Sender<SqlFunc>,
     project: Option<Project>,
     title: gtk::Label,
     btn_and_handler: Vec<(gtk::RadioButton, glib::SignalHandlerId)>,
+    header_popover: gtk::Popover,
+    server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
 }
 
 #[widget]
@@ -62,17 +73,40 @@ impl Widget for ProjectSummary {
                     .emit(Msg::EnvironmentToggled(EnvironmentType::EnvProd))
             }),
         ));
+        self.init_actions_popover();
     }
 
-    fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
+    fn init_actions_popover(&self) {
+        let popover_vbox = gtk::BoxBuilder::new()
+            .margin(10)
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        let popover_btn = gtk::ModelButtonBuilder::new().label("Add server").build();
+        relm::connect!(
+            self.model.relm,
+            popover_btn,
+            connect_clicked(_),
+            Msg::AddServer
+        );
+        popover_vbox.add(&popover_btn);
+        popover_vbox.show_all();
+        self.model.header_popover.add(&popover_vbox);
+        self.header_actions_btn
+            .set_popover(Some(&self.model.header_popover));
+    }
+
+    fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         Model {
             project: None,
+            db_sender,
             relm: relm.clone(),
             title: gtk::LabelBuilder::new()
                 .margin_top(8)
                 .margin_bottom(8)
                 .build(),
             btn_and_handler: vec![],
+            header_popover: gtk::Popover::new(None::<&gtk::Button>),
+            server_add_edit_dialog: None,
         }
     }
 
@@ -168,6 +202,23 @@ impl Widget for ProjectSummary {
                     // unblock the event handlers
                     btn.unblock_signal(handler_id);
                 }
+            }
+            Msg::AddServer => {
+                let (dialog, component) = prepare_add_edit_server_dialog(
+                    self.header_actions_btn.clone().upcast::<gtk::Widget>(),
+                    self.model.db_sender.clone(),
+                    AddEditServerInfo::AddServer(self.model.project.as_ref().unwrap()),
+                );
+                relm::connect!(
+                    component@MsgServerAddEditDialog::ServerUpdated(ref srv),
+                    self.model.relm,
+                    Msg::ServerAdded(srv.clone())
+                );
+                self.model.server_add_edit_dialog = Some(component);
+                dialog.show_all();
+            }
+            Msg::ServerAdded(server) => {
+                println!("server added {:?}", server);
             }
         }
     }

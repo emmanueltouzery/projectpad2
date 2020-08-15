@@ -8,6 +8,7 @@ use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
 use super::project_poi_header::Msg::ServerUpdated as ProjectPoiHeaderServerUpdatedMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
+use super::project_summary::Msg::ServerAdded as ProjectSummaryServerAddedMsg;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
@@ -219,7 +220,8 @@ impl Widget for Win {
                         orientation: gtk::Orientation::Vertical,
                         #[name="project_summary"]
                         ProjectSummary(self.model.db_sender.clone()) {
-                            EnvironmentChanged(env) => Msg::EnvironmentChanged(env)
+                            EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
+                            ProjectSummaryServerAddedMsg(ref srv) => Msg::ServerUpdated(srv.clone()),
                         },
                         #[name="project_items_list"]
                         ProjectItemsList(self.model.db_sender.clone()) {

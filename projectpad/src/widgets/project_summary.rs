@@ -217,9 +217,8 @@ impl Widget for ProjectSummary {
                 self.model.server_add_edit_dialog = Some(component);
                 dialog.show_all();
             }
-            Msg::ServerAdded(server) => {
-                println!("server added {:?}", server);
-            }
+            // meant for my parent
+            Msg::ServerAdded(server) => {}
         }
     }
 

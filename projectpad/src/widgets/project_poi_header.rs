@@ -342,6 +342,7 @@ impl Widget for ProjectPoiHeader {
                 d_c.stream().emit(MsgServerAddEditDialog::OkPressed);
             }
         });
+        dialog.set_modal(true);
         dialog.show_all();
     }
 

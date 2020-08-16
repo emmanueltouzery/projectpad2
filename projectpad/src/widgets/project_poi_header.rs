@@ -1,6 +1,6 @@
+use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
+use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::project_items_list::ProjectItem;
-use super::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
-use super::server_add_edit_dlg::ServerAddEditDialog;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
@@ -13,6 +13,7 @@ use std::sync::mpsc;
 enum ActionTypes {
     Edit,
     Copy,
+    Delete,
 }
 
 #[derive(Msg)]
@@ -371,6 +372,9 @@ impl Widget for ProjectPoiHeader {
                     None => {}
                 };
             }
+            Msg::HeaderActionClicked((ActionTypes::Delete, _)) => {
+                println!("delete");
+            }
             Msg::ServerUpdated(server) => match self.model.project_item.as_ref() {
                 Some(ProjectItem::Server(srv)) => {
                     self.model.project_item = Some(ProjectItem::Server(server));
@@ -409,10 +413,16 @@ impl Widget for ProjectPoiHeader {
             .as_ref()
             .map(get_project_item_fields)
             .unwrap_or_else(|| vec![]);
-        let extra_btns = [(
-            gtk::ModelButtonBuilder::new().label("Edit").build(),
-            ActionTypes::Edit,
-        )];
+        let extra_btns = [
+            (
+                gtk::ModelButtonBuilder::new().label("Edit").build(),
+                ActionTypes::Edit,
+            ),
+            (
+                gtk::ModelButtonBuilder::new().label("Delete").build(),
+                ActionTypes::Delete,
+            ),
+        ];
         populate_grid(
             self.header_grid.clone(),
             self.model.header_popover.clone(),

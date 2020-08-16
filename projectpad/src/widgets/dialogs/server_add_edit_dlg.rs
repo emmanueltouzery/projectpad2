@@ -1,10 +1,10 @@
+use super::standard_dialogs::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType, ServerType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
-use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -182,7 +182,7 @@ impl Widget for ServerAddEditDialog {
         let (server_updated_channel, server_updated_sender) =
             relm::Channel::new(move |r: SaveResult| match r {
                 Ok(srv) => stream2.emit(Msg::ServerUpdated(srv)),
-                Err((msg, e)) => Self::display_error_str(&msg, e),
+                Err((msg, e)) => display_error_str(&msg, e),
             });
         Model {
             relm: relm.clone(),
@@ -272,7 +272,7 @@ impl Widget for ServerAddEditDialog {
                         self.update_auth_file();
                     }
                     None => {
-                        Self::display_error("Error loading the authentication key", None);
+                        display_error("Error loading the authentication key", None);
                     }
                 }
             }
@@ -298,7 +298,7 @@ impl Widget for ServerAddEditDialog {
                     }
                     if let Some(fname) = fname {
                         if let Err(e) = Self::write_auth_key(&auth_key, &auth_key_filename, fname) {
-                            Self::display_error("Error writing the file", Some(Box::new(e)));
+                            display_error("Error writing the file", Some(Box::new(e)));
                         }
                     }
                 });
@@ -411,26 +411,6 @@ impl Widget for ServerAddEditDialog {
                 println!("after send");
             }))
             .unwrap();
-    }
-
-    fn display_error(msg: &str, e: Option<Box<dyn Error>>) {
-        Self::display_error_str(msg, e.map(|e| e.to_string()))
-    }
-
-    fn display_error_str(msg: &str, e: Option<String>) {
-        let builder = gtk::MessageDialogBuilder::new()
-            .buttons(gtk::ButtonsType::Ok)
-            .message_type(gtk::MessageType::Error)
-            .modal(true)
-            .text(msg);
-        let dlg = if let Some(err) = e {
-            builder.secondary_text(&err)
-        } else {
-            builder
-        }
-        .build();
-        dlg.connect_response(|d, _r| d.close());
-        dlg.show_all();
     }
 
     fn write_auth_key(

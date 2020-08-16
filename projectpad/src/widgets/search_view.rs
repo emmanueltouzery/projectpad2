@@ -3,11 +3,11 @@
 // discussion:
 // https://discourse.gnome.org/t/lazy-scrollable-list/3774
 
+use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
+use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
 use super::project_poi_header::{prepare_add_edit_server_dialog, AddEditServerInfo};
-use super::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
-use super::server_add_edit_dlg::ServerAddEditDialog;
 use super::server_item_list_item;
 use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;

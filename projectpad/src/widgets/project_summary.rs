@@ -1,6 +1,6 @@
+use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
+use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::project_poi_header::{prepare_add_edit_server_dialog, AddEditServerInfo};
-use super::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
-use super::server_add_edit_dlg::ServerAddEditDialog;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;

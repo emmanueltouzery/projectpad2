@@ -1,5 +1,6 @@
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
+use super::dialogs::standard_dialogs::*;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
@@ -21,6 +22,7 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     HeaderActionClicked((ActionTypes, String)),
     ServerUpdated(Server),
+    RemoveCurrentServer,
 }
 
 pub struct Model {
@@ -224,13 +226,6 @@ fn server_access_icon(srv: &Server) -> Icon {
     }
 }
 
-fn get_main_window(widget_for_window: gtk::Widget) -> gtk::Window {
-    widget_for_window
-        .get_toplevel()
-        .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
-        .unwrap()
-}
-
 pub enum AddEditServerInfo<'a> {
     EditServer(&'a Server),
     AddServer(&'a Project),
@@ -373,7 +368,21 @@ impl Widget for ProjectPoiHeader {
                 };
             }
             Msg::HeaderActionClicked((ActionTypes::Delete, _)) => {
-                println!("delete");
+                match self.model.project_item.as_ref() {
+                    Some(ProjectItem::Server(srv)) => {
+                        let relm = self.model.relm.clone();
+                        confirm_deletion(
+                            "Delete server",
+                            &format!("Are you sure you want to delete the server {}? This action cannot be undone.", srv.desc),
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            move || relm.stream().emit(Msg::RemoveCurrentServer)
+                        );
+                        println!("delete");
+                    }
+                    _ => {
+                        eprintln!("TODO");
+                    }
+                }
             }
             Msg::ServerUpdated(server) => match self.model.project_item.as_ref() {
                 Some(ProjectItem::Server(srv)) => {
@@ -382,6 +391,9 @@ impl Widget for ProjectPoiHeader {
                 }
                 _ => {}
             },
+            Msg::RemoveCurrentServer => {
+                println!("remove current server!");
+            }
         }
     }
 

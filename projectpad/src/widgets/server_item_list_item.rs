@@ -13,6 +13,7 @@ use relm_derive::{widget, Msg};
 pub enum Msg {
     CopyClicked(String),
     ViewNote(ServerNote),
+    EditPoi(ServerPointOfInterest),
 }
 
 pub struct Model {
@@ -159,11 +160,14 @@ impl Widget for ServerItemListItem {
         self.header_actions_btn
             .set_popover(Some(&self.model.header_popover));
         let fields = get_server_item_grid_items(&self.model.server_item);
-        let view_label = "View";
         let extra_btns = match self.model.server_item {
             ServerItem::Note(_) => vec![(
-                gtk::ModelButtonBuilder::new().label(view_label).build(),
+                gtk::ModelButtonBuilder::new().label("View").build(),
                 ActionTypes::View,
+            )],
+            ServerItem::PointOfInterest(_) => vec![(
+                gtk::ModelButtonBuilder::new().label("Edit").build(),
+                ActionTypes::Edit,
             )],
             _ => vec![],
         };
@@ -174,21 +178,26 @@ impl Widget for ServerItemListItem {
             &fields,
             ActionTypes::Copy,
             &extra_btns,
-            &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
-                if str_val == view_label {
-                    // <-- TODO use the action_type rather
-                    match server_item.clone() {
-                        ServerItem::Note(n) => relm::connect!(
-                            self.model.relm,
-                            &btn,
-                            connect_clicked(_),
-                            Msg::ViewNote(n.clone())
-                        ),
-                        _ => {
-                            assert!(false, "expected note, got something else");
-                        }
-                    }
-                } else {
+            &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| match action_type {
+                ActionTypes::View => match server_item.clone() {
+                    ServerItem::Note(n) => relm::connect!(
+                        self.model.relm,
+                        &btn,
+                        connect_clicked(_),
+                        Msg::ViewNote(n.clone())
+                    ),
+                    _ => panic!(),
+                },
+                ActionTypes::Edit => match server_item.clone() {
+                    ServerItem::PointOfInterest(poi) => relm::connect!(
+                        self.model.relm,
+                        &btn,
+                        connect_clicked(_),
+                        Msg::EditPoi(poi.clone())
+                    ),
+                    _ => panic!(),
+                },
+                _ => {
                     relm::connect!(
                         self.model.relm,
                         &btn,
@@ -265,6 +274,9 @@ impl Widget for ServerItemListItem {
             }
             // meant for my parent
             Msg::ViewNote(_) => {}
+            Msg::EditPoi(poi) => {
+                println!("edit poi");
+            }
         }
     }
 

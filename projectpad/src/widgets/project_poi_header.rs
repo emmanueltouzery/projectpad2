@@ -4,8 +4,9 @@ use super::dialogs::standard_dialogs::*;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
+use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Project, Server, ServerAccessType};
+use projectpadsql::models::{Project, Server, ServerAccessType, ServerWebsite};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -22,7 +23,7 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     HeaderActionClicked((ActionTypes, String)),
     ServerUpdated(Server),
-    RemoveCurrentServer,
+    DeleteCurrentServer(Server),
 }
 
 pub struct Model {
@@ -371,11 +372,12 @@ impl Widget for ProjectPoiHeader {
                 match self.model.project_item.as_ref() {
                     Some(ProjectItem::Server(srv)) => {
                         let relm = self.model.relm.clone();
+                        let server = srv.clone();
                         confirm_deletion(
                             "Delete server",
                             &format!("Are you sure you want to delete the server {}? This action cannot be undone.", srv.desc),
                             self.items_frame.clone().upcast::<gtk::Widget>(),
-                            move || relm.stream().emit(Msg::RemoveCurrentServer)
+                            move || relm.stream().emit(Msg::DeleteCurrentServer(server.clone()))
                         );
                         println!("delete");
                     }
@@ -391,10 +393,30 @@ impl Widget for ProjectPoiHeader {
                 }
                 _ => {}
             },
-            Msg::RemoveCurrentServer => {
-                println!("remove current server!");
+            Msg::DeleteCurrentServer(srv) => {
+                self.delete_current_server(srv);
             }
         }
+    }
+
+    fn delete_current_server(&self, server: Server) {
+        let server_id = server.id;
+        self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::server::dsl as srv;
+            use projectpadsql::schema::server_database::dsl as db;
+            use projectpadsql::schema::server_website::dsl as srvw;
+
+            // we cannot delete a server if a database under it
+            // is being used elsewhere
+            let database_ids_from_server = db::server_database
+                .filter(db::server_id.eq(server_id))
+                .select(db::id.nullable());
+            let used_websites = srvw::server_website
+                .filter(srvw::server_database_id.eq_any(database_ids_from_server))
+                .load::<ServerWebsite>(sql_conn)
+                .unwrap();
+            println!("used websites: {:?}", used_websites);
+        }));
     }
 
     fn load_project_item(&self) {

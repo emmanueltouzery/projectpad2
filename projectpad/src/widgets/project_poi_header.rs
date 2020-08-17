@@ -6,7 +6,7 @@ use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Project, Server, ServerAccessType, ServerWebsite};
+use projectpadsql::models::{Project, Server, ServerAccessType, ServerDatabase, ServerWebsite};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -23,8 +23,12 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     HeaderActionClicked((ActionTypes, String)),
     ServerUpdated(Server),
+    ServerDeleted(Server),
     DeleteCurrentServer(Server),
 }
+
+// String for details, because I can't pass Error across threads
+type DeleteResult = Result<Server, (&'static str, Option<String>)>;
 
 pub struct Model {
     relm: relm::Relm<ProjectPoiHeader>,
@@ -33,6 +37,8 @@ pub struct Model {
     header_popover: gtk::Popover,
     title: gtk::Label,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
+    _server_deleted_channel: relm::Channel<DeleteResult>,
+    server_deleted_sender: relm::Sender<DeleteResult>,
 }
 
 pub struct GridItem {
@@ -321,6 +327,12 @@ impl Widget for ProjectPoiHeader {
         params: (mpsc::Sender<SqlFunc>, Option<ProjectItem>),
     ) -> Model {
         let (db_sender, project_item) = params;
+        let stream = relm.stream().clone();
+        let (_server_deleted_channel, server_deleted_sender) =
+            relm::Channel::new(move |r: DeleteResult| match r {
+                Ok(srv) => stream.emit(Msg::ServerDeleted(srv)),
+                Err((msg, e)) => display_error_str(&msg, e),
+            });
         Model {
             relm: relm.clone(),
             db_sender,
@@ -332,6 +344,8 @@ impl Widget for ProjectPoiHeader {
                 .hexpand(true)
                 .build(),
             server_add_edit_dialog: None,
+            _server_deleted_channel,
+            server_deleted_sender,
         }
     }
 
@@ -379,7 +393,6 @@ impl Widget for ProjectPoiHeader {
                             self.items_frame.clone().upcast::<gtk::Widget>(),
                             move || relm.stream().emit(Msg::DeleteCurrentServer(server.clone()))
                         );
-                        println!("delete");
                     }
                     _ => {
                         eprintln!("TODO");
@@ -396,27 +409,58 @@ impl Widget for ProjectPoiHeader {
             Msg::DeleteCurrentServer(srv) => {
                 self.delete_current_server(srv);
             }
+            // for my parent
+            Msg::ServerDeleted(_) => {}
         }
     }
 
     fn delete_current_server(&self, server: Server) {
         let server_id = server.id;
-        self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
-            use projectpadsql::schema::server::dsl as srv;
-            use projectpadsql::schema::server_database::dsl as db;
-            use projectpadsql::schema::server_website::dsl as srvw;
+        let s = self.model.server_deleted_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server::dsl as srv;
+                use projectpadsql::schema::server_database::dsl as db;
+                use projectpadsql::schema::server_website::dsl as srvw;
 
-            // we cannot delete a server if a database under it
-            // is being used elsewhere
-            let database_ids_from_server = db::server_database
-                .filter(db::server_id.eq(server_id))
-                .select(db::id.nullable());
-            let used_websites = srvw::server_website
-                .filter(srvw::server_database_id.eq_any(database_ids_from_server))
-                .load::<ServerWebsite>(sql_conn)
-                .unwrap();
-            println!("used websites: {:?}", used_websites);
-        }));
+                // we cannot delete a server if a database under it
+                // is being used elsewhere
+                let dependent_websites = srvw::server_website
+                    .inner_join(db::server_database)
+                    .filter(db::server_id.eq(server_id))
+                    .load::<(ServerWebsite, ServerDatabase)>(sql_conn)
+                    .unwrap();
+                if !dependent_websites.is_empty() {
+                    s.send(Err((
+                        "Cannot delete server",
+                        Some(format!(
+                            "databases {} on that server are used by websites {}",
+                            itertools::join(dependent_websites.iter().map(|(_, d)| &d.name), ", "),
+                            itertools::join(dependent_websites.iter().map(|(w, _)| &w.desc), ", ")
+                        )),
+                    )))
+                    .unwrap();
+                } else {
+                    s.send(
+                        match diesel::delete(srv::server.filter(srv::id.eq(server_id)))
+                            .execute(sql_conn)
+                        {
+                            Ok(1) => Ok(server.clone()),
+                            Ok(x) => Err((
+                                "Server deletion failed",
+                                Some(format!(
+                                    "Expected 1 row to be modified, but {} rows were modified",
+                                    x
+                                )),
+                            )),
+                            Err(e) => Err(("Server deletion failed", Some(e.to_string()))),
+                        },
+                    )
+                    .unwrap();
+                }
+            }))
+            .unwrap();
     }
 
     fn load_project_item(&self) {

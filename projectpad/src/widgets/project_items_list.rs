@@ -37,7 +37,7 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     ProjectItemSelectedFromElsewhere((Project, Option<EnvironmentType>, Option<ProjectItem>)),
     FocusRow(gtk::ListBoxRow),
-    RefreshItemList(ProjectItem),
+    RefreshItemList(Option<ProjectItem>),
 }
 
 pub struct Model {
@@ -286,7 +286,7 @@ impl Widget for ProjectItemsList {
                 r.grab_focus();
             }
             Msg::RefreshItemList(selected_pi) => {
-                self.fetch_project_items(Some(self.model.environment), Some(selected_pi));
+                self.fetch_project_items(Some(self.model.environment), selected_pi);
             }
         }
     }

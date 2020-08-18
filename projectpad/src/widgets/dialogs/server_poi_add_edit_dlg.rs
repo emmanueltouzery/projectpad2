@@ -3,10 +3,11 @@ use super::standard_dialogs::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Server, ServerPointOfInterest};
+use projectpadsql::models::{InterestType, Server, ServerPointOfInterest};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
+use strum::IntoEnumIterator;
 
 #[derive(Msg, Debug)]
 pub enum Msg {
@@ -32,12 +33,38 @@ pub struct Model {
     description: String,
     path: String,
     group_name: Option<String>,
+    interest_type: InterestType,
 }
 
 #[widget]
 impl Widget for ServerPoiAddEditDialog {
     fn init_view(&mut self) {
+        self.init_interest_type();
         self.init_group();
+    }
+
+    fn interest_type_desc(interest_type: InterestType) -> &'static str {
+        match interest_type {
+            InterestType::PoiLogFile => "Log file",
+            InterestType::PoiConfigFile => "Config file",
+            InterestType::PoiApplication => "Application",
+            InterestType::PoiCommandToRun => "Command to run",
+            InterestType::PoiBackupArchive => "Backup/archive",
+            InterestType::PoiCommandTerminal => "Command to run (terminal)",
+        }
+    }
+
+    fn init_interest_type(&self) {
+        let mut entries: Vec<_> = InterestType::iter()
+            .map(|st| (st, Self::interest_type_desc(st)))
+            .collect();
+        entries.sort_by_key(|p| p.1);
+        for (entry_type, entry_desc) in entries {
+            self.interest_type
+                .append(Some(&entry_type.to_string()), entry_desc);
+        }
+        self.interest_type
+            .set_active_id(Some(&self.model.interest_type.to_string()));
     }
 
     fn init_group(&self) {
@@ -85,6 +112,10 @@ impl Widget for ServerPoiAddEditDialog {
                 .map(|s| s.path.clone())
                 .unwrap_or_else(|| "".to_string()),
             group_name: server_poi.as_ref().and_then(|s| s.group_name.clone()),
+            interest_type: server_poi
+                .as_ref()
+                .map(|s| s.interest_type)
+                .unwrap_or(InterestType::PoiApplication),
             _server_poi_updated_channel: server_poi_updated_channel,
             server_poi_updated_sender,
         }
@@ -180,6 +211,22 @@ impl Widget for ServerPoiAddEditDialog {
                 cell: {
                     left_attach: 1,
                     top_attach: 2,
+                },
+            },
+            gtk::Label {
+                text: "Interest type",
+                halign: gtk::Align::End,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 3,
+                },
+            },
+            #[name="interest_type"]
+            gtk::ComboBoxText {
+                hexpand: true,
+                cell: {
+                    left_attach: 1,
+                    top_attach: 3,
                 },
             },
         }

@@ -12,6 +12,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc;
+use strum::IntoEnumIterator;
 
 #[derive(Msg, Debug)]
 pub enum Msg {
@@ -69,36 +70,47 @@ impl Widget for ServerAddEditDialog {
         self.update_auth_file();
     }
 
+    fn server_type_desc(server_type: ServerType) -> &'static str {
+        match server_type {
+            ServerType::SrvApplication => "Application",
+            ServerType::SrvDatabase => "Database",
+            ServerType::SrvHttpOrProxy => "HTTP server or proxy",
+            ServerType::SrvMonitoring => "Monitoring",
+            ServerType::SrvReporting => "Reporting",
+        }
+    }
+
     fn init_server_type(&self) {
-        self.server_type
-            .append(Some(&ServerType::SrvApplication.to_string()), "Application");
-        self.server_type
-            .append(Some(&ServerType::SrvDatabase.to_string()), "Database");
-        self.server_type.append(
-            Some(&ServerType::SrvHttpOrProxy.to_string()),
-            "HTTP server or proxy",
-        );
-        self.server_type
-            .append(Some(&ServerType::SrvMonitoring.to_string()), "Monitoring");
-        self.server_type
-            .append(Some(&ServerType::SrvReporting.to_string()), "Reporting");
+        let mut entries: Vec<_> = ServerType::iter()
+            .map(|st| (st, Self::server_type_desc(st)))
+            .collect();
+        entries.sort_by_key(|p| p.1);
+        for (entry_type, entry_desc) in entries {
+            self.server_type
+                .append(Some(&entry_type.to_string()), entry_desc);
+        }
         self.server_type
             .set_active_id(Some(&self.model.server_type.to_string()));
     }
 
+    fn server_access_type_desc(access_type: ServerAccessType) -> &'static str {
+        match access_type {
+            ServerAccessType::SrvAccessSsh => "SSH",
+            ServerAccessType::SrvAccessWww => "Website",
+            ServerAccessType::SrvAccessRdp => "Remote Desktop (RDP)",
+            ServerAccessType::SrvAccessSshTunnel => "SSH tunnel",
+        }
+    }
+
     fn init_server_access_type(&self) {
-        self.server_access_type
-            .append(Some(&ServerAccessType::SrvAccessSsh.to_string()), "SSH");
-        self.server_access_type.append(
-            Some(&ServerAccessType::SrvAccessRdp.to_string()),
-            "Remote Desktop (RDP)",
-        );
-        self.server_access_type
-            .append(Some(&ServerAccessType::SrvAccessWww.to_string()), "Website");
-        self.server_access_type.append(
-            Some(&ServerAccessType::SrvAccessSshTunnel.to_string()),
-            "SSH tunnel",
-        );
+        let mut entries: Vec<_> = ServerAccessType::iter()
+            .map(|at| (at, Self::server_access_type_desc(at)))
+            .collect();
+        entries.sort_by_key(|p| p.1);
+        for (entry_type, entry_desc) in entries {
+            self.server_access_type
+                .append(Some(&entry_type.to_string()), entry_desc);
+        }
         self.server_access_type
             .set_active_id(Some(&self.model.server_access_type.to_string()));
     }

@@ -5,7 +5,7 @@ use diesel::types::*;
 use std::io::Write;
 use std::str::FromStr;
 use std::string::ToString;
-use strum_macros::{Display, EnumString};
+use strum_macros::{Display, EnumIter, EnumString};
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct Project {
@@ -18,7 +18,9 @@ pub struct Project {
     pub has_prod: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display, EnumIter,
+)]
 #[sql_type = "Varchar"]
 pub enum ServerType {
     SrvDatabase,
@@ -28,7 +30,9 @@ pub enum ServerType {
     SrvReporting,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display, EnumIter,
+)]
 #[sql_type = "Varchar"]
 pub enum ServerAccessType {
     SrvAccessSsh,
@@ -46,7 +50,9 @@ pub enum EnvironmentType {
     EnvProd,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display, EnumIter,
+)]
 #[sql_type = "Varchar"]
 pub enum InterestType {
     PoiApplication,

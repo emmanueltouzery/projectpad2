@@ -322,7 +322,7 @@ impl Widget for ServerItemListItem {
         prepare_custom_dialog(
             widget_for_window,
             600,
-            350,
+            200,
             title,
             dialog_contents,
             move || d_c.emit(MsgServerPoiAddEditDialog::OkPressed),

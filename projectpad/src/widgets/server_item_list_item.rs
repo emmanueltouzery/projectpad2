@@ -167,6 +167,10 @@ impl Widget for ServerItemListItem {
 
         self.header_actions_btn
             .set_popover(Some(&self.model.header_popover));
+        self.load_server_item();
+    }
+
+    fn load_server_item(&self) {
         let fields = get_server_item_grid_items(&self.model.server_item);
         let extra_btns = match self.model.server_item {
             ServerItem::Note(_) => vec![(
@@ -300,7 +304,11 @@ impl Widget for ServerItemListItem {
                 self.model.server_poi_add_edit_dialog = Some(component);
                 dialog.show_all();
             }
-            Msg::ServerPoiUpdated(_) => {}
+            Msg::ServerPoiUpdated(server_poi) => {
+                self.model.server_item = ServerItem::PointOfInterest(server_poi);
+                self.model.title = Self::get_title(&self.model.server_item);
+                self.load_server_item();
+            }
         }
     }
 

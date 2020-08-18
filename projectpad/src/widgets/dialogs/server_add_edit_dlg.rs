@@ -369,7 +369,6 @@ impl Widget for ServerAddEditDialog {
                         .map_err(|e| ("Error reading back server".to_string(), Some(e.to_string())))
                 });
                 s.send(server_after_result).unwrap();
-                println!("after send");
             }))
             .unwrap();
     }

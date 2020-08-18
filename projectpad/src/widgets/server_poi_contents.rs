@@ -21,7 +21,7 @@ pub enum Msg {
     ViewNote(ServerNote),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ServerItem {
     Website(ServerWebsite),
     PointOfInterest(ServerPointOfInterest),

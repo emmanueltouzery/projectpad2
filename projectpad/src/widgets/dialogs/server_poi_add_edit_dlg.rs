@@ -6,6 +6,7 @@ use gtk::prelude::*;
 use projectpadsql::models::{InterestType, Server, ServerPointOfInterest};
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::str::FromStr;
 use std::sync::mpsc;
 use strum::IntoEnumIterator;
 
@@ -139,8 +140,15 @@ impl Widget for ServerPoiAddEditDialog {
     }
 
     fn update_server_poi(&self) {
+        let server_poi_id = self.model.server_poi_id;
         let new_desc = self.desc_entry.get_text();
         let new_path = self.path_entry.get_text();
+        let new_group = self.group.get_active_text();
+        let new_interest_type = self
+            .interest_type
+            .get_active_id()
+            .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
+            .expect("interest type not specified!?");
         let s = self.model.server_poi_updated_sender.clone();
         self.model
             .db_sender
@@ -149,7 +157,42 @@ impl Widget for ServerPoiAddEditDialog {
                 let changeset = (
                     srv_poi::desc.eq(new_desc.as_str()),
                     srv_poi::path.eq(new_path.as_str()),
+                    // never store Some("") for group, we want None then.
+                    srv_poi::group_name.eq(new_group
+                        .as_ref()
+                        .map(|s| s.as_str())
+                        .filter(|s| !s.is_empty())),
+                    srv_poi::interest_type.eq(new_interest_type),
                 );
+                let row_id_result = match server_poi_id {
+                    Some(id) => {
+                        // update
+                        diesel::update(srv_poi::server_point_of_interest.filter(srv_poi::id.eq(id)))
+                            .set(changeset)
+                            .execute(sql_conn)
+                            .map_err(|e| {
+                                ("Error updating server poi".to_string(), Some(e.to_string()))
+                            })
+                            .map(|_| id)
+                    }
+                    None => {
+                        // insert
+                        panic!();
+                    }
+                };
+                // re-read back the server
+                let server_poi_after_result = row_id_result.and_then(|row_id| {
+                    srv_poi::server_point_of_interest
+                        .filter(srv_poi::id.eq(row_id))
+                        .first::<ServerPointOfInterest>(sql_conn)
+                        .map_err(|e| {
+                            (
+                                "Error reading back server poi".to_string(),
+                                Some(e.to_string()),
+                            )
+                        })
+                });
+                s.send(server_poi_after_result).unwrap();
             }))
             .unwrap();
     }

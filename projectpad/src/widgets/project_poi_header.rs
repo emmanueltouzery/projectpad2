@@ -41,6 +41,7 @@ pub struct Model {
     server_deleted_sender: relm::Sender<DeleteResult>,
 }
 
+#[derive(Debug)]
 pub struct GridItem {
     pub label_name: &'static str,
     pub icon: Option<Icon>,

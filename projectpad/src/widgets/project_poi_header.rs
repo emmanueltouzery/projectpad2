@@ -268,40 +268,25 @@ pub fn prepare_add_edit_server_dialog(
     db_sender: mpsc::Sender<SqlFunc>,
     add_edit_info: AddEditServerInfo,
 ) -> (gtk::Dialog, relm::Component<ServerAddEditDialog>) {
-    let main_win = get_main_window(widget_for_window);
-    let dialog = gtk::DialogBuilder::new()
-        .use_header_bar(1)
-        .default_width(600)
-        .default_height(350)
-        .title(if add_edit_info.is_edit() {
-            "Edit server"
-        } else {
-            "Add server"
-        })
-        .transient_for(&main_win)
-        .build();
-
     let dialog_contents = relm::init::<ServerAddEditDialog>((
         db_sender,
         add_edit_info.project_id(),
         add_edit_info.server().cloned(),
     ))
     .expect("error initializing the server add edit modal");
-    dialog
-        .get_content_area()
-        .pack_start(dialog_contents.widget(), true, true, 0);
-    dialog.add_button("Cancel", gtk::ResponseType::Cancel);
-    let save = dialog.add_button("Save", gtk::ResponseType::Ok);
-    save.get_style_context().add_class("suggested-action");
     let d_c = dialog_contents.clone();
-    dialog.connect_response(move |d, r| {
-        d.close();
-        if r == gtk::ResponseType::Ok {
-            d_c.stream().emit(MsgServerAddEditDialog::OkPressed);
-        }
-    });
-    dialog.set_modal(true);
-    (dialog, dialog_contents)
+    prepare_custom_dialog(
+        widget_for_window,
+        600,
+        350,
+        if add_edit_info.is_edit() {
+            "Edit server"
+        } else {
+            "Add server"
+        },
+        dialog_contents,
+        move || d_c.emit(MsgServerAddEditDialog::OkPressed),
+    )
 }
 
 #[widget]

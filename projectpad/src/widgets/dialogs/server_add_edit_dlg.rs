@@ -1,3 +1,4 @@
+use super::dialog_helpers;
 use super::standard_dialogs::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -36,8 +37,8 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     _server_updated_channel: relm::Channel<SaveResult>,
     server_updated_sender: relm::Sender<SaveResult>,
-    _channel: relm::Channel<Vec<String>>,
-    sender: relm::Sender<Vec<String>>,
+    _groups_channel: relm::Channel<Vec<String>>,
+    groups_sender: relm::Sender<Vec<String>>,
     groups_store: gtk::ListStore,
     project_id: i32,
     server_id: Option<i32>,
@@ -102,59 +103,17 @@ impl Widget for ServerAddEditDialog {
             .set_active_id(Some(&self.model.server_access_type.to_string()));
     }
 
-    pub fn get_project_group_names(
-        sql_conn: &diesel::SqliteConnection,
-        project_id: i32,
-    ) -> Vec<String> {
-        use projectpadsql::schema::project_point_of_interest::dsl as ppoi;
-        use projectpadsql::schema::server::dsl as srv;
-        let mut server_group_names: Vec<Option<String>> = srv::server
-            .filter(
-                srv::project_id
-                    .eq(project_id)
-                    .and(srv::group_name.is_not_null()),
-            )
-            .order(srv::group_name.asc())
-            .select(srv::group_name)
-            .load(sql_conn)
-            .unwrap();
-        let mut prj_poi_group_names = ppoi::project_point_of_interest
-            .filter(
-                ppoi::project_id
-                    .eq(project_id)
-                    .and(ppoi::group_name.is_not_null()),
-            )
-            .order(ppoi::group_name.asc())
-            .select(ppoi::group_name)
-            .load(sql_conn)
-            .unwrap();
-        server_group_names.append(&mut prj_poi_group_names);
-        let mut server_group_names_no_options: Vec<_> =
-            server_group_names.into_iter().map(|n| n.unwrap()).collect();
-        server_group_names_no_options.sort();
-        server_group_names_no_options.dedup();
-        server_group_names_no_options
-    }
-
     fn init_group(&self) {
-        let s = self.model.sender.clone();
+        let s = self.model.groups_sender.clone();
         let pid = self.model.project_id;
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
-                s.send(Self::get_project_group_names(sql_conn, pid))
+                s.send(dialog_helpers::get_project_group_names(sql_conn, pid))
                     .unwrap();
             }))
             .unwrap();
-        let completion = gtk::EntryCompletion::new();
-        completion.set_model(Some(&self.model.groups_store));
-        completion.set_text_column(0);
-        self.group
-            .get_child()
-            .unwrap()
-            .dynamic_cast::<gtk::Entry>()
-            .unwrap()
-            .set_completion(Some(&completion));
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
     }
 
     fn update_auth_file(&self) {
@@ -175,7 +134,7 @@ impl Widget for ServerAddEditDialog {
     ) -> Model {
         let (db_sender, project_id, server) = params;
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |groups: Vec<String>| {
+        let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
             stream.emit(Msg::GotGroups(groups));
         });
         let stream2 = relm.stream().clone();
@@ -187,8 +146,8 @@ impl Widget for ServerAddEditDialog {
         Model {
             relm: relm.clone(),
             db_sender,
-            _channel: channel,
-            sender,
+            _groups_channel: groups_channel,
+            groups_sender,
             _server_updated_channel: server_updated_channel,
             server_updated_sender,
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
@@ -232,22 +191,12 @@ impl Widget for ServerAddEditDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::GotGroups(groups) => {
-                for group in groups {
-                    let iter = self.model.groups_store.append();
-                    self.model
-                        .groups_store
-                        .set_value(&iter, 0, &glib::Value::from(&group));
-                    self.group.append_text(&group);
-                }
-
-                if let Some(t) = self.model.group_name.as_deref() {
-                    self.group
-                        .get_child()
-                        .unwrap()
-                        .dynamic_cast::<gtk::Entry>()
-                        .unwrap()
-                        .set_text(t);
-                }
+                dialog_helpers::fill_groups(
+                    &self.model.groups_store,
+                    &self.group,
+                    &groups,
+                    &self.model.group_name,
+                );
             }
             Msg::RemoveAuthFile => {
                 self.model.auth_key_filename = None;

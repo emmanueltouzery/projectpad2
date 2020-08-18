@@ -1,4 +1,3 @@
-use super::project_items_list::ProjectItem;
 use super::server_item_list_item::Msg as ServerItemListItemMsg;
 use super::server_item_list_item::ServerItemListItem;
 use crate::sql_thread::SqlFunc;
@@ -107,7 +106,7 @@ impl Widget for ServerPoiContents {
         for item in &self.model.server_items {
             let component = self
                 .contents_list
-                .add_widget::<ServerItemListItem>(item.clone());
+                .add_widget::<ServerItemListItem>((self.model.db_sender.clone(), item.clone()));
             relm::connect!(component@ServerItemListItemMsg::ViewNote(ref n), self.model.relm, Msg::ViewNote(n.clone()));
             children_components.push(component);
         }

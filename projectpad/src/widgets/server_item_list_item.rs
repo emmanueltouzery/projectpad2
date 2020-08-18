@@ -1,6 +1,10 @@
+use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
+use super::dialogs::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
+use super::dialogs::standard_dialogs::*;
 use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
 use crate::icons::*;
+use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use projectpadsql::models::{
     InterestType, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
@@ -8,16 +12,20 @@ use projectpadsql::models::{
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::sync::mpsc;
 
 #[derive(Msg)]
 pub enum Msg {
     CopyClicked(String),
     ViewNote(ServerNote),
     EditPoi(ServerPointOfInterest),
+    ServerPoiUpdated(ServerPointOfInterest),
 }
 
 pub struct Model {
     relm: relm::Relm<ServerItemListItem>,
+    db_sender: mpsc::Sender<SqlFunc>,
+    server_poi_add_edit_dialog: Option<relm::Component<ServerPoiAddEditDialog>>,
     server_item: ServerItem,
     header_popover: gtk::Popover,
     title: (String, Icon),
@@ -256,9 +264,12 @@ impl Widget for ServerItemListItem {
         }
     }
 
-    fn model(relm: &relm::Relm<Self>, server_item: ServerItem) -> Model {
+    fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, ServerItem)) -> Model {
+        let (db_sender, server_item) = params;
         Model {
             relm: relm.clone(),
+            db_sender,
+            server_poi_add_edit_dialog: None,
             title: Self::get_title(&server_item),
             server_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
@@ -275,9 +286,47 @@ impl Widget for ServerItemListItem {
             // meant for my parent
             Msg::ViewNote(_) => {}
             Msg::EditPoi(poi) => {
-                println!("edit poi");
+                let (dialog, component) = Self::prepare_add_edit_server_poi_dialog(
+                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.model.db_sender.clone(),
+                    poi.server_id,
+                    Some(poi),
+                );
+                relm::connect!(
+                    component@MsgServerPoiAddEditDialog::ServerPoiUpdated(ref srv),
+                    self.model.relm,
+                    Msg::ServerPoiUpdated(srv.clone())
+                );
+                self.model.server_poi_add_edit_dialog = Some(component);
+                dialog.show_all();
             }
+            Msg::ServerPoiUpdated(_) => {}
         }
+    }
+
+    pub fn prepare_add_edit_server_poi_dialog(
+        widget_for_window: gtk::Widget,
+        db_sender: mpsc::Sender<SqlFunc>,
+        server_id: i32,
+        server_poi: Option<ServerPointOfInterest>,
+    ) -> (gtk::Dialog, relm::Component<ServerPoiAddEditDialog>) {
+        let title = if server_poi.is_some() {
+            "Edit server POI"
+        } else {
+            "Add server POI"
+        };
+        let dialog_contents =
+            relm::init::<ServerPoiAddEditDialog>((db_sender, server_id, server_poi))
+                .expect("error initializing the server poi add edit modal");
+        let d_c = dialog_contents.clone();
+        prepare_custom_dialog(
+            widget_for_window,
+            600,
+            350,
+            title,
+            dialog_contents,
+            move || d_c.emit(MsgServerPoiAddEditDialog::OkPressed),
+        )
     }
 
     view! {

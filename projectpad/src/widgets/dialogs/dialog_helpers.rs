@@ -7,7 +7,7 @@ pub fn get_project_group_names(
 ) -> Vec<String> {
     use projectpadsql::schema::project_point_of_interest::dsl as ppoi;
     use projectpadsql::schema::server::dsl as srv;
-    let mut server_group_names: Vec<Option<String>> = srv::server
+    let server_group_names = srv::server
         .filter(
             srv::project_id
                 .eq(project_id)
@@ -27,17 +27,85 @@ pub fn get_project_group_names(
         .select(ppoi::group_name)
         .load(sql_conn)
         .unwrap();
-    server_group_names.append(&mut prj_poi_group_names);
-    let mut server_group_names_no_options: Vec<_> =
-        server_group_names.into_iter().map(|n| n.unwrap()).collect();
+    let mut project_group_names = server_group_names;
+    project_group_names.append(&mut prj_poi_group_names);
+    let mut project_group_names_no_options: Vec<_> = project_group_names
+        .into_iter()
+        .map(|n: Option<String>| n.unwrap())
+        .collect();
+    project_group_names_no_options.sort();
+    project_group_names_no_options.dedup();
+    project_group_names_no_options
+}
+
+pub fn get_server_group_names(sql_conn: &diesel::SqliteConnection, server_id: i32) -> Vec<String> {
+    use projectpadsql::schema::server_database::dsl as db;
+    use projectpadsql::schema::server_extra_user_account::dsl as usr;
+    use projectpadsql::schema::server_note::dsl as not;
+    use projectpadsql::schema::server_point_of_interest::dsl as poi;
+    use projectpadsql::schema::server_website::dsl as www;
+    let server_poi_group_names = poi::server_point_of_interest
+        .filter(
+            poi::server_id
+                .eq(server_id)
+                .and(poi::group_name.is_not_null()),
+        )
+        .order(poi::group_name.asc())
+        .select(poi::group_name)
+        .load(sql_conn)
+        .unwrap();
+    let mut server_www_group_names = www::server_website
+        .filter(
+            www::server_id
+                .eq(server_id)
+                .and(www::group_name.is_not_null()),
+        )
+        .order(www::group_name.asc())
+        .select(www::group_name)
+        .load(sql_conn)
+        .unwrap();
+    let mut server_db_group_names = db::server_database
+        .filter(
+            db::server_id
+                .eq(server_id)
+                .and(db::group_name.is_not_null()),
+        )
+        .order(db::group_name.asc())
+        .select(db::group_name)
+        .load(sql_conn)
+        .unwrap();
+    let mut server_usr_group_names = usr::server_extra_user_account
+        .filter(
+            usr::server_id
+                .eq(server_id)
+                .and(usr::group_name.is_not_null()),
+        )
+        .order(usr::group_name.asc())
+        .select(usr::group_name)
+        .load(sql_conn)
+        .unwrap();
+    let mut server_notes_group_names = not::server_note
+        .filter(
+            not::server_id
+                .eq(server_id)
+                .and(not::group_name.is_not_null()),
+        )
+        .order(not::group_name.asc())
+        .select(not::group_name)
+        .load(sql_conn)
+        .unwrap();
+    let mut server_group_names = server_poi_group_names;
+    server_group_names.append(&mut server_www_group_names);
+    server_group_names.append(&mut server_db_group_names);
+    server_group_names.append(&mut server_usr_group_names);
+    server_group_names.append(&mut server_notes_group_names);
+    let mut server_group_names_no_options: Vec<_> = server_group_names
+        .into_iter()
+        .map(|n: Option<String>| n.unwrap())
+        .collect();
     server_group_names_no_options.sort();
     server_group_names_no_options.dedup();
     server_group_names_no_options
-}
-
-pub fn get_server_group_names(sql_conn: &diesel::SqliteConnection, project_id: i32) -> Vec<String> {
-    // TODO
-    vec![]
 }
 
 pub fn init_group_control(groups_store: &gtk::ListStore, group: &gtk::ComboBoxText) {

@@ -148,6 +148,30 @@ fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
     ]
 }
 
+pub fn prepare_add_edit_server_poi_dialog(
+    widget_for_window: gtk::Widget,
+    db_sender: mpsc::Sender<SqlFunc>,
+    server_id: i32,
+    server_poi: Option<ServerPointOfInterest>,
+) -> (gtk::Dialog, relm::Component<ServerPoiAddEditDialog>) {
+    let title = if server_poi.is_some() {
+        "Edit server POI"
+    } else {
+        "Add server POI"
+    };
+    let dialog_contents = relm::init::<ServerPoiAddEditDialog>((db_sender, server_id, server_poi))
+        .expect("error initializing the server poi add edit modal");
+    let d_c = dialog_contents.clone();
+    prepare_custom_dialog(
+        widget_for_window,
+        600,
+        200,
+        title,
+        dialog_contents,
+        move || d_c.emit(MsgServerPoiAddEditDialog::OkPressed),
+    )
+}
+
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum ActionTypes {
     Copy,
@@ -290,7 +314,7 @@ impl Widget for ServerItemListItem {
             // meant for my parent
             Msg::ViewNote(_) => {}
             Msg::EditPoi(poi) => {
-                let (dialog, component) = Self::prepare_add_edit_server_poi_dialog(
+                let (dialog, component) = prepare_add_edit_server_poi_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
                     self.model.db_sender.clone(),
                     poi.server_id,
@@ -310,31 +334,6 @@ impl Widget for ServerItemListItem {
                 self.load_server_item();
             }
         }
-    }
-
-    pub fn prepare_add_edit_server_poi_dialog(
-        widget_for_window: gtk::Widget,
-        db_sender: mpsc::Sender<SqlFunc>,
-        server_id: i32,
-        server_poi: Option<ServerPointOfInterest>,
-    ) -> (gtk::Dialog, relm::Component<ServerPoiAddEditDialog>) {
-        let title = if server_poi.is_some() {
-            "Edit server POI"
-        } else {
-            "Add server POI"
-        };
-        let dialog_contents =
-            relm::init::<ServerPoiAddEditDialog>((db_sender, server_id, server_poi))
-                .expect("error initializing the server poi add edit modal");
-        let d_c = dialog_contents.clone();
-        prepare_custom_dialog(
-            widget_for_window,
-            600,
-            200,
-            title,
-            dialog_contents,
-            move || d_c.emit(MsgServerPoiAddEditDialog::OkPressed),
-        )
     }
 
     view! {

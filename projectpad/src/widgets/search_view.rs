@@ -5,6 +5,8 @@
 
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
+use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
+use super::dialogs::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
 use super::project_poi_header::{prepare_add_edit_server_dialog, AddEditServerInfo};
@@ -89,7 +91,7 @@ pub enum Msg {
     OpenItem(ProjectPadItem),
     EditItem(ProjectPadItem),
     OpenItemFull((Project, Option<ProjectItem>, Option<ServerItem>)),
-    ServerUpdated(Server),
+    SearchResultsModified,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -141,6 +143,7 @@ pub struct Model {
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
+    server_poi_add_edit_dialog: Option<relm::Component<ServerPoiAddEditDialog>>,
 }
 
 #[widget]
@@ -356,6 +359,7 @@ impl Widget for SearchView {
             action_popover: None,
             item_with_depressed_action: Rc::new(RefCell::new(None)),
             server_add_edit_dialog: None,
+            server_poi_add_edit_dialog: None,
         }
     }
 
@@ -404,18 +408,34 @@ impl Widget for SearchView {
                         AddEditServerInfo::EditServer(&srv),
                     );
                     relm::connect!(
-                        component@MsgServerAddEditDialog::ServerUpdated(ref srv),
+                        component@MsgServerAddEditDialog::ServerUpdated(_),
                         self.model.relm,
-                        Msg::ServerUpdated(srv.clone())
+                        Msg::SearchResultsModified
                     );
                     self.model.server_add_edit_dialog = Some(component);
+                    dialog.show();
+                }
+                ProjectPadItem::ServerPoi(srv_poi) => {
+                    let (dialog, component) =
+                        server_item_list_item::prepare_add_edit_server_poi_dialog(
+                            self.search_result_area.clone().upcast::<gtk::Widget>(),
+                            self.model.db_sender.clone(),
+                            srv_poi.server_id,
+                            Some(srv_poi),
+                        );
+                    relm::connect!(
+                        component@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
+                        self.model.relm,
+                        Msg::SearchResultsModified
+                    );
+                    self.model.server_poi_add_edit_dialog = Some(component);
                     dialog.show();
                 }
                 _ => {
                     eprintln!("edit not implemented yet for that item type");
                 }
             },
-            Msg::ServerUpdated(_) => {
+            Msg::SearchResultsModified => {
                 self.fetch_search_results();
             }
         }

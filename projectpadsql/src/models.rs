@@ -63,7 +63,9 @@ pub enum InterestType {
     PoiBackupArchive,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, EnumString, EnumIter, AsExpression, FromSqlRow, Display,
+)]
 #[sql_type = "Varchar"]
 pub enum RunOn {
     RunOnServer,

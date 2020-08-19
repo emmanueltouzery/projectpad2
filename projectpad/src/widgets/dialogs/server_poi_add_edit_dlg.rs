@@ -3,7 +3,7 @@ use super::standard_dialogs::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{InterestType, Server, ServerPointOfInterest};
+use projectpadsql::models::{InterestType, RunOn, ServerPointOfInterest};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::str::FromStr;
@@ -41,6 +41,8 @@ pub struct Model {
     description: String,
     path: String,
     text: String,
+    run_on: RunOn,
+    is_run_on_visible: bool,
     group_name: Option<String>,
     interest_type: InterestType,
 }
@@ -50,6 +52,7 @@ impl Widget for ServerPoiAddEditDialog {
     fn init_view(&mut self) {
         self.init_interest_type();
         self.init_group();
+        self.init_run_on();
     }
 
     fn interest_type_desc(interest_type: InterestType) -> &'static str {
@@ -74,6 +77,26 @@ impl Widget for ServerPoiAddEditDialog {
         }
         self.interest_type
             .set_active_id(Some(&self.model.interest_type.to_string()));
+    }
+
+    fn run_on_desc(run_on: RunOn) -> &'static str {
+        match run_on {
+            RunOn::RunOnClient => "Client",
+            RunOn::RunOnServer => "Server",
+        }
+    }
+
+    fn init_run_on(&self) {
+        let mut entries: Vec<_> = RunOn::iter()
+            .map(|st| (st, Self::run_on_desc(st)))
+            .collect();
+        entries.sort_by_key(|p| p.1);
+        for (entry_type, entry_desc) in entries {
+            self.run_on
+                .append(Some(&entry_type.to_string()), entry_desc);
+        }
+        self.run_on
+            .set_active_id(Some(&self.model.run_on.to_string()));
     }
 
     fn init_group(&self) {
@@ -104,6 +127,10 @@ impl Widget for ServerPoiAddEditDialog {
                 Ok(srv) => stream.emit(Msg::ServerPoiUpdated(srv)),
                 Err((msg, e)) => display_error_str(&msg, e),
             });
+        let interest_type = server_poi
+            .as_ref()
+            .map(|s| s.interest_type)
+            .unwrap_or(InterestType::PoiApplication);
         Model {
             relm: relm.clone(),
             db_sender,
@@ -125,10 +152,13 @@ impl Widget for ServerPoiAddEditDialog {
                 .map(|s| s.text.clone())
                 .unwrap_or_else(|| "".to_string()),
             group_name: server_poi.as_ref().and_then(|s| s.group_name.clone()),
-            interest_type: server_poi
+            interest_type,
+            is_run_on_visible: interest_type == InterestType::PoiCommandToRun
+                || interest_type == InterestType::PoiCommandTerminal,
+            run_on: server_poi
                 .as_ref()
-                .map(|s| s.interest_type)
-                .unwrap_or(InterestType::PoiApplication),
+                .map(|s| s.run_on)
+                .unwrap_or(RunOn::RunOnServer),
             _server_poi_updated_channel: server_poi_updated_channel,
             server_poi_updated_sender,
         }
@@ -162,6 +192,11 @@ impl Widget for ServerPoiAddEditDialog {
             .get_active_id()
             .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
             .expect("interest type not specified!?");
+        let new_run_on = self
+            .run_on
+            .get_active_id()
+            .map(|s| RunOn::from_str(s.as_str()).expect("Error parsing the run_on!?"))
+            .expect("run_on not specified!?");
         let s = self.model.server_poi_updated_sender.clone();
         self.model
             .db_sender
@@ -177,6 +212,7 @@ impl Widget for ServerPoiAddEditDialog {
                         .map(|s| s.as_str())
                         .filter(|s| !s.is_empty())),
                     srv_poi::interest_type.eq(new_interest_type),
+                    srv_poi::run_on.eq(new_run_on),
                 );
                 let row_id_result = match server_poi_id {
                     Some(id) => {
@@ -220,6 +256,7 @@ impl Widget for ServerPoiAddEditDialog {
             margin_bottom: 5,
             row_spacing: 5,
             column_spacing: 10,
+            visible: false,
             gtk::Label {
                 text: "Description",
                 halign: gtk::Align::End,
@@ -272,11 +309,29 @@ impl Widget for ServerPoiAddEditDialog {
                 },
             },
             gtk::Label {
+                text: "Run on",
+                halign: gtk::Align::End,
+                visible: self.model.is_run_on_visible,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 3,
+                },
+            },
+            #[name="run_on"]
+            gtk::ComboBoxText {
+                hexpand: true,
+                visible: self.model.is_run_on_visible,
+                cell: {
+                    left_attach: 1,
+                    top_attach: 3,
+                },
+            },
+            gtk::Label {
                 text: "Group",
                 halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
-                    top_attach: 3,
+                    top_attach: 4,
                 },
             },
             #[name="group"]
@@ -284,7 +339,7 @@ impl Widget for ServerPoiAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 3,
+                    top_attach: 4,
                 },
             },
             gtk::Label {
@@ -292,7 +347,7 @@ impl Widget for ServerPoiAddEditDialog {
                 halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
-                    top_attach: 4,
+                    top_attach: 5,
                 },
             },
             #[name="interest_type"]
@@ -300,7 +355,7 @@ impl Widget for ServerPoiAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 4,
+                    top_attach: 5,
                 },
             },
         }

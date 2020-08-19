@@ -1,6 +1,5 @@
 use gtk::prelude::*;
 use relm::Widget;
-use relm_derive::Msg;
 use std::error::Error;
 
 pub fn display_error(msg: &str, e: Option<Box<dyn Error>>) {
@@ -47,7 +46,7 @@ pub fn confirm_deletion(
             confirm_cb();
         }
     });
-    dialog.show_all();
+    dialog.show();
 }
 
 pub fn get_main_window(widget_for_window: gtk::Widget) -> gtk::Window {
@@ -75,6 +74,7 @@ pub fn prepare_custom_dialog<T: Widget>(
         .modal(true)
         .build();
 
+    dialog_contents.widget().show();
     dialog
         .get_content_area()
         .pack_start(dialog_contents.widget(), true, true, 0);

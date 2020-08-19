@@ -263,7 +263,7 @@ impl Widget for ServerAddEditDialog {
                         }
                     }
                 });
-                dialog.show_all();
+                dialog.show();
             }
             Msg::OkPressed => {
                 self.update_server();

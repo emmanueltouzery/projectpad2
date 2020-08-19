@@ -409,7 +409,7 @@ impl Widget for SearchView {
                         Msg::ServerUpdated(srv.clone())
                     );
                     self.model.server_add_edit_dialog = Some(component);
-                    dialog.show_all();
+                    dialog.show();
                 }
                 _ => {
                     eprintln!("edit not implemented yet for that item type");

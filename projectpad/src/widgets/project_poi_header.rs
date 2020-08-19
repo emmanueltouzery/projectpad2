@@ -360,7 +360,7 @@ impl Widget for ProjectPoiHeader {
                             Msg::ServerUpdated(srv.clone())
                         );
                         self.model.server_add_edit_dialog = Some(component);
-                        dialog.show_all();
+                        dialog.show();
                     }
                     Some(_) => {
                         eprintln!("TODO");

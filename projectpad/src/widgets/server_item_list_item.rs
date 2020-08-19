@@ -302,7 +302,7 @@ impl Widget for ServerItemListItem {
                     Msg::ServerPoiUpdated(srv.clone())
                 );
                 self.model.server_poi_add_edit_dialog = Some(component);
-                dialog.show_all();
+                dialog.show();
             }
             Msg::ServerPoiUpdated(server_poi) => {
                 self.model.server_item = ServerItem::PointOfInterest(server_poi);

@@ -1,5 +1,5 @@
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
-use super::dialogs::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
+use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
 use super::dialogs::standard_dialogs::*;
 use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
@@ -82,7 +82,7 @@ fn get_poi_grid_items(poi: &ServerPointOfInterest) -> Vec<GridItem> {
             poi.path.clone(),
         ),
         GridItem::new(
-            "Text",
+            server_poi_get_text_label(poi.interest_type),
             None,
             LabelText::PlainText(poi.text.clone()),
             poi.text.clone(),

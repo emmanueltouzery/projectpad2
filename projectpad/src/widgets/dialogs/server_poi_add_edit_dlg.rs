@@ -20,6 +20,13 @@ pub enum Msg {
 // String for details, because I can't pass Error across threads
 type SaveResult = Result<ServerPointOfInterest, (String, Option<String>)>;
 
+pub fn server_poi_get_text_label(interest_type: InterestType) -> &'static str {
+    match interest_type {
+        InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
+        _ => "Text",
+    }
+}
+
 pub struct Model {
     relm: relm::Relm<ServerPoiAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
@@ -33,6 +40,7 @@ pub struct Model {
 
     description: String,
     path: String,
+    text: String,
     group_name: Option<String>,
     interest_type: InterestType,
 }
@@ -112,6 +120,10 @@ impl Widget for ServerPoiAddEditDialog {
                 .as_ref()
                 .map(|s| s.path.clone())
                 .unwrap_or_else(|| "".to_string()),
+            text: server_poi
+                .as_ref()
+                .map(|s| s.text.clone())
+                .unwrap_or_else(|| "".to_string()),
             group_name: server_poi.as_ref().and_then(|s| s.group_name.clone()),
             interest_type: server_poi
                 .as_ref()
@@ -143,6 +155,7 @@ impl Widget for ServerPoiAddEditDialog {
         let server_poi_id = self.model.server_poi_id;
         let new_desc = self.desc_entry.get_text();
         let new_path = self.path_entry.get_text();
+        let new_text = self.text_entry.get_text();
         let new_group = self.group.get_active_text();
         let new_interest_type = self
             .interest_type
@@ -157,6 +170,7 @@ impl Widget for ServerPoiAddEditDialog {
                 let changeset = (
                     srv_poi::desc.eq(new_desc.as_str()),
                     srv_poi::path.eq(new_path.as_str()),
+                    srv_poi::text.eq(new_text.as_str()),
                     // never store Some("") for group, we want None then.
                     srv_poi::group_name.eq(new_group
                         .as_ref()
@@ -241,11 +255,28 @@ impl Widget for ServerPoiAddEditDialog {
                 },
             },
             gtk::Label {
-                text: "Group",
+                text: server_poi_get_text_label(self.model.interest_type),
                 halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
                     top_attach: 2,
+                },
+            },
+            #[name="text_entry"]
+            gtk::Entry {
+                hexpand: true,
+                text: &self.model.text,
+                cell: {
+                    left_attach: 1,
+                    top_attach: 2,
+                },
+            },
+            gtk::Label {
+                text: "Group",
+                halign: gtk::Align::End,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 3,
                 },
             },
             #[name="group"]
@@ -253,7 +284,7 @@ impl Widget for ServerPoiAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 2,
+                    top_attach: 3,
                 },
             },
             gtk::Label {
@@ -261,7 +292,7 @@ impl Widget for ServerPoiAddEditDialog {
                 halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,
-                    top_attach: 3,
+                    top_attach: 4,
                 },
             },
             #[name="interest_type"]
@@ -269,7 +300,7 @@ impl Widget for ServerPoiAddEditDialog {
                 hexpand: true,
                 cell: {
                     left_attach: 1,
-                    top_attach: 3,
+                    top_attach: 4,
                 },
             },
         }

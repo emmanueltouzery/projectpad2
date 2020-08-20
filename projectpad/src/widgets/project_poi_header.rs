@@ -1,6 +1,7 @@
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
-use super::dialogs::standard_dialogs::*;
+use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
+use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
@@ -16,6 +17,7 @@ enum ActionTypes {
     Edit,
     Copy,
     Delete,
+    AddItem,
 }
 
 #[derive(Msg)]
@@ -37,6 +39,7 @@ pub struct Model {
     header_popover: gtk::Popover,
     title: gtk::Label,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
+    server_add_item_dialog: Option<relm::Component<ServerAddItemDialog>>,
     _server_deleted_channel: relm::Channel<DeleteResult>,
     server_deleted_sender: relm::Sender<DeleteResult>,
 }
@@ -276,7 +279,7 @@ pub fn prepare_add_edit_server_dialog(
     ))
     .expect("error initializing the server add edit modal");
     let d_c = dialog_contents.clone();
-    prepare_custom_dialog(
+    standard_dialogs::prepare_custom_dialog(
         widget_for_window,
         600,
         350,
@@ -317,7 +320,7 @@ impl Widget for ProjectPoiHeader {
         let (_server_deleted_channel, server_deleted_sender) =
             relm::Channel::new(move |r: DeleteResult| match r {
                 Ok(srv) => stream.emit(Msg::ServerDeleted(srv)),
-                Err((msg, e)) => display_error_str(&msg, e),
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         Model {
             relm: relm.clone(),
@@ -330,6 +333,7 @@ impl Widget for ProjectPoiHeader {
                 .hexpand(true)
                 .build(),
             server_add_edit_dialog: None,
+            server_add_item_dialog: None,
             _server_deleted_channel,
             server_deleted_sender,
         }
@@ -373,7 +377,7 @@ impl Widget for ProjectPoiHeader {
                     Some(ProjectItem::Server(srv)) => {
                         let relm = self.model.relm.clone();
                         let server = srv.clone();
-                        confirm_deletion(
+                        standard_dialogs::confirm_deletion(
                             "Delete server",
                             &format!("Are you sure you want to delete the server {}? This action cannot be undone.", srv.desc),
                             self.items_frame.clone().upcast::<gtk::Widget>(),
@@ -384,6 +388,9 @@ impl Widget for ProjectPoiHeader {
                         eprintln!("TODO");
                     }
                 }
+            }
+            Msg::HeaderActionClicked((ActionTypes::AddItem, _)) => {
+                self.show_server_add_item_dialog();
             }
             Msg::ServerUpdated(server) => match self.model.project_item.as_ref() {
                 Some(ProjectItem::Server(srv)) => {
@@ -398,6 +405,22 @@ impl Widget for ProjectPoiHeader {
             // for my parent
             Msg::ServerDeleted(_) => {}
         }
+    }
+
+    fn show_server_add_item_dialog(&mut self) {
+        let dialog_contents = relm::init::<ServerAddItemDialog>(())
+            .expect("error initializing the server add item modal");
+        let d_c = dialog_contents.clone();
+        let (dialog, component) = standard_dialogs::prepare_custom_dialog(
+            self.items_frame.clone().upcast::<gtk::Widget>(),
+            400,
+            300,
+            "Add server item",
+            dialog_contents,
+            || {},
+        );
+        self.model.server_add_item_dialog = Some(component);
+        dialog.show();
     }
 
     fn delete_current_server(&self, server: Server) {
@@ -481,6 +504,10 @@ impl Widget for ProjectPoiHeader {
             (
                 gtk::ModelButtonBuilder::new().label("Edit").build(),
                 ActionTypes::Edit,
+            ),
+            (
+                gtk::ModelButtonBuilder::new().label("Add...").build(),
+                ActionTypes::AddItem,
             ),
             (
                 gtk::ModelButtonBuilder::new().label("Delete").build(),

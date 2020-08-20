@@ -13,6 +13,7 @@ use strum::IntoEnumIterator;
 #[derive(Msg, Debug)]
 pub enum Msg {
     GotGroups(Vec<String>),
+    InterestTypeChanged,
     OkPressed,
     ServerPoiUpdated(ServerPointOfInterest),
 }
@@ -153,8 +154,7 @@ impl Widget for ServerPoiAddEditDialog {
                 .unwrap_or_else(|| "".to_string()),
             group_name: server_poi.as_ref().and_then(|s| s.group_name.clone()),
             interest_type,
-            is_run_on_visible: interest_type == InterestType::PoiCommandToRun
-                || interest_type == InterestType::PoiCommandTerminal,
+            is_run_on_visible: Self::is_run_on_visible(interest_type),
             run_on: server_poi
                 .as_ref()
                 .map(|s| s.run_on)
@@ -162,6 +162,11 @@ impl Widget for ServerPoiAddEditDialog {
             _server_poi_updated_channel: server_poi_updated_channel,
             server_poi_updated_sender,
         }
+    }
+
+    fn is_run_on_visible(interest_type: InterestType) -> bool {
+        interest_type == InterestType::PoiCommandToRun
+            || interest_type == InterestType::PoiCommandTerminal
     }
 
     fn update(&mut self, event: Msg) {
@@ -174,11 +179,22 @@ impl Widget for ServerPoiAddEditDialog {
                     &self.model.group_name,
                 );
             }
+            Msg::InterestTypeChanged => {
+                self.model.is_run_on_visible =
+                    Self::is_run_on_visible(self.combo_read_interest_type());
+            }
             Msg::OkPressed => {
                 self.update_server_poi();
             }
             Msg::ServerPoiUpdated(_) => {} // meant for my parent, not me
         }
+    }
+
+    fn combo_read_interest_type(&self) -> InterestType {
+        self.interest_type
+            .get_active_id()
+            .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
+            .expect("interest type not specified!?")
     }
 
     fn update_server_poi(&self) {
@@ -187,11 +203,7 @@ impl Widget for ServerPoiAddEditDialog {
         let new_path = self.path_entry.get_text();
         let new_text = self.text_entry.get_text();
         let new_group = self.group.get_active_text();
-        let new_interest_type = self
-            .interest_type
-            .get_active_id()
-            .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
-            .expect("interest type not specified!?");
+        let new_interest_type = self.combo_read_interest_type();
         let new_run_on = self
             .run_on
             .get_active_id()
@@ -357,6 +369,7 @@ impl Widget for ServerPoiAddEditDialog {
                     left_attach: 1,
                     top_attach: 5,
                 },
+                changed(_) => Msg::InterestTypeChanged
             },
         }
     }

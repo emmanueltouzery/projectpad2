@@ -416,7 +416,7 @@ impl Widget for SearchView {
                     dialog.show();
                 }
                 ProjectPadItem::ServerPoi(srv_poi) => {
-                    let (dialog, component) =
+                    let (dialog, component, _) =
                         server_item_list_item::prepare_add_edit_server_poi_dialog(
                             self.search_result_area.clone().upcast::<gtk::Widget>(),
                             self.model.db_sender.clone(),

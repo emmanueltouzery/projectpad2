@@ -1,6 +1,6 @@
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
-use super::dialogs::standard_dialogs::*;
+use super::dialogs::standard_dialogs;
 use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
 use crate::icons::*;
@@ -153,7 +153,11 @@ pub fn prepare_add_edit_server_poi_dialog(
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     server_poi: Option<ServerPointOfInterest>,
-) -> (gtk::Dialog, relm::Component<ServerPoiAddEditDialog>) {
+) -> (
+    gtk::Dialog,
+    relm::Component<ServerPoiAddEditDialog>,
+    gtk::Button,
+) {
     let title = if server_poi.is_some() {
         "Edit server POI"
     } else {
@@ -162,13 +166,16 @@ pub fn prepare_add_edit_server_poi_dialog(
     let dialog_contents = relm::init::<ServerPoiAddEditDialog>((db_sender, server_id, server_poi))
         .expect("error initializing the server poi add edit modal");
     let d_c = dialog_contents.clone();
-    prepare_custom_dialog(
+    standard_dialogs::prepare_custom_dialog(
         widget_for_window,
         600,
         200,
         title,
         dialog_contents,
-        move || d_c.emit(MsgServerPoiAddEditDialog::OkPressed),
+        move |_| {
+            d_c.emit(MsgServerPoiAddEditDialog::OkPressed);
+            standard_dialogs::DialogActionResult::CloseDialog
+        },
     )
 }
 
@@ -314,7 +321,7 @@ impl Widget for ServerItemListItem {
             // meant for my parent
             Msg::ViewNote(_) => {}
             Msg::EditPoi(poi) => {
-                let (dialog, component) = prepare_add_edit_server_poi_dialog(
+                let (dialog, component, _) = prepare_add_edit_server_poi_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
                     self.model.db_sender.clone(),
                     poi.server_id,

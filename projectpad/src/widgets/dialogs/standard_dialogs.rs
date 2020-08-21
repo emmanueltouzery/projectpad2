@@ -56,14 +56,20 @@ pub fn get_main_window(widget_for_window: gtk::Widget) -> gtk::Window {
         .unwrap()
 }
 
+#[derive(PartialEq, Eq)]
+pub enum DialogActionResult {
+    CloseDialog,
+    DontCloseDialog,
+}
+
 pub fn prepare_custom_dialog<T: Widget>(
     widget_for_window: gtk::Widget,
     width: i32,
     height: i32,
     title: &'static str,
     dialog_contents: relm::Component<T>,
-    ok_callback: impl Fn() + 'static,
-) -> (gtk::Dialog, relm::Component<T>) {
+    ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
+) -> (gtk::Dialog, relm::Component<T>, gtk::Button) {
     let main_win = get_main_window(widget_for_window);
     let dialog = gtk::DialogBuilder::new()
         .use_header_bar(1)
@@ -79,13 +85,20 @@ pub fn prepare_custom_dialog<T: Widget>(
         .get_content_area()
         .pack_start(dialog_contents.widget(), true, true, 0);
     dialog.add_button("Cancel", gtk::ResponseType::Cancel);
-    let save = dialog.add_button("Save", gtk::ResponseType::Ok);
+    let save = dialog
+        .add_button("Save", gtk::ResponseType::Ok)
+        .downcast::<gtk::Button>()
+        .expect("error reading the dialog save button");
     save.get_style_context().add_class("suggested-action");
+    let save_btn = save.clone();
     dialog.connect_response(move |d, r| {
-        d.close();
         if r == gtk::ResponseType::Ok {
-            ok_callback();
+            if ok_callback(save_btn.clone()) == DialogActionResult::CloseDialog {
+                d.close();
+            }
+        } else {
+            d.close();
         }
     });
-    (dialog, dialog_contents)
+    (dialog, dialog_contents, save.clone())
 }

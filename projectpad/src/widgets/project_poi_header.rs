@@ -1,5 +1,6 @@
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
+use super::dialogs::server_add_item_dlg;
 use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
@@ -279,7 +280,7 @@ pub fn prepare_add_edit_server_dialog(
     ))
     .expect("error initializing the server add edit modal");
     let d_c = dialog_contents.clone();
-    standard_dialogs::prepare_custom_dialog(
+    let (dialog, component, _) = standard_dialogs::prepare_custom_dialog(
         widget_for_window,
         600,
         350,
@@ -289,8 +290,12 @@ pub fn prepare_add_edit_server_dialog(
             "Add server"
         },
         dialog_contents,
-        move || d_c.emit(MsgServerAddEditDialog::OkPressed),
-    )
+        move |_| {
+            d_c.emit(MsgServerAddEditDialog::OkPressed);
+            standard_dialogs::DialogActionResult::CloseDialog
+        },
+    );
+    (dialog, component)
 }
 
 #[widget]
@@ -408,17 +413,32 @@ impl Widget for ProjectPoiHeader {
     }
 
     fn show_server_add_item_dialog(&mut self) {
-        let dialog_contents = relm::init::<ServerAddItemDialog>(())
-            .expect("error initializing the server add item modal");
+        let dialog_contents = relm::init::<ServerAddItemDialog>((
+            self.model.db_sender.clone(),
+            match self.model.project_item {
+                Some(ProjectItem::Server(ref srv)) => srv.id,
+                _ => panic!(),
+            },
+        ))
+        .expect("error initializing the server add item modal");
         let d_c = dialog_contents.clone();
-        let (dialog, component) = standard_dialogs::prepare_custom_dialog(
+        let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
             self.items_frame.clone().upcast::<gtk::Widget>(),
             400,
             300,
             "Add server item",
             dialog_contents,
-            || {},
+            move |ok_btn| {
+                if ok_btn.get_label() == Some("Next".into()) {
+                    d_c.emit(server_add_item_dlg::Msg::ShowSecondTab);
+                    ok_btn.set_label("Done");
+                    standard_dialogs::DialogActionResult::DontCloseDialog
+                } else {
+                    standard_dialogs::DialogActionResult::CloseDialog
+                }
+            },
         );
+        ok_btn.set_label("Next");
         self.model.server_add_item_dialog = Some(component);
         dialog.show();
     }

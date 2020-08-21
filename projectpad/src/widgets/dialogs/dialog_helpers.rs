@@ -1,4 +1,7 @@
 use diesel::prelude::*;
+use diesel::query_builder::InsertStatement;
+use diesel::query_dsl::methods::ExecuteDsl;
+use diesel::sqlite::SqliteConnection;
 use gtk::prelude::*;
 
 pub fn get_project_group_names(
@@ -139,5 +142,43 @@ pub fn fill_groups(
             .dynamic_cast::<gtk::Entry>()
             .unwrap()
             .set_text(t);
+    }
+}
+
+no_arg_sql_function!(
+    last_insert_rowid,
+    diesel::sql_types::Integer,
+    "Represents the SQL last_insert_row() function"
+);
+
+/// insert a row and get back the id of the newly inserted row
+/// unfortunately sqlite doesn't support sql RETURNING
+pub fn insert_row(
+    sql_conn: &SqliteConnection,
+    insert_statement: impl ExecuteDsl<SqliteConnection>,
+) -> Result<i32, (String, Option<String>)> {
+    let insert_result = ExecuteDsl::execute(insert_statement, sql_conn)
+        .map_err(|e| ("Error inserting server".to_string(), Some(e.to_string())));
+    match insert_result {
+        Ok(1) => {
+            // https://github.com/diesel-rs/diesel/issues/771
+            // http://www.sqlite.org/c3ref/last_insert_rowid.html
+            // caveats of last_insert_rowid seem to be in case of multiple
+            // threads sharing a connection (which we don't do), and triggers
+            // and other things (which we don't have).
+            diesel::select(last_insert_rowid)
+                .get_result::<i32>(sql_conn)
+                .map_err(|e| {
+                    (
+                        "Error getting inserted server id".to_string(),
+                        Some(e.to_string()),
+                    )
+                })
+        }
+        Ok(x) => Err((
+            format!("Expected 1 row modified after insert, got {}!?", x),
+            None,
+        )),
+        Err(e) => Err(e),
     }
 }

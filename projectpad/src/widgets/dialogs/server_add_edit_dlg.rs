@@ -24,12 +24,6 @@ pub enum Msg {
     ServerUpdated(Server),
 }
 
-no_arg_sql_function!(
-    last_insert_rowid,
-    diesel::sql_types::Integer,
-    "Represents the SQL last_insert_row() function"
-);
-
 // String for details, because I can't pass Error across threads
 type SaveResult = Result<Server, (String, Option<String>)>;
 
@@ -331,34 +325,10 @@ impl Widget for ServerAddEditDialog {
                     }
                     None => {
                         // insert
-                        let insert_result = diesel::insert_into(srv::server)
-                            .values(changeset)
-                            .execute(sql_conn)
-                            .map_err(|e| {
-                                ("Error inserting server".to_string(), Some(e.to_string()))
-                            });
-                        match insert_result {
-                            Ok(1) => {
-                                // https://github.com/diesel-rs/diesel/issues/771
-                                // http://www.sqlite.org/c3ref/last_insert_rowid.html
-                                // caveats of last_insert_rowid seem to be in case of multiple
-                                // threads sharing a connection (which we don't do), and triggers
-                                // and other things (which we don't have).
-                                diesel::select(last_insert_rowid)
-                                    .get_result::<i32>(sql_conn)
-                                    .map_err(|e| {
-                                        (
-                                            "Error getting inserted server id".to_string(),
-                                            Some(e.to_string()),
-                                        )
-                                    })
-                            }
-                            Ok(x) => Err((
-                                format!("Expected 1 row modified after insert, got {}!?", x),
-                                None,
-                            )),
-                            Err(e) => Err(e),
-                        }
+                        dialog_helpers::insert_row(
+                            sql_conn,
+                            diesel::insert_into(srv::server).values(changeset),
+                        )
                     }
                 };
                 // re-read back the server

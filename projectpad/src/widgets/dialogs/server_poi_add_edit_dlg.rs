@@ -202,6 +202,7 @@ impl Widget for ServerPoiAddEditDialog {
 
     fn update_server_poi(&self) {
         let server_poi_id = self.model.server_poi_id;
+        let server_id = self.model.server_id;
         let new_desc = self.desc_entry.get_text();
         let new_path = self.path_entry.get_text();
         let new_text = self.text_entry.get_text();
@@ -228,6 +229,7 @@ impl Widget for ServerPoiAddEditDialog {
                         .filter(|s| !s.is_empty())),
                     srv_poi::interest_type.eq(new_interest_type),
                     srv_poi::run_on.eq(new_run_on),
+                    srv_poi::server_id.eq(server_id),
                 );
                 let row_id_result = match server_poi_id {
                     Some(id) => {
@@ -242,7 +244,11 @@ impl Widget for ServerPoiAddEditDialog {
                     }
                     None => {
                         // insert
-                        panic!();
+                        dialog_helpers::insert_row(
+                            sql_conn,
+                            diesel::insert_into(srv_poi::server_point_of_interest)
+                                .values(changeset),
+                        )
                     }
                 };
                 // re-read back the server

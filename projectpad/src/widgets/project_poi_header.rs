@@ -30,6 +30,7 @@ pub enum Msg {
     ServerDeleted(Server),
     DeleteCurrentServer(Server),
     ServerAddItemActionCompleted,
+    ProjectItemUpdated(Option<ProjectItem>),
 }
 
 // String for details, because I can't pass Error across threads
@@ -417,8 +418,14 @@ impl Widget for ProjectPoiHeader {
                 self.model.server_add_item_dialog.as_ref().unwrap().close();
                 self.model.server_add_item_dialog = None;
                 self.model.server_add_item_dialog_component = None;
-                // TODO refresh
+                // refresh
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ProjectItemUpdated(self.model.project_item.clone()));
             }
+            // meant for my parent
+            Msg::ProjectItemUpdated(pi) => {}
         }
     }
 

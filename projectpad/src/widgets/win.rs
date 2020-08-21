@@ -5,6 +5,7 @@ use super::project_list::{Msg::ProjectActivated, ProjectList, UpdateParents};
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
+use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
 use super::project_poi_header::Msg::ServerDeleted as ProjectPoiHeaderServerDeletedMsg;
 use super::project_poi_header::Msg::ServerUpdated as ProjectPoiHeaderServerUpdatedMsg;
 use super::project_poi_header::ProjectPoiHeader;
@@ -251,6 +252,7 @@ impl Widget for Win {
                         ProjectPoiHeader((self.model.db_sender.clone(), None)) {
                             ProjectPoiHeaderServerUpdatedMsg(ref srv) => Msg::ServerUpdated(srv.clone()),
                             ProjectPoiHeaderServerDeletedMsg(ref srv) => Msg::ServerDeleted(srv.clone()),
+                            ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone())
                         },
                         #[name="project_poi_contents"]
                         ProjectPoiContents(self.model.db_sender.clone()) {

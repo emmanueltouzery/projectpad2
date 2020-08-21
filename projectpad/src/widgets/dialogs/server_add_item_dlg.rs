@@ -1,3 +1,5 @@
+use super::server_poi_add_edit_dlg;
+use super::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
@@ -8,6 +10,8 @@ use std::sync::mpsc;
 #[derive(Msg, Debug)]
 pub enum Msg {
     ShowSecondTab,
+    OkPressed,
+    ActionCompleted,
 }
 
 pub struct Model {
@@ -40,18 +44,26 @@ impl Widget for ServerAddItemDialog {
                     None,
                 ))
                 .expect("error initializing the server poi add edit modal");
-                // relm::connect!(
-                //     component@MsgServerPoiAddEditDialog::ServerPoiUpdated(ref srv),
-                //     self.model.relm,
-                //     Msg::ServerPoiUpdated(srv.clone())
-                // );
+                relm::connect!(
+                    dialog_contents@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
+                    self.model.relm,
+                    Msg::ActionCompleted
+                );
                 let widget = dialog_contents.widget();
                 self.tabs_stack.add_named(widget, "dialog");
-                // self.tabs_stack.set_visible_child(widget);
                 widget.show();
                 self.tabs_stack.set_visible_child_name("dialog");
                 self.model.server_poi_add_edit_dialog = Some(dialog_contents);
             }
+            Msg::OkPressed => self
+                .model
+                .server_poi_add_edit_dialog
+                .as_ref()
+                .unwrap()
+                .stream()
+                .emit(server_poi_add_edit_dlg::Msg::OkPressed),
+            // meant for my parent
+            Msg::ActionCompleted => {}
         }
     }
 

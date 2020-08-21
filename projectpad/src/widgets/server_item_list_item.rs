@@ -1,3 +1,4 @@
+use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
 use super::dialogs::standard_dialogs;
@@ -168,8 +169,8 @@ pub fn prepare_add_edit_server_poi_dialog(
     let d_c = dialog_contents.clone();
     standard_dialogs::prepare_custom_dialog(
         widget_for_window,
-        600,
-        200,
+        server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_WIDTH,
+        server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_HEIGHT,
         title,
         dialog_contents,
         move |_| {

@@ -48,6 +48,9 @@ pub struct Model {
     interest_type: InterestType,
 }
 
+pub const SERVER_POI_ADD_EDIT_WIDTH: i32 = 600;
+pub const SERVER_POI_ADD_EDIT_HEIGHT: i32 = 200;
+
 #[widget]
 impl Widget for ServerPoiAddEditDialog {
     fn init_view(&mut self) {

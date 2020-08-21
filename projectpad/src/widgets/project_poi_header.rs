@@ -2,6 +2,7 @@ use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_add_item_dlg;
 use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
+use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
@@ -28,6 +29,7 @@ pub enum Msg {
     ServerUpdated(Server),
     ServerDeleted(Server),
     DeleteCurrentServer(Server),
+    ServerAddItemActionCompleted,
 }
 
 // String for details, because I can't pass Error across threads
@@ -40,7 +42,8 @@ pub struct Model {
     header_popover: gtk::Popover,
     title: gtk::Label,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
-    server_add_item_dialog: Option<relm::Component<ServerAddItemDialog>>,
+    server_add_item_dialog_component: Option<relm::Component<ServerAddItemDialog>>,
+    server_add_item_dialog: Option<gtk::Dialog>,
     _server_deleted_channel: relm::Channel<DeleteResult>,
     server_deleted_sender: relm::Sender<DeleteResult>,
 }
@@ -339,6 +342,7 @@ impl Widget for ProjectPoiHeader {
                 .build(),
             server_add_edit_dialog: None,
             server_add_item_dialog: None,
+            server_add_item_dialog_component: None,
             _server_deleted_channel,
             server_deleted_sender,
         }
@@ -409,6 +413,12 @@ impl Widget for ProjectPoiHeader {
             }
             // for my parent
             Msg::ServerDeleted(_) => {}
+            Msg::ServerAddItemActionCompleted => {
+                self.model.server_add_item_dialog.as_ref().unwrap().close();
+                self.model.server_add_item_dialog = None;
+                self.model.server_add_item_dialog_component = None;
+                // TODO refresh
+            }
         }
     }
 
@@ -424,22 +434,28 @@ impl Widget for ProjectPoiHeader {
         let d_c = dialog_contents.clone();
         let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
             self.items_frame.clone().upcast::<gtk::Widget>(),
-            400,
-            300,
+            server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_WIDTH,
+            server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_HEIGHT,
             "Add server item",
             dialog_contents,
             move |ok_btn| {
                 if ok_btn.get_label() == Some("Next".into()) {
                     d_c.emit(server_add_item_dlg::Msg::ShowSecondTab);
                     ok_btn.set_label("Done");
-                    standard_dialogs::DialogActionResult::DontCloseDialog
                 } else {
-                    standard_dialogs::DialogActionResult::CloseDialog
+                    d_c.emit(server_add_item_dlg::Msg::OkPressed);
                 }
+                standard_dialogs::DialogActionResult::DontCloseDialog
             },
         );
         ok_btn.set_label("Next");
-        self.model.server_add_item_dialog = Some(component);
+        relm::connect!(
+            component@server_add_item_dlg::Msg::ActionCompleted,
+            self.model.relm,
+            Msg::ServerAddItemActionCompleted
+        );
+        self.model.server_add_item_dialog_component = Some(component);
+        self.model.server_add_item_dialog = Some(dialog.clone());
         dialog.show();
     }
 

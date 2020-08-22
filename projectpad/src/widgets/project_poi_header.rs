@@ -1,3 +1,4 @@
+use super::dialogs::dialog_helpers;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_add_item_dlg;
@@ -495,19 +496,8 @@ impl Widget for ProjectPoiHeader {
                     .unwrap();
                 } else {
                     s.send(
-                        match diesel::delete(srv::server.filter(srv::id.eq(server_id)))
-                            .execute(sql_conn)
-                        {
-                            Ok(1) => Ok(server.clone()),
-                            Ok(x) => Err((
-                                "Server deletion failed",
-                                Some(format!(
-                                    "Expected 1 row to be modified, but {} rows were modified",
-                                    x
-                                )),
-                            )),
-                            Err(e) => Err(("Server deletion failed", Some(e.to_string()))),
-                        },
+                        dialog_helpers::delete_row(sql_conn, srv::server, server_id)
+                            .map(|_| server.clone()),
                     )
                     .unwrap();
                 }

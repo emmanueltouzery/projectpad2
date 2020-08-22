@@ -1,3 +1,4 @@
+use super::dialogs::dialog_helpers;
 use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
@@ -21,7 +22,13 @@ pub enum Msg {
     ViewNote(ServerNote),
     EditPoi(ServerPointOfInterest),
     ServerPoiUpdated(ServerPointOfInterest),
+    AskDeleteServerPoi(ServerPointOfInterest),
+    DeleteServerPoi(ServerPointOfInterest),
+    ServerPoiDeleted(ServerPointOfInterest),
 }
+
+// String for details, because I can't pass Error across threads
+type DeleteResult = Result<ServerPointOfInterest, (&'static str, Option<String>)>;
 
 pub struct Model {
     relm: relm::Relm<ServerItemListItem>,
@@ -30,6 +37,8 @@ pub struct Model {
     server_item: ServerItem,
     header_popover: gtk::Popover,
     title: (String, Icon),
+    _server_poi_deleted_channel: relm::Channel<DeleteResult>,
+    server_poi_deleted_sender: relm::Sender<DeleteResult>,
 }
 
 pub fn get_server_item_grid_items(server_item: &ServerItem) -> Vec<GridItem> {
@@ -184,6 +193,7 @@ pub fn prepare_add_edit_server_poi_dialog(
 enum ActionTypes {
     Copy,
     Edit,
+    Delete,
     View,
 }
 
@@ -209,10 +219,16 @@ impl Widget for ServerItemListItem {
                 gtk::ModelButtonBuilder::new().label("View").build(),
                 ActionTypes::View,
             )],
-            ServerItem::PointOfInterest(_) => vec![(
-                gtk::ModelButtonBuilder::new().label("Edit").build(),
-                ActionTypes::Edit,
-            )],
+            ServerItem::PointOfInterest(_) => vec![
+                (
+                    gtk::ModelButtonBuilder::new().label("Edit").build(),
+                    ActionTypes::Edit,
+                ),
+                (
+                    gtk::ModelButtonBuilder::new().label("Delete").build(),
+                    ActionTypes::Delete,
+                ),
+            ],
             _ => vec![],
         };
         let server_item = self.model.server_item.clone();
@@ -241,7 +257,18 @@ impl Widget for ServerItemListItem {
                     ),
                     _ => panic!(),
                 },
-                _ => {
+                ActionTypes::Delete => match server_item.clone() {
+                    ServerItem::PointOfInterest(poi) => {
+                        relm::connect!(
+                            self.model.relm,
+                            &btn,
+                            connect_clicked(_),
+                            Msg::AskDeleteServerPoi(poi.clone())
+                        );
+                    }
+                    _ => panic!(),
+                },
+                ActionTypes::Copy => {
                     relm::connect!(
                         self.model.relm,
                         &btn,
@@ -302,6 +329,14 @@ impl Widget for ServerItemListItem {
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, ServerItem)) -> Model {
         let (db_sender, server_item) = params;
+        let stream = relm.stream().clone();
+        let (_server_poi_deleted_channel, server_poi_deleted_sender) =
+            relm::Channel::new(move |r: DeleteResult| match r {
+                Ok(poi) => {
+                    stream.emit(Msg::ServerPoiDeleted(poi));
+                }
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+            });
         Model {
             relm: relm.clone(),
             db_sender,
@@ -309,6 +344,8 @@ impl Widget for ServerItemListItem {
             title: Self::get_title(&server_item),
             server_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
+            _server_poi_deleted_channel,
+            server_poi_deleted_sender,
         }
     }
 
@@ -341,6 +378,34 @@ impl Widget for ServerItemListItem {
                 self.model.title = Self::get_title(&self.model.server_item);
                 self.load_server_item();
             }
+            Msg::AskDeleteServerPoi(poi) => {
+                let relm = self.model.relm.clone();
+                standard_dialogs::confirm_deletion(
+                            "Delete server POI",
+                            &format!("Are you sure you want to delete the server POI {}? This action cannot be undone.", poi.desc),
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                    move || relm.stream().emit(Msg::DeleteServerPoi(poi.clone())));
+            }
+            Msg::DeleteServerPoi(poi) => {
+                use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+                let s = self.model.server_poi_deleted_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        s.send(
+                            dialog_helpers::delete_row(
+                                sql_conn,
+                                srv_poi::server_point_of_interest,
+                                poi.id,
+                            )
+                            .map(|_| poi.clone()),
+                        )
+                        .unwrap();
+                    }))
+                    .unwrap();
+            }
+            // for my parent
+            Msg::ServerPoiDeleted(_) => {}
         }
     }
 

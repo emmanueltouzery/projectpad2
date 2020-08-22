@@ -1,7 +1,9 @@
 use diesel::prelude::*;
-use diesel::query_builder::InsertStatement;
+use diesel::query_builder::IntoUpdateTarget;
 use diesel::query_dsl::methods::ExecuteDsl;
+use diesel::query_dsl::methods::FindDsl;
 use diesel::sqlite::SqliteConnection;
+use diesel::{associations::HasTable, helper_types::Find, query_builder::DeleteStatement};
 use gtk::prelude::*;
 
 pub fn get_project_group_names(
@@ -180,5 +182,34 @@ pub fn insert_row(
             None,
         )),
         Err(e) => Err(e),
+    }
+}
+
+// https://stackoverflow.com/a/55213728/516188
+type DeleteFindStatement<F> =
+    DeleteStatement<<F as HasTable>::Table, <F as IntoUpdateTarget>::WhereClause>;
+
+pub fn delete_row<Tbl, Pk>(
+    sql_conn: &SqliteConnection,
+    table: Tbl,
+    pk: Pk,
+) -> Result<(), (&'static str, Option<String>)>
+where
+    Tbl: FindDsl<Pk>,
+    Find<Tbl, Pk>: IntoUpdateTarget,
+    DeleteFindStatement<Find<Tbl, Pk>>: ExecuteDsl<SqliteConnection>,
+{
+    let find = table.find(pk);
+    let delete = diesel::delete(find);
+    match delete.execute(sql_conn) {
+        Ok(1) => Ok(()),
+        Ok(x) => Err((
+            "Server deletion failed",
+            Some(format!(
+                "Expected 1 row to be modified, but {} rows were modified",
+                x
+            )),
+        )),
+        Err(e) => Err(("Server deletion failed", Some(e.to_string()))),
     }
 }

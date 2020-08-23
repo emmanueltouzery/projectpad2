@@ -1,6 +1,8 @@
 use super::dialog_helpers;
 use super::server_poi_add_edit_dlg::fetch_server_groups;
+use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerDatabase;
 use relm::Widget;
@@ -10,7 +12,12 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     GotGroups(Vec<String>),
+    OkPressed,
+    ServerDbUpdated(ServerDatabase),
 }
+
+// String for details, because I can't pass Error across threads
+type SaveResult = Result<ServerDatabase, (String, Option<String>)>;
 
 pub struct Model {
     relm: relm::Relm<ServerDatabaseAddEditDialog>,
@@ -21,6 +28,9 @@ pub struct Model {
     _groups_channel: relm::Channel<Vec<String>>,
     groups_sender: relm::Sender<Vec<String>>,
 
+    _server_db_updated_channel: relm::Channel<SaveResult>,
+    server_db_updated_sender: relm::Sender<SaveResult>,
+
     description: String,
     name: String,
     group_name: Option<String>,
@@ -28,6 +38,9 @@ pub struct Model {
     username: String,
     password: String,
 }
+
+pub const SERVER_DATABASE_ADD_EDIT_WIDTH: i32 = 600;
+pub const SERVER_DATABASE_ADD_EDIT_HEIGHT: i32 = 200;
 
 #[widget]
 impl Widget for ServerDatabaseAddEditDialog {
@@ -54,6 +67,12 @@ impl Widget for ServerDatabaseAddEditDialog {
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
             stream.emit(Msg::GotGroups(groups));
         });
+        let stream2 = relm.stream().clone();
+        let (server_db_updated_channel, server_db_updated_sender) =
+            relm::Channel::new(move |r: SaveResult| match r {
+                Ok(srv_db) => stream2.emit(Msg::ServerDbUpdated(srv_db)),
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+            });
         Model {
             relm: relm.clone(),
             db_sender,
@@ -61,6 +80,8 @@ impl Widget for ServerDatabaseAddEditDialog {
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             _groups_channel: groups_channel,
             groups_sender,
+            _server_db_updated_channel: server_db_updated_channel,
+            server_db_updated_sender,
             description: sd.map(|d| d.desc.clone()).unwrap_or_else(|| "".to_string()),
             name: sd.map(|d| d.name.clone()).unwrap_or_else(|| "".to_string()),
             group_name: sd.and_then(|s| s.group_name.clone()),
@@ -74,7 +95,47 @@ impl Widget for ServerDatabaseAddEditDialog {
         }
     }
 
-    fn update(&mut self, event: Msg) {}
+    fn update(&mut self, event: Msg) {
+        match event {
+            Msg::GotGroups(groups) => {
+                dialog_helpers::fill_groups(
+                    &self.model.groups_store,
+                    &self.group,
+                    &groups,
+                    &self.model.group_name,
+                );
+            }
+            Msg::OkPressed => {
+                self.update_server_db();
+            }
+            // meant for my parent
+            Msg::ServerDbUpdated(_) => {}
+        }
+    }
+
+    fn update_server_db(&self) {
+        let server_id = self.model.server_id;
+        let new_desc = self.desc_entry.get_text();
+        let new_text = self.text_entry.get_text();
+        let new_group = self.group.get_active_text();
+        let s = self.model.server_db_updated_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server_database::dsl as srv_db;
+                let changeset = (
+                    srv_db::desc.eq(new_desc.as_str()),
+                    srv_db::text.eq(new_text.as_str()),
+                    // never store Some("") for group, we want None then.
+                    srv_db::group_name.eq(new_group
+                        .as_ref()
+                        .map(|s| s.as_str())
+                        .filter(|s| !s.is_empty())),
+                    srv_db::server_id.eq(server_id),
+                );
+            }))
+            .unwrap();
+    }
 
     view! {
         gtk::Grid {

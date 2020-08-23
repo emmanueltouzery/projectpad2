@@ -1,4 +1,6 @@
 use super::dialogs::dialog_helpers;
+use super::dialogs::server_database_add_edit_dlg;
+use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
@@ -21,6 +23,7 @@ pub enum Msg {
     CopyClicked(String),
     ViewNote(ServerNote),
     EditPoi(ServerPointOfInterest),
+    EditDb(ServerDatabase),
     ServerPoiUpdated(ServerPointOfInterest),
     AskDeleteServerPoi(ServerPointOfInterest),
     DeleteServerPoi(ServerPointOfInterest),
@@ -34,6 +37,7 @@ pub struct Model {
     relm: relm::Relm<ServerItemListItem>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_poi_add_edit_dialog: Option<relm::Component<ServerPoiAddEditDialog>>,
+    server_db_add_edit_dialog: Option<relm::Component<ServerDatabaseAddEditDialog>>,
     server_item: ServerItem,
     header_popover: gtk::Popover,
     title: (String, Icon),
@@ -189,6 +193,38 @@ pub fn prepare_add_edit_server_poi_dialog(
     )
 }
 
+pub fn prepare_add_edit_server_db_dialog(
+    widget_for_window: gtk::Widget,
+    db_sender: mpsc::Sender<SqlFunc>,
+    server_id: i32,
+    server_db: Option<ServerDatabase>,
+) -> (
+    gtk::Dialog,
+    relm::Component<ServerDatabaseAddEditDialog>,
+    gtk::Button,
+) {
+    let title = if server_db.is_some() {
+        "Edit server database"
+    } else {
+        "Add server database"
+    };
+    let dialog_contents =
+        relm::init::<ServerDatabaseAddEditDialog>((db_sender, server_id, server_db))
+            .expect("error initializing the server db add edit modal");
+    let d_c = dialog_contents.clone();
+    standard_dialogs::prepare_custom_dialog(
+        widget_for_window,
+        server_database_add_edit_dlg::SERVER_DATABASE_ADD_EDIT_WIDTH,
+        server_database_add_edit_dlg::SERVER_DATABASE_ADD_EDIT_HEIGHT,
+        title,
+        dialog_contents,
+        move |_| {
+            d_c.emit(server_database_add_edit_dlg::Msg::OkPressed);
+            standard_dialogs::DialogActionResult::CloseDialog
+        },
+    )
+}
+
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum ActionTypes {
     Copy,
@@ -229,6 +265,10 @@ impl Widget for ServerItemListItem {
                     ActionTypes::Delete,
                 ),
             ],
+            ServerItem::Database(_) => vec![(
+                gtk::ModelButtonBuilder::new().label("Edit").build(),
+                ActionTypes::Edit,
+            )],
             _ => vec![],
         };
         let server_item = self.model.server_item.clone();
@@ -254,6 +294,12 @@ impl Widget for ServerItemListItem {
                         &btn,
                         connect_clicked(_),
                         Msg::EditPoi(poi.clone())
+                    ),
+                    ServerItem::Database(db) => relm::connect!(
+                        self.model.relm,
+                        &btn,
+                        connect_clicked(_),
+                        Msg::EditDb(db.clone())
                     ),
                     _ => panic!(),
                 },
@@ -341,6 +387,7 @@ impl Widget for ServerItemListItem {
             relm: relm.clone(),
             db_sender,
             server_poi_add_edit_dialog: None,
+            server_db_add_edit_dialog: None,
             title: Self::get_title(&server_item),
             server_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
@@ -371,6 +418,21 @@ impl Widget for ServerItemListItem {
                     Msg::ServerPoiUpdated(srv.clone())
                 );
                 self.model.server_poi_add_edit_dialog = Some(component);
+                dialog.show();
+            }
+            Msg::EditDb(db) => {
+                let (dialog, component, _) = prepare_add_edit_server_db_dialog(
+                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.model.db_sender.clone(),
+                    db.server_id,
+                    Some(db),
+                );
+                // relm::connect!(
+                //     component@MsgServerPoiAddEditDialog::ServerPoiUpdated(ref srv),
+                //     self.model.relm,
+                //     Msg::ServerPoiUpdated(srv.clone())
+                // );
+                self.model.server_db_add_edit_dialog = Some(component);
                 dialog.show();
             }
             Msg::ServerPoiUpdated(server_poi) => {

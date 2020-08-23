@@ -1,5 +1,5 @@
 use super::dialog_helpers;
-use super::standard_dialogs::*;
+use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -139,7 +139,7 @@ impl Widget for ServerPoiAddEditDialog {
         let (server_poi_updated_channel, server_poi_updated_sender) =
             relm::Channel::new(move |r: SaveResult| match r {
                 Ok(srv) => stream.emit(Msg::ServerPoiUpdated(srv)),
-                Err((msg, e)) => display_error_str(&msg, e),
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         let interest_type = server_poi
             .as_ref()

@@ -236,38 +236,14 @@ impl Widget for ServerPoiAddEditDialog {
                     srv_poi::run_on.eq(new_run_on),
                     srv_poi::server_id.eq(server_id),
                 );
-                let row_id_result = match server_poi_id {
-                    Some(id) => {
-                        // update
-                        diesel::update(srv_poi::server_point_of_interest.filter(srv_poi::id.eq(id)))
-                            .set(changeset)
-                            .execute(sql_conn)
-                            .map_err(|e| {
-                                ("Error updating server poi".to_string(), Some(e.to_string()))
-                            })
-                            .map(|_| id)
-                    }
-                    None => {
-                        // insert
-                        dialog_helpers::insert_row(
-                            sql_conn,
-                            diesel::insert_into(srv_poi::server_point_of_interest)
-                                .values(changeset),
-                        )
-                    }
-                };
-                // re-read back the server
-                let server_poi_after_result = row_id_result.and_then(|row_id| {
-                    srv_poi::server_point_of_interest
-                        .filter(srv_poi::id.eq(row_id))
-                        .first::<ServerPointOfInterest>(sql_conn)
-                        .map_err(|e| {
-                            (
-                                "Error reading back server poi".to_string(),
-                                Some(e.to_string()),
-                            )
-                        })
-                });
+                let server_poi_after_result = perform_insert_or_update!(
+                    sql_conn,
+                    server_poi_id,
+                    srv_poi::server_point_of_interest,
+                    srv_poi::id,
+                    changeset,
+                    ServerPointOfInterest,
+                );
                 s.send(server_poi_after_result).unwrap();
             }))
             .unwrap();

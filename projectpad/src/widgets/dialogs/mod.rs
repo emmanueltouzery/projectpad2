@@ -1,3 +1,4 @@
+#[macro_use]
 pub mod dialog_helpers;
 pub mod server_add_edit_dlg;
 pub mod server_add_item_dlg;

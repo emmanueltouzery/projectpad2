@@ -213,3 +213,32 @@ where
         Err(e) => Err(("Server deletion failed", Some(e.to_string()))),
     }
 }
+
+// I tried to implement this with generics with diesel... gave up.
+// way simpler with macros.
+macro_rules! perform_insert_or_update {
+    ($sql_conn:expr, $row_id:expr, $table:expr, $key:expr, $changeset: expr, $type: tt,) => {{
+        use crate::widgets::dialogs::dialog_helpers::insert_row;
+        let row_id_result = match $row_id {
+            Some(id) => {
+                // update
+                diesel::update($table.filter($key.eq(id)))
+                    .set($changeset)
+                    .execute($sql_conn)
+                    .map_err(|e| ("Error updating entity".to_string(), Some(e.to_string())))
+                    .map(|_| id)
+            }
+            None => {
+                // insert
+                insert_row($sql_conn, diesel::insert_into($table).values($changeset))
+            }
+        };
+        // re-read back the server
+        row_id_result.and_then(|row_id| {
+            $table
+                .filter($key.eq(row_id))
+                .first::<$type>($sql_conn)
+                .map_err(|e| ("Error reading back entity".to_string(), Some(e.to_string())))
+        })
+    }};
+}

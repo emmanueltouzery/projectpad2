@@ -23,6 +23,7 @@ pub struct Model {
     relm: relm::Relm<ServerDatabaseAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
+    server_db_id: Option<i32>,
 
     groups_store: gtk::ListStore,
     _groups_channel: relm::Channel<Vec<String>>,
@@ -77,6 +78,7 @@ impl Widget for ServerDatabaseAddEditDialog {
             relm: relm.clone(),
             db_sender,
             server_id,
+            server_db_id: sd.map(|d| d.id),
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             _groups_channel: groups_channel,
             groups_sender,
@@ -115,6 +117,7 @@ impl Widget for ServerDatabaseAddEditDialog {
 
     fn update_server_db(&self) {
         let server_id = self.model.server_id;
+        let server_db_id = self.model.server_db_id;
         let new_desc = self.desc_entry.get_text();
         let new_text = self.text_entry.get_text();
         let new_group = self.group.get_active_text();
@@ -133,6 +136,15 @@ impl Widget for ServerDatabaseAddEditDialog {
                         .filter(|s| !s.is_empty())),
                     srv_db::server_id.eq(server_id),
                 );
+                let server_db_after_result = perform_insert_or_update!(
+                    sql_conn,
+                    server_db_id,
+                    srv_db::server_database,
+                    srv_db::id,
+                    changeset,
+                    ServerDatabase,
+                );
+                s.send(server_db_after_result).unwrap();
             }))
             .unwrap();
     }

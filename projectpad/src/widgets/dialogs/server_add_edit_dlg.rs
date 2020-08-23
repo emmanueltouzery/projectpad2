@@ -305,30 +305,14 @@ impl Widget for ServerAddEditDialog {
                     srv::access_type.eq(new_server_accesstype),
                     srv::project_id.eq(project_id),
                 );
-                let row_id_result = match server_id {
-                    Some(id) => {
-                        // update
-                        diesel::update(srv::server.filter(srv::id.eq(id)))
-                            .set(changeset)
-                            .execute(sql_conn)
-                            .map_err(|e| ("Error updating server".to_string(), Some(e.to_string())))
-                            .map(|_| id)
-                    }
-                    None => {
-                        // insert
-                        dialog_helpers::insert_row(
-                            sql_conn,
-                            diesel::insert_into(srv::server).values(changeset),
-                        )
-                    }
-                };
-                // re-read back the server
-                let server_after_result = row_id_result.and_then(|row_id| {
-                    srv::server
-                        .filter(srv::id.eq(row_id))
-                        .first::<Server>(sql_conn)
-                        .map_err(|e| ("Error reading back server".to_string(), Some(e.to_string())))
-                });
+                let server_after_result = perform_insert_or_update!(
+                    sql_conn,
+                    server_id,
+                    srv::server,
+                    srv::id,
+                    changeset,
+                    Server,
+                );
                 s.send(server_after_result).unwrap();
             }))
             .unwrap();

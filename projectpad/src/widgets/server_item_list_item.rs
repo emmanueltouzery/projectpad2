@@ -1,5 +1,6 @@
 use super::dialogs::dialog_helpers;
 use super::dialogs::server_database_add_edit_dlg;
+use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
@@ -25,6 +26,7 @@ pub enum Msg {
     EditPoi(ServerPointOfInterest),
     EditDb(ServerDatabase),
     ServerPoiUpdated(ServerPointOfInterest),
+    ServerDbUpdated(ServerDatabase),
     AskDeleteServerPoi(ServerPointOfInterest),
     DeleteServerPoi(ServerPointOfInterest),
     ServerPoiDeleted(ServerPointOfInterest),
@@ -427,11 +429,11 @@ impl Widget for ServerItemListItem {
                     db.server_id,
                     Some(db),
                 );
-                // relm::connect!(
-                //     component@MsgServerPoiAddEditDialog::ServerPoiUpdated(ref srv),
-                //     self.model.relm,
-                //     Msg::ServerPoiUpdated(srv.clone())
-                // );
+                relm::connect!(
+                    component@MsgServerDatabaseAddEditDialog::ServerDbUpdated(ref srv),
+                    self.model.relm,
+                    Msg::ServerDbUpdated(srv.clone())
+                );
                 self.model.server_db_add_edit_dialog = Some(component);
                 dialog.show();
             }
@@ -468,6 +470,11 @@ impl Widget for ServerItemListItem {
             }
             // for my parent
             Msg::ServerPoiDeleted(_) => {}
+            Msg::ServerDbUpdated(server_db) => {
+                self.model.server_item = ServerItem::Database(server_db);
+                self.model.title = Self::get_title(&self.model.server_item);
+                self.load_server_item();
+            }
         }
     }
 

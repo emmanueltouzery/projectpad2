@@ -38,7 +38,6 @@ pub struct Model {
     project_id: i32,
     server_id: Option<i32>,
 
-    // TODO i don't think i need all these fields in the model!!
     description: String,
     is_retired: bool,
     address: String,
@@ -149,6 +148,7 @@ impl Widget for ServerAddEditDialog {
                 Ok(srv) => stream2.emit(Msg::ServerUpdated(srv)),
                 Err((msg, e)) => display_error_str(&msg, e),
             });
+        let srv = server.as_ref();
         Model {
             relm: relm.clone(),
             db_sender,
@@ -158,39 +158,30 @@ impl Widget for ServerAddEditDialog {
             server_updated_sender,
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             project_id,
-            server_id: server.as_ref().map(|s| s.id),
-            description: server
-                .as_ref()
+            server_id: srv.map(|s| s.id),
+            description: srv
                 .map(|s| s.desc.clone())
                 .unwrap_or_else(|| "".to_string()),
-            is_retired: server.as_ref().map(|s| s.is_retired).unwrap_or(false),
-            address: server
-                .as_ref()
-                .map(|s| s.ip.clone())
-                .unwrap_or_else(|| "".to_string()),
-            text: server
-                .as_ref()
+            is_retired: srv.map(|s| s.is_retired).unwrap_or(false),
+            address: srv.map(|s| s.ip.clone()).unwrap_or_else(|| "".to_string()),
+            text: srv
                 .map(|s| s.text.clone())
                 .unwrap_or_else(|| "".to_string()),
-            group_name: server.as_ref().and_then(|s| s.group_name.clone()),
-            username: server
-                .as_ref()
+            group_name: srv.and_then(|s| s.group_name.clone()),
+            username: srv
                 .map(|s| s.username.clone())
                 .unwrap_or_else(|| "".to_string()),
-            password: server
-                .as_ref()
+            password: srv
                 .map(|s| s.password.clone())
                 .unwrap_or_else(|| "".to_string()),
-            server_type: server
-                .as_ref()
+            server_type: srv
                 .map(|s| s.server_type)
                 .unwrap_or(ServerType::SrvApplication),
-            server_access_type: server
-                .as_ref()
+            server_access_type: srv
                 .map(|s| s.access_type)
                 .unwrap_or(ServerAccessType::SrvAccessSsh),
-            auth_key_filename: server.as_ref().and_then(|s| s.auth_key_filename.clone()),
-            auth_key: server.as_ref().and_then(|s| s.auth_key.clone()),
+            auth_key_filename: srv.and_then(|s| s.auth_key_filename.clone()),
+            auth_key: srv.and_then(|s| s.auth_key.clone()),
         }
     }
 

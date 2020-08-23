@@ -28,6 +28,20 @@ pub fn server_poi_get_text_label(interest_type: InterestType) -> &'static str {
     }
 }
 
+pub fn fetch_server_groups(
+    groups_sender: &relm::Sender<Vec<String>>,
+    server_id: i32,
+    db_sender: &mpsc::Sender<SqlFunc>,
+) {
+    let s = groups_sender.clone();
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            s.send(dialog_helpers::get_server_group_names(sql_conn, server_id))
+                .unwrap();
+        }))
+        .unwrap();
+}
+
 pub struct Model {
     relm: relm::Relm<ServerPoiAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
@@ -104,16 +118,12 @@ impl Widget for ServerPoiAddEditDialog {
     }
 
     fn init_group(&self) {
-        let s = self.model.groups_sender.clone();
-        let sid = self.model.server_id;
-        self.model
-            .db_sender
-            .send(SqlFunc::new(move |sql_conn| {
-                s.send(dialog_helpers::get_server_group_names(sql_conn, sid))
-                    .unwrap();
-            }))
-            .unwrap();
         dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        fetch_server_groups(
+            &self.model.groups_sender,
+            self.model.server_id,
+            &self.model.db_sender,
+        );
     }
 
     fn model(
@@ -135,33 +145,28 @@ impl Widget for ServerPoiAddEditDialog {
             .as_ref()
             .map(|s| s.interest_type)
             .unwrap_or(InterestType::PoiApplication);
+        let poi = server_poi.as_ref();
         Model {
             relm: relm.clone(),
             db_sender,
             server_id,
-            server_poi_id: server_poi.as_ref().map(|s| s.id),
+            server_poi_id: poi.map(|s| s.id),
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             _groups_channel: groups_channel,
             groups_sender,
-            description: server_poi
-                .as_ref()
+            description: poi
                 .map(|s| s.desc.clone())
                 .unwrap_or_else(|| "".to_string()),
-            path: server_poi
-                .as_ref()
+            path: poi
                 .map(|s| s.path.clone())
                 .unwrap_or_else(|| "".to_string()),
-            text: server_poi
-                .as_ref()
+            text: poi
                 .map(|s| s.text.clone())
                 .unwrap_or_else(|| "".to_string()),
-            group_name: server_poi.as_ref().and_then(|s| s.group_name.clone()),
+            group_name: poi.and_then(|s| s.group_name.clone()),
             interest_type,
             is_run_on_visible: Self::is_run_on_visible(interest_type),
-            run_on: server_poi
-                .as_ref()
-                .map(|s| s.run_on)
-                .unwrap_or(RunOn::RunOnServer),
+            run_on: poi.map(|s| s.run_on).unwrap_or(RunOn::RunOnServer),
             _server_poi_updated_channel: server_poi_updated_channel,
             server_poi_updated_sender,
         }

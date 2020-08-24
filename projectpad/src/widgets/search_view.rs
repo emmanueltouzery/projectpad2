@@ -5,6 +5,8 @@
 
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
+use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDbAddEditDialog;
+use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
 use super::project_items_list::ProjectItem;
@@ -144,6 +146,7 @@ pub struct Model {
     action_popover: Option<gtk::Popover>,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
     server_poi_add_edit_dialog: Option<relm::Component<ServerPoiAddEditDialog>>,
+    server_db_add_edit_dialog: Option<relm::Component<ServerDatabaseAddEditDialog>>,
 }
 
 #[widget]
@@ -360,6 +363,7 @@ impl Widget for SearchView {
             item_with_depressed_action: Rc::new(RefCell::new(None)),
             server_add_edit_dialog: None,
             server_poi_add_edit_dialog: None,
+            server_db_add_edit_dialog: None,
         }
     }
 
@@ -429,6 +433,22 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_poi_add_edit_dialog = Some(component);
+                    dialog.show();
+                }
+                ProjectPadItem::ServerDatabase(srv_db) => {
+                    let (dialog, component, _) =
+                        server_item_list_item::prepare_add_edit_server_db_dialog(
+                            self.search_result_area.clone().upcast::<gtk::Widget>(),
+                            self.model.db_sender.clone(),
+                            srv_db.server_id,
+                            Some(srv_db),
+                        );
+                    relm::connect!(
+                        component@MsgServerDbAddEditDialog::ServerDbUpdated(_),
+                        self.model.relm,
+                        Msg::SearchResultsModified
+                    );
+                    self.model.server_db_add_edit_dialog = Some(component);
                     dialog.show();
                 }
                 _ => {

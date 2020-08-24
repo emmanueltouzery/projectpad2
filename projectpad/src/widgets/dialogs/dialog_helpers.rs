@@ -160,7 +160,7 @@ pub fn insert_row(
     insert_statement: impl ExecuteDsl<SqliteConnection>,
 ) -> Result<i32, (String, Option<String>)> {
     let insert_result = ExecuteDsl::execute(insert_statement, sql_conn)
-        .map_err(|e| ("Error inserting server".to_string(), Some(e.to_string())));
+        .map_err(|e| ("Error inserting entity".to_string(), Some(e.to_string())));
     match insert_result {
         Ok(1) => {
             // https://github.com/diesel-rs/diesel/issues/771
@@ -172,7 +172,7 @@ pub fn insert_row(
                 .get_result::<i32>(sql_conn)
                 .map_err(|e| {
                     (
-                        "Error getting inserted server id".to_string(),
+                        "Error getting inserted entity id".to_string(),
                         Some(e.to_string()),
                     )
                 })
@@ -204,18 +204,19 @@ where
     match delete.execute(sql_conn) {
         Ok(1) => Ok(()),
         Ok(x) => Err((
-            "Server deletion failed",
+            "Entity deletion failed",
             Some(format!(
                 "Expected 1 row to be modified, but {} rows were modified",
                 x
             )),
         )),
-        Err(e) => Err(("Server deletion failed", Some(e.to_string()))),
+        Err(e) => Err(("Entity deletion failed", Some(e.to_string()))),
     }
 }
 
 // I tried to implement this with generics with diesel... gave up.
 // way simpler with macros.
+// i'm not the only one: https://users.rust-lang.org/t/creating-a-generic-insert-method-for-diesel/24124/2
 macro_rules! perform_insert_or_update {
     ($sql_conn:expr, $row_id:expr, $table:expr, $key:expr, $changeset: expr, $type: tt,) => {{
         use crate::widgets::dialogs::dialog_helpers::insert_row;

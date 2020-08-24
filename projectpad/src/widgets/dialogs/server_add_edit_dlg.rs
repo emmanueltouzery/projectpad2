@@ -57,6 +57,7 @@ pub struct Model {
 #[widget]
 impl Widget for ServerAddEditDialog {
     fn init_view(&mut self) {
+        dialog_helpers::style_grid(&self.grid);
         self.init_server_type();
         self.init_server_access_type();
         self.init_group();
@@ -334,12 +335,6 @@ impl Widget for ServerAddEditDialog {
     view! {
         #[name="grid"]
         gtk::Grid {
-            margin_start: 30,
-            margin_end: 30,
-            margin_top: 10,
-            margin_bottom: 5,
-            row_spacing: 5,
-            column_spacing: 10,
             gtk::Label {
                 text: "Description",
                 halign: gtk::Align::End,

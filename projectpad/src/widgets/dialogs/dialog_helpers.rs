@@ -243,3 +243,12 @@ macro_rules! perform_insert_or_update {
         })
     }};
 }
+
+pub fn style_grid(grid: &gtk::Grid) {
+    grid.set_margin_start(30);
+    grid.set_margin_end(30);
+    grid.set_margin_top(10);
+    grid.set_margin_bottom(5);
+    grid.set_row_spacing(5);
+    grid.set_column_spacing(10);
+}

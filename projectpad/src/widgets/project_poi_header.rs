@@ -294,6 +294,7 @@ pub fn prepare_add_edit_server_dialog(
 #[widget]
 impl Widget for ProjectPoiHeader {
     fn init_view(&mut self) {
+        dialog_helpers::style_grid(&self.header_grid);
         self.load_project_item();
         self.items_frame
             .get_style_context()
@@ -600,12 +601,6 @@ impl Widget for ProjectPoiHeader {
                 },
                 #[name="header_grid"]
                 gtk::Grid {
-                    margin_start: 30,
-                    margin_end: 30,
-                    margin_top: 10,
-                    margin_bottom: 5,
-                    row_spacing: 5,
-                    column_spacing: 10,
                 },
             }
         }

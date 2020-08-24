@@ -50,6 +50,7 @@ impl Widget for ServerDatabaseAddEditDialog {
     }
 
     fn init_group(&self) {
+        dialog_helpers::style_grid(&self.root);
         dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
         fetch_server_groups(
             &self.model.groups_sender,
@@ -156,13 +157,8 @@ impl Widget for ServerDatabaseAddEditDialog {
     }
 
     view! {
+        #[name="root"]
         gtk::Grid {
-            margin_start: 30,
-            margin_end: 30,
-            margin_top: 10,
-            margin_bottom: 5,
-            row_spacing: 5,
-            column_spacing: 10,
             gtk::Label {
                 text: "Description",
                 halign: gtk::Align::End,

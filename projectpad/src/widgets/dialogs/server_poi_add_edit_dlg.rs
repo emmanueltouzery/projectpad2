@@ -68,6 +68,7 @@ pub const SERVER_POI_ADD_EDIT_HEIGHT: i32 = 200;
 #[widget]
 impl Widget for ServerPoiAddEditDialog {
     fn init_view(&mut self) {
+        dialog_helpers::style_grid(&self.grid);
         self.init_interest_type();
         self.init_group();
         self.init_run_on();
@@ -252,12 +253,6 @@ impl Widget for ServerPoiAddEditDialog {
     view! {
         #[name="grid"]
         gtk::Grid {
-            margin_start: 30,
-            margin_end: 30,
-            margin_top: 10,
-            margin_bottom: 5,
-            row_spacing: 5,
-            column_spacing: 10,
             visible: false,
             gtk::Label {
                 text: "Description",

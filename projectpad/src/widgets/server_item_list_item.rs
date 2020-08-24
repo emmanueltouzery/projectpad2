@@ -10,6 +10,7 @@ use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
 use crate::icons::*;
 use crate::sql_thread::SqlFunc;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
     InterestType, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
@@ -30,10 +31,13 @@ pub enum Msg {
     AskDeleteServerPoi(ServerPointOfInterest),
     DeleteServerPoi(ServerPointOfInterest),
     ServerPoiDeleted(ServerPointOfInterest),
+    AskDeleteDb(ServerDatabase),
+    DeleteServerDb(ServerDatabase),
+    ServerDbDeleted(ServerDatabase),
 }
 
 // String for details, because I can't pass Error across threads
-type DeleteResult = Result<ServerPointOfInterest, (&'static str, Option<String>)>;
+type DeleteResult<T> = Result<T, (&'static str, Option<String>)>;
 
 pub struct Model {
     relm: relm::Relm<ServerItemListItem>,
@@ -43,8 +47,10 @@ pub struct Model {
     server_item: ServerItem,
     header_popover: gtk::Popover,
     title: (String, Icon),
-    _server_poi_deleted_channel: relm::Channel<DeleteResult>,
-    server_poi_deleted_sender: relm::Sender<DeleteResult>,
+    _server_poi_deleted_channel: relm::Channel<DeleteResult<ServerPointOfInterest>>,
+    server_poi_deleted_sender: relm::Sender<DeleteResult<ServerPointOfInterest>>,
+    _server_db_deleted_channel: relm::Channel<DeleteResult<ServerDatabase>>,
+    server_db_deleted_sender: relm::Sender<DeleteResult<ServerDatabase>>,
 }
 
 pub fn get_server_item_grid_items(server_item: &ServerItem) -> Vec<GridItem> {
@@ -227,14 +233,6 @@ pub fn prepare_add_edit_server_db_dialog(
     )
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum ActionTypes {
-    Copy,
-    Edit,
-    Delete,
-    View,
-}
-
 #[widget]
 impl Widget for ServerItemListItem {
     fn init_view(&mut self) {
@@ -252,25 +250,58 @@ impl Widget for ServerItemListItem {
 
     fn load_server_item(&self) {
         let fields = get_server_item_grid_items(&self.model.server_item);
-        let extra_btns = match self.model.server_item {
-            ServerItem::Note(_) => vec![(
-                gtk::ModelButtonBuilder::new().label("View").build(),
-                ActionTypes::View,
-            )],
-            ServerItem::PointOfInterest(_) => vec![
-                (
-                    gtk::ModelButtonBuilder::new().label("Edit").build(),
-                    ActionTypes::Edit,
-                ),
-                (
-                    gtk::ModelButtonBuilder::new().label("Delete").build(),
-                    ActionTypes::Delete,
-                ),
-            ],
-            ServerItem::Database(_) => vec![(
-                gtk::ModelButtonBuilder::new().label("Edit").build(),
-                ActionTypes::Edit,
-            )],
+        // TODO drop the clone
+        let extra_btns = match self.model.server_item.clone() {
+            ServerItem::Note(n) => {
+                let view_btn = gtk::ModelButtonBuilder::new().label("View").build();
+                relm::connect!(
+                    self.model.relm,
+                    &view_btn,
+                    connect_clicked(_),
+                    Msg::ViewNote(n.clone())
+                );
+                vec![view_btn]
+            }
+            ServerItem::PointOfInterest(poi) => {
+                let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+                let p = poi.clone(); // TODO too many clones
+                relm::connect!(
+                    self.model.relm,
+                    &edit_btn,
+                    connect_clicked(_),
+                    Msg::EditPoi(p.clone())
+                );
+                let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+                let p2 = poi.clone(); // TODO too many clones
+                                      // TODO skip the ask step
+                relm::connect!(
+                    self.model.relm,
+                    &delete_btn,
+                    connect_clicked(_),
+                    Msg::AskDeleteServerPoi(p2.clone())
+                );
+                vec![edit_btn, delete_btn]
+            }
+            ServerItem::Database(db) => {
+                let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+                let d = db.clone(); // TODO too many clones
+                relm::connect!(
+                    self.model.relm,
+                    &edit_btn,
+                    connect_clicked(_),
+                    Msg::EditDb(d.clone())
+                );
+                let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+                let d2 = db.clone(); // TODO too many clones
+                                     // TODO skip the ask delete step
+                relm::connect!(
+                    self.model.relm,
+                    &delete_btn,
+                    connect_clicked(_),
+                    Msg::AskDeleteDb(d2.clone())
+                );
+                vec![edit_btn, delete_btn]
+            }
             _ => vec![],
         };
         let server_item = self.model.server_item.clone();
@@ -278,52 +309,14 @@ impl Widget for ServerItemListItem {
             self.items_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
-            ActionTypes::Copy,
             &extra_btns,
-            &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| match action_type {
-                ActionTypes::View => match server_item.clone() {
-                    ServerItem::Note(n) => relm::connect!(
-                        self.model.relm,
-                        &btn,
-                        connect_clicked(_),
-                        Msg::ViewNote(n.clone())
-                    ),
-                    _ => panic!(),
-                },
-                ActionTypes::Edit => match server_item.clone() {
-                    ServerItem::PointOfInterest(poi) => relm::connect!(
-                        self.model.relm,
-                        &btn,
-                        connect_clicked(_),
-                        Msg::EditPoi(poi.clone())
-                    ),
-                    ServerItem::Database(db) => relm::connect!(
-                        self.model.relm,
-                        &btn,
-                        connect_clicked(_),
-                        Msg::EditDb(db.clone())
-                    ),
-                    _ => panic!(),
-                },
-                ActionTypes::Delete => match server_item.clone() {
-                    ServerItem::PointOfInterest(poi) => {
-                        relm::connect!(
-                            self.model.relm,
-                            &btn,
-                            connect_clicked(_),
-                            Msg::AskDeleteServerPoi(poi.clone())
-                        );
-                    }
-                    _ => panic!(),
-                },
-                ActionTypes::Copy => {
-                    relm::connect!(
-                        self.model.relm,
-                        &btn,
-                        connect_clicked(_),
-                        Msg::CopyClicked(str_val.clone())
-                    );
-                }
+            &|btn: &gtk::ModelButton, str_val: String| {
+                relm::connect!(
+                    self.model.relm,
+                    &btn,
+                    connect_clicked(_),
+                    Msg::CopyClicked(str_val.clone())
+                );
             },
         );
         // TODO i don't like that note is special-cased here.
@@ -379,9 +372,17 @@ impl Widget for ServerItemListItem {
         let (db_sender, server_item) = params;
         let stream = relm.stream().clone();
         let (_server_poi_deleted_channel, server_poi_deleted_sender) =
-            relm::Channel::new(move |r: DeleteResult| match r {
+            relm::Channel::new(move |r: DeleteResult<ServerPointOfInterest>| match r {
                 Ok(poi) => {
                     stream.emit(Msg::ServerPoiDeleted(poi));
+                }
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+            });
+        let stream2 = relm.stream().clone();
+        let (_server_db_deleted_channel, server_db_deleted_sender) =
+            relm::Channel::new(move |r: DeleteResult<ServerDatabase>| match r {
+                Ok(db) => {
+                    stream2.emit(Msg::ServerDbDeleted(db));
                 }
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
@@ -395,6 +396,8 @@ impl Widget for ServerItemListItem {
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             _server_poi_deleted_channel,
             server_poi_deleted_sender,
+            _server_db_deleted_channel,
+            server_db_deleted_sender,
         }
     }
 
@@ -470,6 +473,55 @@ impl Widget for ServerItemListItem {
             }
             // for my parent
             Msg::ServerPoiDeleted(_) => {}
+            Msg::AskDeleteDb(db) => {
+                let relm = self.model.relm.clone();
+
+                standard_dialogs::confirm_deletion(
+                            "Delete server database",
+                            &format!("Are you sure you want to delete the server database {}? This action cannot be undone.", db.desc),
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                    move || relm.stream().emit(Msg::DeleteServerDb(db.clone())));
+            }
+            Msg::DeleteServerDb(db) => {
+                use projectpadsql::schema::server_database::dsl as srv_db;
+                let s = self.model.server_db_deleted_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        use projectpadsql::schema::server_database::dsl as db;
+                        use projectpadsql::schema::server_website::dsl as srvw;
+                        let dependent_websites = srvw::server_website
+                            .inner_join(db::server_database)
+                            .filter(db::id.eq(db.id))
+                            .load::<(ServerWebsite, ServerDatabase)>(sql_conn)
+                            .unwrap();
+                        if !dependent_websites.is_empty() {
+                            s.send(Err((
+                                "Cannot delete database",
+                                Some(format!(
+                                    "this database is used by websites: {}",
+                                    itertools::join(
+                                        dependent_websites.iter().map(|(w, _)| &w.desc),
+                                        ", "
+                                    )
+                                )),
+                            )))
+                        } else {
+                            s.send(
+                                dialog_helpers::delete_row(
+                                    sql_conn,
+                                    srv_db::server_database,
+                                    db.id,
+                                )
+                                .map(|_| db.clone()),
+                            )
+                        }
+                        .unwrap();
+                    }))
+                    .unwrap();
+            }
+            // for my parent
+            Msg::ServerDbDeleted(_) => {}
             Msg::ServerDbUpdated(server_db) => {
                 self.model.server_item = ServerItem::Database(server_db);
                 self.model.title = Self::get_title(&self.model.server_item);

@@ -76,13 +76,6 @@ impl Area {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum ActionTypes {
-    Copy,
-    Edit,
-    Open,
-}
-
 #[derive(Msg)]
 pub enum Msg {
     FilterChanged(Option<String>),
@@ -276,18 +269,15 @@ impl Widget for SearchView {
 
         project_poi_header::populate_popover(
             popover,
-            ActionTypes::Copy,
-            &vec![(open_btn, ActionTypes::Open), (edit_btn, ActionTypes::Edit)],
+            &vec![open_btn, edit_btn],
             &grid_items,
-            &move |btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
-                if action_type == ActionTypes::Copy {
-                    relm::connect!(
-                        relm,
-                        btn,
-                        connect_clicked(_),
-                        Msg::CopyClicked(str_val.clone())
-                    );
-                }
+            &move |btn: &gtk::ModelButton, str_val: String| {
+                relm::connect!(
+                    relm,
+                    btn,
+                    connect_clicked(_),
+                    Msg::CopyClicked(str_val.clone())
+                );
             },
         );
     }

@@ -83,12 +83,11 @@ impl GridItem {
     }
 }
 
-pub fn populate_popover<T: Copy + PartialEq + Eq>(
+pub fn populate_popover(
     actions_popover: &gtk::Popover,
-    copy_action_type: T,
-    extra_btns: &[(gtk::ModelButton, T)],
+    extra_btns: &[gtk::ModelButton],
     fields: &[GridItem],
-    register_btn: &dyn Fn(&gtk::ModelButton, T, String),
+    register_copy_btn: &dyn Fn(&gtk::ModelButton, String),
 ) {
     for child in actions_popover.get_children() {
         actions_popover.remove(&child);
@@ -97,13 +96,8 @@ pub fn populate_popover<T: Copy + PartialEq + Eq>(
         .margin(10)
         .orientation(gtk::Orientation::Vertical)
         .build();
-    for (extra_btn, extra_btn_action_type) in extra_btns {
+    for extra_btn in extra_btns {
         popover_vbox.add(extra_btn);
-        register_btn(
-            &extra_btn,
-            *extra_btn_action_type,
-            extra_btn.get_label().unwrap().to_string(),
-        );
     }
     for item in fields
         .iter()
@@ -112,20 +106,19 @@ pub fn populate_popover<T: Copy + PartialEq + Eq>(
         let popover_btn = gtk::ModelButtonBuilder::new()
             .label(&format!("Copy {}", item.label_name))
             .build();
-        register_btn(&popover_btn, copy_action_type, item.raw_value.clone());
+        register_copy_btn(&popover_btn, item.raw_value.clone());
         popover_vbox.add(&popover_btn);
     }
     popover_vbox.show_all();
     actions_popover.add(&popover_vbox);
 }
 
-pub fn populate_grid<T: Copy + PartialEq + Eq>(
+pub fn populate_grid(
     header_grid: gtk::Grid,
     actions_popover: gtk::Popover,
     fields: &[GridItem],
-    copy_action_type: T,
-    extra_btns: &[(gtk::ModelButton, T)],
-    register_btn: &dyn Fn(&gtk::ModelButton, T, String),
+    extra_btns: &[gtk::ModelButton],
+    register_copy_btn: &dyn Fn(&gtk::ModelButton, String),
 ) {
     for child in header_grid.get_children() {
         header_grid.remove(&child);
@@ -170,13 +163,7 @@ pub fn populate_grid<T: Copy + PartialEq + Eq>(
         }
     }
     header_grid.show_all();
-    populate_popover(
-        &actions_popover,
-        copy_action_type,
-        &extra_btns,
-        fields,
-        register_btn,
-    );
+    populate_popover(&actions_popover, extra_btns, fields, register_copy_btn);
 }
 
 pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
@@ -506,14 +493,13 @@ impl Widget for ProjectPoiHeader {
                             itertools::join(dependent_websites.iter().map(|(w, _)| &w.desc), ", ")
                         )),
                     )))
-                    .unwrap();
                 } else {
                     s.send(
                         dialog_helpers::delete_row(sql_conn, srv::server, server_id)
                             .map(|_| server.clone()),
                     )
-                    .unwrap();
                 }
+                .unwrap();
             }))
             .unwrap();
     }
@@ -546,32 +532,39 @@ impl Widget for ProjectPoiHeader {
             .as_ref()
             .map(get_project_item_fields)
             .unwrap_or_else(|| vec![]);
-        let extra_btns = [
-            (
-                gtk::ModelButtonBuilder::new().label("Edit").build(),
-                ActionTypes::Edit,
-            ),
-            (
-                gtk::ModelButtonBuilder::new().label("Add...").build(),
-                ActionTypes::AddItem,
-            ),
-            (
-                gtk::ModelButtonBuilder::new().label("Delete").build(),
-                ActionTypes::Delete,
-            ),
-        ];
+        let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+        relm::connect!(
+            self.model.relm,
+            &edit_btn,
+            connect_clicked(_),
+            Msg::HeaderActionClicked((ActionTypes::Edit, "".to_string()))
+        );
+        let add_btn = gtk::ModelButtonBuilder::new().label("Add...").build();
+        relm::connect!(
+            self.model.relm,
+            &add_btn,
+            connect_clicked(_),
+            Msg::HeaderActionClicked((ActionTypes::AddItem, "".to_string()))
+        );
+        let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+        relm::connect!(
+            self.model.relm,
+            &delete_btn,
+            connect_clicked(_),
+            Msg::HeaderActionClicked((ActionTypes::Delete, "".to_string()))
+        );
+        let extra_btns = [edit_btn, add_btn, delete_btn];
         populate_grid(
             self.header_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
-            ActionTypes::Copy,
             &extra_btns,
-            &|btn: &gtk::ModelButton, action_type: ActionTypes, str_val: String| {
+            &|btn: &gtk::ModelButton, str_val: String| {
                 relm::connect!(
                     self.model.relm,
                     btn,
                     connect_clicked(_),
-                    Msg::HeaderActionClicked((action_type, str_val.clone()))
+                    Msg::HeaderActionClicked((ActionTypes::Copy, str_val.clone()))
                 );
             },
         );

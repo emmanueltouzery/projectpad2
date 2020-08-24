@@ -1,3 +1,6 @@
+use super::server_database_add_edit_dlg;
+use super::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
+use super::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::server_poi_add_edit_dlg;
 use super::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
@@ -12,18 +15,42 @@ pub enum Msg {
     ShowSecondTab,
     OkPressed,
     ActionCompleted,
+    ChangeDialogTitle(&'static str),
+}
+
+enum DialogComponent {
+    Poi(relm::Component<ServerPoiAddEditDialog>),
+    Db(relm::Component<ServerDatabaseAddEditDialog>),
+}
+
+impl DialogComponent {
+    fn un_poi(&self) -> Option<&relm::Component<ServerPoiAddEditDialog>> {
+        match self {
+            DialogComponent::Poi(ref x) => Some(x),
+            _ => None,
+        }
+    }
+
+    fn un_db(&self) -> Option<&relm::Component<ServerDatabaseAddEditDialog>> {
+        match self {
+            DialogComponent::Db(ref x) => Some(x),
+            _ => None,
+        }
+    }
 }
 
 pub struct Model {
     relm: relm::Relm<ServerAddItemDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
-    server_poi_add_edit_dialog: Option<relm::Component<ServerPoiAddEditDialog>>,
+    dialog_component: Option<DialogComponent>,
 }
 
 #[widget]
 impl Widget for ServerAddItemDialog {
-    fn init_view(&mut self) {}
+    fn init_view(&mut self) {
+        self.add_db.join_group(Some(&self.add_poi));
+    }
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, i32)) -> Model {
         let (db_sender, server_id) = params;
@@ -31,37 +58,78 @@ impl Widget for ServerAddItemDialog {
             relm: relm.clone(),
             db_sender,
             server_id,
-            server_poi_add_edit_dialog: None,
+            dialog_component: None,
         }
     }
 
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ShowSecondTab => {
-                let dialog_contents = relm::init::<ServerPoiAddEditDialog>((
-                    self.model.db_sender.clone(),
-                    self.model.server_id,
-                    None,
-                ))
-                .expect("error initializing the server poi add edit modal");
-                relm::connect!(
-                    dialog_contents@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
-                    self.model.relm,
-                    Msg::ActionCompleted
-                );
-                let widget = dialog_contents.widget();
+                let (widget, title) = if self.add_poi.get_active() {
+                    let dialog_contents = relm::init::<ServerPoiAddEditDialog>((
+                        self.model.db_sender.clone(),
+                        self.model.server_id,
+                        None,
+                    ))
+                    .expect("error initializing the server poi add edit modal");
+                    relm::connect!(
+                        dialog_contents@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
+                        self.model.relm,
+                        Msg::ActionCompleted
+                    );
+                    self.model.dialog_component = Some(DialogComponent::Poi(dialog_contents));
+                    (
+                        self.model
+                            .dialog_component
+                            .as_ref()
+                            .unwrap()
+                            .un_poi()
+                            .unwrap()
+                            .widget(),
+                        "Add Server Point of Interest",
+                    )
+                } else if self.add_db.get_active() {
+                    let dialog_contents = relm::init::<ServerDatabaseAddEditDialog>((
+                        self.model.db_sender.clone(),
+                        self.model.server_id,
+                        None,
+                    ))
+                    .expect("error initializing the server db add edit modal");
+                    relm::connect!(
+                        dialog_contents@MsgServerDatabaseAddEditDialog::ServerDbUpdated(_),
+                        self.model.relm,
+                        Msg::ActionCompleted
+                    );
+                    self.model.dialog_component = Some(DialogComponent::Db(dialog_contents));
+                    (
+                        self.model
+                            .dialog_component
+                            .as_ref()
+                            .unwrap()
+                            .un_db()
+                            .unwrap()
+                            .widget(),
+                        "Add server database",
+                    )
+                } else {
+                    panic!();
+                };
+                self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
                 self.tabs_stack.add_named(widget, "dialog");
                 widget.show();
                 self.tabs_stack.set_visible_child_name("dialog");
-                self.model.server_poi_add_edit_dialog = Some(dialog_contents);
             }
-            Msg::OkPressed => self
-                .model
-                .server_poi_add_edit_dialog
-                .as_ref()
-                .unwrap()
-                .stream()
-                .emit(server_poi_add_edit_dlg::Msg::OkPressed),
+            Msg::OkPressed => match self.model.dialog_component.as_ref() {
+                Some(DialogComponent::Poi(poi_c)) => {
+                    poi_c.stream().emit(server_poi_add_edit_dlg::Msg::OkPressed)
+                }
+                Some(DialogComponent::Db(poi_d)) => poi_d
+                    .stream()
+                    .emit(server_database_add_edit_dlg::Msg::OkPressed),
+                x => eprintln!("Got ok but wrong component? {}", x.is_some()),
+            },
+            // meant for my parent
+            Msg::ChangeDialogTitle(_) => {}
             // meant for my parent
             Msg::ActionCompleted => {}
         }
@@ -71,14 +139,19 @@ impl Widget for ServerAddItemDialog {
         #[name="tabs_stack"]
         gtk::Stack {
             gtk::Box {
-                margin_top: 10,
-                margin_start: 10,
-                margin_end: 10,
-                margin_bottom: 10,
-                spacing: 3,
+                margin_top: 15,
+                margin_start: 15,
+                margin_end: 15,
+                margin_bottom: 15,
+                spacing: 8,
                 orientation: gtk::Orientation::Vertical,
+                #[name="add_poi"]
                 gtk::RadioButton {
                     label: "Add point of interest",
+                },
+                #[name="add_db"]
+                gtk::RadioButton {
+                    label: "Add database",
                 },
             }
         }

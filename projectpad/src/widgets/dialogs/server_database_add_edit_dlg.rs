@@ -119,8 +119,11 @@ impl Widget for ServerDatabaseAddEditDialog {
         let server_id = self.model.server_id;
         let server_db_id = self.model.server_db_id;
         let new_desc = self.desc_entry.get_text();
-        let new_text = self.text_entry.get_text();
+        let new_name = self.name_entry.get_text();
         let new_group = self.group.get_active_text();
+        let new_text = self.text_entry.get_text();
+        let new_username = self.username_entry.get_text();
+        let new_password = self.password_entry.get_text();
         let s = self.model.server_db_updated_sender.clone();
         self.model
             .db_sender
@@ -128,12 +131,15 @@ impl Widget for ServerDatabaseAddEditDialog {
                 use projectpadsql::schema::server_database::dsl as srv_db;
                 let changeset = (
                     srv_db::desc.eq(new_desc.as_str()),
-                    srv_db::text.eq(new_text.as_str()),
+                    srv_db::name.eq(new_name.as_str()),
                     // never store Some("") for group, we want None then.
                     srv_db::group_name.eq(new_group
                         .as_ref()
                         .map(|s| s.as_str())
                         .filter(|s| !s.is_empty())),
+                    srv_db::text.eq(new_text.as_str()),
+                    srv_db::username.eq(new_username.as_str()),
+                    srv_db::password.eq(new_password.as_str()),
                     srv_db::server_id.eq(server_id),
                 );
                 let server_db_after_result = perform_insert_or_update!(

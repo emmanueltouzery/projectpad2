@@ -31,6 +31,7 @@ pub enum Msg {
     ServerDeleted(Server),
     DeleteCurrentServer(Server),
     ServerAddItemActionCompleted,
+    ServerAddItemChangeTitleTitle(&'static str),
     ProjectItemUpdated(Option<ProjectItem>),
 }
 
@@ -425,6 +426,13 @@ impl Widget for ProjectPoiHeader {
                     .stream()
                     .emit(Msg::ProjectItemUpdated(self.model.project_item.clone()));
             }
+            Msg::ServerAddItemChangeTitleTitle(title) => {
+                self.model
+                    .server_add_item_dialog
+                    .as_ref()
+                    .unwrap()
+                    .set_title(title);
+            }
             // meant for my parent
             Msg::ProjectItemUpdated(pi) => {}
         }
@@ -461,6 +469,11 @@ impl Widget for ProjectPoiHeader {
             component@server_add_item_dlg::Msg::ActionCompleted,
             self.model.relm,
             Msg::ServerAddItemActionCompleted
+        );
+        relm::connect!(
+            component@server_add_item_dlg::Msg::ChangeDialogTitle(title),
+            self.model.relm,
+            Msg::ServerAddItemChangeTitleTitle(title)
         );
         self.model.server_add_item_dialog_component = Some(component);
         self.model.server_add_item_dialog = Some(dialog.clone());

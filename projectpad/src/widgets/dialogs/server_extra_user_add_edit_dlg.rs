@@ -1,3 +1,4 @@
+use super::auth_key_button::AuthKeyButton;
 use super::dialog_helpers;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
@@ -20,7 +21,11 @@ pub struct Model {
     group_name: Option<String>,
     username: String,
     password: String,
-    // TODO auth key
+    auth_key_filename: Option<String>,
+    // store the auth key & not the Path, because it's what I have
+    // when reading from SQL. So by storing it also when adding a new
+    // server, I have the same data for add & edit.
+    auth_key: Option<Vec<u8>>,
 }
 
 #[widget]
@@ -47,6 +52,8 @@ impl Widget for ServerExtraUserAddEditDialog {
             password: sd
                 .map(|d| d.password.clone())
                 .unwrap_or_else(|| "".to_string()),
+            auth_key_filename: sd.and_then(|s| s.auth_key_filename.clone()),
+            auth_key: sd.and_then(|s| s.auth_key.clone()),
         }
     }
 
@@ -122,6 +129,23 @@ impl Widget for ServerExtraUserAddEditDialog {
                 cell: {
                     left_attach: 1,
                     top_attach: 5,
+                },
+            },
+            gtk::Label {
+                text: "Authentication key",
+                halign: gtk::Align::End,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 6,
+                },
+            },
+            AuthKeyButton((
+                self.model.auth_key_filename.clone(),
+                self.model.auth_key.clone(),
+            )) {
+                cell: {
+                    left_attach: 1,
+                    top_attach: 6,
                 },
             },
         }

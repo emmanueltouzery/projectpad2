@@ -1,15 +1,12 @@
+use super::auth_key_button::AuthKeyButton;
 use super::dialog_helpers;
-use super::standard_dialogs::*;
+use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{Server, ServerAccessType, ServerType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::Path;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc;
 use strum::IntoEnumIterator;
@@ -17,9 +14,6 @@ use strum::IntoEnumIterator;
 #[derive(Msg, Debug, Clone)]
 pub enum Msg {
     GotGroups(Vec<String>),
-    RemoveAuthFile,
-    SaveAuthFile,
-    AuthFilePicked,
     OkPressed,
     ServerUpdated(Server),
 }
@@ -61,7 +55,6 @@ impl Widget for ServerAddEditDialog {
         self.init_server_type();
         self.init_server_access_type();
         self.init_group();
-        self.update_auth_file();
     }
 
     fn server_type_desc(server_type: ServerType) -> &'static str {
@@ -122,15 +115,6 @@ impl Widget for ServerAddEditDialog {
         dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
     }
 
-    fn update_auth_file(&self) {
-        self.auth_key_stack
-            .set_visible_child_name(if self.model.auth_key_filename.is_some() {
-                "file"
-            } else {
-                "no_file"
-            });
-    }
-
     // TODO probably could take an Option<&Server> and drop some cloning
     // I take the project_id because I may not get a server to get the
     // project_id from.
@@ -147,7 +131,7 @@ impl Widget for ServerAddEditDialog {
         let (server_updated_channel, server_updated_sender) =
             relm::Channel::new(move |r: SaveResult| match r {
                 Ok(srv) => stream2.emit(Msg::ServerUpdated(srv)),
-                Err((msg, e)) => display_error_str(&msg, e),
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         let srv = server.as_ref();
         Model {
@@ -195,61 +179,6 @@ impl Widget for ServerAddEditDialog {
                     &groups,
                     &self.model.group_name,
                 );
-            }
-            Msg::RemoveAuthFile => {
-                self.model.auth_key_filename = None;
-                self.update_auth_file();
-            }
-            Msg::AuthFilePicked => {
-                match self.auth_key.get_filename().and_then(|f| {
-                    let path = Path::new(&f);
-                    let fname = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|n| n.to_string());
-                    let contents = std::fs::read(path).ok();
-                    match (fname, contents) {
-                        (Some(f), Some(c)) => Some((f, c)),
-                        _ => None,
-                    }
-                }) {
-                    Some((f, c)) => {
-                        self.model.auth_key_filename = Some(f);
-                        self.model.auth_key = Some(c);
-                        self.update_auth_file();
-                    }
-                    None => {
-                        display_error("Error loading the authentication key", None);
-                    }
-                }
-            }
-            Msg::SaveAuthFile => {
-                // https://stackoverflow.com/questions/54487052/how-do-i-add-a-save-button-to-the-gtk-filechooser-dialog
-                let dialog = gtk::FileChooserDialogBuilder::new()
-                    .title("Select destination folder")
-                    .action(gtk::FileChooserAction::SelectFolder)
-                    .use_header_bar(1)
-                    .modal(true)
-                    .build();
-                let auth_key = self.model.auth_key.clone();
-                let auth_key_filename = self.model.auth_key_filename.clone();
-                dialog.add_button("Cancel", gtk::ResponseType::Cancel);
-                dialog.add_button("Save", gtk::ResponseType::Ok);
-                dialog.connect_response(move |d, r| {
-                    d.close();
-                    let mut fname = None;
-                    if r == gtk::ResponseType::Ok {
-                        if let Some(filename) = d.get_filename() {
-                            fname = Some(filename);
-                        }
-                    }
-                    if let Some(fname) = fname {
-                        if let Err(e) = Self::write_auth_key(&auth_key, &auth_key_filename, fname) {
-                            display_error("Error writing the file", Some(Box::new(e)));
-                        }
-                    }
-                });
-                dialog.show();
             }
             Msg::OkPressed => {
                 self.update_server();
@@ -317,19 +246,6 @@ impl Widget for ServerAddEditDialog {
                 s.send(server_after_result).unwrap();
             }))
             .unwrap();
-    }
-
-    fn write_auth_key(
-        auth_key: &Option<Vec<u8>>,
-        auth_key_filename: &Option<String>,
-        folder: PathBuf,
-    ) -> std::io::Result<()> {
-        if let (Some(data), Some(fname)) = (auth_key, auth_key_filename) {
-            let mut file = File::create(folder.join(fname))?;
-            file.write_all(&data)
-        } else {
-            Ok(())
-        }
     }
 
     view! {
@@ -463,46 +379,13 @@ impl Widget for ServerAddEditDialog {
                     top_attach: 7,
                 },
             },
-            #[name="auth_key_stack"]
-            gtk::Stack {
+            AuthKeyButton((
+                self.model.auth_key_filename.clone(),
+                self.model.auth_key.clone(),
+            )) {
                 cell: {
                     left_attach: 1,
                     top_attach: 7,
-                },
-                // visible_child_name: if self.model.auth_key_filename.is_some() { "file" } else { "no_file" },
-                // if there is no file, a file picker...
-                #[name="auth_key"]
-                gtk::FileChooserButton({action: gtk::FileChooserAction::Open}) {
-                    child: {
-                        name: Some("no_file")
-                    },
-                    hexpand: true,
-                    selection_changed(_) => Msg::AuthFilePicked,
-                },
-                // if there is a file, a label with the filename,
-                // and a button to remove the file
-                gtk::Box {
-                    orientation: gtk::Orientation::Horizontal,
-                    child: {
-                        name: Some("file")
-                    },
-                    gtk::Label {
-                        hexpand: true,
-                        text: self.model.auth_key_filename.as_deref().unwrap_or_else(|| "")
-                    },
-                    gtk::Button {
-                        always_show_image: true,
-                        image: Some(&gtk::Image::from_icon_name(
-                            Some("document-save-symbolic"), gtk::IconSize::Menu)),
-                        button_press_event(_, _) => (Msg::SaveAuthFile, Inhibit(false)),
-                    },
-                    gtk::Button {
-                        always_show_image: true,
-                        image: Some(&gtk::Image::from_icon_name(
-                            // Some(Icon::TRASH.name()), gtk::IconSize::Menu)),
-                            Some("edit-delete-symbolic"), gtk::IconSize::Menu)),
-                        button_press_event(_, _) => (Msg::RemoveAuthFile, Inhibit(false)),
-                    },
                 },
             },
             gtk::Label {

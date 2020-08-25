@@ -1,5 +1,4 @@
 use super::dialogs::dialog_helpers;
-use super::dialogs::server_database_add_edit_dlg;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg;
@@ -170,23 +169,36 @@ fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
     ]
 }
 
-pub fn prepare_add_edit_server_poi_dialog(
+pub trait ServerItemDialogModelParam<T> {
+    fn get_item(&self) -> Option<&T>;
+}
+
+impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, i32, Option<T>) {
+    fn get_item(&self) -> Option<&T> {
+        self.2.as_ref()
+    }
+}
+
+pub fn prepare_add_edit_server_item_dialog<T, Dlg>(
     widget_for_window: gtk::Widget,
-    db_sender: mpsc::Sender<SqlFunc>,
-    server_id: i32,
-    server_poi: Option<ServerPointOfInterest>,
-) -> (
-    gtk::Dialog,
-    relm::Component<ServerPoiAddEditDialog>,
-    gtk::Button,
-) {
-    let title = if server_poi.is_some() {
-        "Edit server POI"
+    widget_param: Dlg::ModelParam,
+    ok_pressed_event: Dlg::Msg,
+    item_desc: &'static str,
+) -> (gtk::Dialog, relm::Component<Dlg>, gtk::Button)
+where
+    Dlg: relm::Widget + 'static,
+    Dlg::Msg: Clone,
+    Dlg::ModelParam: ServerItemDialogModelParam<T>,
+{
+    let title = if widget_param.get_item().is_some() {
+        "Edit server "
     } else {
-        "Add server POI"
-    };
-    let dialog_contents = relm::init::<ServerPoiAddEditDialog>((db_sender, server_id, server_poi))
-        .expect("error initializing the server poi add edit modal");
+        "Add server "
+    }
+    .to_string()
+        + item_desc;
+    let dialog_contents =
+        relm::init::<Dlg>(widget_param).expect("error initializing the server item add edit modal");
     let d_c = dialog_contents.clone();
     standard_dialogs::prepare_custom_dialog(
         widget_for_window,
@@ -195,39 +207,7 @@ pub fn prepare_add_edit_server_poi_dialog(
         title,
         dialog_contents,
         move |_| {
-            d_c.emit(MsgServerPoiAddEditDialog::OkPressed);
-            standard_dialogs::DialogActionResult::CloseDialog
-        },
-    )
-}
-
-pub fn prepare_add_edit_server_db_dialog(
-    widget_for_window: gtk::Widget,
-    db_sender: mpsc::Sender<SqlFunc>,
-    server_id: i32,
-    server_db: Option<ServerDatabase>,
-) -> (
-    gtk::Dialog,
-    relm::Component<ServerDatabaseAddEditDialog>,
-    gtk::Button,
-) {
-    let title = if server_db.is_some() {
-        "Edit server database"
-    } else {
-        "Add server database"
-    };
-    let dialog_contents =
-        relm::init::<ServerDatabaseAddEditDialog>((db_sender, server_id, server_db))
-            .expect("error initializing the server db add edit modal");
-    let d_c = dialog_contents.clone();
-    standard_dialogs::prepare_custom_dialog(
-        widget_for_window,
-        server_database_add_edit_dlg::SERVER_DATABASE_ADD_EDIT_WIDTH,
-        server_database_add_edit_dlg::SERVER_DATABASE_ADD_EDIT_HEIGHT,
-        title,
-        dialog_contents,
-        move |_| {
-            d_c.emit(server_database_add_edit_dlg::Msg::OkPressed);
+            d_c.emit(ok_pressed_event.clone());
             standard_dialogs::DialogActionResult::CloseDialog
         },
     )
@@ -411,11 +391,11 @@ impl Widget for ServerItemListItem {
             // meant for my parent
             Msg::ViewNote(_) => {}
             Msg::EditPoi(poi) => {
-                let (dialog, component, _) = prepare_add_edit_server_poi_dialog(
+                let (dialog, component, _) = prepare_add_edit_server_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
-                    self.model.db_sender.clone(),
-                    poi.server_id,
-                    Some(poi),
+                    (self.model.db_sender.clone(), poi.server_id, Some(poi)),
+                    MsgServerPoiAddEditDialog::OkPressed,
+                    "POI",
                 );
                 relm::connect!(
                     component@MsgServerPoiAddEditDialog::ServerPoiUpdated(ref srv),
@@ -426,11 +406,11 @@ impl Widget for ServerItemListItem {
                 dialog.show();
             }
             Msg::EditDb(db) => {
-                let (dialog, component, _) = prepare_add_edit_server_db_dialog(
+                let (dialog, component, _) = prepare_add_edit_server_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
-                    self.model.db_sender.clone(),
-                    db.server_id,
-                    Some(db),
+                    (self.model.db_sender.clone(), db.server_id, Some(db)),
+                    MsgServerDatabaseAddEditDialog::OkPressed,
+                    "Database",
                 );
                 relm::connect!(
                     component@MsgServerDatabaseAddEditDialog::ServerDbUpdated(ref srv),

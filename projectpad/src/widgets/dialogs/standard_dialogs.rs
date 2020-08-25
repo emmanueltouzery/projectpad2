@@ -66,7 +66,7 @@ pub fn prepare_custom_dialog<T: Widget>(
     widget_for_window: gtk::Widget,
     width: i32,
     height: i32,
-    title: &'static str,
+    title: String,
     dialog_contents: relm::Component<T>,
     ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
 ) -> (gtk::Dialog, relm::Component<T>, gtk::Button) {
@@ -75,7 +75,7 @@ pub fn prepare_custom_dialog<T: Widget>(
         .use_header_bar(1)
         .default_width(width)
         .default_height(height)
-        .title(title)
+        .title(&title)
         .transient_for(&main_win)
         .modal(true)
         .build();

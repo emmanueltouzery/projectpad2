@@ -278,9 +278,9 @@ pub fn prepare_add_edit_server_dialog(
         600,
         350,
         if add_edit_info.is_edit() {
-            "Edit server"
+            "Edit server".to_string()
         } else {
-            "Add server"
+            "Add server".to_string()
         },
         dialog_contents,
         move |_| {
@@ -440,7 +440,7 @@ impl Widget for ProjectPoiHeader {
             self.items_frame.clone().upcast::<gtk::Widget>(),
             server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_WIDTH,
             server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_HEIGHT,
-            "Add server item",
+            "Add server item".to_string(),
             dialog_contents,
             move |ok_btn| {
                 if ok_btn.get_label() == Some("Next".into()) {

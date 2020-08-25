@@ -14,7 +14,7 @@ use std::str::FromStr;
 use std::sync::mpsc;
 use strum::IntoEnumIterator;
 
-#[derive(Msg, Debug)]
+#[derive(Msg, Debug, Clone)]
 pub enum Msg {
     GotGroups(Vec<String>),
     RemoveAuthFile,

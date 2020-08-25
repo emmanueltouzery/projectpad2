@@ -411,11 +411,15 @@ impl Widget for SearchView {
                 }
                 ProjectPadItem::ServerPoi(srv_poi) => {
                     let (dialog, component, _) =
-                        server_item_list_item::prepare_add_edit_server_poi_dialog(
+                        server_item_list_item::prepare_add_edit_server_item_dialog(
                             self.search_result_area.clone().upcast::<gtk::Widget>(),
-                            self.model.db_sender.clone(),
-                            srv_poi.server_id,
-                            Some(srv_poi),
+                            (
+                                self.model.db_sender.clone(),
+                                srv_poi.server_id,
+                                Some(srv_poi),
+                            ),
+                            MsgServerPoiAddEditDialog::OkPressed,
+                            "POI",
                         );
                     relm::connect!(
                         component@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
@@ -427,11 +431,11 @@ impl Widget for SearchView {
                 }
                 ProjectPadItem::ServerDatabase(srv_db) => {
                     let (dialog, component, _) =
-                        server_item_list_item::prepare_add_edit_server_db_dialog(
+                        server_item_list_item::prepare_add_edit_server_item_dialog(
                             self.search_result_area.clone().upcast::<gtk::Widget>(),
-                            self.model.db_sender.clone(),
-                            srv_db.server_id,
-                            Some(srv_db),
+                            (self.model.db_sender.clone(), srv_db.server_id, Some(srv_db)),
+                            MsgServerDbAddEditDialog::OkPressed,
+                            "Database",
                         );
                     relm::connect!(
                         component@MsgServerDbAddEditDialog::ServerDbUpdated(_),

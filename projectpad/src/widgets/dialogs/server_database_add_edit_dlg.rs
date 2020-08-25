@@ -9,7 +9,7 @@ use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-#[derive(Msg)]
+#[derive(Msg, Clone)]
 pub enum Msg {
     GotGroups(Vec<String>),
     OkPressed,

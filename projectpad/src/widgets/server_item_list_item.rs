@@ -1,6 +1,8 @@
 use super::dialogs::dialog_helpers;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
+use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
+use super::dialogs::server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
@@ -25,6 +27,7 @@ pub enum Msg {
     ViewNote(ServerNote),
     EditPoi(ServerPointOfInterest),
     EditDb(ServerDatabase),
+    EditUser(ServerExtraUserAccount),
     ServerPoiUpdated(ServerPointOfInterest),
     ServerDbUpdated(ServerDatabase),
     AskDeleteServerPoi(ServerPointOfInterest),
@@ -38,11 +41,16 @@ pub enum Msg {
 // String for details, because I can't pass Error across threads
 type DeleteResult<T> = Result<T, (&'static str, Option<String>)>;
 
+pub enum AddEditDialogComponent {
+    Poi(relm::Component<ServerPoiAddEditDialog>),
+    Db(relm::Component<ServerDatabaseAddEditDialog>),
+    User(relm::Component<ServerExtraUserAddEditDialog>),
+}
+
 pub struct Model {
     relm: relm::Relm<ServerItemListItem>,
     db_sender: mpsc::Sender<SqlFunc>,
-    server_poi_add_edit_dialog: Option<relm::Component<ServerPoiAddEditDialog>>,
-    server_db_add_edit_dialog: Option<relm::Component<ServerDatabaseAddEditDialog>>,
+    server_add_edit_dialog: Option<AddEditDialogComponent>,
     server_item: ServerItem,
     header_popover: gtk::Popover,
     title: (String, Icon),
@@ -282,6 +290,17 @@ impl Widget for ServerItemListItem {
                 );
                 vec![edit_btn, delete_btn]
             }
+            ServerItem::ExtraUserAccount(usr) => {
+                let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+                let u = usr.clone(); // TODO too many clones
+                relm::connect!(
+                    self.model.relm,
+                    &edit_btn,
+                    connect_clicked(_),
+                    Msg::EditUser(u.clone())
+                );
+                vec![edit_btn]
+            }
             _ => vec![],
         };
         let server_item = self.model.server_item.clone();
@@ -369,8 +388,7 @@ impl Widget for ServerItemListItem {
         Model {
             relm: relm.clone(),
             db_sender,
-            server_poi_add_edit_dialog: None,
-            server_db_add_edit_dialog: None,
+            server_add_edit_dialog: None,
             title: Self::get_title(&server_item),
             server_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
@@ -402,7 +420,7 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     Msg::ServerPoiUpdated(srv.clone())
                 );
-                self.model.server_poi_add_edit_dialog = Some(component);
+                self.model.server_add_edit_dialog = Some(AddEditDialogComponent::Poi(component));
                 dialog.show();
             }
             Msg::EditDb(db) => {
@@ -417,7 +435,22 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     Msg::ServerDbUpdated(srv.clone())
                 );
-                self.model.server_db_add_edit_dialog = Some(component);
+                self.model.server_add_edit_dialog = Some(AddEditDialogComponent::Db(component));
+                dialog.show();
+            }
+            Msg::EditUser(usr) => {
+                let (dialog, component, _) = prepare_add_edit_server_item_dialog(
+                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    (self.model.db_sender.clone(), usr.server_id, Some(usr)),
+                    MsgServerExtraUserAddEditDialog::OkPressed,
+                    "User",
+                );
+                // relm::connect!(
+                //     component@MsgServerDatabaseAddEditDialog::ServerDbUpdated(ref srv),
+                //     self.model.relm,
+                //     Msg::ServerDbUpdated(srv.clone())
+                // );
+                self.model.server_add_edit_dialog = Some(AddEditDialogComponent::User(component));
                 dialog.show();
             }
             Msg::ServerPoiUpdated(server_poi) => {

@@ -6,8 +6,10 @@ use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-#[derive(Msg)]
-pub enum Msg {}
+#[derive(Msg, Clone)]
+pub enum Msg {
+    OkPressed,
+}
 
 pub struct Model {
     relm: relm::Relm<ServerExtraUserAddEditDialog>,

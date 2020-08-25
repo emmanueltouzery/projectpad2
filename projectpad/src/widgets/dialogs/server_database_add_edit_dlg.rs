@@ -1,5 +1,4 @@
 use super::dialog_helpers;
-use super::server_poi_add_edit_dlg::fetch_server_groups;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -46,13 +45,13 @@ pub const SERVER_DATABASE_ADD_EDIT_HEIGHT: i32 = 200;
 #[widget]
 impl Widget for ServerDatabaseAddEditDialog {
     fn init_view(&mut self) {
+        dialog_helpers::style_grid(&self.root);
         self.init_group();
     }
 
     fn init_group(&self) {
-        dialog_helpers::style_grid(&self.root);
         dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
-        fetch_server_groups(
+        dialog_helpers::fetch_server_groups(
             &self.model.groups_sender,
             self.model.server_id,
             &self.model.db_sender,

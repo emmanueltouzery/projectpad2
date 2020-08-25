@@ -1,6 +1,8 @@
 use super::auth_key_button::AuthKeyButton;
 use super::dialog_helpers;
+use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerExtraUserAccount;
 use relm::Widget;
@@ -9,13 +11,26 @@ use std::sync::mpsc;
 
 #[derive(Msg, Clone)]
 pub enum Msg {
+    GotGroups(Vec<String>),
     OkPressed,
+    ServerUserUpdated(ServerExtraUserAccount),
 }
+
+// String for details, because I can't pass Error across threads
+type SaveResult = Result<ServerExtraUserAccount, (String, Option<String>)>;
 
 pub struct Model {
     relm: relm::Relm<ServerExtraUserAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
+    server_user_id: Option<i32>,
+
+    groups_store: gtk::ListStore,
+    _groups_channel: relm::Channel<Vec<String>>,
+    groups_sender: relm::Sender<Vec<String>>,
+
+    _server_user_updated_channel: relm::Channel<SaveResult>,
+    server_user_updated_sender: relm::Sender<SaveResult>,
 
     description: String,
     group_name: Option<String>,
@@ -34,16 +49,41 @@ impl Widget for ServerExtraUserAddEditDialog {
         dialog_helpers::style_grid(&self.grid);
     }
 
+    fn init_group(&self) {
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        dialog_helpers::fetch_server_groups(
+            &self.model.groups_sender,
+            self.model.server_id,
+            &self.model.db_sender,
+        );
+    }
+
     fn model(
         relm: &relm::Relm<Self>,
         params: (mpsc::Sender<SqlFunc>, i32, Option<ServerExtraUserAccount>),
     ) -> Model {
         let (db_sender, server_id, server_db) = params;
         let sd = server_db.as_ref();
+        let stream = relm.stream().clone();
+        let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
+            stream.emit(Msg::GotGroups(groups));
+        });
+        let stream2 = relm.stream().clone();
+        let (server_user_updated_channel, server_user_updated_sender) =
+            relm::Channel::new(move |r: SaveResult| match r {
+                Ok(srv_db) => stream2.emit(Msg::ServerUserUpdated(srv_db)),
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+            });
         Model {
             relm: relm.clone(),
             db_sender,
             server_id,
+            server_user_id: sd.map(|d| d.id),
+            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            _groups_channel: groups_channel,
+            groups_sender,
+            _server_user_updated_channel: server_user_updated_channel,
+            server_user_updated_sender,
             description: sd.map(|d| d.desc.clone()).unwrap_or_else(|| "".to_string()),
             group_name: sd.and_then(|s| s.group_name.clone()),
             username: sd
@@ -57,7 +97,60 @@ impl Widget for ServerExtraUserAddEditDialog {
         }
     }
 
-    fn update(&mut self, event: Msg) {}
+    fn update(&mut self, event: Msg) {
+        match event {
+            Msg::GotGroups(groups) => {
+                dialog_helpers::fill_groups(
+                    &self.model.groups_store,
+                    &self.group,
+                    &groups,
+                    &self.model.group_name,
+                );
+            }
+            Msg::OkPressed => {
+                self.update_server_user();
+            }
+            // meant for my parent
+            Msg::ServerUserUpdated(_) => {}
+        }
+    }
+
+    fn update_server_user(&self) {
+        let server_id = self.model.server_id;
+        let server_user_id = self.model.server_user_id;
+        let new_desc = self.desc_entry.get_text();
+        let new_group = self.group.get_active_text();
+        let new_username = self.username_entry.get_text();
+        let new_password = self.password_entry.get_text();
+        // TODO auth key!!!!
+        let s = self.model.server_user_updated_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
+                let changeset = (
+                    srv_usr::desc.eq(new_desc.as_str()),
+                    // never store Some("") for group, we want None then.
+                    srv_usr::group_name.eq(new_group
+                        .as_ref()
+                        .map(|s| s.as_str())
+                        .filter(|s| !s.is_empty())),
+                    srv_usr::username.eq(new_username.as_str()),
+                    srv_usr::password.eq(new_password.as_str()),
+                    srv_usr::server_id.eq(server_id),
+                );
+                let server_db_after_result = perform_insert_or_update!(
+                    sql_conn,
+                    server_user_id,
+                    srv_usr::server_extra_user_account,
+                    srv_usr::id,
+                    changeset,
+                    ServerExtraUserAccount,
+                );
+                s.send(server_db_after_result).unwrap();
+            }))
+            .unwrap();
+    }
 
     view! {
         #[name="grid"]

@@ -28,20 +28,6 @@ pub fn server_poi_get_text_label(interest_type: InterestType) -> &'static str {
     }
 }
 
-pub fn fetch_server_groups(
-    groups_sender: &relm::Sender<Vec<String>>,
-    server_id: i32,
-    db_sender: &mpsc::Sender<SqlFunc>,
-) {
-    let s = groups_sender.clone();
-    db_sender
-        .send(SqlFunc::new(move |sql_conn| {
-            s.send(dialog_helpers::get_server_group_names(sql_conn, server_id))
-                .unwrap();
-        }))
-        .unwrap();
-}
-
 pub struct Model {
     relm: relm::Relm<ServerPoiAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
@@ -120,7 +106,7 @@ impl Widget for ServerPoiAddEditDialog {
 
     fn init_group(&self) {
         dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
-        fetch_server_groups(
+        dialog_helpers::fetch_server_groups(
             &self.model.groups_sender,
             self.model.server_id,
             &self.model.db_sender,

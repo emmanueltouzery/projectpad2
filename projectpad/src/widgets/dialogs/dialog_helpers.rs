@@ -1,3 +1,4 @@
+use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use diesel::query_builder::IntoUpdateTarget;
 use diesel::query_dsl::methods::ExecuteDsl;
@@ -5,6 +6,7 @@ use diesel::query_dsl::methods::FindDsl;
 use diesel::sqlite::SqliteConnection;
 use diesel::{associations::HasTable, helper_types::Find, query_builder::DeleteStatement};
 use gtk::prelude::*;
+use std::sync::mpsc;
 
 pub fn get_project_group_names(
     sql_conn: &diesel::SqliteConnection,
@@ -251,4 +253,17 @@ pub fn style_grid(grid: &gtk::Grid) {
     grid.set_margin_bottom(5);
     grid.set_row_spacing(5);
     grid.set_column_spacing(10);
+}
+
+pub fn fetch_server_groups(
+    groups_sender: &relm::Sender<Vec<String>>,
+    server_id: i32,
+    db_sender: &mpsc::Sender<SqlFunc>,
+) {
+    let s = groups_sender.clone();
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            s.send(get_server_group_names(sql_conn, server_id)).unwrap();
+        }))
+        .unwrap();
 }

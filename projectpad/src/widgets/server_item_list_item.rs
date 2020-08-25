@@ -30,6 +30,7 @@ pub enum Msg {
     EditUser(ServerExtraUserAccount),
     ServerPoiUpdated(ServerPointOfInterest),
     ServerDbUpdated(ServerDatabase),
+    ServerUserUpdated(ServerExtraUserAccount),
     AskDeleteServerPoi(ServerPointOfInterest),
     DeleteServerPoi(ServerPointOfInterest),
     ServerPoiDeleted(ServerPointOfInterest),
@@ -445,11 +446,11 @@ impl Widget for ServerItemListItem {
                     MsgServerExtraUserAddEditDialog::OkPressed,
                     "User",
                 );
-                // relm::connect!(
-                //     component@MsgServerDatabaseAddEditDialog::ServerDbUpdated(ref srv),
-                //     self.model.relm,
-                //     Msg::ServerDbUpdated(srv.clone())
-                // );
+                relm::connect!(
+                    component@MsgServerExtraUserAddEditDialog::ServerUserUpdated(ref usr),
+                    self.model.relm,
+                    Msg::ServerUserUpdated(usr.clone())
+                );
                 self.model.server_add_edit_dialog = Some(AddEditDialogComponent::User(component));
                 dialog.show();
             }
@@ -537,6 +538,11 @@ impl Widget for ServerItemListItem {
             Msg::ServerDbDeleted(_) => {}
             Msg::ServerDbUpdated(server_db) => {
                 self.model.server_item = ServerItem::Database(server_db);
+                self.model.title = Self::get_title(&self.model.server_item);
+                self.load_server_item();
+            }
+            Msg::ServerUserUpdated(server_usr) => {
+                self.model.server_item = ServerItem::ExtraUserAccount(server_usr);
                 self.model.title = Self::get_title(&self.model.server_item);
                 self.load_server_item();
             }

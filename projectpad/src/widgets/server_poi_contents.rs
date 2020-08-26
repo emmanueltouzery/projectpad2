@@ -114,6 +114,7 @@ impl Widget for ServerPoiContents {
             relm::connect!(component@ServerItemListItemMsg::ViewNote(ref n), self.model.relm, Msg::ViewNote(n.clone()));
             relm::connect!(component@ServerItemListItemMsg::ServerPoiDeleted(_), self.model.relm, Msg::RefreshItems);
             relm::connect!(component@ServerItemListItemMsg::ServerDbDeleted(_), self.model.relm, Msg::RefreshItems);
+            relm::connect!(component@ServerItemListItemMsg::ServerExtraUserDeleted(_), self.model.relm, Msg::RefreshItems);
             children_components.push(component);
         }
         let indexes = self.model.server_item_groups_start_indexes.clone();

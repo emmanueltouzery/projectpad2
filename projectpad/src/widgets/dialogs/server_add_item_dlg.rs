@@ -1,6 +1,9 @@
 use super::server_database_add_edit_dlg;
 use super::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
+use super::server_extra_user_add_edit_dlg;
+use super::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
+use super::server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog;
 use super::server_poi_add_edit_dlg;
 use super::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
@@ -26,10 +29,35 @@ pub struct Model {
     dialog_component: Option<AddEditDialogComponent>,
 }
 
+// i would really like to use a function not a macro here, but
+// because of the relm::connect! i don't see many other options...
+macro_rules! plug_second_tab {
+        ($self: ident, $dialog_type:tt, $event:path, $component_ctor:path,) => {{
+        let dialog_contents = relm::init::<$dialog_type>((
+            $self.model.db_sender.clone(),
+            $self.model.server_id,
+            None,
+        ))
+        .expect("error initializing add edit modal");
+        relm::connect!(
+            dialog_contents@$event(_),
+            $self.model.relm,
+            Msg::ActionCompleted
+        );
+        $self.model.dialog_component = Some($component_ctor(dialog_contents));
+        $self.model
+            .dialog_component
+            .as_ref()
+            .unwrap()
+            .get_widget()
+    }};
+    }
+
 #[widget]
 impl Widget for ServerAddItemDialog {
     fn init_view(&mut self) {
         self.add_db.join_group(Some(&self.add_poi));
+        self.add_extra_user.join_group(Some(&self.add_poi));
     }
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, i32)) -> Model {
@@ -46,51 +74,34 @@ impl Widget for ServerAddItemDialog {
         match event {
             Msg::ShowSecondTab => {
                 let (widget, title) = if self.add_poi.get_active() {
-                    let dialog_contents = relm::init::<ServerPoiAddEditDialog>((
-                        self.model.db_sender.clone(),
-                        self.model.server_id,
-                        None,
-                    ))
-                    .expect("error initializing the server poi add edit modal");
-                    relm::connect!(
-                        dialog_contents@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
-                        self.model.relm,
-                        Msg::ActionCompleted
-                    );
-                    self.model.dialog_component =
-                        Some(AddEditDialogComponent::Poi(dialog_contents));
                     (
-                        self.model
-                            .dialog_component
-                            .as_ref()
-                            .unwrap()
-                            .un_poi()
-                            .unwrap()
-                            .widget(),
+                        plug_second_tab!(
+                            self,
+                            ServerPoiAddEditDialog,
+                            MsgServerPoiAddEditDialog::ServerPoiUpdated,
+                            AddEditDialogComponent::Poi,
+                        ),
                         "Add Server Point of Interest",
                     )
                 } else if self.add_db.get_active() {
-                    let dialog_contents = relm::init::<ServerDatabaseAddEditDialog>((
-                        self.model.db_sender.clone(),
-                        self.model.server_id,
-                        None,
-                    ))
-                    .expect("error initializing the server db add edit modal");
-                    relm::connect!(
-                        dialog_contents@MsgServerDatabaseAddEditDialog::ServerDbUpdated(_),
-                        self.model.relm,
-                        Msg::ActionCompleted
-                    );
-                    self.model.dialog_component = Some(AddEditDialogComponent::Db(dialog_contents));
                     (
-                        self.model
-                            .dialog_component
-                            .as_ref()
-                            .unwrap()
-                            .un_db()
-                            .unwrap()
-                            .widget(),
+                        plug_second_tab!(
+                            self,
+                            ServerDatabaseAddEditDialog,
+                            MsgServerDatabaseAddEditDialog::ServerDbUpdated,
+                            AddEditDialogComponent::Db,
+                        ),
                         "Add server database",
+                    )
+                } else if self.add_extra_user.get_active() {
+                    (
+                        plug_second_tab!(
+                            self,
+                            ServerExtraUserAddEditDialog,
+                            MsgServerExtraUserAddEditDialog::ServerUserUpdated,
+                            AddEditDialogComponent::User,
+                        ),
+                        "Add server extra user",
                     )
                 } else {
                     panic!();
@@ -107,6 +118,9 @@ impl Widget for ServerAddItemDialog {
                 Some(AddEditDialogComponent::Db(poi_d)) => poi_d
                     .stream()
                     .emit(server_database_add_edit_dlg::Msg::OkPressed),
+                Some(AddEditDialogComponent::User(user_d)) => user_d
+                    .stream()
+                    .emit(server_extra_user_add_edit_dlg::Msg::OkPressed),
                 x => eprintln!("Got ok but wrong component? {}", x.is_some()),
             },
             // meant for my parent
@@ -124,7 +138,7 @@ impl Widget for ServerAddItemDialog {
                 margin_start: 15,
                 margin_end: 15,
                 margin_bottom: 15,
-                spacing: 8,
+                spacing: 10,
                 orientation: gtk::Orientation::Vertical,
                 #[name="add_poi"]
                 gtk::RadioButton {
@@ -133,6 +147,10 @@ impl Widget for ServerAddItemDialog {
                 #[name="add_db"]
                 gtk::RadioButton {
                     label: "Add database",
+                },
+                #[name="add_extra_user"]
+                gtk::RadioButton {
+                    label: "Add extra user",
                 },
             }
         }

@@ -15,19 +15,11 @@ pub enum AddEditDialogComponent {
 }
 
 impl AddEditDialogComponent {
-    fn un_poi(&self) -> Option<&relm::Component<server_poi_add_edit_dlg::ServerPoiAddEditDialog>> {
+    fn get_widget(&self) -> &gtk::Grid {
         match self {
-            AddEditDialogComponent::Poi(ref x) => Some(x),
-            _ => None,
-        }
-    }
-
-    fn un_db(
-        &self,
-    ) -> Option<&relm::Component<server_database_add_edit_dlg::ServerDatabaseAddEditDialog>> {
-        match self {
-            AddEditDialogComponent::Db(ref x) => Some(x),
-            _ => None,
+            AddEditDialogComponent::Poi(ref x) => x.widget(),
+            AddEditDialogComponent::Db(ref x) => x.widget(),
+            AddEditDialogComponent::User(ref x) => x.widget(),
         }
     }
 }

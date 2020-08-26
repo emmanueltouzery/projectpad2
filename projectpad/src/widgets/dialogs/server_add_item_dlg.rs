@@ -4,6 +4,7 @@ use super::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::server_poi_add_edit_dlg;
 use super::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
+use super::AddEditDialogComponent;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use relm::Widget;
@@ -18,32 +19,11 @@ pub enum Msg {
     ChangeDialogTitle(&'static str),
 }
 
-enum DialogComponent {
-    Poi(relm::Component<ServerPoiAddEditDialog>),
-    Db(relm::Component<ServerDatabaseAddEditDialog>),
-}
-
-impl DialogComponent {
-    fn un_poi(&self) -> Option<&relm::Component<ServerPoiAddEditDialog>> {
-        match self {
-            DialogComponent::Poi(ref x) => Some(x),
-            _ => None,
-        }
-    }
-
-    fn un_db(&self) -> Option<&relm::Component<ServerDatabaseAddEditDialog>> {
-        match self {
-            DialogComponent::Db(ref x) => Some(x),
-            _ => None,
-        }
-    }
-}
-
 pub struct Model {
     relm: relm::Relm<ServerAddItemDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
-    dialog_component: Option<DialogComponent>,
+    dialog_component: Option<AddEditDialogComponent>,
 }
 
 #[widget]
@@ -77,7 +57,8 @@ impl Widget for ServerAddItemDialog {
                         self.model.relm,
                         Msg::ActionCompleted
                     );
-                    self.model.dialog_component = Some(DialogComponent::Poi(dialog_contents));
+                    self.model.dialog_component =
+                        Some(AddEditDialogComponent::Poi(dialog_contents));
                     (
                         self.model
                             .dialog_component
@@ -100,7 +81,7 @@ impl Widget for ServerAddItemDialog {
                         self.model.relm,
                         Msg::ActionCompleted
                     );
-                    self.model.dialog_component = Some(DialogComponent::Db(dialog_contents));
+                    self.model.dialog_component = Some(AddEditDialogComponent::Db(dialog_contents));
                     (
                         self.model
                             .dialog_component
@@ -120,10 +101,10 @@ impl Widget for ServerAddItemDialog {
                 self.tabs_stack.set_visible_child_name("dialog");
             }
             Msg::OkPressed => match self.model.dialog_component.as_ref() {
-                Some(DialogComponent::Poi(poi_c)) => {
+                Some(AddEditDialogComponent::Poi(poi_c)) => {
                     poi_c.stream().emit(server_poi_add_edit_dlg::Msg::OkPressed)
                 }
-                Some(DialogComponent::Db(poi_d)) => poi_d
+                Some(AddEditDialogComponent::Db(poi_d)) => poi_d
                     .stream()
                     .emit(server_database_add_edit_dlg::Msg::OkPressed),
                 x => eprintln!("Got ok but wrong component? {}", x.is_some()),

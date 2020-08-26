@@ -1,11 +1,10 @@
 use super::dialogs::dialog_helpers;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
-use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
-use super::dialogs::server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
 use super::dialogs::standard_dialogs;
+use super::dialogs::AddEditDialogComponent;
 use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
 use crate::icons::*;
@@ -40,12 +39,6 @@ pub enum Msg {
 
 // String for details, because I can't pass Error across threads
 type DeleteResult<T> = Result<T, (&'static str, Option<String>)>;
-
-pub enum AddEditDialogComponent {
-    Poi(relm::Component<ServerPoiAddEditDialog>),
-    Db(relm::Component<ServerDatabaseAddEditDialog>),
-    User(relm::Component<ServerExtraUserAddEditDialog>),
-}
 
 pub struct Model {
     relm: relm::Relm<ServerItemListItem>,

@@ -8,9 +8,9 @@ use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDbAddEditDialog;
-use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
+use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
-use super::dialogs::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
+use super::dialogs::AddEditDialogComponent;
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
 use super::server_item_list_item;
@@ -139,8 +139,7 @@ pub struct Model {
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
-    server_poi_add_edit_dialog: Option<relm::Component<ServerPoiAddEditDialog>>,
-    server_db_add_edit_dialog: Option<relm::Component<ServerDatabaseAddEditDialog>>,
+    server_item_add_edit_dialog: Option<AddEditDialogComponent>,
 }
 
 #[widget]
@@ -353,8 +352,7 @@ impl Widget for SearchView {
             action_popover: None,
             item_with_depressed_action: Rc::new(RefCell::new(None)),
             server_add_edit_dialog: None,
-            server_poi_add_edit_dialog: None,
-            server_db_add_edit_dialog: None,
+            server_item_add_edit_dialog: None,
         }
     }
 
@@ -427,7 +425,8 @@ impl Widget for SearchView {
                         self.model.relm,
                         Msg::SearchResultsModified
                     );
-                    self.model.server_poi_add_edit_dialog = Some(component);
+                    self.model.server_item_add_edit_dialog =
+                        Some(AddEditDialogComponent::Poi(component));
                     dialog.show();
                 }
                 ProjectPadItem::ServerDatabase(srv_db) => {
@@ -442,7 +441,28 @@ impl Widget for SearchView {
                         self.model.relm,
                         Msg::SearchResultsModified
                     );
-                    self.model.server_db_add_edit_dialog = Some(component);
+                    self.model.server_item_add_edit_dialog =
+                        Some(AddEditDialogComponent::Db(component));
+                    dialog.show();
+                }
+                ProjectPadItem::ServerExtraUserAccount(srv_usr) => {
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        (
+                            self.model.db_sender.clone(),
+                            srv_usr.server_id,
+                            Some(srv_usr),
+                        ),
+                        MsgServerExtraUserAddEditDialog::OkPressed,
+                        "Server Extra User",
+                    );
+                    relm::connect!(
+                        component@MsgServerExtraUserAddEditDialog::ServerUserUpdated(_),
+                        self.model.relm,
+                        Msg::SearchResultsModified
+                    );
+                    self.model.server_item_add_edit_dialog =
+                        Some(AddEditDialogComponent::User(component));
                     dialog.show();
                 }
                 _ => {

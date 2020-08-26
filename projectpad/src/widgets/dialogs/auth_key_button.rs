@@ -12,9 +12,11 @@ pub enum Msg {
     RemoveAuthFile,
     SaveAuthFile,
     AuthFilePicked,
+    AuthFileChanged((Option<String>, Option<Vec<u8>>)),
 }
 
 pub struct Model {
+    relm: relm::Relm<AuthKeyButton>,
     auth_key_filename: Option<String>,
     // store the auth key & not the Path, because it's what I have
     // when reading from SQL. So by storing it also when adding a new
@@ -40,6 +42,7 @@ impl Widget for AuthKeyButton {
     fn model(relm: &relm::Relm<Self>, params: (Option<String>, Option<Vec<u8>>)) -> Model {
         let (auth_key_filename, auth_key) = params;
         Model {
+            relm: relm.clone(),
             auth_key_filename,
             auth_key,
         }
@@ -50,6 +53,10 @@ impl Widget for AuthKeyButton {
             Msg::RemoveAuthFile => {
                 self.model.auth_key_filename = None;
                 self.update_auth_file();
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::AuthFileChanged((None, None)));
             }
             Msg::AuthFilePicked => {
                 match self.auth_key.get_filename().and_then(|f| {
@@ -68,6 +75,10 @@ impl Widget for AuthKeyButton {
                         self.model.auth_key_filename = Some(f);
                         self.model.auth_key = Some(c);
                         self.update_auth_file();
+                        self.model.relm.stream().emit(Msg::AuthFileChanged((
+                            self.model.auth_key_filename.clone(),
+                            self.model.auth_key.clone(),
+                        )));
                     }
                     None => {
                         standard_dialogs::display_error(
@@ -77,6 +88,8 @@ impl Widget for AuthKeyButton {
                     }
                 }
             }
+            // meant for my parent
+            Msg::AuthFileChanged(_) => {}
             Msg::SaveAuthFile => {
                 // https://stackoverflow.com/questions/54487052/how-do-i-add-a-save-button-to-the-gtk-filechooser-dialog
                 let dialog = gtk::FileChooserDialogBuilder::new()

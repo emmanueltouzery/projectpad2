@@ -1,4 +1,5 @@
 use super::auth_key_button::AuthKeyButton;
+use super::auth_key_button::Msg::AuthFileChanged as AuthKeyButtonFileChanged;
 use super::dialog_helpers;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
@@ -14,6 +15,7 @@ use strum::IntoEnumIterator;
 #[derive(Msg, Debug, Clone)]
 pub enum Msg {
     GotGroups(Vec<String>),
+    AuthFileChanged((Option<String>, Option<Vec<u8>>)),
     OkPressed,
     ServerUpdated(Server),
 }
@@ -179,6 +181,10 @@ impl Widget for ServerAddEditDialog {
                     &groups,
                     &self.model.group_name,
                 );
+            }
+            Msg::AuthFileChanged(ref kv) => {
+                self.model.auth_key_filename = kv.0.clone();
+                self.model.auth_key = kv.1.clone();
             }
             Msg::OkPressed => {
                 self.update_server();
@@ -383,6 +389,7 @@ impl Widget for ServerAddEditDialog {
                 self.model.auth_key_filename.clone(),
                 self.model.auth_key.clone(),
             )) {
+                AuthKeyButtonFileChanged(ref val) => Msg::AuthFileChanged(val.clone()),
                 cell: {
                     left_attach: 1,
                     top_attach: 7,

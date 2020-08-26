@@ -1,4 +1,5 @@
 use super::auth_key_button::AuthKeyButton;
+use super::auth_key_button::Msg::AuthFileChanged as AuthKeyButtonFileChanged;
 use super::dialog_helpers;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
@@ -12,6 +13,7 @@ use std::sync::mpsc;
 #[derive(Msg, Clone)]
 pub enum Msg {
     GotGroups(Vec<String>),
+    AuthFileChanged((Option<String>, Option<Vec<u8>>)),
     OkPressed,
     ServerUserUpdated(ServerExtraUserAccount),
 }
@@ -107,6 +109,10 @@ impl Widget for ServerExtraUserAddEditDialog {
                     &self.model.group_name,
                 );
             }
+            Msg::AuthFileChanged(ref kv) => {
+                self.model.auth_key_filename = kv.0.clone();
+                self.model.auth_key = kv.1.clone();
+            }
             Msg::OkPressed => {
                 self.update_server_user();
             }
@@ -122,7 +128,8 @@ impl Widget for ServerExtraUserAddEditDialog {
         let new_group = self.group.get_active_text();
         let new_username = self.username_entry.get_text();
         let new_password = self.password_entry.get_text();
-        // TODO auth key!!!!
+        let new_authkey = self.model.auth_key.clone();
+        let new_authkey_filename = self.model.auth_key_filename.clone();
         let s = self.model.server_user_updated_sender.clone();
         self.model
             .db_sender
@@ -137,6 +144,8 @@ impl Widget for ServerExtraUserAddEditDialog {
                         .filter(|s| !s.is_empty())),
                     srv_usr::username.eq(new_username.as_str()),
                     srv_usr::password.eq(new_password.as_str()),
+                    srv_usr::auth_key.eq(new_authkey.as_ref()),
+                    srv_usr::auth_key_filename.eq(new_authkey_filename.as_ref()),
                     srv_usr::server_id.eq(server_id),
                 );
                 let server_db_after_result = perform_insert_or_update!(
@@ -236,6 +245,7 @@ impl Widget for ServerExtraUserAddEditDialog {
                 self.model.auth_key_filename.clone(),
                 self.model.auth_key.clone(),
             )) {
+                AuthKeyButtonFileChanged(ref val) => Msg::AuthFileChanged(val.clone()),
                 cell: {
                     left_attach: 1,
                     top_attach: 6,

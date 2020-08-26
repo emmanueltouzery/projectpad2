@@ -1,6 +1,7 @@
+use super::dialogs::dialog_helpers;
+use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
-use super::project_poi_header::{prepare_add_edit_server_dialog, AddEditServerInfo};
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
@@ -204,10 +205,15 @@ impl Widget for ProjectSummary {
                 }
             }
             Msg::AddServer => {
-                let (dialog, component) = prepare_add_edit_server_dialog(
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.header_actions_btn.clone().upcast::<gtk::Widget>(),
-                    self.model.db_sender.clone(),
-                    AddEditServerInfo::AddServer(self.model.project.as_ref().unwrap()),
+                    (
+                        self.model.db_sender.clone(),
+                        self.model.project.as_ref().unwrap().id,
+                        None,
+                    ),
+                    server_add_edit_dlg::Msg::OkPressed,
+                    "Server",
                 );
                 relm::connect!(
                     component@MsgServerAddEditDialog::ServerUpdated(ref srv),

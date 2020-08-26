@@ -1,3 +1,4 @@
+use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use diesel::query_builder::IntoUpdateTarget;
@@ -266,4 +267,50 @@ pub fn fetch_server_groups(
             s.send(get_server_group_names(sql_conn, server_id)).unwrap();
         }))
         .unwrap();
+}
+
+pub trait ServerItemDialogModelParam<T> {
+    fn get_item(&self) -> Option<&T>;
+}
+
+impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, i32, Option<T>) {
+    fn get_item(&self) -> Option<&T> {
+        self.2.as_ref()
+    }
+}
+
+/// you must keep a reference to the component in your model,
+/// otherwise event processing will die when the component gets dropped
+pub fn prepare_add_edit_item_dialog<T, Dlg>(
+    widget_for_window: gtk::Widget,
+    widget_param: Dlg::ModelParam,
+    ok_pressed_event: Dlg::Msg,
+    item_desc: &'static str,
+) -> (gtk::Dialog, relm::Component<Dlg>, gtk::Button)
+where
+    Dlg: relm::Widget + 'static,
+    Dlg::Msg: Clone,
+    Dlg::ModelParam: ServerItemDialogModelParam<T>,
+{
+    let title = if widget_param.get_item().is_some() {
+        "Edit "
+    } else {
+        "Add "
+    }
+    .to_string()
+        + item_desc;
+    let dialog_contents =
+        relm::init::<Dlg>(widget_param).expect("error initializing the server item add edit modal");
+    let d_c = dialog_contents.clone();
+    standard_dialogs::prepare_custom_dialog(
+        widget_for_window,
+        600,
+        200,
+        title,
+        dialog_contents,
+        move |_| {
+            d_c.emit(ok_pressed_event.clone());
+            standard_dialogs::DialogActionResult::CloseDialog
+        },
+    )
 }

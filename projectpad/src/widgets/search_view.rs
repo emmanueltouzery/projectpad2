@@ -3,6 +3,8 @@
 // discussion:
 // https://discourse.gnome.org/t/lazy-scrollable-list/3774
 
+use super::dialogs::dialog_helpers;
+use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDbAddEditDialog;
@@ -11,7 +13,6 @@ use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
-use super::project_poi_header::{prepare_add_edit_server_dialog, AddEditServerInfo};
 use super::server_item_list_item;
 use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
@@ -396,10 +397,11 @@ impl Widget for SearchView {
             }
             Msg::EditItem(item) => match item {
                 ProjectPadItem::Server(srv) => {
-                    let (dialog, component) = prepare_add_edit_server_dialog(
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        self.model.db_sender.clone(),
-                        AddEditServerInfo::EditServer(&srv),
+                        (self.model.db_sender.clone(), srv.project_id, Some(srv)),
+                        server_add_edit_dlg::Msg::OkPressed,
+                        "Server",
                     );
                     relm::connect!(
                         component@MsgServerAddEditDialog::ServerUpdated(_),
@@ -410,17 +412,16 @@ impl Widget for SearchView {
                     dialog.show();
                 }
                 ProjectPadItem::ServerPoi(srv_poi) => {
-                    let (dialog, component, _) =
-                        server_item_list_item::prepare_add_edit_server_item_dialog(
-                            self.search_result_area.clone().upcast::<gtk::Widget>(),
-                            (
-                                self.model.db_sender.clone(),
-                                srv_poi.server_id,
-                                Some(srv_poi),
-                            ),
-                            MsgServerPoiAddEditDialog::OkPressed,
-                            "POI",
-                        );
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        (
+                            self.model.db_sender.clone(),
+                            srv_poi.server_id,
+                            Some(srv_poi),
+                        ),
+                        MsgServerPoiAddEditDialog::OkPressed,
+                        "Server POI",
+                    );
                     relm::connect!(
                         component@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
                         self.model.relm,
@@ -430,13 +431,12 @@ impl Widget for SearchView {
                     dialog.show();
                 }
                 ProjectPadItem::ServerDatabase(srv_db) => {
-                    let (dialog, component, _) =
-                        server_item_list_item::prepare_add_edit_server_item_dialog(
-                            self.search_result_area.clone().upcast::<gtk::Widget>(),
-                            (self.model.db_sender.clone(), srv_db.server_id, Some(srv_db)),
-                            MsgServerDbAddEditDialog::OkPressed,
-                            "Database",
-                        );
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        (self.model.db_sender.clone(), srv_db.server_id, Some(srv_db)),
+                        MsgServerDbAddEditDialog::OkPressed,
+                        "Server Database",
+                    );
                     relm::connect!(
                         component@MsgServerDbAddEditDialog::ServerDbUpdated(_),
                         self.model.relm,

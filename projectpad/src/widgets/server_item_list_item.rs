@@ -3,7 +3,6 @@ use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEdi
 use super::dialogs::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog;
-use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
 use super::dialogs::standard_dialogs;
@@ -176,50 +175,6 @@ fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
             db.password.clone(),
         ),
     ]
-}
-
-pub trait ServerItemDialogModelParam<T> {
-    fn get_item(&self) -> Option<&T>;
-}
-
-impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, i32, Option<T>) {
-    fn get_item(&self) -> Option<&T> {
-        self.2.as_ref()
-    }
-}
-
-pub fn prepare_add_edit_server_item_dialog<T, Dlg>(
-    widget_for_window: gtk::Widget,
-    widget_param: Dlg::ModelParam,
-    ok_pressed_event: Dlg::Msg,
-    item_desc: &'static str,
-) -> (gtk::Dialog, relm::Component<Dlg>, gtk::Button)
-where
-    Dlg: relm::Widget + 'static,
-    Dlg::Msg: Clone,
-    Dlg::ModelParam: ServerItemDialogModelParam<T>,
-{
-    let title = if widget_param.get_item().is_some() {
-        "Edit server "
-    } else {
-        "Add server "
-    }
-    .to_string()
-        + item_desc;
-    let dialog_contents =
-        relm::init::<Dlg>(widget_param).expect("error initializing the server item add edit modal");
-    let d_c = dialog_contents.clone();
-    standard_dialogs::prepare_custom_dialog(
-        widget_for_window,
-        server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_WIDTH,
-        server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_HEIGHT,
-        title,
-        dialog_contents,
-        move |_| {
-            d_c.emit(ok_pressed_event.clone());
-            standard_dialogs::DialogActionResult::CloseDialog
-        },
-    )
 }
 
 #[widget]
@@ -410,11 +365,11 @@ impl Widget for ServerItemListItem {
             // meant for my parent
             Msg::ViewNote(_) => {}
             Msg::EditPoi(poi) => {
-                let (dialog, component, _) = prepare_add_edit_server_item_dialog(
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
                     (self.model.db_sender.clone(), poi.server_id, Some(poi)),
                     MsgServerPoiAddEditDialog::OkPressed,
-                    "POI",
+                    "Server POI",
                 );
                 relm::connect!(
                     component@MsgServerPoiAddEditDialog::ServerPoiUpdated(ref srv),
@@ -425,11 +380,11 @@ impl Widget for ServerItemListItem {
                 dialog.show();
             }
             Msg::EditDb(db) => {
-                let (dialog, component, _) = prepare_add_edit_server_item_dialog(
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
                     (self.model.db_sender.clone(), db.server_id, Some(db)),
                     MsgServerDatabaseAddEditDialog::OkPressed,
-                    "Database",
+                    "Server Database",
                 );
                 relm::connect!(
                     component@MsgServerDatabaseAddEditDialog::ServerDbUpdated(ref srv),
@@ -440,11 +395,11 @@ impl Widget for ServerItemListItem {
                 dialog.show();
             }
             Msg::EditUser(usr) => {
-                let (dialog, component, _) = prepare_add_edit_server_item_dialog(
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
                     (self.model.db_sender.clone(), usr.server_id, Some(usr)),
                     MsgServerExtraUserAddEditDialog::OkPressed,
-                    "User",
+                    "Server Extra User",
                 );
                 relm::connect!(
                     component@MsgServerExtraUserAddEditDialog::ServerUserUpdated(ref usr),

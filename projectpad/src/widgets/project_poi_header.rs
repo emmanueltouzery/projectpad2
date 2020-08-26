@@ -1,16 +1,16 @@
 use super::dialogs::dialog_helpers;
+use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_add_item_dlg;
 use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
-use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Project, Server, ServerAccessType, ServerDatabase, ServerWebsite};
+use projectpadsql::models::{Server, ServerAccessType, ServerDatabase, ServerWebsite};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -231,66 +231,6 @@ fn server_access_icon(srv: &Server) -> Icon {
     }
 }
 
-pub enum AddEditServerInfo<'a> {
-    EditServer(&'a Server),
-    AddServer(&'a Project),
-}
-
-impl AddEditServerInfo<'_> {
-    fn is_edit(&self) -> bool {
-        match self {
-            AddEditServerInfo::EditServer(_) => true,
-            _ => false,
-        }
-    }
-
-    fn project_id(&self) -> i32 {
-        match self {
-            AddEditServerInfo::EditServer(srv) => srv.project_id,
-            AddEditServerInfo::AddServer(prj) => prj.id,
-        }
-    }
-
-    fn server(&self) -> Option<&Server> {
-        match self {
-            AddEditServerInfo::EditServer(srv) => Some(srv),
-            _ => None,
-        }
-    }
-}
-
-/// you must keep a reference to the component in your model,
-/// otherwise event processing will die when the component gets dropped
-pub fn prepare_add_edit_server_dialog(
-    widget_for_window: gtk::Widget,
-    db_sender: mpsc::Sender<SqlFunc>,
-    add_edit_info: AddEditServerInfo,
-) -> (gtk::Dialog, relm::Component<ServerAddEditDialog>) {
-    let dialog_contents = relm::init::<ServerAddEditDialog>((
-        db_sender,
-        add_edit_info.project_id(),
-        add_edit_info.server().cloned(),
-    ))
-    .expect("error initializing the server add edit modal");
-    let d_c = dialog_contents.clone();
-    let (dialog, component, _) = standard_dialogs::prepare_custom_dialog(
-        widget_for_window,
-        600,
-        350,
-        if add_edit_info.is_edit() {
-            "Edit server".to_string()
-        } else {
-            "Add server".to_string()
-        },
-        dialog_contents,
-        move |_| {
-            d_c.emit(MsgServerAddEditDialog::OkPressed);
-            standard_dialogs::DialogActionResult::CloseDialog
-        },
-    );
-    (dialog, component)
-}
-
 #[widget]
 impl Widget for ProjectPoiHeader {
     fn init_view(&mut self) {
@@ -353,10 +293,15 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::Edit, _)) => {
                 match self.model.project_item.clone() {
                     Some(ProjectItem::Server(ref srv)) => {
-                        let (dialog, component) = prepare_add_edit_server_dialog(
+                        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                             self.items_frame.clone().upcast::<gtk::Widget>(),
-                            self.model.db_sender.clone(),
-                            AddEditServerInfo::EditServer(srv),
+                            (
+                                self.model.db_sender.clone(),
+                                srv.project_id,
+                                Some(srv.clone()),
+                            ),
+                            server_add_edit_dlg::Msg::OkPressed,
+                            "Server",
                         );
                         relm::connect!(
                             component@MsgServerAddEditDialog::ServerUpdated(ref srv),
@@ -438,8 +383,8 @@ impl Widget for ProjectPoiHeader {
         let d_c = dialog_contents.clone();
         let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
             self.items_frame.clone().upcast::<gtk::Widget>(),
-            server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_WIDTH,
-            server_poi_add_edit_dlg::SERVER_POI_ADD_EDIT_HEIGHT,
+            600,
+            200,
             "Add server item".to_string(),
             dialog_contents,
             move |ok_btn| {

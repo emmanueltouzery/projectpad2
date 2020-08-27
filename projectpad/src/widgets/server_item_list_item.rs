@@ -10,12 +10,12 @@ use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
 use crate::icons::*;
 use crate::sql_thread::SqlFunc;
+use diesel::helper_types::Find;
 use diesel::prelude::*;
 use diesel::query_builder::IntoUpdateTarget;
 use diesel::query_dsl::methods::ExecuteDsl;
 use diesel::query_dsl::methods::FindDsl;
 use diesel::sqlite::SqliteConnection;
-use diesel::{associations::HasTable, helper_types::Find, query_builder::DeleteStatement};
 use gtk::prelude::*;
 use projectpadsql::models::{
     InterestType, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
@@ -33,10 +33,7 @@ pub enum Msg {
     EditDb(ServerDatabase),
     EditUser(ServerExtraUserAccount),
     EditWebsite(ServerWebsite),
-    ServerPoiUpdated(ServerPointOfInterest),
-    ServerDbUpdated(ServerDatabase),
-    ServerUserUpdated(ServerExtraUserAccount),
-    ServerWwwUpdated(ServerWebsite),
+    ServerItemUpdated(ServerItem),
     AskDeleteServerPoi(ServerPointOfInterest),
     DeleteServerPoi(ServerPointOfInterest),
     AskDeleteDb(ServerDatabase),
@@ -412,7 +409,7 @@ impl Widget for ServerItemListItem {
                 relm::connect!(
                     component@MsgServerPoiAddEditDialog::ServerPoiUpdated(ref srv),
                     self.model.relm,
-                    Msg::ServerPoiUpdated(srv.clone())
+                    Msg::ServerItemUpdated(ServerItem::PointOfInterest(srv.clone()))
                 );
                 self.model.server_add_edit_dialog = Some(AddEditDialogComponent::Poi(component));
                 dialog.show();
@@ -427,7 +424,7 @@ impl Widget for ServerItemListItem {
                 relm::connect!(
                     component@MsgServerDatabaseAddEditDialog::ServerDbUpdated(ref srv),
                     self.model.relm,
-                    Msg::ServerDbUpdated(srv.clone())
+                    Msg::ServerItemUpdated(ServerItem::Database(srv.clone()))
                 );
                 self.model.server_add_edit_dialog = Some(AddEditDialogComponent::Db(component));
                 dialog.show();
@@ -442,7 +439,7 @@ impl Widget for ServerItemListItem {
                 relm::connect!(
                     component@MsgServerWebsiteAddEditDialog::ServerWwwUpdated(ref srv),
                     self.model.relm,
-                    Msg::ServerWwwUpdated(srv.clone())
+                    Msg::ServerItemUpdated(ServerItem::Website(srv.clone()))
                 );
                 self.model.server_add_edit_dialog =
                     Some(AddEditDialogComponent::Website(component));
@@ -458,13 +455,13 @@ impl Widget for ServerItemListItem {
                 relm::connect!(
                     component@MsgServerExtraUserAddEditDialog::ServerUserUpdated(ref usr),
                     self.model.relm,
-                    Msg::ServerUserUpdated(usr.clone())
+                    Msg::ServerItemUpdated(ServerItem::ExtraUserAccount(usr.clone()))
                 );
                 self.model.server_add_edit_dialog = Some(AddEditDialogComponent::User(component));
                 dialog.show();
             }
-            Msg::ServerPoiUpdated(server_poi) => {
-                self.model.server_item = ServerItem::PointOfInterest(server_poi);
+            Msg::ServerItemUpdated(server_item) => {
+                self.model.server_item = server_item;
                 self.model.title = Self::get_title(&self.model.server_item);
                 self.load_server_item();
             }
@@ -529,21 +526,6 @@ impl Widget for ServerItemListItem {
                         .unwrap();
                     }))
                     .unwrap();
-            }
-            Msg::ServerDbUpdated(server_db) => {
-                self.model.server_item = ServerItem::Database(server_db);
-                self.model.title = Self::get_title(&self.model.server_item);
-                self.load_server_item();
-            }
-            Msg::ServerWwwUpdated(server_www) => {
-                self.model.server_item = ServerItem::Website(server_www);
-                self.model.title = Self::get_title(&self.model.server_item);
-                self.load_server_item();
-            }
-            Msg::ServerUserUpdated(server_usr) => {
-                self.model.server_item = ServerItem::ExtraUserAccount(server_usr);
-                self.model.title = Self::get_title(&self.model.server_item);
-                self.load_server_item();
             }
             Msg::AskDeleteServerExtraUser(user) => {
                 let relm = self.model.relm.clone();

@@ -7,6 +7,9 @@ use super::server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog;
 use super::server_poi_add_edit_dlg;
 use super::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
+use super::server_website_add_edit_dlg;
+use super::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
+use super::server_website_add_edit_dlg::ServerWebsiteAddEditDialog;
 use super::AddEditDialogComponent;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
@@ -58,6 +61,7 @@ impl Widget for ServerAddItemDialog {
     fn init_view(&mut self) {
         self.add_db.join_group(Some(&self.add_poi));
         self.add_extra_user.join_group(Some(&self.add_poi));
+        self.add_website.join_group(Some(&self.add_poi));
     }
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, i32)) -> Model {
@@ -103,6 +107,16 @@ impl Widget for ServerAddItemDialog {
                         ),
                         "Add server extra user",
                     )
+                } else if self.add_website.get_active() {
+                    (
+                        plug_second_tab!(
+                            self,
+                            ServerWebsiteAddEditDialog,
+                            MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
+                            AddEditDialogComponent::Website,
+                        ),
+                        "Add server website",
+                    )
                 } else {
                     panic!();
                 };
@@ -118,6 +132,9 @@ impl Widget for ServerAddItemDialog {
                 Some(AddEditDialogComponent::Db(poi_d)) => poi_d
                     .stream()
                     .emit(server_database_add_edit_dlg::Msg::OkPressed),
+                Some(AddEditDialogComponent::Website(www_d)) => www_d
+                    .stream()
+                    .emit(server_website_add_edit_dlg::Msg::OkPressed),
                 Some(AddEditDialogComponent::User(user_d)) => user_d
                     .stream()
                     .emit(server_extra_user_add_edit_dlg::Msg::OkPressed),
@@ -143,6 +160,10 @@ impl Widget for ServerAddItemDialog {
                 #[name="add_poi"]
                 gtk::RadioButton {
                     label: "Add point of interest",
+                },
+                #[name="add_website"]
+                gtk::RadioButton {
+                    label: "Add website",
                 },
                 #[name="add_db"]
                 gtk::RadioButton {

@@ -189,7 +189,7 @@ pub fn insert_row(
 }
 
 // https://stackoverflow.com/a/55213728/516188
-type DeleteFindStatement<F> =
+pub type DeleteFindStatement<F> =
     DeleteStatement<<F as HasTable>::Table, <F as IntoUpdateTarget>::WhereClause>;
 
 pub fn delete_row<Tbl, Pk>(

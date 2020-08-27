@@ -41,6 +41,16 @@ impl ServerItem {
             ServerItem::Database(d) => d.group_name.as_deref(),
         }
     }
+
+    pub fn get_id(&self) -> i32 {
+        match self {
+            ServerItem::Website(w) => w.id,
+            ServerItem::PointOfInterest(p) => p.id,
+            ServerItem::Note(n) => n.id,
+            ServerItem::ExtraUserAccount(u) => u.id,
+            ServerItem::Database(d) => d.id,
+        }
+    }
 }
 
 pub struct Model {
@@ -112,9 +122,7 @@ impl Widget for ServerPoiContents {
                 .contents_list
                 .add_widget::<ServerItemListItem>((self.model.db_sender.clone(), item.clone()));
             relm::connect!(component@ServerItemListItemMsg::ViewNote(ref n), self.model.relm, Msg::ViewNote(n.clone()));
-            relm::connect!(component@ServerItemListItemMsg::ServerPoiDeleted(_), self.model.relm, Msg::RefreshItems);
-            relm::connect!(component@ServerItemListItemMsg::ServerDbDeleted(_), self.model.relm, Msg::RefreshItems);
-            relm::connect!(component@ServerItemListItemMsg::ServerExtraUserDeleted(_), self.model.relm, Msg::RefreshItems);
+            relm::connect!(component@ServerItemListItemMsg::ServerItemDeleted(_), self.model.relm, Msg::RefreshItems);
             children_components.push(component);
         }
         let indexes = self.model.server_item_groups_start_indexes.clone();

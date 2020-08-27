@@ -11,6 +11,11 @@ use super::server_poi_contents::ServerItem;
 use crate::icons::*;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
+use diesel::query_builder::IntoUpdateTarget;
+use diesel::query_dsl::methods::ExecuteDsl;
+use diesel::query_dsl::methods::FindDsl;
+use diesel::sqlite::SqliteConnection;
+use diesel::{associations::HasTable, helper_types::Find, query_builder::DeleteStatement};
 use gtk::prelude::*;
 use projectpadsql::models::{
     InterestType, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
@@ -34,13 +39,13 @@ pub enum Msg {
     ServerWwwUpdated(ServerWebsite),
     AskDeleteServerPoi(ServerPointOfInterest),
     DeleteServerPoi(ServerPointOfInterest),
-    ServerPoiDeleted(ServerPointOfInterest),
     AskDeleteDb(ServerDatabase),
     DeleteServerDb(ServerDatabase),
-    ServerDbDeleted(ServerDatabase),
     AskDeleteServerExtraUser(ServerExtraUserAccount),
     DeleteServerExtraUser(ServerExtraUserAccount),
-    ServerExtraUserDeleted(ServerExtraUserAccount),
+    AskDeleteServerWebsite(ServerWebsite),
+    DeleteServerWebsite(ServerWebsite),
+    ServerItemDeleted(ServerItem),
 }
 
 // String for details, because I can't pass Error across threads
@@ -270,7 +275,16 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::EditWebsite(w.clone())
                 );
-                vec![edit_btn]
+                let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+                let w2 = www.clone(); // TODO too many clones
+                                      // TODO skip the ask step
+                relm::connect!(
+                    self.model.relm,
+                    &delete_btn,
+                    connect_clicked(_),
+                    Msg::AskDeleteServerWebsite(w2.clone())
+                );
+                vec![edit_btn, delete_btn]
             }
             _ => vec![],
         };
@@ -343,16 +357,9 @@ impl Widget for ServerItemListItem {
         let stream = relm.stream().clone();
         let (_server_item_deleted_channel, server_item_deleted_sender) =
             relm::Channel::new(move |r: DeleteResult| match r {
-                Ok(ServerItem::PointOfInterest(poi)) => {
-                    stream.emit(Msg::ServerPoiDeleted(poi));
+                Ok(server_item) => {
+                    stream.emit(Msg::ServerItemDeleted(server_item));
                 }
-                Ok(ServerItem::Database(db)) => {
-                    stream.emit(Msg::ServerDbDeleted(db));
-                }
-                Ok(ServerItem::ExtraUserAccount(usr)) => {
-                    stream.emit(Msg::ServerExtraUserDeleted(usr));
-                }
-                Ok(_) => panic!(),
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         Model {
@@ -365,6 +372,25 @@ impl Widget for ServerItemListItem {
             _server_item_deleted_channel,
             server_item_deleted_sender,
         }
+    }
+
+    fn run_delete_action<Tbl>(&self, table: Tbl, server_item: ServerItem)
+    where
+        Tbl: FindDsl<i32> + Send + 'static + Copy,
+        Find<Tbl, i32>: IntoUpdateTarget,
+        dialog_helpers::DeleteFindStatement<Find<Tbl, i32>>: ExecuteDsl<SqliteConnection>,
+    {
+        let s = self.model.server_item_deleted_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                s.send(
+                    dialog_helpers::delete_row(sql_conn, table, server_item.get_id())
+                        .map(|_| server_item.clone()),
+                )
+                .unwrap();
+            }))
+            .unwrap();
     }
 
     fn update(&mut self, event: Msg) {
@@ -452,24 +478,11 @@ impl Widget for ServerItemListItem {
             }
             Msg::DeleteServerPoi(poi) => {
                 use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
-                let s = self.model.server_item_deleted_sender.clone();
-                self.model
-                    .db_sender
-                    .send(SqlFunc::new(move |sql_conn| {
-                        s.send(
-                            dialog_helpers::delete_row(
-                                sql_conn,
-                                srv_poi::server_point_of_interest,
-                                poi.id,
-                            )
-                            .map(|_| ServerItem::PointOfInterest(poi.clone())),
-                        )
-                        .unwrap();
-                    }))
-                    .unwrap();
+                self.run_delete_action(
+                    srv_poi::server_point_of_interest,
+                    ServerItem::PointOfInterest(poi),
+                );
             }
-            // for my parent
-            Msg::ServerPoiDeleted(_) => {}
             Msg::AskDeleteDb(db) => {
                 let relm = self.model.relm.clone();
 
@@ -517,8 +530,6 @@ impl Widget for ServerItemListItem {
                     }))
                     .unwrap();
             }
-            // for my parent
-            Msg::ServerDbDeleted(_) => {}
             Msg::ServerDbUpdated(server_db) => {
                 self.model.server_item = ServerItem::Database(server_db);
                 self.model.title = Self::get_title(&self.model.server_item);
@@ -544,24 +555,25 @@ impl Widget for ServerItemListItem {
             }
             Msg::DeleteServerExtraUser(user) => {
                 use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
-                let s = self.model.server_item_deleted_sender.clone();
-                self.model
-                    .db_sender
-                    .send(SqlFunc::new(move |sql_conn| {
-                        s.send(
-                            dialog_helpers::delete_row(
-                                sql_conn,
-                                srv_usr::server_extra_user_account,
-                                user.id,
-                            )
-                            .map(|_| ServerItem::ExtraUserAccount(user.clone())),
-                        )
-                        .unwrap();
-                    }))
-                    .unwrap();
+                self.run_delete_action(
+                    srv_usr::server_extra_user_account,
+                    ServerItem::ExtraUserAccount(user),
+                );
+            }
+            Msg::AskDeleteServerWebsite(user) => {
+                let relm = self.model.relm.clone();
+                standard_dialogs::confirm_deletion(
+                            "Delete server website",
+                            &format!("Are you sure you want to delete the server website {}? This action cannot be undone.", user.desc),
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                    move || relm.stream().emit(Msg::DeleteServerWebsite(user.clone())));
+            }
+            Msg::DeleteServerWebsite(website) => {
+                use projectpadsql::schema::server_website::dsl as srv_www;
+                self.run_delete_action(srv_www::server_website, ServerItem::Website(website));
             }
             // for my parent
-            Msg::ServerExtraUserDeleted(_) => {}
+            Msg::ServerItemDeleted(_) => {}
         }
     }
 

@@ -1,8 +1,9 @@
 use super::dialogs::dialog_helpers;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
+use super::dialogs::server_poi_add_edit_dlg::server_poi_get_text_label;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
-use super::dialogs::server_poi_add_edit_dlg::{server_poi_get_text_label, ServerPoiAddEditDialog};
+use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
 use super::dialogs::standard_dialogs;
 use super::dialogs::AddEditDialogComponent;
 use super::project_poi_header::{populate_grid, GridItem, LabelText};
@@ -26,6 +27,7 @@ pub enum Msg {
     EditPoi(ServerPointOfInterest),
     EditDb(ServerDatabase),
     EditUser(ServerExtraUserAccount),
+    EditWebsite(ServerWebsite),
     ServerPoiUpdated(ServerPointOfInterest),
     ServerDbUpdated(ServerDatabase),
     ServerUserUpdated(ServerExtraUserAccount),
@@ -258,6 +260,17 @@ impl Widget for ServerItemListItem {
                 );
                 vec![edit_btn, delete_btn]
             }
+            ServerItem::Website(www) => {
+                let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+                let w = www.clone(); // TODO too many clones
+                relm::connect!(
+                    self.model.relm,
+                    &edit_btn,
+                    connect_clicked(_),
+                    Msg::EditWebsite(w.clone())
+                );
+                vec![edit_btn]
+            }
             _ => vec![],
         };
         let server_item = self.model.server_item.clone();
@@ -390,6 +403,22 @@ impl Widget for ServerItemListItem {
                     Msg::ServerDbUpdated(srv.clone())
                 );
                 self.model.server_add_edit_dialog = Some(AddEditDialogComponent::Db(component));
+                dialog.show();
+            }
+            Msg::EditWebsite(www) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    (self.model.db_sender.clone(), www.server_id, Some(www)),
+                    MsgServerWebsiteAddEditDialog::OkPressed,
+                    "Server Website",
+                );
+                // relm::connect!(
+                //     component@MsgServerDatabaseAddEditDialog::ServerDbUpdated(ref srv),
+                //     self.model.relm,
+                //     Msg::ServerDbUpdated(srv.clone())
+                // );
+                self.model.server_add_edit_dialog =
+                    Some(AddEditDialogComponent::Website(component));
                 dialog.show();
             }
             Msg::EditUser(usr) => {

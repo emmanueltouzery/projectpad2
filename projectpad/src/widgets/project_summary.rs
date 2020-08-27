@@ -111,6 +111,18 @@ impl Widget for ProjectSummary {
         }
     }
 
+    fn set_project(&mut self, project: Project) {
+        self.model.project = Some(project);
+        self.model.title.set_markup(
+            &self
+                .model
+                .project
+                .as_ref()
+                .map(|p| format!("<b>{}</b>", &p.name))
+                .unwrap_or("".to_string()),
+        );
+    }
+
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ProjectActivated(prj) => {
@@ -143,15 +155,7 @@ impl Widget for ProjectSummary {
                         .stream()
                         .emit(Msg::EnvironmentChanged(EnvironmentType::EnvDevelopment));
                 }
-                self.model.project = Some(prj);
-                self.model.title.set_markup(
-                    &self
-                        .model
-                        .project
-                        .as_ref()
-                        .map(|p| format!("<b>{}</b>", &p.name))
-                        .unwrap_or("".to_string()),
-                );
+                self.set_project(prj);
             }
             Msg::EnvironmentToggled(env) => match env {
                 // sadly the radio button api is a bit of mess, toggled is emitted
@@ -198,7 +202,7 @@ impl Widget for ProjectSummary {
                 self.radio_stg.set_sensitive(prj.has_stage);
                 self.radio_uat.set_sensitive(prj.has_uat);
                 self.radio_prd.set_sensitive(prj.has_prod);
-                self.model.project = Some(prj);
+                self.set_project(prj);
                 for (btn, handler_id) in &self.model.btn_and_handler {
                     // unblock the event handlers
                     btn.unblock_signal(handler_id);

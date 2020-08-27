@@ -10,6 +10,7 @@ use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDbAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
+use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
 use super::dialogs::AddEditDialogComponent;
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
@@ -463,6 +464,26 @@ impl Widget for SearchView {
                     );
                     self.model.server_item_add_edit_dialog =
                         Some(AddEditDialogComponent::User(component));
+                    dialog.show();
+                }
+                ProjectPadItem::ServerWebsite(srv_www) => {
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        (
+                            self.model.db_sender.clone(),
+                            srv_www.server_id,
+                            Some(srv_www),
+                        ),
+                        MsgServerWebsiteAddEditDialog::OkPressed,
+                        "Server Website",
+                    );
+                    relm::connect!(
+                        component@MsgServerWebsiteAddEditDialog::ServerWwwUpdated(_),
+                        self.model.relm,
+                        Msg::SearchResultsModified
+                    );
+                    self.model.server_item_add_edit_dialog =
+                        Some(AddEditDialogComponent::Website(component));
                     dialog.show();
                 }
                 _ => {

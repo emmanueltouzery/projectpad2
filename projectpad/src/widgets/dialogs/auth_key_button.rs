@@ -140,7 +140,6 @@ impl Widget for AuthKeyButton {
     view! {
         #[name="auth_key_stack"]
         gtk::Stack {
-            // visible_child_name: if self.model.auth_key_filename.is_some() { "file" } else { "no_file" },
             // if there is no file, a file picker...
             #[name="auth_key"]
             gtk::FileChooserButton({action: gtk::FileChooserAction::Open}) {
@@ -170,7 +169,6 @@ impl Widget for AuthKeyButton {
                 gtk::Button {
                     always_show_image: true,
                     image: Some(&gtk::Image::from_icon_name(
-                        // Some(Icon::TRASH.name()), gtk::IconSize::Menu)),
                         Some("edit-delete-symbolic"), gtk::IconSize::Menu)),
                     button_press_event(_, _) => (Msg::RemoveAuthFile, Inhibit(false)),
                 },

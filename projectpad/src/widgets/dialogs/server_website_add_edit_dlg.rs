@@ -1,4 +1,5 @@
 use super::dialog_helpers;
+use super::pick_projectpad_item_button::{ItemType, PickProjectpadItemButton};
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -30,6 +31,7 @@ pub struct Model {
     _server_www_updated_channel: relm::Channel<SaveResult>,
     server_www_updated_sender: relm::Sender<SaveResult>,
 
+    server_database_id: Option<i32>,
     description: String,
     url: String,
     text: String,
@@ -79,6 +81,7 @@ impl Widget for ServerWebsiteAddEditDialog {
             groups_sender,
             _server_www_updated_channel: server_www_updated_channel,
             server_www_updated_sender,
+            server_database_id: sw.and_then(|d| d.server_database_id),
             description: sw.map(|d| d.desc.clone()).unwrap_or_else(|| "".to_string()),
             url: sw.map(|d| d.url.clone()).unwrap_or_else(|| "".to_string()),
             text: sw.map(|d| d.text.clone()).unwrap_or_else(|| "".to_string()),
@@ -257,7 +260,22 @@ impl Widget for ServerWebsiteAddEditDialog {
                     top_attach: 5,
                 },
             },
-            // TODO database
+            gtk::Label {
+                text: "Database",
+                halign: gtk::Align::End,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 6,
+                },
+            },
+            PickProjectpadItemButton((self.model.db_sender.clone(),
+                                      ItemType::ServerDatabase,
+                                      self.model.server_database_id)) {
+                cell: {
+                    left_attach: 1,
+                    top_attach: 6,
+                },
+            }
         }
     }
 }

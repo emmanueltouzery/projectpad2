@@ -49,6 +49,7 @@ pub struct Model {
 impl Widget for ServerExtraUserAddEditDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
+        self.init_group();
     }
 
     fn init_group(&self) {

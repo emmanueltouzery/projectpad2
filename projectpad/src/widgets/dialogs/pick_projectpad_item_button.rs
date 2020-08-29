@@ -104,6 +104,16 @@ impl Widget for PickProjectpadItemButton {
                 );
                 button.hide();
 
+                let search_entry = gtk::SearchEntryBuilder::new().build();
+                let comp2 = comp.clone();
+                search_entry.connect_changed(move |se| {
+                    comp2.stream().emit(search_view::Msg::FilterChanged(Some(
+                        se.get_text().to_string(),
+                    )));
+                });
+                dialog.get_header_bar().unwrap().pack_end(&search_entry);
+                search_entry.show();
+
                 dialog.show();
             }
         }

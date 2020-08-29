@@ -51,6 +51,19 @@ fn draw_button(
     gtk::render_frame(style_context, context, x, y, w, h);
 }
 
+fn selected_label_style_context() -> gtk::StyleContext {
+    let scontext = gtk::StyleContext::new();
+    let path = gtk::WidgetPath::new();
+    path.append_type(glib::Type::Invalid);
+    path.iter_set_object_name(-2, Some("label"));
+    path.append_type(glib::Type::Invalid);
+    path.iter_set_object_name(-1, Some("selection"));
+    scontext.set_state(gtk::StateFlags::SELECTED);
+    scontext.set_path(&path);
+    scontext.add_class(&gtk::STYLE_CLASS_LABEL);
+    scontext
+}
+
 fn draw_box(
     hierarchy_offset: f64,
     style_context: &gtk::StyleContext,
@@ -63,15 +76,7 @@ fn draw_box(
 
     let mut scontext: gtk::StyleContext;
     let bg_context = if is_selected {
-        scontext = gtk::StyleContext::new();
-        let path = gtk::WidgetPath::new();
-        path.append_type(glib::Type::Invalid);
-        path.iter_set_object_name(-2, Some("label"));
-        path.append_type(glib::Type::Invalid);
-        path.iter_set_object_name(-1, Some("selection"));
-        scontext.set_state(gtk::StateFlags::SELECTED);
-        scontext.set_path(&path);
-        scontext.add_class(&gtk::STYLE_CLASS_LABEL);
+        scontext = selected_label_style_context();
         &scontext
     } else {
         style_context
@@ -271,6 +276,7 @@ fn draw_project(
         x,
         y + SEARCH_RESULT_WIDGET_HEIGHT as f64 - PROJECT_ICON_SIZE as f64,
         Some(PROJECT_ICON_SIZE),
+        false,
     );
 
     if let Some(icon) = &project.icon {
@@ -325,6 +331,7 @@ fn draw_server_item_common(
         x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
         y + margin.top as f64,
         Some(ACTION_ICON_SIZE),
+        is_selected,
     );
     draw_action(
         style_context,
@@ -638,6 +645,7 @@ fn draw_server(
         x,
         y + margin.top as f64,
         None,
+        is_selected,
     );
     style_context.remove_class("title");
     let env_rect = draw_environment(
@@ -720,7 +728,7 @@ fn draw_environment(
 }
 
 fn draw_title(
-    style_context: &gtk::StyleContext,
+    style_context_orig: &gtk::StyleContext,
     context: &cairo::Context,
     padding: &gtk::Border,
     search_result_area: &gtk::DrawingArea,
@@ -729,7 +737,15 @@ fn draw_title(
     x: f64,
     y: f64,
     height: Option<i32>,
+    is_selected: bool,
 ) -> pango::Rectangle {
+    let mut scontext: gtk::StyleContext;
+    let style_context = if is_selected {
+        scontext = selected_label_style_context();
+        &scontext
+    } else {
+        style_context_orig
+    };
     let clazz = custom_class
         .as_deref()
         .unwrap_or("search_result_item_title");

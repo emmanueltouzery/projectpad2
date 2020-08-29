@@ -90,6 +90,7 @@ impl Widget for PickProjectpadItemButton {
                 let dialog_contents = relm::init::<search_view::SearchView>((
                     self.model.db_sender.clone(),
                     Some("".to_string()),
+                    search_view::SearchItemsType::ServerDbsOnly,
                 ))
                 .expect("error initializing the search modal");
                 self.model.search_view_component = Some(dialog_contents);

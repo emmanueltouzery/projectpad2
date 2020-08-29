@@ -132,6 +132,7 @@ pub struct Model {
     relm: relm::Relm<SearchView>,
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
+    search_item_types: SearchItemsType,
     sender: relm::Sender<SearchResult>,
     // as of 2020-07-08 "the drawing module of relm is not ready" -- have to RefCell
     search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
@@ -141,6 +142,13 @@ pub struct Model {
     action_popover: Option<gtk::Popover>,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
     server_item_add_edit_dialog: Option<AddEditDialogComponent>,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum SearchItemsType {
+    All,
+    ServerDbsOnly,
+    ServersOnly,
 }
 
 #[widget]
@@ -338,8 +346,11 @@ impl Widget for SearchView {
             .remove_class("search_result_frame");
     }
 
-    fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, Option<String>)) -> Model {
-        let (db_sender, filter) = params;
+    fn model(
+        relm: &relm::Relm<Self>,
+        params: (mpsc::Sender<SqlFunc>, Option<String>, SearchItemsType),
+    ) -> Model {
+        let (db_sender, filter, search_item_types) = params;
         let stream = relm.stream().clone();
         let (channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
             stream.emit(Msg::GotSearchResult(search_r));
@@ -347,6 +358,7 @@ impl Widget for SearchView {
         Model {
             relm: relm.clone(),
             filter,
+            search_item_types,
             db_sender,
             sender,
             search_items: Rc::new(RefCell::new(vec![])),
@@ -693,23 +705,62 @@ impl Widget for SearchView {
             Some(filter) => {
                 let s = self.model.sender.clone();
                 let f = format!("%{}%", filter.replace('%', "\\%"));
+                let search_item_types = self.model.search_item_types;
                 self.model
                     .db_sender
                     .send(SqlFunc::new(move |sql_conn| {
                         // find all the leaves...
-                        let servers = Self::filter_servers(sql_conn, &f);
-                        let prjs = Self::filter_projects(sql_conn, &f);
-                        let project_pois = Self::filter_project_pois(sql_conn, &f);
-                        let project_notes = Self::filter_project_notes(sql_conn, &f);
-                        let server_notes = Self::filter_server_notes(sql_conn, &f);
-                        let server_links = Self::filter_server_links(sql_conn, &f);
-                        let server_pois = Self::filter_server_pois(sql_conn, &f);
-                        let server_databases = Self::filter_server_databases(sql_conn, &f);
-                        let server_extra_users = Self::filter_server_extra_users(sql_conn, &f);
-                        let server_websites = Self::filter_server_websites(sql_conn, &f)
-                            .into_iter()
-                            .map(|p| p.0)
-                            .collect::<Vec<_>>();
+                        let servers = if search_item_types == SearchItemsType::ServersOnly
+                            || search_item_types == SearchItemsType::All
+                        {
+                            Self::filter_servers(sql_conn, &f)
+                        } else {
+                            vec![]
+                        };
+                        let server_databases = if search_item_types
+                            == SearchItemsType::ServerDbsOnly
+                            || search_item_types == SearchItemsType::All
+                        {
+                            Self::filter_server_databases(sql_conn, &f)
+                        } else {
+                            vec![]
+                        };
+
+                        let (
+                            prjs,
+                            project_pois,
+                            project_notes,
+                            server_notes,
+                            server_links,
+                            server_pois,
+                            server_extra_users,
+                            server_websites,
+                        ) = if search_item_types == SearchItemsType::All {
+                            (
+                                Self::filter_projects(sql_conn, &f),
+                                Self::filter_project_pois(sql_conn, &f),
+                                Self::filter_project_notes(sql_conn, &f),
+                                Self::filter_server_notes(sql_conn, &f),
+                                Self::filter_server_links(sql_conn, &f),
+                                Self::filter_server_pois(sql_conn, &f),
+                                Self::filter_server_extra_users(sql_conn, &f),
+                                Self::filter_server_websites(sql_conn, &f)
+                                    .into_iter()
+                                    .map(|p| p.0)
+                                    .collect::<Vec<_>>(),
+                            )
+                        } else {
+                            (
+                                vec![],
+                                vec![],
+                                vec![],
+                                vec![],
+                                vec![],
+                                vec![],
+                                vec![],
+                                vec![],
+                            )
+                        };
 
                         // bubble up to the toplevel...
                         let mut all_server_ids =

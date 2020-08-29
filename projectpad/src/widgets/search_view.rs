@@ -133,7 +133,9 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
     search_item_types: SearchItemsType,
+    operation_mode: OperationMode,
     sender: relm::Sender<SearchResult>,
+    selected_item: Rc<RefCell<Option<ProjectPadItem>>>,
     // as of 2020-07-08 "the drawing module of relm is not ready" -- have to RefCell
     search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
     links: Rc<RefCell<Vec<(Area, String)>>>,
@@ -149,6 +151,12 @@ pub enum SearchItemsType {
     All,
     ServerDbsOnly,
     ServersOnly,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum OperationMode {
+    ItemActions,
+    SelectItem,
 }
 
 #[widget]
@@ -173,6 +181,7 @@ impl Widget for SearchView {
         self.search_result_area
             .set_events(gdk::EventMask::ALL_EVENTS_MASK);
         let si = self.model.search_items.clone();
+        let sel = self.model.selected_item.clone();
         let search_scroll = self.search_scroll.clone();
         let links = self.model.links.clone();
         let action_buttons = self.model.action_buttons.clone();
@@ -187,6 +196,7 @@ impl Widget for SearchView {
                 &search_result_area,
                 &search_scroll,
                 &item_with_depressed.borrow(),
+                &sel,
             );
             Inhibit(false)
         });
@@ -300,6 +310,7 @@ impl Widget for SearchView {
         search_result_area: &gtk::DrawingArea,
         search_scroll: &gtk::Scrollbar,
         item_with_depressed_action: &Option<ProjectPadItem>,
+        sel_item: &Rc<RefCell<Option<ProjectPadItem>>>,
     ) {
         let mut links = links.borrow_mut();
         links.clear();
@@ -325,18 +336,21 @@ impl Widget for SearchView {
         search_result_area
             .get_style_context()
             .add_class("search_result_frame");
+        let sel_i: Option<ProjectPadItem> = sel_item.borrow().clone();
         while item_idx < search_items.len()
             && y < y_to_display + search_result_area.get_allocation().height
         {
+            let item = &search_items[item_idx];
             super::search_view_render::draw_child(
                 &search_result_area.get_style_context(),
-                &search_items[item_idx],
+                item,
                 y - y_to_display,
                 context,
                 &search_result_area,
                 &mut links,
                 &mut action_buttons,
                 item_with_depressed_action,
+                sel_i.as_ref() == Some(item),
             );
             y += SEARCH_RESULT_WIDGET_HEIGHT;
             item_idx += 1;
@@ -348,9 +362,15 @@ impl Widget for SearchView {
 
     fn model(
         relm: &relm::Relm<Self>,
-        params: (mpsc::Sender<SqlFunc>, Option<String>, SearchItemsType),
+        params: (
+            mpsc::Sender<SqlFunc>,
+            Option<String>,
+            SearchItemsType,
+            OperationMode,
+            Option<ProjectPadItem>,
+        ),
     ) -> Model {
-        let (db_sender, filter, search_item_types) = params;
+        let (db_sender, filter, search_item_types, operation_mode, selected_item) = params;
         let stream = relm.stream().clone();
         let (channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
             stream.emit(Msg::GotSearchResult(search_r));
@@ -359,6 +379,7 @@ impl Widget for SearchView {
             relm: relm.clone(),
             filter,
             search_item_types,
+            operation_mode,
             db_sender,
             sender,
             search_items: Rc::new(RefCell::new(vec![])),
@@ -368,6 +389,7 @@ impl Widget for SearchView {
             item_with_depressed_action: Rc::new(RefCell::new(None)),
             server_add_edit_dialog: None,
             server_item_add_edit_dialog: None,
+            selected_item: Rc::new(RefCell::new(selected_item)),
         }
     }
 
@@ -671,6 +693,21 @@ impl Widget for SearchView {
                     search_items.push(ProjectPadItem::ProjectPoi(project_poi.clone()));
                 }
             }
+        }
+        if self.model.selected_item.borrow().is_none()
+            && self.model.operation_mode == OperationMode::SelectItem
+        {
+            // select the first item
+            self.model.selected_item.replace(
+                // a project can't be selected..
+                search_items
+                    .iter()
+                    .find(|i| match i {
+                        ProjectPadItem::Project(_) => false,
+                        _ => true,
+                    })
+                    .cloned(),
+            );
         }
         let upper = search_items.len() as i32 * SEARCH_RESULT_WIDGET_HEIGHT;
         self.search_scroll.set_adjustment(&gtk::Adjustment::new(

@@ -57,10 +57,27 @@ fn draw_box(
     y: f64,
     context: &cairo::Context,
     search_result_area: &gtk::DrawingArea,
+    is_selected: bool,
 ) {
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+
+    let mut scontext: gtk::StyleContext;
+    let bg_context = if is_selected {
+        scontext = gtk::StyleContext::new();
+        let path = gtk::WidgetPath::new();
+        path.append_type(glib::Type::Invalid);
+        path.iter_set_object_name(-2, Some("label"));
+        path.append_type(glib::Type::Invalid);
+        path.iter_set_object_name(-1, Some("selection"));
+        scontext.set_state(gtk::StateFlags::SELECTED);
+        scontext.set_path(&path);
+        scontext.add_class(&gtk::STYLE_CLASS_LABEL);
+        &scontext
+    } else {
+        style_context
+    };
     gtk::render_background(
-        style_context,
+        bg_context,
         context,
         margin.left as f64 + hierarchy_offset,
         y + margin.top as f64,
@@ -97,6 +114,7 @@ pub fn draw_child(
     links: &mut Vec<(Area, String)>,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     item_with_depressed_icon: &Option<ProjectPadItem>,
+    is_selected: bool,
 ) {
     let extra_css_class = match item {
         ProjectPadItem::Server(_)
@@ -128,6 +146,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             links,
             action_buttons,
+            is_selected,
         ),
         ProjectPadItem::ServerNote(n) => draw_server_note(
             style_context,
@@ -139,6 +158,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             &n,
             action_buttons,
+            is_selected,
         ),
         ProjectPadItem::ProjectNote(n) => draw_project_note(
             style_context,
@@ -150,6 +170,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             &n,
             action_buttons,
+            is_selected,
         ),
         ProjectPadItem::ServerWebsite(w) => draw_server_website(
             style_context,
@@ -162,6 +183,7 @@ pub fn draw_child(
             &w,
             action_buttons,
             links,
+            is_selected,
         ),
         ProjectPadItem::ServerExtraUserAccount(u) => draw_server_extra_user(
             style_context,
@@ -173,6 +195,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             &u,
             action_buttons,
+            is_selected,
         ),
         ProjectPadItem::ServerPoi(p) => draw_server_poi(
             style_context,
@@ -184,6 +207,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             &p,
             action_buttons,
+            is_selected,
         ),
         ProjectPadItem::ProjectPoi(p) => draw_project_poi(
             style_context,
@@ -195,6 +219,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             &p,
             action_buttons,
+            is_selected,
         ),
         ProjectPadItem::ServerDatabase(d) => draw_server_database(
             style_context,
@@ -206,6 +231,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             &d,
             action_buttons,
+            is_selected,
         ),
         ProjectPadItem::ServerLink(s) => draw_linked_server(
             style_context,
@@ -217,6 +243,7 @@ pub fn draw_child(
             item_with_depressed_icon,
             &s,
             action_buttons,
+            is_selected,
         ),
     }
     style_context.remove_class(extra_css_class);
@@ -269,6 +296,7 @@ fn draw_server_item_common(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) -> (gtk::Border, gtk::Border, pango::Rectangle) {
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
@@ -278,6 +306,7 @@ fn draw_server_item_common(
         y,
         context,
         search_result_area,
+        is_selected,
     );
     draw_icon(
         style_context,
@@ -323,6 +352,7 @@ fn draw_server_website(
     website: &ServerWebsite,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     links: &mut Vec<(Area, String)>,
+    is_selected: bool,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -335,6 +365,7 @@ fn draw_server_website(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
     draw_link(
         style_context,
@@ -357,6 +388,7 @@ fn draw_server_extra_user(
     item_with_depressed_action: &Option<ProjectPadItem>,
     user: &ServerExtraUserAccount,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -369,6 +401,7 @@ fn draw_server_extra_user(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
 
     draw_subtext(
@@ -391,6 +424,7 @@ fn draw_server_poi(
     item_with_depressed_action: &Option<ProjectPadItem>,
     poi: &ServerPointOfInterest,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -403,6 +437,7 @@ fn draw_server_poi(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
 
     draw_subtext(
@@ -425,6 +460,7 @@ fn draw_project_poi(
     item_with_depressed_action: &Option<ProjectPadItem>,
     poi: &ProjectPointOfInterest,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -437,6 +473,7 @@ fn draw_project_poi(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
 
     draw_subtext(
@@ -459,6 +496,7 @@ fn draw_server_database(
     item_with_depressed_action: &Option<ProjectPadItem>,
     db: &ServerDatabase,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -471,6 +509,7 @@ fn draw_server_database(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
 
     draw_subtext(
@@ -493,6 +532,7 @@ fn draw_linked_server(
     item_with_depressed_action: &Option<ProjectPadItem>,
     srv: &ServerLink,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         style_context,
@@ -505,6 +545,7 @@ fn draw_linked_server(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
 }
 
@@ -518,6 +559,7 @@ fn draw_project_note(
     item_with_depressed_action: &Option<ProjectPadItem>,
     note: &ProjectNote,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         style_context,
@@ -530,6 +572,7 @@ fn draw_project_note(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
 }
 
@@ -543,6 +586,7 @@ fn draw_server_note(
     item_with_depressed_action: &Option<ProjectPadItem>,
     note: &ServerNote,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         style_context,
@@ -555,6 +599,7 @@ fn draw_server_note(
         item,
         item_with_depressed_action,
         action_buttons,
+        is_selected,
     );
 }
 
@@ -571,6 +616,7 @@ fn draw_server(
     item_with_depressed_action: &Option<ProjectPadItem>,
     links: &mut Vec<(Area, String)>,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    is_selected: bool,
 ) {
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
     draw_box(
@@ -579,6 +625,7 @@ fn draw_server(
         y,
         context,
         search_result_area,
+        is_selected,
     );
     style_context.add_class("title");
     let title_rect = draw_title(

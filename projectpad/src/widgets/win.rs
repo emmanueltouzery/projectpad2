@@ -14,7 +14,7 @@ use super::project_summary::Msg::ServerAdded as ProjectSummaryServerAddedMsg;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
-use super::search_view::{SearchItemsType, SearchView};
+use super::search_view::{OperationMode, SearchItemsType, SearchView};
 use super::server_poi_contents::ServerItem;
 use super::wintitlebar::Msg as WinTitleBarMsg;
 use super::wintitlebar::WinTitleBar;
@@ -264,7 +264,8 @@ impl Widget for Win {
                     }
                 },
                 #[name="search_view"]
-                SearchView((self.model.db_sender.clone(), None, SearchItemsType::All)) {
+                SearchView((self.model.db_sender.clone(), None,
+                            SearchItemsType::All, OperationMode::ItemActions, None)) {
                     child: {
                         name: Some(CHILD_NAME_SEARCH)
                     },

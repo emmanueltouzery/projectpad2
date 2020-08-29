@@ -91,6 +91,8 @@ impl Widget for PickProjectpadItemButton {
                     self.model.db_sender.clone(),
                     Some("".to_string()),
                     search_view::SearchItemsType::ServerDbsOnly,
+                    search_view::OperationMode::SelectItem,
+                    None,
                 ))
                 .expect("error initializing the search modal");
                 self.model.search_view_component = Some(dialog_contents);

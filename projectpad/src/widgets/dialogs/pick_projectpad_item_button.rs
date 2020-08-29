@@ -1,4 +1,6 @@
+use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::search_view;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use relm::Widget;
@@ -8,6 +10,7 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     GotItemName(String),
+    PickItemClick,
 }
 
 pub enum ItemType {
@@ -21,6 +24,8 @@ pub struct Model {
 
     _item_name_channel: relm::Channel<String>,
     item_name_sender: relm::Sender<String>,
+
+    search_view_component: Option<relm::Component<search_view::SearchView>>,
 
     item_name: Option<String>,
 }
@@ -71,6 +76,7 @@ impl Widget for PickProjectpadItemButton {
             db_sender: params.0,
             item_type: params.1,
             item_id: params.2,
+            search_view_component: None,
             item_name: None,
             _item_name_channel: item_name_channel,
             item_name_sender,
@@ -80,6 +86,26 @@ impl Widget for PickProjectpadItemButton {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::GotItemName(name) => self.item_name.set_label(&name),
+            Msg::PickItemClick => {
+                let dialog_contents = relm::init::<search_view::SearchView>((
+                    self.model.db_sender.clone(),
+                    Some("".to_string()),
+                ))
+                .expect("error initializing the search modal");
+                self.model.search_view_component = Some(dialog_contents);
+                let comp = self.model.search_view_component.as_ref().unwrap();
+                let (dialog, button) = standard_dialogs::prepare_custom_dialog_component_ref(
+                    self.pick_item_stack.clone().upcast::<gtk::Widget>(),
+                    800,
+                    400,
+                    "Pick item".to_string(),
+                    comp,
+                    move |_| standard_dialogs::DialogActionResult::CloseDialog,
+                );
+                button.hide();
+
+                dialog.show();
+            }
         }
     }
 
@@ -91,6 +117,7 @@ impl Widget for PickProjectpadItemButton {
                 child: {
                     name: Some("no_item")
                 },
+                button_press_event(_, _) => (Msg::PickItemClick, Inhibit(false)),
                 label: "Pick item"
             },
             // if there is a db, a label with the db name,

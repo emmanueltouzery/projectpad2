@@ -237,6 +237,7 @@ impl Widget for SearchView {
                 }
                 Inhibit(false)
             });
+        self.fetch_search_results();
     }
 
     fn fill_popover(
@@ -337,14 +338,15 @@ impl Widget for SearchView {
             .remove_class("search_result_frame");
     }
 
-    fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
+    fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, Option<String>)) -> Model {
+        let (db_sender, filter) = params;
         let stream = relm.stream().clone();
         let (channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
             stream.emit(Msg::GotSearchResult(search_r));
         });
         Model {
             relm: relm.clone(),
-            filter: None,
+            filter,
             db_sender,
             sender,
             search_items: Rc::new(RefCell::new(vec![])),

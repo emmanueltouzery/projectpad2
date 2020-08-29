@@ -264,7 +264,7 @@ impl Widget for Win {
                     }
                 },
                 #[name="search_view"]
-                SearchView(self.model.db_sender.clone()) {
+                SearchView((self.model.db_sender.clone(), None)) {
                     child: {
                         name: Some(CHILD_NAME_SEARCH)
                     },

@@ -70,6 +70,25 @@ pub fn prepare_custom_dialog<T: Widget>(
     dialog_contents: relm::Component<T>,
     ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
 ) -> (gtk::Dialog, relm::Component<T>, gtk::Button) {
+    let (dialog, save) = prepare_custom_dialog_component_ref(
+        widget_for_window,
+        width,
+        height,
+        title,
+        &dialog_contents,
+        ok_callback,
+    );
+    (dialog, dialog_contents, save.clone())
+}
+
+pub fn prepare_custom_dialog_component_ref<T: Widget>(
+    widget_for_window: gtk::Widget,
+    width: i32,
+    height: i32,
+    title: String,
+    dialog_contents: &relm::Component<T>,
+    ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
+) -> (gtk::Dialog, gtk::Button) {
     let main_win = get_main_window(widget_for_window);
     let dialog = gtk::DialogBuilder::new()
         .use_header_bar(1)
@@ -100,5 +119,5 @@ pub fn prepare_custom_dialog<T: Widget>(
             d.close();
         }
     });
-    (dialog, dialog_contents, save.clone())
+    (dialog, save.clone())
 }

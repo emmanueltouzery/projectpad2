@@ -140,7 +140,7 @@ pub struct Model {
     // as of 2020-07-08 "the drawing module of relm is not ready" -- have to RefCell
     search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
     links: Rc<RefCell<Vec<(Area, String)>>>,
-    action_buttons: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
+    action_areas: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
@@ -185,7 +185,7 @@ impl Widget for SearchView {
         let sel = self.model.selected_item.clone();
         let search_scroll = self.search_scroll.clone();
         let links = self.model.links.clone();
-        let action_buttons = self.model.action_buttons.clone();
+        let action_areas = self.model.action_areas.clone();
         let search_result_area = self.search_result_area.clone();
         let item_with_depressed = self.model.item_with_depressed_action.clone();
         let op_mode = self.model.operation_mode;
@@ -193,7 +193,7 @@ impl Widget for SearchView {
             Self::draw_search_view(
                 context,
                 &links,
-                &action_buttons,
+                &action_areas,
                 &si,
                 &search_result_area,
                 &search_scroll,
@@ -226,11 +226,13 @@ impl Widget for SearchView {
                 Inhibit(false)
             });
         let links_btnclick = self.model.links.clone();
-        let action_buttons_btnclick = self.model.action_buttons.clone();
+        let action_areas_btnclick = self.model.action_areas.clone();
         let search_result_area_btnclick = self.search_result_area.clone();
         let popover = self.model.action_popover.as_ref().unwrap().clone();
         let item_with_depressed_btnclick = self.model.item_with_depressed_action.clone();
+        let selected_item = self.model.selected_item.clone();
         let relm = self.model.relm.clone();
+        let search_result_area = self.search_result_area.clone();
         self.search_result_area
             .connect_button_release_event(move |_, event_click| {
                 let x = event_click.get_position().0 as i32;
@@ -239,7 +241,7 @@ impl Widget for SearchView {
                     .get_toplevel()
                     .and_then(|w| w.downcast::<gtk::Window>().ok());
                 let links = links_btnclick.borrow();
-                let action_buttons = action_buttons_btnclick.borrow();
+                let action_areas = action_areas_btnclick.borrow();
                 if let Some(link) = links.iter().find(|l| l.0.contains(x, y)) {
                     if let Result::Err(err) =
                         gtk::show_uri_on_window(window.as_ref(), &link.1, event_click.get_time())
@@ -247,7 +249,7 @@ impl Widget for SearchView {
                         eprintln!("Error opening the link: {}", err);
                     }
                 } else if op_mode == OperationMode::ItemActions {
-                    if let Some(btn) = action_buttons.iter().find(|b| b.0.contains(x, y)) {
+                    if let Some(btn) = action_areas.iter().find(|b| b.0.contains(x, y)) {
                         item_with_depressed_btnclick
                             .borrow_mut()
                             .replace(btn.1.clone());
@@ -257,7 +259,10 @@ impl Widget for SearchView {
                         popover.popup();
                     }
                 } else if op_mode == OperationMode::SelectItem {
-                    // TODO
+                    if let Some(btn) = action_areas.iter().find(|b| b.0.contains(x, y)) {
+                        selected_item.borrow_mut().replace(btn.1.clone());
+                        search_result_area.queue_draw();
+                    }
                 }
                 Inhibit(false)
             });
@@ -311,7 +316,7 @@ impl Widget for SearchView {
     fn draw_search_view(
         context: &cairo::Context,
         links: &Rc<RefCell<Vec<(Area, String)>>>,
-        action_buttons: &Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
+        action_areas: &Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
         si: &Rc<RefCell<Vec<ProjectPadItem>>>,
         search_result_area: &gtk::DrawingArea,
         search_scroll: &gtk::Scrollbar,
@@ -321,8 +326,8 @@ impl Widget for SearchView {
     ) {
         let mut links = links.borrow_mut();
         links.clear();
-        let mut action_buttons = action_buttons.borrow_mut();
-        action_buttons.clear();
+        let mut action_areas = action_areas.borrow_mut();
+        action_areas.clear();
         let search_items = si.borrow();
         // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
         let y_to_display = search_scroll.get_value() as i32;
@@ -355,7 +360,7 @@ impl Widget for SearchView {
                 context,
                 &search_result_area,
                 &mut links,
-                &mut action_buttons,
+                &mut action_areas,
                 item_with_depressed_action,
                 sel_i.as_ref() == Some(item),
                 op_mode,
@@ -392,7 +397,7 @@ impl Widget for SearchView {
             sender,
             search_items: Rc::new(RefCell::new(vec![])),
             links: Rc::new(RefCell::new(vec![])),
-            action_buttons: Rc::new(RefCell::new(vec![])),
+            action_areas: Rc::new(RefCell::new(vec![])),
             action_popover: None,
             item_with_depressed_action: Rc::new(RefCell::new(None)),
             server_add_edit_dialog: None,

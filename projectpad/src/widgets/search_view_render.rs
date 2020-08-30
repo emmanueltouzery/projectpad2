@@ -71,6 +71,9 @@ fn draw_box(
     context: &cairo::Context,
     search_result_area: &gtk::DrawingArea,
     is_selected: bool,
+    item: &ProjectPadItem,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
+    operation_mode: OperationMode,
 ) {
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
 
@@ -81,32 +84,31 @@ fn draw_box(
     } else {
         style_context
     };
-    gtk::render_background(
-        bg_context,
-        context,
-        margin.left as f64 + hierarchy_offset,
-        y + margin.top as f64,
-        search_result_area.get_allocation().width as f64
-            - margin.left as f64
-            - margin.right as f64
-            - hierarchy_offset * 2.0,
-        SEARCH_RESULT_WIDGET_HEIGHT as f64 - margin.top as f64,
-    );
+    let box_x = margin.left as f64 + hierarchy_offset;
+    let box_y = y + margin.top as f64;
+    let box_width = search_result_area.get_allocation().width as f64
+        - margin.left as f64
+        - margin.right as f64
+        - hierarchy_offset * 2.0;
+    let box_height = SEARCH_RESULT_WIDGET_HEIGHT as f64 - margin.top as f64;
+    gtk::render_background(bg_context, context, box_x, box_y, box_width, box_height);
 
     // https://github.com/GNOME/gtk/blob/ca71340c6bfa10092c756e5fdd5e41230e2981b5/gtk/theme/Adwaita/gtk-contained.css#L1599
     // use the system theme's frame class
     style_context.add_class(&gtk::STYLE_CLASS_FRAME);
-    gtk::render_frame(
-        style_context,
-        context,
-        margin.left as f64 + hierarchy_offset,
-        y as f64 + margin.top as f64,
-        search_result_area.get_allocation().width as f64
-            - margin.left as f64
-            - margin.right as f64
-            - hierarchy_offset * 2.0,
-        SEARCH_RESULT_WIDGET_HEIGHT as f64 - margin.top as f64,
-    );
+    gtk::render_frame(style_context, context, box_x, box_y, box_width, box_height);
+
+    if operation_mode == OperationMode::SelectItem {
+        action_areas.push((
+            Area::new(
+                box_x as i32,
+                box_y as i32,
+                box_width as i32,
+                box_height as i32,
+            ),
+            item.clone(),
+        ));
+    }
     style_context.remove_class(&gtk::STYLE_CLASS_BUTTON);
 }
 
@@ -117,7 +119,7 @@ pub fn draw_child(
     context: &cairo::Context,
     search_result_area: &gtk::DrawingArea,
     links: &mut Vec<(Area, String)>,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     item_with_depressed_icon: &Option<ProjectPadItem>,
     is_selected: bool,
     operation_mode: OperationMode,
@@ -151,7 +153,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             links,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -164,7 +166,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &n,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -177,7 +179,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &n,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -190,7 +192,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &w,
-            action_buttons,
+            action_areas,
             links,
             is_selected,
             operation_mode,
@@ -204,7 +206,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &u,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -217,7 +219,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &p,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -230,7 +232,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &p,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -243,7 +245,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &d,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -256,7 +258,7 @@ pub fn draw_child(
             item,
             item_with_depressed_icon,
             &s,
-            action_buttons,
+            action_areas,
             is_selected,
             operation_mode,
         ),
@@ -311,7 +313,7 @@ fn draw_server_item_common(
     icon: &Icon,
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) -> (gtk::Border, gtk::Border, pango::Rectangle) {
@@ -324,6 +326,9 @@ fn draw_server_item_common(
         context,
         search_result_area,
         is_selected,
+        item,
+        action_areas,
+        operation_mode,
     );
     draw_icon(
         style_context,
@@ -348,7 +353,7 @@ fn draw_server_item_common(
         draw_action(
             style_context,
             context,
-            action_buttons,
+            action_areas,
             item,
             item_with_depressed_action,
             &Icon::COG,
@@ -370,7 +375,7 @@ fn draw_server_website(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     website: &ServerWebsite,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     links: &mut Vec<(Area, String)>,
     is_selected: bool,
     operation_mode: OperationMode,
@@ -385,7 +390,7 @@ fn draw_server_website(
         &Icon::HTTP,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -409,7 +414,7 @@ fn draw_server_extra_user(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     user: &ServerExtraUserAccount,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -423,7 +428,7 @@ fn draw_server_extra_user(
         &Icon::USER,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -447,7 +452,7 @@ fn draw_server_poi(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     poi: &ServerPointOfInterest,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -461,7 +466,7 @@ fn draw_server_poi(
         &Icon::POINT_OF_INTEREST,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -485,7 +490,7 @@ fn draw_project_poi(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     poi: &ProjectPointOfInterest,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -499,7 +504,7 @@ fn draw_project_poi(
         &Icon::POINT_OF_INTEREST,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -523,7 +528,7 @@ fn draw_server_database(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     db: &ServerDatabase,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -537,7 +542,7 @@ fn draw_server_database(
         &Icon::DATABASE,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -561,7 +566,7 @@ fn draw_linked_server(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     srv: &ServerLink,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -575,7 +580,7 @@ fn draw_linked_server(
         &Icon::SERVER_LINK,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -590,7 +595,7 @@ fn draw_project_note(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     note: &ProjectNote,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -604,7 +609,7 @@ fn draw_project_note(
         &Icon::NOTE,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -619,7 +624,7 @@ fn draw_server_note(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     note: &ServerNote,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -633,7 +638,7 @@ fn draw_server_note(
         &Icon::NOTE,
         item,
         item_with_depressed_action,
-        action_buttons,
+        action_areas,
         is_selected,
         operation_mode,
     );
@@ -651,7 +656,7 @@ fn draw_server(
     item: &ProjectPadItem,
     item_with_depressed_action: &Option<ProjectPadItem>,
     links: &mut Vec<(Area, String)>,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
@@ -663,6 +668,9 @@ fn draw_server(
         context,
         search_result_area,
         is_selected,
+        item,
+        action_areas,
+        operation_mode,
     );
     style_context.add_class("title");
     let title_rect = draw_title(
@@ -706,7 +714,7 @@ fn draw_server(
         draw_action(
             style_context,
             context,
-            action_buttons,
+            action_areas,
             item,
             item_with_depressed_action,
             &Icon::COG,
@@ -871,7 +879,7 @@ fn draw_subtext(
 fn draw_action(
     style_context: &gtk::StyleContext,
     context: &cairo::Context,
-    action_buttons: &mut Vec<(Area, ProjectPadItem)>,
+    action_areas: &mut Vec<(Area, ProjectPadItem)>,
     item: &ProjectPadItem,
     item_with_depressed_icon: &Option<ProjectPadItem>,
     icon: &Icon,
@@ -902,7 +910,7 @@ fn draw_action(
         x + padding.left as f64,
         y + padding.top as f64,
     );
-    action_buttons.push((
+    action_areas.push((
         Area::new(x as i32, y as i32, w as i32, h as i32),
         item.clone(),
     ));

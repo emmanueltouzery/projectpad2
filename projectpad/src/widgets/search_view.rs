@@ -245,15 +245,18 @@ impl Widget for SearchView {
                     {
                         eprintln!("Error opening the link: {}", err);
                     }
-                } else if let Some(btn) = action_buttons.iter().find(|b| b.0.contains(x, y)) {
-                    println!("button click!!");
-                    item_with_depressed_btnclick
-                        .borrow_mut()
-                        .replace(btn.1.clone());
+                } else if op_mode == OperationMode::ItemActions {
+                    if let Some(btn) = action_buttons.iter().find(|b| b.0.contains(x, y)) {
+                        item_with_depressed_btnclick
+                            .borrow_mut()
+                            .replace(btn.1.clone());
 
-                    Self::fill_popover(&relm, &popover, &btn.1);
-                    popover.set_pointing_to(&btn.0.to_rect());
-                    popover.popup();
+                        Self::fill_popover(&relm, &popover, &btn.1);
+                        popover.set_pointing_to(&btn.0.to_rect());
+                        popover.popup();
+                    }
+                } else if op_mode == OperationMode::SelectItem {
+                    // TODO
                 }
                 Inhibit(false)
             });

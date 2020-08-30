@@ -1,4 +1,4 @@
-use super::search_view::{Area, ProjectPadItem, SEARCH_RESULT_WIDGET_HEIGHT};
+use super::search_view::{Area, OperationMode, ProjectPadItem, SEARCH_RESULT_WIDGET_HEIGHT};
 use crate::icons::*;
 use gdk::prelude::GdkContextExt;
 use gtk::prelude::*;
@@ -74,7 +74,7 @@ fn draw_box(
 ) {
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
 
-    let mut scontext: gtk::StyleContext;
+    let scontext: gtk::StyleContext;
     let bg_context = if is_selected {
         scontext = selected_label_style_context();
         &scontext
@@ -120,6 +120,7 @@ pub fn draw_child(
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     item_with_depressed_icon: &Option<ProjectPadItem>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let extra_css_class = match item {
         ProjectPadItem::Server(_)
@@ -152,6 +153,7 @@ pub fn draw_child(
             links,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ServerNote(n) => draw_server_note(
             style_context,
@@ -164,6 +166,7 @@ pub fn draw_child(
             &n,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ProjectNote(n) => draw_project_note(
             style_context,
@@ -176,6 +179,7 @@ pub fn draw_child(
             &n,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ServerWebsite(w) => draw_server_website(
             style_context,
@@ -189,6 +193,7 @@ pub fn draw_child(
             action_buttons,
             links,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ServerExtraUserAccount(u) => draw_server_extra_user(
             style_context,
@@ -201,6 +206,7 @@ pub fn draw_child(
             &u,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ServerPoi(p) => draw_server_poi(
             style_context,
@@ -213,6 +219,7 @@ pub fn draw_child(
             &p,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ProjectPoi(p) => draw_project_poi(
             style_context,
@@ -225,6 +232,7 @@ pub fn draw_child(
             &p,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ServerDatabase(d) => draw_server_database(
             style_context,
@@ -237,6 +245,7 @@ pub fn draw_child(
             &d,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
         ProjectPadItem::ServerLink(s) => draw_linked_server(
             style_context,
@@ -249,6 +258,7 @@ pub fn draw_child(
             &s,
             action_buttons,
             is_selected,
+            operation_mode,
         ),
     }
     style_context.remove_class(extra_css_class);
@@ -303,6 +313,7 @@ fn draw_server_item_common(
     item_with_depressed_action: &Option<ProjectPadItem>,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) -> (gtk::Border, gtk::Border, pango::Rectangle) {
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
@@ -333,18 +344,20 @@ fn draw_server_item_common(
         Some(ACTION_ICON_SIZE),
         is_selected,
     );
-    draw_action(
-        style_context,
-        context,
-        action_buttons,
-        item,
-        item_with_depressed_action,
-        &Icon::COG,
-        search_result_area.get_allocation().width as f64
-            - ACTION_ICON_OFFSET_FROM_RIGHT
-            - LEFT_RIGHT_MARGIN as f64,
-        y + padding.top as f64 + margin.top as f64,
-    );
+    if operation_mode == OperationMode::ItemActions {
+        draw_action(
+            style_context,
+            context,
+            action_buttons,
+            item,
+            item_with_depressed_action,
+            &Icon::COG,
+            search_result_area.get_allocation().width as f64
+                - ACTION_ICON_OFFSET_FROM_RIGHT
+                - LEFT_RIGHT_MARGIN as f64,
+            y + padding.top as f64 + margin.top as f64,
+        );
+    }
     (padding, margin, title_rect)
 }
 
@@ -360,6 +373,7 @@ fn draw_server_website(
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     links: &mut Vec<(Area, String)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -373,6 +387,7 @@ fn draw_server_website(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
     draw_link(
         style_context,
@@ -396,6 +411,7 @@ fn draw_server_extra_user(
     user: &ServerExtraUserAccount,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -409,6 +425,7 @@ fn draw_server_extra_user(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
 
     draw_subtext(
@@ -432,6 +449,7 @@ fn draw_server_poi(
     poi: &ServerPointOfInterest,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -445,6 +463,7 @@ fn draw_server_poi(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
 
     draw_subtext(
@@ -468,6 +487,7 @@ fn draw_project_poi(
     poi: &ProjectPointOfInterest,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -481,6 +501,7 @@ fn draw_project_poi(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
 
     draw_subtext(
@@ -504,6 +525,7 @@ fn draw_server_database(
     db: &ServerDatabase,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         style_context,
@@ -517,6 +539,7 @@ fn draw_server_database(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
 
     draw_subtext(
@@ -540,6 +563,7 @@ fn draw_linked_server(
     srv: &ServerLink,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         style_context,
@@ -553,6 +577,7 @@ fn draw_linked_server(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
 }
 
@@ -567,6 +592,7 @@ fn draw_project_note(
     note: &ProjectNote,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         style_context,
@@ -580,6 +606,7 @@ fn draw_project_note(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
 }
 
@@ -594,6 +621,7 @@ fn draw_server_note(
     note: &ServerNote,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         style_context,
@@ -607,6 +635,7 @@ fn draw_server_note(
         item_with_depressed_action,
         action_buttons,
         is_selected,
+        operation_mode,
     );
 }
 
@@ -624,6 +653,7 @@ fn draw_server(
     links: &mut Vec<(Area, String)>,
     action_buttons: &mut Vec<(Area, ProjectPadItem)>,
     is_selected: bool,
+    operation_mode: OperationMode,
 ) {
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
     draw_box(
@@ -672,18 +702,20 @@ fn draw_server(
             links,
         );
     }
-    draw_action(
-        style_context,
-        context,
-        action_buttons,
-        item,
-        item_with_depressed_action,
-        &Icon::COG,
-        search_result_area.get_allocation().width as f64
-            - ACTION_ICON_OFFSET_FROM_RIGHT
-            - LEFT_RIGHT_MARGIN as f64,
-        y + padding.top as f64 + margin.top as f64,
-    );
+    if operation_mode == OperationMode::ItemActions {
+        draw_action(
+            style_context,
+            context,
+            action_buttons,
+            item,
+            item_with_depressed_action,
+            &Icon::COG,
+            search_result_area.get_allocation().width as f64
+                - ACTION_ICON_OFFSET_FROM_RIGHT
+                - LEFT_RIGHT_MARGIN as f64,
+            y + padding.top as f64 + margin.top as f64,
+        );
+    }
 }
 
 fn draw_environment(

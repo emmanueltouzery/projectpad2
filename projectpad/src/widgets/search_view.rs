@@ -187,6 +187,7 @@ impl Widget for SearchView {
         let action_buttons = self.model.action_buttons.clone();
         let search_result_area = self.search_result_area.clone();
         let item_with_depressed = self.model.item_with_depressed_action.clone();
+        let op_mode = self.model.operation_mode;
         self.search_result_area.connect_draw(move |_, context| {
             Self::draw_search_view(
                 context,
@@ -197,6 +198,7 @@ impl Widget for SearchView {
                 &search_scroll,
                 &item_with_depressed.borrow(),
                 &sel,
+                op_mode,
             );
             Inhibit(false)
         });
@@ -311,6 +313,7 @@ impl Widget for SearchView {
         search_scroll: &gtk::Scrollbar,
         item_with_depressed_action: &Option<ProjectPadItem>,
         sel_item: &Rc<RefCell<Option<ProjectPadItem>>>,
+        op_mode: OperationMode,
     ) {
         let mut links = links.borrow_mut();
         links.clear();
@@ -351,6 +354,7 @@ impl Widget for SearchView {
                 &mut action_buttons,
                 item_with_depressed_action,
                 sel_i.as_ref() == Some(item),
+                op_mode,
             );
             y += SEARCH_RESULT_WIDGET_HEIGHT;
             item_idx += 1;

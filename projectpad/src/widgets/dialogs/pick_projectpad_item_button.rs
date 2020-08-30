@@ -104,10 +104,11 @@ impl Widget for PickProjectpadItemButton {
                 .expect("error initializing the search modal");
                 self.model.search_view_component = Some(dialog_contents);
                 let comp = self.model.search_view_component.as_ref().unwrap();
-                // TODO also select item
                 let search_text = self.model.item_name.clone().unwrap_or("".to_string());
                 comp.stream()
                     .emit(search_view::Msg::FilterChanged(Some(search_text.clone())));
+                comp.stream()
+                    .emit(search_view::Msg::SelectItem(self.model.item.clone()));
                 let (dialog, button) = standard_dialogs::prepare_custom_dialog_component_ref(
                     self.pick_item_btn.clone().upcast::<gtk::Widget>(),
                     800,

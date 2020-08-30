@@ -81,6 +81,7 @@ impl Area {
 #[derive(Msg)]
 pub enum Msg {
     FilterChanged(Option<String>),
+    SelectItem(Option<ProjectPadItem>),
     GotSearchResult(SearchResult),
     MouseScroll(gdk::ScrollDirection, (f64, f64)),
     ScrollChanged,
@@ -405,6 +406,10 @@ impl Widget for SearchView {
             Msg::FilterChanged(filter) => {
                 self.model.filter = filter;
                 self.fetch_search_results();
+            }
+            Msg::SelectItem(item) => {
+                self.model.selected_item.replace(item);
+                self.search_result_area.queue_draw();
             }
             Msg::GotSearchResult(search_result) => {
                 self.refresh_display(Some(&search_result));

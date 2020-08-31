@@ -265,7 +265,7 @@ impl Widget for Win {
                 },
                 #[name="search_view"]
                 SearchView((self.model.db_sender.clone(), None,
-                            SearchItemsType::All, OperationMode::ItemActions, None)) {
+                            SearchItemsType::All, OperationMode::ItemActions, None, None)) {
                     child: {
                         name: Some(CHILD_NAME_SEARCH)
                     },

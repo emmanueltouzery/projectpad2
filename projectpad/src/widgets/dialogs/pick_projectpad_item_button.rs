@@ -1,6 +1,7 @@
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::search_view;
+use crate::widgets::search_view::Msg as SearchViewMsg;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerDatabase;
@@ -94,11 +95,24 @@ impl Widget for PickProjectpadItemButton {
                 self.model.item = Some(projectpad_item);
             }
             Msg::PickItemClick => {
+                let dialog = standard_dialogs::modal_dialog(
+                    self.pick_item_btn.clone().upcast::<gtk::Widget>(),
+                    800,
+                    400,
+                    "Pick item".to_string(),
+                );
+                let save = dialog
+                    .add_button("Save", gtk::ResponseType::Ok)
+                    .downcast::<gtk::Button>()
+                    .expect("error reading the dialog save button");
+                save.get_style_context().add_class("suggested-action");
+                let save_btn = save.clone();
                 let dialog_contents = relm::init::<search_view::SearchView>((
                     self.model.db_sender.clone(),
                     Some("".to_string()),
                     search_view::SearchItemsType::ServerDbsOnly,
                     search_view::OperationMode::SelectItem,
+                    Some(save_btn),
                     None,
                 ))
                 .expect("error initializing the search modal");
@@ -109,15 +123,7 @@ impl Widget for PickProjectpadItemButton {
                     .emit(search_view::Msg::FilterChanged(Some(search_text.clone())));
                 comp.stream()
                     .emit(search_view::Msg::SelectItem(self.model.item.clone()));
-                let (dialog, button) = standard_dialogs::prepare_custom_dialog_component_ref(
-                    self.pick_item_btn.clone().upcast::<gtk::Widget>(),
-                    800,
-                    400,
-                    "Pick item".to_string(),
-                    comp,
-                    move |_| standard_dialogs::DialogActionResult::CloseDialog,
-                );
-                button.hide();
+                standard_dialogs::prepare_custom_dialog_component_ref(&dialog, comp);
 
                 let search_entry = gtk::SearchEntryBuilder::new().text(&search_text).build();
                 let comp2 = comp.clone();
@@ -128,6 +134,14 @@ impl Widget for PickProjectpadItemButton {
                 });
                 dialog.get_header_bar().unwrap().pack_end(&search_entry);
                 search_entry.show();
+
+                dialog.connect_response(move |d, r| {
+                    if r == gtk::ResponseType::Ok {
+                        d.close();
+                    } else {
+                        d.close();
+                    }
+                });
 
                 dialog.show();
             }

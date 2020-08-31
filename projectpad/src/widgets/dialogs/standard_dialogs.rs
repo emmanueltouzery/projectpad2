@@ -70,45 +70,13 @@ pub fn prepare_custom_dialog<T: Widget>(
     dialog_contents: relm::Component<T>,
     ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
 ) -> (gtk::Dialog, relm::Component<T>, gtk::Button) {
-    let (dialog, save) = prepare_custom_dialog_component_ref(
-        widget_for_window,
-        width,
-        height,
-        title,
-        &dialog_contents,
-        ok_callback,
-    );
-    (dialog, dialog_contents, save.clone())
-}
-
-pub fn prepare_custom_dialog_component_ref<T: Widget>(
-    widget_for_window: gtk::Widget,
-    width: i32,
-    height: i32,
-    title: String,
-    dialog_contents: &relm::Component<T>,
-    ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
-) -> (gtk::Dialog, gtk::Button) {
-    let main_win = get_main_window(widget_for_window);
-    let dialog = gtk::DialogBuilder::new()
-        .use_header_bar(1)
-        .default_width(width)
-        .default_height(height)
-        .title(&title)
-        .transient_for(&main_win)
-        .modal(true)
-        .build();
-
-    dialog_contents.widget().show();
-    dialog
-        .get_content_area()
-        .pack_start(dialog_contents.widget(), true, true, 0);
-    dialog.add_button("Cancel", gtk::ResponseType::Cancel);
+    let dialog = modal_dialog(widget_for_window, width, height, title);
     let save = dialog
         .add_button("Save", gtk::ResponseType::Ok)
         .downcast::<gtk::Button>()
         .expect("error reading the dialog save button");
     save.get_style_context().add_class("suggested-action");
+    prepare_custom_dialog_component_ref(&dialog, &dialog_contents);
     let save_btn = save.clone();
     dialog.connect_response(move |d, r| {
         if r == gtk::ResponseType::Ok {
@@ -119,5 +87,33 @@ pub fn prepare_custom_dialog_component_ref<T: Widget>(
             d.close();
         }
     });
-    (dialog, save.clone())
+    (dialog, dialog_contents, save.clone())
+}
+
+pub fn modal_dialog(
+    widget_for_window: gtk::Widget,
+    width: i32,
+    height: i32,
+    title: String,
+) -> gtk::Dialog {
+    let main_win = get_main_window(widget_for_window);
+    gtk::DialogBuilder::new()
+        .use_header_bar(1)
+        .default_width(width)
+        .default_height(height)
+        .title(&title)
+        .transient_for(&main_win)
+        .modal(true)
+        .build()
+}
+
+pub fn prepare_custom_dialog_component_ref<T: Widget>(
+    dialog: &gtk::Dialog,
+    dialog_contents: &relm::Component<T>,
+) {
+    dialog_contents.widget().show();
+    dialog
+        .get_content_area()
+        .pack_start(dialog_contents.widget(), true, true, 0);
+    dialog.add_button("Cancel", gtk::ResponseType::Cancel);
 }

@@ -145,6 +145,7 @@ pub struct Model {
     action_popover: Option<gtk::Popover>,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
     server_item_add_edit_dialog: Option<AddEditDialogComponent>,
+    save_btn: Option<gtk::Button>,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -270,8 +271,7 @@ impl Widget for SearchView {
                             _ => false,
                         };
                         if do_replace {
-                            selected_item.borrow_mut().replace(btn.1.clone());
-                            search_result_area.queue_draw();
+                            relm.stream().emit(Msg::SelectItem(Some(btn.1.clone())));
                         }
                     }
                 }
@@ -391,14 +391,20 @@ impl Widget for SearchView {
             Option<String>,
             SearchItemsType,
             OperationMode,
+            Option<gtk::Button>,
             Option<ProjectPadItem>,
         ),
     ) -> Model {
-        let (db_sender, filter, search_item_types, operation_mode, selected_item) = params;
+        let (db_sender, filter, search_item_types, operation_mode, save_btn, selected_item) =
+            params;
         let stream = relm.stream().clone();
         let (channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
             stream.emit(Msg::GotSearchResult(search_r));
         });
+        match (&selected_item, &save_btn) {
+            (None, Some(btn)) => btn.set_sensitive(false),
+            _ => {}
+        };
         Model {
             relm: relm.clone(),
             filter,
@@ -414,6 +420,7 @@ impl Widget for SearchView {
             server_add_edit_dialog: None,
             server_item_add_edit_dialog: None,
             selected_item: Rc::new(RefCell::new(selected_item)),
+            save_btn,
         }
     }
 
@@ -424,6 +431,9 @@ impl Widget for SearchView {
                 self.fetch_search_results();
             }
             Msg::SelectItem(item) => {
+                if let Some(btn) = self.model.save_btn.as_ref() {
+                    btn.set_sensitive(item.is_some());
+                }
                 self.model.selected_item.replace(item);
                 self.search_result_area.queue_draw();
             }

@@ -233,6 +233,7 @@ impl Widget for SearchView {
         let selected_item = self.model.selected_item.clone();
         let relm = self.model.relm.clone();
         let search_result_area = self.search_result_area.clone();
+        let search_item_types = self.model.search_item_types;
         self.search_result_area
             .connect_button_release_event(move |_, event_click| {
                 let x = event_click.get_position().0 as i32;
@@ -260,8 +261,18 @@ impl Widget for SearchView {
                     }
                 } else if op_mode == OperationMode::SelectItem {
                     if let Some(btn) = action_areas.iter().find(|b| b.0.contains(x, y)) {
-                        selected_item.borrow_mut().replace(btn.1.clone());
-                        search_result_area.queue_draw();
+                        let do_replace = match (search_item_types, &btn.1) {
+                            (SearchItemsType::All, _) => true,
+                            (SearchItemsType::ServersOnly, ProjectPadItem::Server(_)) => true,
+                            (SearchItemsType::ServerDbsOnly, ProjectPadItem::ServerDatabase(_)) => {
+                                true
+                            }
+                            _ => false,
+                        };
+                        if do_replace {
+                            selected_item.borrow_mut().replace(btn.1.clone());
+                            search_result_area.queue_draw();
+                        }
                     }
                 }
                 Inhibit(false)
@@ -710,21 +721,6 @@ impl Widget for SearchView {
                     search_items.push(ProjectPadItem::ProjectPoi(project_poi.clone()));
                 }
             }
-        }
-        if self.model.selected_item.borrow().is_none()
-            && self.model.operation_mode == OperationMode::SelectItem
-        {
-            // select the first item
-            self.model.selected_item.replace(
-                // a project can't be selected..
-                search_items
-                    .iter()
-                    .find(|i| match i {
-                        ProjectPadItem::Project(_) => false,
-                        _ => true,
-                    })
-                    .cloned(),
-            );
         }
         let upper = search_items.len() as i32 * SEARCH_RESULT_WIDGET_HEIGHT;
         self.search_scroll.set_adjustment(&gtk::Adjustment::new(

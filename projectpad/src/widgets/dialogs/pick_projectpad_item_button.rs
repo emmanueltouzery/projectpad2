@@ -1,7 +1,6 @@
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::search_view;
-use crate::widgets::search_view::Msg as SearchViewMsg;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerDatabase;
@@ -13,6 +12,7 @@ use std::sync::mpsc;
 pub enum Msg {
     GotItem((search_view::ProjectPadItem, String)),
     PickItemClick,
+    RemoveItem,
 }
 
 pub enum ItemType {
@@ -90,7 +90,6 @@ impl Widget for PickProjectpadItemButton {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::GotItem((projectpad_item, name)) => {
-                self.pick_item_btn.set_label(&name);
                 self.model.item_name = Some(name);
                 self.model.item = Some(projectpad_item);
             }
@@ -145,6 +144,10 @@ impl Widget for PickProjectpadItemButton {
 
                 dialog.show();
             }
+            Msg::RemoveItem => {
+                self.model.item = None;
+                self.model.item_name = None;
+            }
         }
     }
 
@@ -155,14 +158,15 @@ impl Widget for PickProjectpadItemButton {
             gtk::Button {
                 hexpand: true,
                 button_press_event(_, _) => (Msg::PickItemClick, Inhibit(false)),
-                label: "Pick item"
+                label: self.model.item_name.as_deref().unwrap_or("Pick item")
             },
-            // gtk::Button {
-            //     always_show_image: true,
-            //     image: Some(&gtk::Image::from_icon_name(
-            //         Some("edit-delete-symbolic"), gtk::IconSize::Menu)),
-            //     button_press_event(_, _) => (Msg::RemoveAuthFile, Inhibit(false)),
-            // },
+            gtk::Button {
+                always_show_image: true,
+                image: Some(&gtk::Image::from_icon_name(
+                    Some("edit-delete-symbolic"), gtk::IconSize::Menu)),
+                button_press_event(_, _) => (Msg::RemoveItem, Inhibit(false)),
+                visible: self.model.item.is_some()
+            },
         },
     }
 }

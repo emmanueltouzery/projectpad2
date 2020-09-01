@@ -1,5 +1,8 @@
 use super::dialog_helpers;
-use super::pick_projectpad_item_button::{ItemType, PickProjectpadItemButton};
+use super::pick_projectpad_item_button;
+use super::pick_projectpad_item_button::Msg::ItemSelected as PickPpItemSelected;
+use super::pick_projectpad_item_button::Msg::RemoveItem as PickPpItemRemoved;
+use super::pick_projectpad_item_button::PickProjectpadItemButton;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -13,7 +16,9 @@ use std::sync::mpsc;
 pub enum Msg {
     GotGroups(Vec<String>),
     OkPressed,
+    ServerDbSelected(i32),
     ServerWwwUpdated(ServerWebsite),
+    ServerDbRemoved,
 }
 
 // String for details, because I can't pass Error across threads
@@ -108,6 +113,12 @@ impl Widget for ServerWebsiteAddEditDialog {
             Msg::OkPressed => {
                 self.update_server_www();
             }
+            Msg::ServerDbSelected(db_id) => {
+                self.model.server_database_id = Some(db_id);
+            }
+            Msg::ServerDbRemoved => {
+                self.model.server_database_id = None;
+            }
             // meant for my parent
             Msg::ServerWwwUpdated(_) => {}
         }
@@ -122,7 +133,7 @@ impl Widget for ServerWebsiteAddEditDialog {
         let new_group = self.group.get_active_text();
         let new_username = self.username_entry.get_text();
         let new_password = self.password_entry.get_text();
-        // TODO database
+        let new_databaseid = self.model.server_database_id;
         let s = self.model.server_www_updated_sender.clone();
         self.model
             .db_sender
@@ -139,6 +150,7 @@ impl Widget for ServerWebsiteAddEditDialog {
                         .filter(|s| !s.is_empty())),
                     srv_www::username.eq(new_username.as_str()),
                     srv_www::password.eq(new_password.as_str()),
+                    srv_www::server_database_id.eq(new_databaseid),
                     srv_www::server_id.eq(server_id),
                 );
                 let server_www_after_result = perform_insert_or_update!(
@@ -269,12 +281,14 @@ impl Widget for ServerWebsiteAddEditDialog {
                 },
             },
             PickProjectpadItemButton((self.model.db_sender.clone(),
-                                      ItemType::ServerDatabase,
+                                      pick_projectpad_item_button::ItemType::ServerDatabase,
                                       self.model.server_database_id)) {
                 cell: {
                     left_attach: 1,
                     top_attach: 6,
                 },
+                PickPpItemSelected(ref v) => Msg::ServerDbSelected(v.1),
+                PickPpItemRemoved => Msg::ServerDbRemoved
             }
         }
     }

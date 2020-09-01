@@ -90,6 +90,8 @@ pub enum Msg {
     EditItem(ProjectPadItem),
     OpenItemFull((Project, Option<ProjectItem>, Option<ServerItem>)),
     SearchResultsModified,
+    RequestSelectedItem,
+    SelectedItem((ProjectPadItem, i32, String)),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -567,6 +569,21 @@ impl Widget for SearchView {
             Msg::SearchResultsModified => {
                 self.fetch_search_results();
             }
+            Msg::RequestSelectedItem => {
+                let item = self.model.selected_item.borrow().clone();
+                match &item {
+                    Some(ProjectPadItem::ServerDatabase(db)) => {
+                        self.model.relm.stream().emit(Msg::SelectedItem((
+                            ProjectPadItem::ServerDatabase(db.clone()),
+                            db.id,
+                            db.desc.clone(),
+                        )))
+                    }
+                    _ => {}
+                }
+            }
+            // meant for my parent
+            Msg::SelectedItem(_) => {}
         }
     }
 

@@ -1,6 +1,7 @@
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::search_view;
+use crate::widgets::search_view::Msg as SearchViewMsg;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerDatabase;
@@ -13,6 +14,7 @@ pub enum Msg {
     GotItem((search_view::ProjectPadItem, String)),
     PickItemClick,
     RemoveItem,
+    ItemSelected((search_view::ProjectPadItem, i32, String)),
 }
 
 pub enum ItemType {
@@ -20,6 +22,7 @@ pub enum ItemType {
 }
 
 pub struct Model {
+    relm: relm::Relm<PickProjectpadItemButton>,
     db_sender: mpsc::Sender<SqlFunc>,
     item_type: ItemType,
     item_id: Option<i32>,
@@ -76,6 +79,7 @@ impl Widget for PickProjectpadItemButton {
                 stream.emit(Msg::GotItem(item));
             });
         Model {
+            relm: relm.clone(),
             db_sender: params.0,
             item_type: params.1,
             item_id: params.2,
@@ -134,8 +138,12 @@ impl Widget for PickProjectpadItemButton {
                 dialog.get_header_bar().unwrap().pack_end(&search_entry);
                 search_entry.show();
 
+                relm::connect!(comp@SearchViewMsg::SelectedItem(ref p), self.model.relm, Msg::ItemSelected(p.clone()));
+
+                let comp3 = comp.clone();
                 dialog.connect_response(move |d, r| {
                     if r == gtk::ResponseType::Ok {
+                        comp3.stream().emit(search_view::Msg::RequestSelectedItem);
                         d.close();
                     } else {
                         d.close();
@@ -146,7 +154,13 @@ impl Widget for PickProjectpadItemButton {
             }
             Msg::RemoveItem => {
                 self.model.item = None;
+                self.model.item_id = None;
                 self.model.item_name = None;
+            }
+            Msg::ItemSelected((item, id, name)) => {
+                self.model.item = Some(item);
+                self.model.item_id = Some(id);
+                self.model.item_name = Some(name);
             }
         }
     }

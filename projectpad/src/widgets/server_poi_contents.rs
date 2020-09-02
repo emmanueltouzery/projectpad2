@@ -3,6 +3,7 @@ use super::server_item_list_item::ServerItemListItem;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use itertools::Itertools;
 use projectpadsql::models::{
     Server, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
     ServerWebsite,
@@ -16,6 +17,7 @@ struct ChannelData {
     server_items: Vec<ServerItem>,
     group_start_indexes: HashMap<i32, String>,
     databases_for_websites: HashMap<i32, ServerDatabase>,
+    websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
 }
 
 #[derive(Msg)]
@@ -77,6 +79,7 @@ pub struct Model {
     server_items: Vec<ServerItem>,
     server_item_groups_start_indexes: HashMap<i32, String>,
     databases_for_websites: HashMap<i32, ServerDatabase>,
+    websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
     _children_components: Vec<Component<ServerItemListItem>>,
 }
 
@@ -106,6 +109,7 @@ impl Widget for ServerPoiContents {
             server_items: vec![],
             server_item_groups_start_indexes: HashMap::new(),
             databases_for_websites: HashMap::new(),
+            websites_for_databases: HashMap::new(),
             _children_components: vec![],
         }
     }
@@ -120,6 +124,7 @@ impl Widget for ServerPoiContents {
                 self.model.server_items = items.server_items;
                 self.model.server_item_groups_start_indexes = items.group_start_indexes;
                 self.model.databases_for_websites = items.databases_for_websites;
+                self.model.websites_for_databases = items.websites_for_databases;
                 self.update_contents_list();
             }
             // ViewNote is meant for my parent
@@ -142,6 +147,18 @@ impl Widget for ServerPoiContents {
         }
     }
 
+    fn websites_for_item(&self, server_item: &ServerItem) -> Vec<ServerWebsite> {
+        match server_item {
+            ServerItem::Database(db) => self
+                .model
+                .websites_for_databases
+                .get(&db.id)
+                .map(|v| v.clone())
+                .unwrap_or_else(|| vec![]),
+            _ => vec![],
+        }
+    }
+
     fn update_contents_list(&mut self) {
         for child in self.contents_list.get_children() {
             self.contents_list.remove(&child);
@@ -152,6 +169,7 @@ impl Widget for ServerPoiContents {
                 self.model.db_sender.clone(),
                 item.clone(),
                 self.database_for_item(&item),
+                self.websites_for_item(&item),
             ));
             relm::connect!(
                 component@ServerItemListItemMsg::ViewNote(ref n),
@@ -193,21 +211,18 @@ impl Widget for ServerPoiContents {
                 use projectpadsql::schema::server_note::dsl as srv_note;
                 use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
                 use projectpadsql::schema::server_website::dsl as srv_www;
-                let (items, databases_for_websites) = match cur_server_id {
+                let (items, databases_for_websites, websites_for_databases) = match cur_server_id {
                     Some(sid) => {
                         let server_websites = srv_www::server_website
                             .filter(srv_www::server_id.eq(sid))
                             .order(srv_www::desc.asc())
                             .load::<ServerWebsite>(sql_conn)
-                            .unwrap()
-                            .into_iter()
-                            .collect::<Vec<_>>();
+                            .unwrap();
 
                         let databases_for_websites = srv_db::server_database
                             .filter(srv_db::id.eq_any(
                                 server_websites.iter().filter_map(|w| w.server_database_id),
                             ))
-                            .order(srv_db::desc.asc())
                             .load::<ServerDatabase>(sql_conn)
                             .unwrap()
                             .into_iter()
@@ -246,19 +261,34 @@ impl Widget for ServerPoiContents {
                                 .into_iter()
                                 .map(ServerItem::ExtraUserAccount),
                         );
-                        servers.extend(
-                            &mut srv_db::server_database
-                                .filter(srv_db::server_id.eq(sid))
-                                .order(srv_db::desc.asc())
-                                .load::<ServerDatabase>(sql_conn)
-                                .unwrap()
-                                .into_iter()
-                                .map(ServerItem::Database),
-                        );
 
-                        (servers, databases_for_websites)
+                        let databases = srv_db::server_database
+                            .filter(srv_db::server_id.eq(sid))
+                            .order(srv_db::desc.asc())
+                            .load::<ServerDatabase>(sql_conn)
+                            .unwrap();
+
+                        let mut websites_for_databases = HashMap::new();
+                        for (key, group) in &srv_www::server_website
+                            .filter(
+                                srv_www::server_database_id
+                                    .eq_any(databases.iter().map(|db| db.id)),
+                            )
+                            .order(srv_www::server_database_id.asc())
+                            .load::<ServerWebsite>(sql_conn)
+                            .unwrap()
+                            .into_iter()
+                            .group_by(|www| www.server_database_id.unwrap())
+                        {
+                            websites_for_databases.insert(key, group.collect());
+                        }
+
+                        let mut dbs = databases.into_iter().map(ServerItem::Database);
+                        servers.extend(&mut dbs);
+
+                        (servers, databases_for_websites, websites_for_databases)
                     }
-                    None => (vec![], HashMap::new()),
+                    None => (vec![], HashMap::new(), HashMap::new()),
                 };
 
                 let group_names: BTreeSet<&str> =
@@ -280,6 +310,7 @@ impl Widget for ServerPoiContents {
                     server_items: grouped_items.into_iter().map(|i| i.clone()).collect(),
                     group_start_indexes,
                     databases_for_websites,
+                    websites_for_databases,
                 })
                 .unwrap();
             }))

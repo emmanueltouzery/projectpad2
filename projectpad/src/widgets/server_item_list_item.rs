@@ -55,6 +55,7 @@ pub struct Model {
     server_add_edit_dialog: Option<AddEditDialogComponent>,
     server_item: ServerItem,
     database_for_item: Option<ServerDatabase>,
+    websites_for_item: Vec<ServerWebsite>,
     header_popover: gtk::Popover,
     title: (String, Icon),
     _server_item_deleted_channel: relm::Channel<DeleteResult>,
@@ -262,7 +263,21 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::AskDeleteDb(d2.clone())
                 );
-                vec![edit_btn, delete_btn]
+                let mut db_menu_items = vec![edit_btn, delete_btn];
+                for www in &self.model.websites_for_item {
+                    let go_to_www_btn = gtk::ModelButtonBuilder::new()
+                        .label(&format!("Go to '{}'", &www.desc))
+                        .build();
+                    let w3 = www.clone(); // TODO too many clones
+                    relm::connect!(
+                        self.model.relm,
+                        &go_to_www_btn,
+                        connect_clicked(_),
+                        Msg::RequestDisplayServerItem(ServerItem::Website(w3.clone()))
+                    );
+                    db_menu_items.push(go_to_www_btn);
+                }
+                db_menu_items
             }
             ServerItem::ExtraUserAccount(usr) => {
                 let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
@@ -385,9 +400,14 @@ impl Widget for ServerItemListItem {
 
     fn model(
         relm: &relm::Relm<Self>,
-        params: (mpsc::Sender<SqlFunc>, ServerItem, Option<ServerDatabase>),
+        params: (
+            mpsc::Sender<SqlFunc>,
+            ServerItem,
+            Option<ServerDatabase>,
+            Vec<ServerWebsite>,
+        ),
     ) -> Model {
-        let (db_sender, server_item, database_for_item) = params;
+        let (db_sender, server_item, database_for_item, websites_for_item) = params;
         let stream = relm.stream().clone();
         let (_server_item_deleted_channel, server_item_deleted_sender) =
             relm::Channel::new(move |r: DeleteResult| match r {
@@ -403,6 +423,7 @@ impl Widget for ServerItemListItem {
             title: Self::get_title(&server_item),
             server_item,
             database_for_item,
+            websites_for_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             _server_item_deleted_channel,
             server_item_deleted_sender,

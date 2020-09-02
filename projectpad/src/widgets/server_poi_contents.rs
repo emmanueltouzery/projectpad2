@@ -12,7 +12,11 @@ use relm_derive::{widget, Msg};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc;
 
-type ChannelData = (Vec<ServerItem>, HashMap<i32, String>);
+struct ChannelData {
+    server_items: Vec<ServerItem>,
+    group_start_indexes: HashMap<i32, String>,
+    databases_for_websites: HashMap<i32, ServerDatabase>,
+}
 
 #[derive(Msg)]
 pub enum Msg {
@@ -20,6 +24,7 @@ pub enum Msg {
     GotItems(ChannelData),
     ViewNote(ServerNote),
     RefreshItems,
+    RequestDisplayServerItem(ServerItem),
 }
 
 #[derive(Clone, Debug)]
@@ -51,6 +56,16 @@ impl ServerItem {
             ServerItem::Database(d) => d.id,
         }
     }
+
+    pub fn server_id(&self) -> i32 {
+        match self {
+            ServerItem::Website(w) => w.server_id,
+            ServerItem::PointOfInterest(p) => p.server_id,
+            ServerItem::Note(n) => n.server_id,
+            ServerItem::ExtraUserAccount(u) => u.server_id,
+            ServerItem::Database(d) => d.server_id,
+        }
+    }
 }
 
 pub struct Model {
@@ -61,6 +76,7 @@ pub struct Model {
     cur_project_item: Option<Server>,
     server_items: Vec<ServerItem>,
     server_item_groups_start_indexes: HashMap<i32, String>,
+    databases_for_websites: HashMap<i32, ServerDatabase>,
     _children_components: Vec<Component<ServerItemListItem>>,
 }
 
@@ -89,6 +105,7 @@ impl Widget for ServerPoiContents {
             cur_project_item: None,
             server_items: vec![],
             server_item_groups_start_indexes: HashMap::new(),
+            databases_for_websites: HashMap::new(),
             _children_components: vec![],
         }
     }
@@ -100,8 +117,9 @@ impl Widget for ServerPoiContents {
                 self.fetch_items();
             }
             Msg::GotItems(items) => {
-                self.model.server_items = items.0;
-                self.model.server_item_groups_start_indexes = items.1;
+                self.model.server_items = items.server_items;
+                self.model.server_item_groups_start_indexes = items.group_start_indexes;
+                self.model.databases_for_websites = items.databases_for_websites;
                 self.update_contents_list();
             }
             // ViewNote is meant for my parent
@@ -109,6 +127,18 @@ impl Widget for ServerPoiContents {
             Msg::RefreshItems => {
                 self.fetch_items();
             }
+            // meant for my parent
+            Msg::RequestDisplayServerItem(_) => {}
+        }
+    }
+
+    fn database_for_item(&self, server_item: &ServerItem) -> Option<ServerDatabase> {
+        match server_item {
+            ServerItem::Website(srv_w) => srv_w
+                .server_database_id
+                .and_then(|db_id| self.model.databases_for_websites.get(&db_id))
+                .cloned(),
+            _ => None,
         }
     }
 
@@ -118,11 +148,20 @@ impl Widget for ServerPoiContents {
         }
         let mut children_components = vec![];
         for item in &self.model.server_items {
-            let component = self
-                .contents_list
-                .add_widget::<ServerItemListItem>((self.model.db_sender.clone(), item.clone()));
-            relm::connect!(component@ServerItemListItemMsg::ViewNote(ref n), self.model.relm, Msg::ViewNote(n.clone()));
-            relm::connect!(component@ServerItemListItemMsg::ServerItemDeleted(_), self.model.relm, Msg::RefreshItems);
+            let component = self.contents_list.add_widget::<ServerItemListItem>((
+                self.model.db_sender.clone(),
+                item.clone(),
+                self.database_for_item(&item),
+            ));
+            relm::connect!(
+                component@ServerItemListItemMsg::ViewNote(ref n),
+                self.model.relm, Msg::ViewNote(n.clone()));
+            relm::connect!(
+                component@ServerItemListItemMsg::ServerItemDeleted(_),
+                self.model.relm, Msg::RefreshItems);
+            relm::connect!(
+                component@ServerItemListItemMsg::RequestDisplayServerItem(ref server_item),
+                           self.model.relm, Msg::RequestDisplayServerItem(server_item.clone()));
             children_components.push(component);
         }
         let indexes = self.model.server_item_groups_start_indexes.clone();
@@ -154,16 +193,32 @@ impl Widget for ServerPoiContents {
                 use projectpadsql::schema::server_note::dsl as srv_note;
                 use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
                 use projectpadsql::schema::server_website::dsl as srv_www;
-                let items = match cur_server_id {
+                let (items, databases_for_websites) = match cur_server_id {
                     Some(sid) => {
-                        let mut servers = srv_www::server_website
+                        let server_websites = srv_www::server_website
                             .filter(srv_www::server_id.eq(sid))
                             .order(srv_www::desc.asc())
                             .load::<ServerWebsite>(sql_conn)
                             .unwrap()
                             .into_iter()
+                            .collect::<Vec<_>>();
+
+                        let databases_for_websites = srv_db::server_database
+                            .filter(srv_db::id.eq_any(
+                                server_websites.iter().filter_map(|w| w.server_database_id),
+                            ))
+                            .order(srv_db::desc.asc())
+                            .load::<ServerDatabase>(sql_conn)
+                            .unwrap()
+                            .into_iter()
+                            .map(|db| (db.id, db))
+                            .collect::<HashMap<_, _>>();
+
+                        let mut servers = server_websites
+                            .into_iter()
                             .map(ServerItem::Website)
                             .collect::<Vec<_>>();
+
                         servers.extend(
                             srv_poi::server_point_of_interest
                                 .filter(srv_poi::server_id.eq(sid))
@@ -201,9 +256,9 @@ impl Widget for ServerPoiContents {
                                 .map(ServerItem::Database),
                         );
 
-                        servers
+                        (servers, databases_for_websites)
                     }
-                    None => vec![],
+                    None => (vec![], HashMap::new()),
                 };
 
                 let group_names: BTreeSet<&str> =
@@ -221,10 +276,11 @@ impl Widget for ServerPoiContents {
                     );
                 }
 
-                s.send((
-                    grouped_items.into_iter().map(|i| i.clone()).collect(),
+                s.send(ChannelData {
+                    server_items: grouped_items.into_iter().map(|i| i.clone()).collect(),
                     group_start_indexes,
-                ))
+                    databases_for_websites,
+                })
                 .unwrap();
             }))
             .unwrap();

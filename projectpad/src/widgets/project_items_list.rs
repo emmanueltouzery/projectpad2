@@ -28,6 +28,17 @@ pub enum ProjectItem {
     ProjectPointOfInterest(ProjectPointOfInterest),
 }
 
+impl ProjectItem {
+    pub fn project_id(&self) -> i32 {
+        match self {
+            ProjectItem::Server(s) => s.project_id,
+            ProjectItem::ServerLink(s) => s.project_id,
+            ProjectItem::ProjectNote(n) => n.project_id,
+            ProjectItem::ProjectPointOfInterest(p) => p.project_id,
+        }
+    }
+}
+
 #[derive(Msg)]
 pub enum Msg {
     ActiveProjectChanged(Project),

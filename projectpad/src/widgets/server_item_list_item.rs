@@ -43,6 +43,7 @@ pub enum Msg {
     AskDeleteServerWebsite(ServerWebsite),
     DeleteServerWebsite(ServerWebsite),
     ServerItemDeleted(ServerItem),
+    RequestDisplayServerItem(ServerItem),
 }
 
 // String for details, because I can't pass Error across threads
@@ -53,15 +54,19 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     server_add_edit_dialog: Option<AddEditDialogComponent>,
     server_item: ServerItem,
+    database_for_item: Option<ServerDatabase>,
     header_popover: gtk::Popover,
     title: (String, Icon),
     _server_item_deleted_channel: relm::Channel<DeleteResult>,
     server_item_deleted_sender: relm::Sender<DeleteResult>,
 }
 
-pub fn get_server_item_grid_items(server_item: &ServerItem) -> Vec<GridItem> {
+pub fn get_server_item_grid_items(
+    server_item: &ServerItem,
+    database_for_item: &Option<ServerDatabase>,
+) -> Vec<GridItem> {
     match server_item {
-        ServerItem::Website(ref srv_w) => get_website_grid_items(srv_w),
+        ServerItem::Website(ref srv_w) => get_website_grid_items(srv_w, database_for_item),
         ServerItem::PointOfInterest(ref srv_poi) => get_poi_grid_items(srv_poi),
         ServerItem::Note(ref srv_n) => get_note_grid_items(srv_n),
         ServerItem::ExtraUserAccount(ref srv_u) => get_user_grid_items(srv_u),
@@ -69,7 +74,10 @@ pub fn get_server_item_grid_items(server_item: &ServerItem) -> Vec<GridItem> {
     }
 }
 
-fn get_website_grid_items(website: &ServerWebsite) -> Vec<GridItem> {
+fn get_website_grid_items(
+    website: &ServerWebsite,
+    database: &Option<ServerDatabase>,
+) -> Vec<GridItem> {
     vec![
         GridItem::new(
             "Address",
@@ -96,6 +104,17 @@ fn get_website_grid_items(website: &ServerWebsite) -> Vec<GridItem> {
                 "●●●●●".to_string()
             }),
             website.password.clone(),
+        ),
+        GridItem::new(
+            "Database",
+            None,
+            LabelText::PlainText(
+                database
+                    .as_ref()
+                    .map(|db| db.desc.clone())
+                    .unwrap_or_else(|| "".to_string()),
+            ),
+            website.username.clone(),
         ),
     ]
 }
@@ -192,7 +211,8 @@ impl Widget for ServerItemListItem {
     }
 
     fn load_server_item(&self) {
-        let fields = get_server_item_grid_items(&self.model.server_item);
+        let fields =
+            get_server_item_grid_items(&self.model.server_item, &self.model.database_for_item);
         // TODO drop the clone
         let extra_btns = match self.model.server_item.clone() {
             ServerItem::Note(n) => {
@@ -281,7 +301,21 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::AskDeleteServerWebsite(w2.clone())
                 );
-                vec![edit_btn, delete_btn]
+                let mut www_menu_items = vec![edit_btn, delete_btn];
+                if let Some(db) = self.model.database_for_item.as_ref() {
+                    let go_to_db_btn = gtk::ModelButtonBuilder::new()
+                        .label("Go to database")
+                        .build();
+                    let d3 = db.clone(); // TODO too many clones
+                    relm::connect!(
+                        self.model.relm,
+                        &go_to_db_btn,
+                        connect_clicked(_),
+                        Msg::RequestDisplayServerItem(ServerItem::Database(d3.clone()))
+                    );
+                    www_menu_items.push(go_to_db_btn);
+                }
+                www_menu_items
             }
             _ => vec![],
         };
@@ -349,8 +383,11 @@ impl Widget for ServerItemListItem {
         }
     }
 
-    fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, ServerItem)) -> Model {
-        let (db_sender, server_item) = params;
+    fn model(
+        relm: &relm::Relm<Self>,
+        params: (mpsc::Sender<SqlFunc>, ServerItem, Option<ServerDatabase>),
+    ) -> Model {
+        let (db_sender, server_item, database_for_item) = params;
         let stream = relm.stream().clone();
         let (_server_item_deleted_channel, server_item_deleted_sender) =
             relm::Channel::new(move |r: DeleteResult| match r {
@@ -365,6 +402,7 @@ impl Widget for ServerItemListItem {
             server_add_edit_dialog: None,
             title: Self::get_title(&server_item),
             server_item,
+            database_for_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             _server_item_deleted_channel,
             server_item_deleted_sender,
@@ -556,6 +594,8 @@ impl Widget for ServerItemListItem {
             }
             // for my parent
             Msg::ServerItemDeleted(_) => {}
+            // for my parent
+            Msg::RequestDisplayServerItem(_) => {}
         }
     }
 

@@ -3,6 +3,7 @@ use super::project_items_list::{ProjectItem, ProjectItemsList};
 use super::project_list::Msg as ProjectListMsg;
 use super::project_list::{Msg::ProjectActivated, ProjectList, UpdateParents};
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
+use super::project_poi_contents::Msg::RequestDisplayServerItem as ProjectPoiContentsMsgRequestDisplayServerItem;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
@@ -21,6 +22,7 @@ use super::wintitlebar::WinTitleBar;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project, Server};
 use relm::{Component, Widget};
@@ -28,6 +30,8 @@ use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
 const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
+
+type DisplayItemParams = (Project, Option<ProjectItem>, Option<ServerItem>);
 
 #[derive(Msg)]
 pub enum Msg {
@@ -37,10 +41,11 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     SearchActiveChanged(bool),
     SearchTextChanged(String),
-    DisplayItem((Project, Option<ProjectItem>, Option<ServerItem>)),
+    DisplayItem(DisplayItemParams),
     KeyPress(gdk::EventKey),
     ServerUpdated(Server),
     ServerDeleted(Server),
+    RequestDisplayItem(ServerItem),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,6 +57,8 @@ pub struct Model {
     relm: relm::Relm<Win>,
     db_sender: mpsc::Sender<SqlFunc>,
     titlebar: Component<WinTitleBar>,
+    _display_item_channel: relm::Channel<DisplayItemParams>,
+    display_item_sender: relm::Sender<DisplayItemParams>,
 }
 
 const CHILD_NAME_NORMAL: &str = "normal";
@@ -75,10 +82,18 @@ impl Widget for Win {
             .unwrap()
             .add_resource_path("/icons");
         let titlebar = relm::init::<WinTitleBar>(()).expect("win title bar init");
+
+        let stream = relm.stream().clone();
+        let (display_item_channel, display_item_sender) =
+            relm::Channel::new(move |ch_data: DisplayItemParams| {
+                stream.emit(Msg::DisplayItem(ch_data));
+            });
         Model {
             relm: relm.clone(),
             db_sender,
             titlebar,
+            display_item_sender,
+            _display_item_channel: display_item_channel,
         }
     }
 
@@ -154,6 +169,30 @@ impl Widget for Win {
                     .titlebar
                     .stream()
                     .emit(WinTitleBarMsg::SearchActiveChanged(false));
+            }
+            Msg::RequestDisplayItem(server_item) => {
+                let s = self.model.display_item_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        use projectpadsql::schema::project::dsl as prj;
+                        use projectpadsql::schema::server::dsl as srv;
+                        let server: Server = srv::server
+                            .find(server_item.server_id())
+                            .first(sql_conn)
+                            .unwrap();
+                        let project = prj::project
+                            .find(server.project_id)
+                            .first(sql_conn)
+                            .unwrap();
+                        s.send((
+                            project,
+                            Some(ProjectItem::Server(server)),
+                            Some(server_item.clone()),
+                        ))
+                        .unwrap();
+                    }))
+                    .unwrap();
             }
             Msg::KeyPress(e) => {
                 if e.get_keyval() == gdk::keys::constants::Escape {
@@ -260,6 +299,8 @@ impl Widget for Win {
                                 fill: true,
                                 expand: true,
                             },
+                            ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
+                                Msg::RequestDisplayItem(item_info.clone())
                         }
                     }
                 },

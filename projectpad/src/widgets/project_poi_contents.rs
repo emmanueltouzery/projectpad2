@@ -1,6 +1,8 @@
 use super::project_items_list::ProjectItem;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
+use super::server_poi_contents::Msg::RequestDisplayServerItem as ServerPoiContentsRequestDisplayServerItem;
 use super::server_poi_contents::Msg::ViewNote as ServerPoiContentsMsgViewNote;
+use super::server_poi_contents::ServerItem;
 use super::server_poi_contents::ServerPoiContents;
 use crate::notes::ItemDataInfo;
 use crate::sql_thread::SqlFunc;
@@ -18,6 +20,7 @@ pub enum Msg {
     ServerNoteBack,
     TextViewMoveCursor(f64, f64),
     TextViewEventAfter(gdk::Event),
+    RequestDisplayServerItem(ServerItem),
 }
 
 pub struct Model {
@@ -144,6 +147,8 @@ impl Widget for ProjectPoiContents {
                     }
                 }
             }
+            // meant for my parent
+            Msg::RequestDisplayServerItem(_) => {}
         }
     }
 
@@ -260,7 +265,8 @@ impl Widget for ProjectPoiContents {
                 child: {
                     name: Some(CHILD_NAME_SERVER)
                 },
-                ServerPoiContentsMsgViewNote(ref n) => Msg::ViewServerNote(n.clone())
+                ServerPoiContentsMsgViewNote(ref n) => Msg::ViewServerNote(n.clone()),
+                    ServerPoiContentsRequestDisplayServerItem(ref si) => Msg::RequestDisplayServerItem(si.clone())
             },
             gtk::Box {
                 child: {

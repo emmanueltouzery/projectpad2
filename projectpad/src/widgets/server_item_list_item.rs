@@ -476,11 +476,11 @@ impl Widget for ServerItemListItem {
                     MsgServerNoteAddEditDialog::OkPressed,
                     "Server Note",
                 );
-                // relm::connect!(
-                //     component@MsgServerNoteAddEditDialog::ServerNoteUpdated(ref note),
-                //     self.model.relm,
-                //     Msg::ServerItemUpdated(ServerItem::Note(note.clone()))
-                // );
+                relm::connect!(
+                    component@MsgServerNoteAddEditDialog::ServerNoteUpdated(ref note),
+                    self.model.relm,
+                    Msg::ServerItemUpdated(ServerItem::Note(note.clone()))
+                );
                 self.model.server_add_edit_dialog = Some(AddEditDialogComponent::Note(component));
                 dialog.show();
             }

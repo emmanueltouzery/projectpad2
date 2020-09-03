@@ -1,5 +1,7 @@
 use super::dialog_helpers;
+use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerNote;
 use relm::Widget;
@@ -10,15 +12,23 @@ use std::sync::mpsc;
 pub enum Msg {
     GotGroups(Vec<String>),
     OkPressed,
+    ServerNoteUpdated(ServerNote),
 }
+
+// String for details, because I can't pass Error across threads
+type SaveResult = Result<ServerNote, (String, Option<String>)>;
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
+    server_note_id: Option<i32>,
 
     groups_store: gtk::ListStore,
     _groups_channel: relm::Channel<Vec<String>>,
     groups_sender: relm::Sender<Vec<String>>,
+
+    _server_note_updated_channel: relm::Channel<SaveResult>,
+    server_note_updated_sender: relm::Sender<SaveResult>,
 
     title: String,
     group_name: Option<String>,
@@ -57,12 +67,21 @@ impl Widget for ServerNoteAddEditDialog {
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
             stream.emit(Msg::GotGroups(groups));
         });
+        let stream2 = relm.stream().clone();
+        let (server_note_updated_channel, server_note_updated_sender) =
+            relm::Channel::new(move |r: SaveResult| match r {
+                Ok(srv_note) => stream2.emit(Msg::ServerNoteUpdated(srv_note)),
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+            });
         Model {
             db_sender,
             server_id,
+            server_note_id: sn.map(|d| d.id),
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             _groups_channel: groups_channel,
             groups_sender,
+            _server_note_updated_channel: server_note_updated_channel,
+            server_note_updated_sender,
             title: sn
                 .map(|d| d.title.clone())
                 .unwrap_or_else(|| "".to_string()),
@@ -84,9 +103,48 @@ impl Widget for ServerNoteAddEditDialog {
                 );
             }
             Msg::OkPressed => {
-                // TODO
+                self.update_server_note();
             }
+            // meant for my parent
+            Msg::ServerNoteUpdated(_) => {}
         }
+    }
+
+    fn update_server_note(&self) {
+        let server_id = self.model.server_id;
+        let server_note_id = self.model.server_note_id;
+        let new_title = self.title_entry.get_text();
+        let new_group = self.group.get_active_text();
+        let buf = self.note_textview.get_buffer().unwrap();
+        let new_contents = buf
+            .get_text(&buf.get_start_iter(), &buf.get_end_iter(), false)
+            .unwrap();
+        let s = self.model.server_note_updated_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server_note::dsl as srv_note;
+                let changeset = (
+                    srv_note::title.eq(new_title.as_str()),
+                    // never store Some("") for group, we want None then.
+                    srv_note::group_name.eq(new_group
+                        .as_ref()
+                        .map(|s| s.as_str())
+                        .filter(|s| !s.is_empty())),
+                    srv_note::contents.eq(new_contents.as_str()),
+                    srv_note::server_id.eq(server_id),
+                );
+                let server_note_after_result = perform_insert_or_update!(
+                    sql_conn,
+                    server_note_id,
+                    srv_note::server_note,
+                    srv_note::id,
+                    changeset,
+                    ServerNote,
+                );
+                s.send(server_note_after_result).unwrap();
+            }))
+            .unwrap();
     }
 
     view! {

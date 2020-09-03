@@ -1,6 +1,7 @@
 use super::dialogs::dialog_helpers;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
+use super::dialogs::server_note_add_edit_dlg::Msg as MsgServerNoteAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::server_poi_get_text_label;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
@@ -29,6 +30,7 @@ use std::sync::mpsc;
 pub enum Msg {
     CopyClicked(String),
     ViewNote(ServerNote),
+    EditNote(ServerNote),
     EditPoi(ServerPointOfInterest),
     EditDb(ServerDatabase),
     EditUser(ServerExtraUserAccount),
@@ -218,13 +220,22 @@ impl Widget for ServerItemListItem {
         let extra_btns = match self.model.server_item.clone() {
             ServerItem::Note(n) => {
                 let view_btn = gtk::ModelButtonBuilder::new().label("View").build();
+                let n0 = n.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
                     &view_btn,
                     connect_clicked(_),
-                    Msg::ViewNote(n.clone())
+                    Msg::ViewNote(n0.clone())
                 );
-                vec![view_btn]
+                let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+                let n1 = n.clone(); // TODO too many clones
+                relm::connect!(
+                    self.model.relm,
+                    &edit_btn,
+                    connect_clicked(_),
+                    Msg::EditNote(n1.clone())
+                );
+                vec![view_btn, edit_btn]
             }
             ServerItem::PointOfInterest(poi) => {
                 let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
@@ -458,6 +469,21 @@ impl Widget for ServerItemListItem {
             }
             // meant for my parent
             Msg::ViewNote(_) => {}
+            Msg::EditNote(note) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    (self.model.db_sender.clone(), note.server_id, Some(note)),
+                    MsgServerNoteAddEditDialog::OkPressed,
+                    "Server Note",
+                );
+                // relm::connect!(
+                //     component@MsgServerNoteAddEditDialog::ServerNoteUpdated(ref note),
+                //     self.model.relm,
+                //     Msg::ServerItemUpdated(ServerItem::Note(note.clone()))
+                // );
+                self.model.server_add_edit_dialog = Some(AddEditDialogComponent::Note(component));
+                dialog.show();
+            }
             Msg::EditPoi(poi) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),

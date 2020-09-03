@@ -6,6 +6,7 @@ pub mod server_add_edit_dlg;
 pub mod server_add_item_dlg;
 pub mod server_database_add_edit_dlg;
 pub mod server_extra_user_add_edit_dlg;
+pub mod server_note_add_edit_dlg;
 pub mod server_poi_add_edit_dlg;
 pub mod server_website_add_edit_dlg;
 pub mod standard_dialogs;
@@ -15,6 +16,7 @@ pub enum AddEditDialogComponent {
     Db(relm::Component<server_database_add_edit_dlg::ServerDatabaseAddEditDialog>),
     User(relm::Component<server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog>),
     Website(relm::Component<server_website_add_edit_dlg::ServerWebsiteAddEditDialog>),
+    Note(relm::Component<server_note_add_edit_dlg::ServerNoteAddEditDialog>),
 }
 
 impl AddEditDialogComponent {
@@ -24,6 +26,7 @@ impl AddEditDialogComponent {
             AddEditDialogComponent::Db(ref x) => x.widget(),
             AddEditDialogComponent::User(ref x) => x.widget(),
             AddEditDialogComponent::Website(ref x) => x.widget(),
+            AddEditDialogComponent::Note(ref x) => x.widget(),
         }
     }
 }

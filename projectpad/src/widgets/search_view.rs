@@ -473,6 +473,7 @@ impl Widget for SearchView {
                 // meant for my parent
             }
             Msg::EditItem(item) => match item {
+                // TODO tried to reduce duplication here, but gave up
                 ProjectPadItem::Server(srv) => {
                     let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),

@@ -4,6 +4,9 @@ use super::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
 use super::server_extra_user_add_edit_dlg;
 use super::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
 use super::server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog;
+use super::server_note_add_edit_dlg;
+use super::server_note_add_edit_dlg::Msg as MsgServerNoteAddEditDialog;
+use super::server_note_add_edit_dlg::ServerNoteAddEditDialog;
 use super::server_poi_add_edit_dlg;
 use super::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
@@ -62,6 +65,7 @@ impl Widget for ServerAddItemDialog {
         self.add_db.join_group(Some(&self.add_poi));
         self.add_extra_user.join_group(Some(&self.add_poi));
         self.add_website.join_group(Some(&self.add_poi));
+        self.add_note.join_group(Some(&self.add_poi));
     }
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, i32)) -> Model {
@@ -117,6 +121,16 @@ impl Widget for ServerAddItemDialog {
                         ),
                         "Add server website",
                     )
+                } else if self.add_note.get_active() {
+                    (
+                        plug_second_tab!(
+                            self,
+                            ServerNoteAddEditDialog,
+                            MsgServerNoteAddEditDialog::ServerNoteUpdated,
+                            AddEditDialogComponent::Note,
+                        ),
+                        "Add server website",
+                    )
                 } else {
                     panic!();
                 };
@@ -138,6 +152,9 @@ impl Widget for ServerAddItemDialog {
                 Some(AddEditDialogComponent::User(user_d)) => user_d
                     .stream()
                     .emit(server_extra_user_add_edit_dlg::Msg::OkPressed),
+                Some(AddEditDialogComponent::Note(note_d)) => note_d
+                    .stream()
+                    .emit(server_note_add_edit_dlg::Msg::OkPressed),
                 x => eprintln!("Got ok but wrong component? {}", x.is_some()),
             },
             // meant for my parent
@@ -172,6 +189,10 @@ impl Widget for ServerAddItemDialog {
                 #[name="add_extra_user"]
                 gtk::RadioButton {
                     label: "Add extra user",
+                },
+                #[name="add_note"]
+                gtk::RadioButton {
+                    label: "Add note",
                 },
             }
         }

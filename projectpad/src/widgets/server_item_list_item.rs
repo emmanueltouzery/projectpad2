@@ -26,7 +26,7 @@ use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-#[derive(Msg)]
+#[derive(Msg, Clone)]
 pub enum Msg {
     CopyClicked(String),
     ViewNote(ServerNote),
@@ -36,14 +36,12 @@ pub enum Msg {
     EditUser(ServerExtraUserAccount),
     EditWebsite(ServerWebsite),
     ServerItemUpdated(ServerItem),
-    AskDeleteServerPoi(ServerPointOfInterest),
     DeleteServerPoi(ServerPointOfInterest),
-    AskDeleteDb(ServerDatabase),
     DeleteServerDb(ServerDatabase),
-    AskDeleteServerExtraUser(ServerExtraUserAccount),
+    AskDeleteServerItem((String, &'static str, Box<Msg>)),
     DeleteServerExtraUser(ServerExtraUserAccount),
-    AskDeleteServerWebsite(ServerWebsite),
     DeleteServerWebsite(ServerWebsite),
+    DeleteServerNote(ServerNote),
     ServerItemDeleted(ServerItem),
     RequestDisplayServerItem(ServerItem),
 }
@@ -235,7 +233,19 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::EditNote(n1.clone())
                 );
-                vec![view_btn, edit_btn]
+                let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+                let n2 = n.clone(); // TODO too many clones
+                relm::connect!(
+                    self.model.relm,
+                    &delete_btn,
+                    connect_clicked(_),
+                    Msg::AskDeleteServerItem((
+                        n2.title.clone(),
+                        "note",
+                        Box::new(Msg::DeleteServerNote(n2.clone()))
+                    ))
+                );
+                vec![view_btn, edit_btn, delete_btn]
             }
             ServerItem::PointOfInterest(poi) => {
                 let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
@@ -253,7 +263,11 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
-                    Msg::AskDeleteServerPoi(p2.clone())
+                    Msg::AskDeleteServerItem((
+                        p2.desc.clone(),
+                        "server POI",
+                        Box::new(Msg::DeleteServerPoi(p2.clone()))
+                    ))
                 );
                 vec![edit_btn, delete_btn]
             }
@@ -272,7 +286,11 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
-                    Msg::AskDeleteDb(d2.clone())
+                    Msg::AskDeleteServerItem((
+                        d2.desc.clone(),
+                        "server database",
+                        Box::new(Msg::DeleteServerDb(d2.clone()))
+                    ))
                 );
                 let mut db_menu_items = vec![edit_btn, delete_btn];
                 for www in &self.model.websites_for_item {
@@ -305,7 +323,11 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
-                    Msg::AskDeleteServerExtraUser(u2.clone())
+                    Msg::AskDeleteServerItem((
+                        u2.desc.clone(),
+                        "extra user",
+                        Box::new(Msg::DeleteServerExtraUser(u2.clone()))
+                    ))
                 );
                 vec![edit_btn, delete_btn]
             }
@@ -325,7 +347,11 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
-                    Msg::AskDeleteServerWebsite(w2.clone())
+                    Msg::AskDeleteServerItem((
+                        w2.desc.clone(),
+                        "server website",
+                        Box::new(Msg::DeleteServerWebsite(w2.clone()))
+                    ))
                 );
                 let mut www_menu_items = vec![edit_btn, delete_btn];
                 if let Some(db) = self.model.database_for_item.as_ref() {
@@ -550,29 +576,12 @@ impl Widget for ServerItemListItem {
                 self.model.title = Self::get_title(&self.model.server_item);
                 self.load_server_item();
             }
-            Msg::AskDeleteServerPoi(poi) => {
-                let relm = self.model.relm.clone();
-                standard_dialogs::confirm_deletion(
-                            "Delete server POI",
-                            &format!("Are you sure you want to delete the server POI {}? This action cannot be undone.", poi.desc),
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
-                    move || relm.stream().emit(Msg::DeleteServerPoi(poi.clone())));
-            }
             Msg::DeleteServerPoi(poi) => {
                 use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
                 self.run_delete_action(
                     srv_poi::server_point_of_interest,
                     ServerItem::PointOfInterest(poi),
                 );
-            }
-            Msg::AskDeleteDb(db) => {
-                let relm = self.model.relm.clone();
-
-                standard_dialogs::confirm_deletion(
-                            "Delete server database",
-                            &format!("Are you sure you want to delete the server database {}? This action cannot be undone.", db.desc),
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
-                    move || relm.stream().emit(Msg::DeleteServerDb(db.clone())));
             }
             Msg::DeleteServerDb(db) => {
                 use projectpadsql::schema::server_database::dsl as srv_db;
@@ -612,13 +621,15 @@ impl Widget for ServerItemListItem {
                     }))
                     .unwrap();
             }
-            Msg::AskDeleteServerExtraUser(user) => {
+            Msg::AskDeleteServerItem((item_desc, message, delete_evt)) => {
                 let relm = self.model.relm.clone();
+                let evt = (*delete_evt);
                 standard_dialogs::confirm_deletion(
-                            "Delete server extra user",
-                            &format!("Are you sure you want to delete the server extra user {}? This action cannot be undone.", user.desc),
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
-                    move || relm.stream().emit(Msg::DeleteServerExtraUser(user.clone())));
+                    &format!("Delete server {}", message),
+                    &format!("Are you sure you want to delete the server {} {}? This action cannot be undone.", message, &item_desc),
+                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    move || relm.stream().emit(evt.clone()),
+                );
             }
             Msg::DeleteServerExtraUser(user) => {
                 use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
@@ -627,17 +638,13 @@ impl Widget for ServerItemListItem {
                     ServerItem::ExtraUserAccount(user),
                 );
             }
-            Msg::AskDeleteServerWebsite(user) => {
-                let relm = self.model.relm.clone();
-                standard_dialogs::confirm_deletion(
-                            "Delete server website",
-                            &format!("Are you sure you want to delete the server website {}? This action cannot be undone.", user.desc),
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
-                    move || relm.stream().emit(Msg::DeleteServerWebsite(user.clone())));
-            }
             Msg::DeleteServerWebsite(website) => {
                 use projectpadsql::schema::server_website::dsl as srv_www;
                 self.run_delete_action(srv_www::server_website, ServerItem::Website(website));
+            }
+            Msg::DeleteServerNote(note) => {
+                use projectpadsql::schema::server_note::dsl as srv_note;
+                self.run_delete_action(srv_note::server_note, ServerItem::Note(note));
             }
             // for my parent
             Msg::ServerItemDeleted(_) => {}

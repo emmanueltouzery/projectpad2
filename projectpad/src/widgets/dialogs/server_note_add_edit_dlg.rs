@@ -183,7 +183,11 @@ impl Widget for ServerNoteAddEditDialog {
                     top_attach: 1,
                 },
             },
-            gtk::ScrolledWindow {
+            gtk::Frame {
+                margin_top: 10,
+                margin_start: 10,
+                margin_end: 10,
+                margin_bottom: 10,
                 cell: {
                     left_attach: 0,
                     top_attach: 2,
@@ -191,13 +195,11 @@ impl Widget for ServerNoteAddEditDialog {
                 },
                 hexpand: true,
                 vexpand: true,
-                #[name="note_textview"]
-                gtk::TextView {
-                    margin_top: 10,
-                    margin_start: 10,
-                    margin_end: 10,
-                    margin_bottom: 10,
-                    editable: true,
+                gtk::ScrolledWindow {
+                    #[name="note_textview"]
+                    gtk::TextView {
+                        editable: true,
+                    }
                 }
             }
         }

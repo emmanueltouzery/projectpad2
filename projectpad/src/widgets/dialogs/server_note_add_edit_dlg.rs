@@ -1,5 +1,6 @@
 use super::dialog_helpers;
 use super::standard_dialogs;
+use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
@@ -183,14 +184,42 @@ impl Widget for ServerNoteAddEditDialog {
                     top_attach: 1,
                 },
             },
-            gtk::Frame {
+            gtk::Toolbar {
                 margin_top: 10,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 2,
+                    width: 2,
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::BOLD.name())
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::ITALIC.name())
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::HEADING.name())
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::LINK.name())
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::LOCK.name())
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::CODE.name())
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::QUOTE.name())
+                },
+            },
+            gtk::Frame {
                 margin_start: 10,
                 margin_end: 10,
                 margin_bottom: 10,
                 cell: {
                     left_attach: 0,
-                    top_attach: 2,
+                    top_attach: 3,
                     width: 2,
                 },
                 hexpand: true,

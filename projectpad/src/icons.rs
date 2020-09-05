@@ -23,4 +23,11 @@ impl Icon {
     pub const ARCHIVE: Icon = Icon("archive");
     pub const TERMINAL: Icon = Icon("terminal");
     pub const SSH: Icon = Icon("ssh");
+    pub const BOLD: Icon = Icon("bold");
+    pub const ITALIC: Icon = Icon("italic");
+    pub const HEADING: Icon = Icon("heading");
+    pub const LINK: Icon = Icon("external-link-alt");
+    pub const LOCK: Icon = Icon("lock");
+    pub const CODE: Icon = Icon("code");
+    pub const QUOTE: Icon = Icon("quote");
 }

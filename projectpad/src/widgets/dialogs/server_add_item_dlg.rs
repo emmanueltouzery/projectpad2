@@ -129,7 +129,7 @@ impl Widget for ServerAddItemDialog {
                             MsgServerNoteAddEditDialog::ServerNoteUpdated,
                             AddEditDialogComponent::Note,
                         ),
-                        "Add server website",
+                        "Add server note",
                     )
                 } else {
                     panic!();

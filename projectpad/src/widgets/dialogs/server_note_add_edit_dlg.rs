@@ -192,7 +192,7 @@ impl Widget for ServerNoteAddEditDialog {
 
         // if the selection is [**test**] and the user clicked bold, should we
         // un-toggle, meaning change the contents to [test]?
-        let is_untoggle = end_offset >= after_len && {
+        let is_untoggle = start_offset >= before_len && {
             let mut iter2 = buf.get_iter_at_offset(end_offset + after_len);
             if buf.get_text(&iter2, &iter, false).unwrap().to_string() != after {
                 false
@@ -406,6 +406,19 @@ fn toggle_snippet_should_untoggle_bold() {
     let initial_iter = buf.get_iter_at_offset(2);
     buf.place_cursor(&initial_iter);
     ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
+    assert_tv_contents_eq("", &buf);
+    assert_eq!(0, buf.get_property_cursor_position());
+}
+
+#[test]
+fn toggle_snippet_should_untoggle_link() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("[](url)");
+    let initial_iter = buf.get_iter_at_offset(1);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_snippet(&tv, "[", "](url)");
     assert_tv_contents_eq("", &buf);
     assert_eq!(0, buf.get_property_cursor_position());
 }

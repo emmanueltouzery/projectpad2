@@ -45,6 +45,8 @@ pub struct Model {
     contents: String,
 }
 
+const HEADER_CYCLE: &[&'static str] = &[" # ", " ## ", " ### ", " - "];
+
 #[widget]
 impl Widget for ServerNoteAddEditDialog {
     fn init_view(&mut self) {
@@ -121,7 +123,9 @@ impl Widget for ServerNoteAddEditDialog {
             Msg::TextItalic => {
                 Self::toggle_snippet(&self.note_textview, "*", "*");
             }
-            Msg::TextHeading => {}
+            Msg::TextHeading => {
+                Self::toggle_heading(&self.note_textview);
+            }
             Msg::TextLink => {
                 Self::toggle_snippet(&self.note_textview, "[", "](url)");
             }
@@ -131,6 +135,41 @@ impl Widget for ServerNoteAddEditDialog {
             // meant for my parent
             Msg::ServerNoteUpdated(_) => {}
         }
+    }
+
+    // Toggle between '#', '##', '###', "-" and no header
+    fn toggle_heading(note_textview: &gtk::TextView) {
+        let buf = note_textview.get_buffer().unwrap();
+        let mut to_insert = " # ";
+        let mut clear_chars = 0;
+        let mut iter = buf.get_iter_at_offset(buf.get_property_cursor_position());
+        iter.backward_chars(iter.get_line_offset());
+        let mut iter2 = buf.get_start_iter();
+        for (i, header) in HEADER_CYCLE.iter().enumerate() {
+            iter2.set_offset(iter.get_offset() + header.len() as i32);
+            if buf
+                .get_text(&iter, &iter2, false)
+                .unwrap()
+                .to_string()
+                .as_str()
+                == *header
+            {
+                // this pattern is in use, next time
+                // we want to move to the next pattern
+                to_insert = if i + 1 >= HEADER_CYCLE.len() {
+                    ""
+                } else {
+                    HEADER_CYCLE[i + 1]
+                };
+                clear_chars = header.len() as i32;
+                break;
+            }
+        }
+        if clear_chars > 0 {
+            iter2.set_offset(iter.get_offset() + clear_chars);
+            buf.delete(&mut iter, &mut iter2);
+        }
+        buf.insert(&mut iter, to_insert);
     }
 
     fn toggle_snippet(note_textview: &gtk::TextView, before: &'static str, after: &'static str) {
@@ -335,21 +374,26 @@ fn tests_init() {
     });
 }
 
+#[cfg(test)]
+fn assert_tv_contents_eq(expected: &'static str, buf: &gtk::TextBuffer) {
+    let start_iter = buf.get_start_iter();
+    let end_iter = buf.get_end_iter();
+    assert_eq!(
+        expected,
+        buf.get_text(&start_iter, &end_iter, false)
+            .unwrap()
+            .to_string()
+            .as_str()
+    );
+}
+
 #[test]
 fn toggle_snippet_should_add_bold() {
     tests_init();
     let tv = gtk::TextView::new();
     ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
     let buf = tv.get_buffer().unwrap();
-    let start_iter = buf.get_start_iter();
-    let end_iter = buf.get_end_iter();
-    assert_eq!(
-        "****",
-        buf.get_text(&start_iter, &end_iter, false)
-            .unwrap()
-            .to_string()
-            .as_str()
-    );
+    assert_tv_contents_eq("****", &buf);
     assert_eq!(2, buf.get_property_cursor_position());
 }
 
@@ -362,15 +406,7 @@ fn toggle_snippet_should_untoggle_bold() {
     let initial_iter = buf.get_iter_at_offset(2);
     buf.place_cursor(&initial_iter);
     ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
-    let start_iter = buf.get_start_iter();
-    let end_iter = buf.get_end_iter();
-    assert_eq!(
-        "",
-        buf.get_text(&start_iter, &end_iter, false)
-            .unwrap()
-            .to_string()
-            .as_str()
-    );
+    assert_tv_contents_eq("", &buf);
     assert_eq!(0, buf.get_property_cursor_position());
 }
 
@@ -384,15 +420,7 @@ fn toggle_snippet_with_selection_should_wrap_selection() {
     let select_end_iter = buf.get_iter_at_offset(10);
     buf.select_range(&select_start_iter, &select_end_iter);
     ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
-    let start_iter = buf.get_start_iter();
-    let end_iter = buf.get_end_iter();
-    assert_eq!(
-        "my **amazing** test",
-        buf.get_text(&start_iter, &end_iter, false)
-            .unwrap()
-            .to_string()
-            .as_str()
-    );
+    assert_tv_contents_eq("my **amazing** test", &buf);
     let selection_after = buf.get_selection_bounds().unwrap();
     assert_eq!(5, selection_after.0.get_offset());
     assert_eq!(12, selection_after.1.get_offset());
@@ -408,16 +436,41 @@ fn toggle_snippet_with_selection_should_untoggle_selection() {
     let select_end_iter = buf.get_iter_at_offset(12);
     buf.select_range(&select_start_iter, &select_end_iter);
     ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
-    let start_iter = buf.get_start_iter();
-    let end_iter = buf.get_end_iter();
-    assert_eq!(
-        "my amazing test",
-        buf.get_text(&start_iter, &end_iter, false)
-            .unwrap()
-            .to_string()
-            .as_str()
-    );
+    assert_tv_contents_eq("my amazing test", &buf);
     let selection_after = buf.get_selection_bounds().unwrap();
     assert_eq!(3, selection_after.0.get_offset());
     assert_eq!(10, selection_after.1.get_offset());
+}
+
+#[test]
+fn toggle_heading_should_set_heading() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    ServerNoteAddEditDialog::toggle_heading(&tv);
+    assert_tv_contents_eq(" # ", &buf);
+}
+
+#[test]
+fn toggle_heading_should_move_to_next_heading() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\n # my **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(10);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_heading(&tv);
+    assert_tv_contents_eq("line1\n ## my **amazing** test", &buf);
+}
+
+#[test]
+fn toggle_heading_should_wipe_heading_at_end_of_cycle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text(" - line1\nmy **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(2);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_heading(&tv);
+    assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
 }

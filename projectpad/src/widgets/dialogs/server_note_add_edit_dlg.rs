@@ -14,6 +14,13 @@ pub enum Msg {
     GotGroups(Vec<String>),
     OkPressed,
     ServerNoteUpdated(ServerNote),
+    TextBold,
+    TextItalic,
+    TextHeading,
+    TextLink,
+    TextPassword,
+    TextPreformat,
+    TextQuote,
 }
 
 // String for details, because I can't pass Error across threads
@@ -108,6 +115,13 @@ impl Widget for ServerNoteAddEditDialog {
             }
             // meant for my parent
             Msg::ServerNoteUpdated(_) => {}
+            Msg::TextBold => {}
+            Msg::TextItalic => {}
+            Msg::TextHeading => {}
+            Msg::TextLink => {}
+            Msg::TextPassword => {}
+            Msg::TextPreformat => {}
+            Msg::TextQuote => {}
         }
     }
 
@@ -192,25 +206,32 @@ impl Widget for ServerNoteAddEditDialog {
                     width: 2,
                 },
                 gtk::ToolButton {
-                    icon_name: Some(Icon::BOLD.name())
+                    icon_name: Some(Icon::BOLD.name()),
+                    clicked => Msg::TextBold
                 },
                 gtk::ToolButton {
-                    icon_name: Some(Icon::ITALIC.name())
+                    icon_name: Some(Icon::ITALIC.name()),
+                    clicked => Msg::TextItalic
                 },
                 gtk::ToolButton {
-                    icon_name: Some(Icon::HEADING.name())
+                    icon_name: Some(Icon::HEADING.name()),
+                    clicked => Msg::TextHeading
                 },
                 gtk::ToolButton {
-                    icon_name: Some(Icon::LINK.name())
+                    icon_name: Some(Icon::LINK.name()),
+                    clicked => Msg::TextLink
                 },
                 gtk::ToolButton {
-                    icon_name: Some(Icon::LOCK.name())
+                    icon_name: Some(Icon::LOCK.name()),
+                    clicked => Msg::TextPassword
                 },
                 gtk::ToolButton {
-                    icon_name: Some(Icon::CODE.name())
+                    icon_name: Some(Icon::CODE.name()),
+                    clicked => Msg::TextPreformat
                 },
                 gtk::ToolButton {
-                    icon_name: Some(Icon::QUOTE.name())
+                    icon_name: Some(Icon::QUOTE.name()),
+                    clicked => Msg::TextQuote
                 },
             },
             gtk::Frame {

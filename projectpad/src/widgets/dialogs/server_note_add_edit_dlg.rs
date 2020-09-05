@@ -8,6 +8,8 @@ use projectpadsql::models::ServerNote;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
+#[cfg(test)]
+use std::sync::Once;
 
 #[derive(Msg, Clone)]
 pub enum Msg {
@@ -113,15 +115,81 @@ impl Widget for ServerNoteAddEditDialog {
             Msg::OkPressed => {
                 self.update_server_note();
             }
-            // meant for my parent
-            Msg::ServerNoteUpdated(_) => {}
-            Msg::TextBold => {}
-            Msg::TextItalic => {}
+            Msg::TextBold => {
+                Self::toggle_snippet(&self.note_textview, "**", "**");
+            }
+            Msg::TextItalic => {
+                Self::toggle_snippet(&self.note_textview, "*", "*");
+            }
             Msg::TextHeading => {}
-            Msg::TextLink => {}
+            Msg::TextLink => {
+                Self::toggle_snippet(&self.note_textview, "[", "](url)");
+            }
             Msg::TextPassword => {}
             Msg::TextPreformat => {}
             Msg::TextQuote => {}
+            // meant for my parent
+            Msg::ServerNoteUpdated(_) => {}
+        }
+    }
+
+    fn toggle_snippet(note_textview: &gtk::TextView, before: &'static str, after: &'static str) {
+        let before_len = before.len() as i32;
+        let after_len = after.len() as i32;
+        let buf = note_textview.get_buffer().unwrap();
+        let (start_offset, end_offset) = match buf.get_selection_bounds() {
+            None => {
+                // no selection
+                let cursor_iter = buf.get_iter_at_mark(&buf.get_insert().unwrap());
+                let offset = cursor_iter.get_offset();
+                (offset, offset)
+            }
+            Some((sel_start_iter, sel_end_iter)) => {
+                // selection
+                (sel_start_iter.get_offset(), sel_end_iter.get_offset())
+            }
+        };
+        let mut iter = buf.get_iter_at_offset(end_offset);
+
+        // if the selection is [**test**] and the user clicked bold, should we
+        // un-toggle, meaning change the contents to [test]?
+        let is_untoggle = end_offset >= after_len && {
+            let mut iter2 = buf.get_iter_at_offset(end_offset + after_len);
+            if buf.get_text(&iter2, &iter, false).unwrap().to_string() != after {
+                false
+            } else {
+                let iter1 = buf.get_iter_at_offset(start_offset);
+                iter2.set_offset(start_offset - before_len);
+                buf.get_text(&iter1, &iter2, false).unwrap().to_string() == before
+            }
+        };
+
+        if is_untoggle {
+            // untoggle => remove the 'before' and 'after' strings
+            let mut iter2 = buf.get_iter_at_offset(end_offset + after_len);
+            buf.delete(&mut iter, &mut iter2);
+            iter.set_offset(start_offset - before_len);
+            iter2.set_offset(start_offset);
+            buf.delete(&mut iter, &mut iter2);
+            // restore the selection
+            iter.set_offset(start_offset - before_len);
+            iter2.set_offset(end_offset - before_len);
+            buf.select_range(&iter, &iter2);
+        } else {
+            // plain toggle, add the 'before' and 'after' strings
+            buf.insert(&mut iter, after);
+            iter.set_offset(start_offset);
+            buf.insert(&mut iter, before);
+            iter.set_offset(start_offset);
+            if start_offset < end_offset {
+                // restore the selection
+                iter.set_offset(start_offset + before_len);
+                let iter_end = buf.get_iter_at_offset(end_offset + before_len);
+                buf.select_range(&iter, &iter_end);
+            } else {
+                iter.set_offset(start_offset + before_len);
+                buf.place_cursor(&iter);
+            }
         }
     }
 
@@ -254,4 +322,102 @@ impl Widget for ServerNoteAddEditDialog {
             }
         }
     }
+}
+
+#[cfg(test)]
+static INIT: Once = Once::new();
+
+// https://stackoverflow.com/a/58006287/516188
+#[cfg(test)]
+fn tests_init() {
+    INIT.call_once(|| {
+        gtk::init().unwrap();
+    });
+}
+
+#[test]
+fn toggle_snippet_should_add_bold() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
+    let buf = tv.get_buffer().unwrap();
+    let start_iter = buf.get_start_iter();
+    let end_iter = buf.get_end_iter();
+    assert_eq!(
+        "****",
+        buf.get_text(&start_iter, &end_iter, false)
+            .unwrap()
+            .to_string()
+            .as_str()
+    );
+    assert_eq!(2, buf.get_property_cursor_position());
+}
+
+#[test]
+fn toggle_snippet_should_untoggle_bold() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("****");
+    let initial_iter = buf.get_iter_at_offset(2);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
+    let start_iter = buf.get_start_iter();
+    let end_iter = buf.get_end_iter();
+    assert_eq!(
+        "",
+        buf.get_text(&start_iter, &end_iter, false)
+            .unwrap()
+            .to_string()
+            .as_str()
+    );
+    assert_eq!(0, buf.get_property_cursor_position());
+}
+
+#[test]
+fn toggle_snippet_with_selection_should_wrap_selection() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("my amazing test");
+    let select_start_iter = buf.get_iter_at_offset(3);
+    let select_end_iter = buf.get_iter_at_offset(10);
+    buf.select_range(&select_start_iter, &select_end_iter);
+    ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
+    let start_iter = buf.get_start_iter();
+    let end_iter = buf.get_end_iter();
+    assert_eq!(
+        "my **amazing** test",
+        buf.get_text(&start_iter, &end_iter, false)
+            .unwrap()
+            .to_string()
+            .as_str()
+    );
+    let selection_after = buf.get_selection_bounds().unwrap();
+    assert_eq!(5, selection_after.0.get_offset());
+    assert_eq!(12, selection_after.1.get_offset());
+}
+
+#[test]
+fn toggle_snippet_with_selection_should_untoggle_selection() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("my **amazing** test");
+    let select_start_iter = buf.get_iter_at_offset(5);
+    let select_end_iter = buf.get_iter_at_offset(12);
+    buf.select_range(&select_start_iter, &select_end_iter);
+    ServerNoteAddEditDialog::toggle_snippet(&tv, "**", "**");
+    let start_iter = buf.get_start_iter();
+    let end_iter = buf.get_end_iter();
+    assert_eq!(
+        "my amazing test",
+        buf.get_text(&start_iter, &end_iter, false)
+            .unwrap()
+            .to_string()
+            .as_str()
+    );
+    let selection_after = buf.get_selection_bounds().unwrap();
+    assert_eq!(3, selection_after.0.get_offset());
+    assert_eq!(10, selection_after.1.get_offset());
 }

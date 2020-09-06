@@ -20,6 +20,7 @@
     <file alias="ssh-symbolic.svg">fontawesome-5.13.0/svgs/solid/terminal.svg</file>
     <file alias="bold-symbolic.svg">fontawesome-5.13.0/svgs/solid/bold.svg</file>
     <file alias="italic-symbolic.svg">fontawesome-5.13.0/svgs/solid/italic.svg</file>
+    <file alias="strikethrough-symbolic.svg">fontawesome-5.13.0/svgs/solid/strikethrough.svg</file>
     <file alias="heading-symbolic.svg">fontawesome-5.13.0/svgs/solid/heading.svg</file>
     <file alias="external-link-alt-symbolic.svg">fontawesome-5.13.0/svgs/solid/external-link-alt.svg</file>
     <file alias="lock-symbolic.svg">fontawesome-5.13.0/svgs/solid/lock.svg</file>

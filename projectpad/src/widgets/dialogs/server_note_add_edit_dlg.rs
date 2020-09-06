@@ -19,6 +19,7 @@ pub enum Msg {
     ServerNoteUpdated(ServerNote),
     TextBold,
     TextItalic,
+    TextStrikethrough,
     TextHeading,
     TextLink,
     TextPassword,
@@ -124,13 +125,18 @@ impl Widget for ServerNoteAddEditDialog {
             Msg::TextItalic => {
                 Self::toggle_snippet(&self.note_textview, "*", "*");
             }
+            Msg::TextStrikethrough => {
+                Self::toggle_snippet(&self.note_textview, "~~", "~~");
+            }
             Msg::TextHeading => {
                 Self::toggle_heading(&self.note_textview);
             }
             Msg::TextLink => {
                 Self::toggle_snippet(&self.note_textview, "[", "](url)");
             }
-            Msg::TextPassword => {}
+            Msg::TextPassword => {
+                Self::toggle_password(&self.note_textview);
+            }
             Msg::TextPreformat => {
                 Self::toggle_preformat(&self.note_textview);
             }
@@ -140,6 +146,33 @@ impl Widget for ServerNoteAddEditDialog {
             // meant for my parent
             Msg::ServerNoteUpdated(_) => {}
         }
+    }
+
+    fn toggle_password(note_textview: &gtk::TextView) {
+        let buf = note_textview.get_buffer().unwrap();
+        let sel_bounds = buf.get_selection_bounds();
+        if sel_bounds.is_none() {
+            // no selection
+            Self::toggle_snippet(note_textview, "[pass`", "`]");
+            return;
+        }
+        let (start_iter, end_iter) = sel_bounds.unwrap();
+        let selected_text = buf
+            .get_text(&start_iter, &end_iter, false)
+            .unwrap()
+            .to_string();
+        let mut separator = "`".to_string();
+        while selected_text.contains(&separator) {
+            separator.push('`');
+        }
+        let extra_space = if selected_text.starts_with("`") || selected_text.ends_with("`") {
+            " "
+        } else {
+            ""
+        };
+        let before = "[pass".to_string() + &separator + extra_space;
+        let after = extra_space.to_string() + &separator + "]";
+        Self::toggle_snippet(note_textview, &before, &after);
     }
 
     fn toggle_preformat(note_textview: &gtk::TextView) {
@@ -257,7 +290,7 @@ impl Widget for ServerNoteAddEditDialog {
         buf.insert(&mut iter, to_insert);
     }
 
-    fn toggle_snippet(note_textview: &gtk::TextView, before: &'static str, after: &'static str) {
+    fn toggle_snippet(note_textview: &gtk::TextView, before: &str, after: &str) {
         let before_len = before.len() as i32;
         let after_len = after.len() as i32;
         let buf = note_textview.get_buffer().unwrap();
@@ -404,6 +437,10 @@ impl Widget for ServerNoteAddEditDialog {
                 gtk::ToolButton {
                     icon_name: Some(Icon::ITALIC.name()),
                     clicked => Msg::TextItalic
+                },
+                gtk::ToolButton {
+                    icon_name: Some(Icon::STRIKETHROUGH.name()),
+                    clicked => Msg::TextStrikethrough
                 },
                 gtk::ToolButton {
                     icon_name: Some(Icon::HEADING.name()),
@@ -624,5 +661,73 @@ fn toggle_blockquote_with_selection_should_untoggle() {
     let select_end_iter = buf.get_end_iter();
     buf.select_range(&select_start_iter, &select_end_iter);
     ServerNoteAddEditDialog::toggle_blockquote(&tv);
+    assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
+}
+
+#[test]
+fn toggle_password_with_no_selection_should_toggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\nmy **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(2);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_password(&tv);
+    assert_tv_contents_eq("li[pass``]ne1\nmy **amazing** test", &buf);
+    assert_eq!(8, buf.get_property_cursor_position());
+}
+
+#[test]
+fn toggle_password_with_no_selection_should_untoggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("li[pass``]ne1\nmy **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(8);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_password(&tv);
+    assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
+    assert_eq!(2, buf.get_property_cursor_position());
+}
+
+#[test]
+fn toggle_password_with_selection_should_toggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\nmy **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(9);
+    buf.place_cursor(&initial_iter);
+    let select_end_iter = buf.get_iter_at_offset(20);
+    buf.select_range(&initial_iter, &select_end_iter);
+    ServerNoteAddEditDialog::toggle_password(&tv);
+    assert_tv_contents_eq("line1\nmy [pass`**amazing**`] test", &buf);
+}
+
+#[test]
+fn toggle_password_with_selection_should_toggle_with_spaces_if_leading_backtick() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\nmy `*amazing** test");
+    let initial_iter = buf.get_iter_at_offset(9);
+    buf.place_cursor(&initial_iter);
+    let select_end_iter = buf.get_iter_at_offset(20);
+    buf.select_range(&initial_iter, &select_end_iter);
+    ServerNoteAddEditDialog::toggle_password(&tv);
+    assert_tv_contents_eq("line1\nmy [pass`` `*amazing** ``] test", &buf);
+}
+
+#[test]
+fn toggle_password_with_selection_should_untoggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\nmy [pass`**amazing**`] test");
+    let initial_iter = buf.get_iter_at_offset(15);
+    buf.place_cursor(&initial_iter);
+    let select_end_iter = buf.get_iter_at_offset(26);
+    buf.select_range(&initial_iter, &select_end_iter);
+    ServerNoteAddEditDialog::toggle_password(&tv);
     assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
 }

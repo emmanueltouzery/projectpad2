@@ -14,6 +14,7 @@ use std::collections::HashMap;
 enum PassState<'a> {
     None,
     AfterOpeningBracket(EventExt<'a>),
+    AfterPass(Vec<EventExt<'a>>),
     AfterBody(Vec<EventExt<'a>>, String),
 }
 
@@ -30,15 +31,18 @@ fn get_events_with_passwords(parser: Parser) -> Vec<EventExt> {
             pass_state = PassState::AfterOpeningBracket(EventExt::StandardEvent(Event::Text(v)));
             sofar
         }
-        (PassState::AfterOpeningBracket(e0), Event::Text(v))
-            if v.as_ref().starts_with("pass|") && v.as_ref().ends_with("|") =>
-        {
-            let mut pass = v[5..].to_string();
-            pass.pop();
-            pass_state = PassState::AfterBody(
-                vec![e0.clone(), EventExt::StandardEvent(Event::Text(v))],
-                pass,
-            );
+        (PassState::AfterOpeningBracket(e0), Event::Text(v)) if v.as_ref() == "pass" => {
+            pass_state = PassState::AfterPass(vec![
+                e0.clone(),
+                EventExt::StandardEvent(Event::Text(v.clone())),
+            ]);
+            sofar
+        }
+        (PassState::AfterPass(vec0), Event::Code(ref v)) => {
+            let pass = v.to_string();
+            let mut vec = vec0.clone();
+            vec.push(EventExt::StandardEvent(Event::Code(v.clone())));
+            pass_state = PassState::AfterBody(vec, pass);
             sofar
         }
         (PassState::AfterBody(_, p), Event::Text(v)) if v.as_ref() == "]" => {
@@ -51,6 +55,7 @@ fn get_events_with_passwords(parser: Parser) -> Vec<EventExt> {
             // didn't conclude positively, flush back the events that I held back
             match ps {
                 PassState::AfterOpeningBracket(e) => sofar.push(e.clone()),
+                PassState::AfterPass(es) => sofar.extend(es.clone()),
                 PassState::AfterBody(es, _) => sofar.extend(es.clone()),
                 _ => {}
             }
@@ -425,10 +430,59 @@ fn get_blockquote_tag(blockquote_level: i32) -> Option<&'static str> {
 fn add_password_events() {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
-    let parser = Parser::new_ext("hello *world [pass|secret|]*", options);
+    let parser = Parser::new_ext("hello *world [pass`se*c~~r*et`]*", options);
     let evts = get_events_with_passwords(parser);
     assert!(evts.iter().any(|e| match e {
-        EventExt::Password(p) if p == "secret" => true,
+        EventExt::Password(p) if p == "se*c~~r*et" => true,
+        _ => false,
+    }));
+}
+
+#[test]
+fn add_password_events_backticks() {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    let parser = Parser::new_ext("hello *world [pass``sec`ret``]*", options);
+    let evts = get_events_with_passwords(parser);
+    assert!(evts.iter().any(|e| match e {
+        EventExt::Password(p) if p == "sec`ret" => true,
+        _ => false,
+    }));
+}
+
+#[test]
+fn add_password_events_double_backticks() {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    let parser = Parser::new_ext("hello *world [pass```sec``ret```]*", options);
+    let evts = get_events_with_passwords(parser);
+    assert!(evts.iter().any(|e| match e {
+        EventExt::Password(p) if p == "sec``ret" => true,
+        _ => false,
+    }));
+}
+
+#[test]
+fn add_password_events_triple_backticks() {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    let parser = Parser::new_ext("hello *world [pass````sec```ret````]*", options);
+    let evts = get_events_with_passwords(parser);
+    assert!(evts.iter().any(|e| match e {
+        EventExt::Password(p) if p == "sec```ret" => true,
+        _ => false,
+    }));
+}
+
+#[test]
+fn add_password_events_leading_trailing_backtick_space_approach() {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    let parser = Parser::new_ext("hello *world [pass`` `sec`ret` ``]*", options);
+    let evts = get_events_with_passwords(parser);
+    println!("{:?}", evts);
+    assert!(evts.iter().any(|e| match e {
+        EventExt::Password(p) if p == "`sec`ret`" => true,
         _ => false,
     }));
 }
@@ -437,11 +491,10 @@ fn add_password_events() {
 fn incomplete_passwords_dont_drop_items() {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
-    let parser = Parser::new_ext("hello *world [pass|secret]*", options);
+    let parser = Parser::new_ext("hello *world [pass`secret]*", options);
     let evts = get_events_with_passwords(parser);
-    println!("{:?}", evts);
     assert_eq!(
-        "hello world [pass|secret]",
+        "hello world [pass`secret]",
         evts.iter()
             .filter_map(|e| match e {
                 EventExt::StandardEvent(Event::Text(t)) => Some(t.to_string()),

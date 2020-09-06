@@ -131,12 +131,36 @@ impl Widget for ServerNoteAddEditDialog {
                 Self::toggle_snippet(&self.note_textview, "[", "](url)");
             }
             Msg::TextPassword => {}
-            Msg::TextPreformat => {}
+            Msg::TextPreformat => {
+                Self::toggle_preformat(&self.note_textview);
+            }
             Msg::TextBlockquote => {
                 Self::toggle_blockquote(&self.note_textview);
             }
             // meant for my parent
             Msg::ServerNoteUpdated(_) => {}
+        }
+    }
+
+    fn toggle_preformat(note_textview: &gtk::TextView) {
+        let buf = note_textview.get_buffer().unwrap();
+        let sel_bounds = buf.get_selection_bounds();
+        if sel_bounds.is_none() {
+            // no selection
+            Self::toggle_snippet(note_textview, "`", "`");
+            return;
+        }
+        let (start_iter, end_iter) = sel_bounds.unwrap();
+        let selected_text = buf
+            .get_text(&start_iter, &end_iter, false)
+            .unwrap()
+            .to_string();
+        if selected_text.contains("\n") {
+            // multiline
+            Self::toggle_snippet(note_textview, "\n```\n", "\n```\n");
+        } else {
+            // single line
+            Self::toggle_snippet(note_textview, "`", "`");
         }
     }
 

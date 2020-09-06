@@ -4,6 +4,7 @@ use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use itertools::Itertools;
 use projectpadsql::models::ServerNote;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -22,7 +23,7 @@ pub enum Msg {
     TextLink,
     TextPassword,
     TextPreformat,
-    TextQuote,
+    TextBlockquote,
 }
 
 // String for details, because I can't pass Error across threads
@@ -131,9 +132,69 @@ impl Widget for ServerNoteAddEditDialog {
             }
             Msg::TextPassword => {}
             Msg::TextPreformat => {}
-            Msg::TextQuote => {}
+            Msg::TextBlockquote => {
+                Self::toggle_blockquote(&self.note_textview);
+            }
             // meant for my parent
             Msg::ServerNoteUpdated(_) => {}
+        }
+    }
+
+    fn toggle_blockquote(note_textview: &gtk::TextView) {
+        let buf = note_textview.get_buffer().unwrap();
+        let (start_offset, end_offset) = match buf.get_selection_bounds() {
+            None => {
+                // no selection
+                let cursor_iter = buf.get_iter_at_mark(&buf.get_insert().unwrap());
+                let offset = cursor_iter.get_offset();
+                (offset, offset)
+            }
+            Some((sel_start_iter, sel_end_iter)) => {
+                // selection
+                (sel_start_iter.get_offset(), sel_end_iter.get_offset())
+            }
+        };
+        let mut iter = buf.get_iter_at_offset(end_offset);
+        if start_offset != end_offset {
+            // there is a selection
+            let mut start_iter = buf.get_iter_at_offset(start_offset);
+            let selected_text = buf.get_text(&start_iter, &iter, false).unwrap().to_string();
+            let lines: Vec<_> = selected_text.lines().collect();
+            let next_selection: String = if lines.iter().all(|l| l.starts_with("> ")) {
+                // remove the blockquote
+                lines.iter().map(|l| &l[2..]).intersperse("\n").collect()
+            } else {
+                // add the blockquote
+                lines
+                    .iter()
+                    .map(|l| format!("> {}", l))
+                    .intersperse("\n".to_string())
+                    .collect()
+            };
+            buf.delete(&mut start_iter, &mut iter);
+            start_iter.set_offset(start_offset);
+            buf.insert(&mut start_iter, &next_selection);
+            // for the apidoc of textbuffer::insert:
+            // iter is invalidated when insertion occurs, but the default signal handler
+            // revalidates it to point to the end of the inserted text.
+            // => start_iter now points to the end of the inserted text
+            // iter.set_offset(start_offset); <-- for some reason iter is invalidated & even set_offset can't recover it
+            buf.select_range(&buf.get_iter_at_offset(start_offset), &start_iter);
+        } else {
+            // no selection
+            iter.backward_chars(iter.get_line_offset());
+            let mut iter2 = buf.get_iter_at_offset(iter.get_offset() + 2);
+            if buf
+                .get_text(&iter, &iter2, false)
+                .unwrap()
+                .to_string()
+                .as_str()
+                == "> "
+            {
+                buf.delete(&mut iter, &mut iter2);
+            } else {
+                buf.insert(&mut iter, "> ");
+            }
         }
     }
 
@@ -338,7 +399,7 @@ impl Widget for ServerNoteAddEditDialog {
                 },
                 gtk::ToolButton {
                     icon_name: Some(Icon::QUOTE.name()),
-                    clicked => Msg::TextQuote
+                    clicked => Msg::TextBlockquote
                 },
             },
             gtk::Frame {
@@ -485,5 +546,59 @@ fn toggle_heading_should_wipe_heading_at_end_of_cycle() {
     let initial_iter = buf.get_iter_at_offset(2);
     buf.place_cursor(&initial_iter);
     ServerNoteAddEditDialog::toggle_heading(&tv);
+    assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
+}
+
+#[test]
+fn toggle_blockquote_with_no_selection_should_toggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\nmy **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(2);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_blockquote(&tv);
+    assert_tv_contents_eq("> line1\nmy **amazing** test", &buf);
+}
+
+#[test]
+fn toggle_blockquote_with_no_selection_should_untoggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\n> my **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(10);
+    buf.place_cursor(&initial_iter);
+    ServerNoteAddEditDialog::toggle_blockquote(&tv);
+    assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
+}
+
+#[test]
+fn toggle_blockquote_with_selection_should_toggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("line1\nmy **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(2);
+    buf.place_cursor(&initial_iter);
+    let select_start_iter = buf.get_start_iter();
+    let select_end_iter = buf.get_end_iter();
+    buf.select_range(&select_start_iter, &select_end_iter);
+    ServerNoteAddEditDialog::toggle_blockquote(&tv);
+    assert_tv_contents_eq("> line1\n> my **amazing** test", &buf);
+}
+
+#[test]
+fn toggle_blockquote_with_selection_should_untoggle() {
+    tests_init();
+    let tv = gtk::TextView::new();
+    let buf = tv.get_buffer().unwrap();
+    buf.set_text("> line1\n> my **amazing** test");
+    let initial_iter = buf.get_iter_at_offset(2);
+    buf.place_cursor(&initial_iter);
+    let select_start_iter = buf.get_start_iter();
+    let select_end_iter = buf.get_end_iter();
+    buf.select_range(&select_start_iter, &select_end_iter);
+    ServerNoteAddEditDialog::toggle_blockquote(&tv);
     assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
 }

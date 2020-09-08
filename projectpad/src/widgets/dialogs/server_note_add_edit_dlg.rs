@@ -62,24 +62,21 @@ impl Widget for ServerNoteAddEditDialog {
         self.grid.set_property_width_request(700);
         self.grid.set_property_height_request(500);
 
-        self.bold_btn.add_accelerator(
+        self.add_tool_accelerator(&self.bold_btn, 'b');
+        self.add_tool_accelerator(&self.italic_btn, 'i');
+        self.add_tool_accelerator(&self.strikethrough_btn, 's');
+        self.add_tool_accelerator(&self.heading_btn, 'h');
+        self.add_tool_accelerator(&self.link_btn, 'l');
+        self.add_tool_accelerator(&self.password_btn, 'p');
+        self.add_tool_accelerator(&self.preformat_btn, 'f');
+        self.add_tool_accelerator(&self.blockquote_btn, 'q');
+    }
+
+    fn add_tool_accelerator(&self, btn: &gtk::ToolButton, key: char) {
+        btn.add_accelerator(
             "clicked",
             &self.model.accel_group,
-            'b'.into(),
-            gdk::ModifierType::CONTROL_MASK,
-            gtk::AccelFlags::VISIBLE,
-        );
-        self.italic_btn.add_accelerator(
-            "clicked",
-            &self.model.accel_group,
-            'i'.into(),
-            gdk::ModifierType::CONTROL_MASK,
-            gtk::AccelFlags::VISIBLE,
-        );
-        self.strikethrough_btn.add_accelerator(
-            "clicked",
-            &self.model.accel_group,
-            's'.into(),
+            key.into(),
             gdk::ModifierType::CONTROL_MASK,
             gtk::AccelFlags::VISIBLE,
         );
@@ -474,22 +471,27 @@ impl Widget for ServerNoteAddEditDialog {
                     icon_name: Some(Icon::STRIKETHROUGH.name()),
                     clicked => Msg::TextStrikethrough
                 },
+                #[name="heading_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::HEADING.name()),
                     clicked => Msg::TextHeading
                 },
+                #[name="link_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::LINK.name()),
                     clicked => Msg::TextLink
                 },
+                #[name="password_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::LOCK.name()),
                     clicked => Msg::TextPassword
                 },
+                #[name="preformat_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::CODE.name()),
                     clicked => Msg::TextPreformat
                 },
+                #[name="blockquote_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::QUOTE.name()),
                     clicked => Msg::TextBlockquote

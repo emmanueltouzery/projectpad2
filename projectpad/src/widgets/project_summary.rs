@@ -211,7 +211,7 @@ impl Widget for ProjectSummary {
             Msg::AddServer => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.header_actions_btn.clone().upcast::<gtk::Widget>(),
-                    (
+                    dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         self.model.project.as_ref().unwrap().id,
                         None,

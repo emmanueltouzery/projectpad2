@@ -498,7 +498,11 @@ impl Widget for ServerItemListItem {
             Msg::EditNote(note) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
-                    (self.model.db_sender.clone(), note.server_id, Some(note)),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        note.server_id,
+                        Some(note),
+                    ),
                     MsgServerNoteAddEditDialog::OkPressed,
                     "Server Note",
                 );
@@ -513,7 +517,11 @@ impl Widget for ServerItemListItem {
             Msg::EditPoi(poi) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
-                    (self.model.db_sender.clone(), poi.server_id, Some(poi)),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        poi.server_id,
+                        Some(poi),
+                    ),
                     MsgServerPoiAddEditDialog::OkPressed,
                     "Server POI",
                 );
@@ -528,7 +536,11 @@ impl Widget for ServerItemListItem {
             Msg::EditDb(db) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
-                    (self.model.db_sender.clone(), db.server_id, Some(db)),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        db.server_id,
+                        Some(db),
+                    ),
                     MsgServerDatabaseAddEditDialog::OkPressed,
                     "Server Database",
                 );
@@ -543,7 +555,11 @@ impl Widget for ServerItemListItem {
             Msg::EditWebsite(www) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
-                    (self.model.db_sender.clone(), www.server_id, Some(www)),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        www.server_id,
+                        Some(www),
+                    ),
                     MsgServerWebsiteAddEditDialog::OkPressed,
                     "Server Website",
                 );
@@ -559,7 +575,11 @@ impl Widget for ServerItemListItem {
             Msg::EditUser(usr) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                     self.items_frame.clone().upcast::<gtk::Widget>(),
-                    (self.model.db_sender.clone(), usr.server_id, Some(usr)),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        usr.server_id,
+                        Some(usr),
+                    ),
                     MsgServerExtraUserAddEditDialog::OkPressed,
                     "Server Extra User",
                 );

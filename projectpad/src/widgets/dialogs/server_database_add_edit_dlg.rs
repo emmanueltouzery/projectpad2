@@ -60,9 +60,14 @@ impl Widget for ServerDatabaseAddEditDialog {
 
     fn model(
         relm: &relm::Relm<Self>,
-        params: (mpsc::Sender<SqlFunc>, i32, Option<ServerDatabase>),
+        params: (
+            mpsc::Sender<SqlFunc>,
+            i32,
+            Option<ServerDatabase>,
+            gtk::AccelGroup,
+        ),
     ) -> Model {
-        let (db_sender, server_id, server_db) = params;
+        let (db_sender, server_id, server_db, _) = params;
         let sd = server_db.as_ref();
         let stream = relm.stream().clone();
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {

@@ -1,3 +1,4 @@
+use super::dialog_helpers;
 use super::server_database_add_edit_dlg;
 use super::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::server_database_add_edit_dlg::ServerDatabaseAddEditDialog;
@@ -22,7 +23,7 @@ use std::sync::mpsc;
 
 #[derive(Msg, Debug)]
 pub enum Msg {
-    ShowSecondTab,
+    ShowSecondTab(gtk::Dialog),
     OkPressed,
     ActionCompleted,
     ChangeDialogTitle(&'static str),
@@ -38,13 +39,15 @@ pub struct Model {
 // i would really like to use a function not a macro here, but
 // because of the relm::connect! i don't see many other options...
 macro_rules! plug_second_tab {
-        ($self: ident, $dialog_type:tt, $event:path, $component_ctor:path,) => {{
-        let dialog_contents = relm::init::<$dialog_type>((
-            $self.model.db_sender.clone(),
-            $self.model.server_id,
-            None,
-        ))
-        .expect("error initializing add edit modal");
+        ($self: ident, $dialog: ident, $dialog_type:tt, $event:path, $component_ctor:path,) => {{
+        let dialog_params = dialog_helpers::prepare_dialog_param(
+                $self.model.db_sender.clone(),
+                $self.model.server_id,
+                None,
+        );
+        $dialog.add_accel_group(&dialog_params.3);
+        let dialog_contents = relm::init::<$dialog_type>(dialog_params)
+                .expect("error initializing add edit modal");
         relm::connect!(
             dialog_contents@$event(_),
             $self.model.relm,
@@ -80,11 +83,12 @@ impl Widget for ServerAddItemDialog {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::ShowSecondTab => {
+            Msg::ShowSecondTab(ref dialog) => {
                 let (widget, title) = if self.add_poi.get_active() {
                     (
                         plug_second_tab!(
                             self,
+                            dialog,
                             ServerPoiAddEditDialog,
                             MsgServerPoiAddEditDialog::ServerPoiUpdated,
                             AddEditDialogComponent::Poi,
@@ -95,6 +99,7 @@ impl Widget for ServerAddItemDialog {
                     (
                         plug_second_tab!(
                             self,
+                            dialog,
                             ServerDatabaseAddEditDialog,
                             MsgServerDatabaseAddEditDialog::ServerDbUpdated,
                             AddEditDialogComponent::Db,
@@ -105,6 +110,7 @@ impl Widget for ServerAddItemDialog {
                     (
                         plug_second_tab!(
                             self,
+                            dialog,
                             ServerExtraUserAddEditDialog,
                             MsgServerExtraUserAddEditDialog::ServerUserUpdated,
                             AddEditDialogComponent::User,
@@ -115,6 +121,7 @@ impl Widget for ServerAddItemDialog {
                     (
                         plug_second_tab!(
                             self,
+                            dialog,
                             ServerWebsiteAddEditDialog,
                             MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
                             AddEditDialogComponent::Website,
@@ -125,6 +132,7 @@ impl Widget for ServerAddItemDialog {
                     (
                         plug_second_tab!(
                             self,
+                            dialog,
                             ServerNoteAddEditDialog,
                             MsgServerNoteAddEditDialog::ServerNoteUpdated,
                             AddEditDialogComponent::Note,

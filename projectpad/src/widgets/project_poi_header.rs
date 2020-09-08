@@ -295,7 +295,7 @@ impl Widget for ProjectPoiHeader {
                     Some(ProjectItem::Server(ref srv)) => {
                         let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                             self.items_frame.clone().upcast::<gtk::Widget>(),
-                            (
+                            dialog_helpers::prepare_dialog_param(
                                 self.model.db_sender.clone(),
                                 srv.project_id,
                                 Some(srv.clone()),
@@ -381,15 +381,18 @@ impl Widget for ProjectPoiHeader {
         ))
         .expect("error initializing the server add item modal");
         let d_c = dialog_contents.clone();
-        let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
+        let dialog = standard_dialogs::modal_dialog(
             self.items_frame.clone().upcast::<gtk::Widget>(),
             600,
             200,
             "Add server item".to_string(),
+        );
+        let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
+            dialog.clone(),
             dialog_contents,
             move |ok_btn| {
                 if ok_btn.get_label() == Some("Next".into()) {
-                    d_c.emit(server_add_item_dlg::Msg::ShowSecondTab);
+                    d_c.emit(server_add_item_dlg::Msg::ShowSecondTab(dialog.clone()));
                     ok_btn.set_label("Done");
                 } else {
                     d_c.emit(server_add_item_dlg::Msg::OkPressed);

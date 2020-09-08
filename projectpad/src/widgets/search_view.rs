@@ -477,7 +477,11 @@ impl Widget for SearchView {
                 ProjectPadItem::Server(srv) => {
                     let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        (self.model.db_sender.clone(), srv.project_id, Some(srv)),
+                        dialog_helpers::prepare_dialog_param(
+                            self.model.db_sender.clone(),
+                            srv.project_id,
+                            Some(srv),
+                        ),
                         server_add_edit_dlg::Msg::OkPressed,
                         "Server",
                     );
@@ -492,7 +496,7 @@ impl Widget for SearchView {
                 ProjectPadItem::ServerPoi(srv_poi) => {
                     let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        (
+                        dialog_helpers::prepare_dialog_param(
                             self.model.db_sender.clone(),
                             srv_poi.server_id,
                             Some(srv_poi),
@@ -512,7 +516,11 @@ impl Widget for SearchView {
                 ProjectPadItem::ServerDatabase(srv_db) => {
                     let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        (self.model.db_sender.clone(), srv_db.server_id, Some(srv_db)),
+                        dialog_helpers::prepare_dialog_param(
+                            self.model.db_sender.clone(),
+                            srv_db.server_id,
+                            Some(srv_db),
+                        ),
                         MsgServerDbAddEditDialog::OkPressed,
                         "Server Database",
                     );
@@ -528,7 +536,7 @@ impl Widget for SearchView {
                 ProjectPadItem::ServerExtraUserAccount(srv_usr) => {
                     let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        (
+                        dialog_helpers::prepare_dialog_param(
                             self.model.db_sender.clone(),
                             srv_usr.server_id,
                             Some(srv_usr),
@@ -548,7 +556,7 @@ impl Widget for SearchView {
                 ProjectPadItem::ServerWebsite(srv_www) => {
                     let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        (
+                        dialog_helpers::prepare_dialog_param(
                             self.model.db_sender.clone(),
                             srv_www.server_id,
                             Some(srv_www),
@@ -568,7 +576,7 @@ impl Widget for SearchView {
                 ProjectPadItem::ServerNote(srv_note) => {
                     let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
                         self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        (
+                        dialog_helpers::prepare_dialog_param(
                             self.model.db_sender.clone(),
                             srv_note.server_id,
                             Some(srv_note),

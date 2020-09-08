@@ -122,9 +122,9 @@ impl Widget for ServerAddEditDialog {
     // project_id from.
     fn model(
         relm: &relm::Relm<Self>,
-        params: (mpsc::Sender<SqlFunc>, i32, Option<Server>),
+        params: (mpsc::Sender<SqlFunc>, i32, Option<Server>, gtk::AccelGroup),
     ) -> Model {
-        let (db_sender, project_id, server) = params;
+        let (db_sender, project_id, server, _) = params;
         let stream = relm.stream().clone();
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
             stream.emit(Msg::GotGroups(groups));

@@ -112,9 +112,14 @@ impl Widget for ServerPoiAddEditDialog {
 
     fn model(
         relm: &relm::Relm<Self>,
-        params: (mpsc::Sender<SqlFunc>, i32, Option<ServerPointOfInterest>),
+        params: (
+            mpsc::Sender<SqlFunc>,
+            i32,
+            Option<ServerPointOfInterest>,
+            gtk::AccelGroup,
+        ),
     ) -> Model {
-        let (db_sender, server_id, server_poi) = params;
+        let (db_sender, server_id, server_poi, _) = params;
         let stream = relm.stream().clone();
         let stream2 = relm.stream().clone();
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {

@@ -63,14 +63,10 @@ pub enum DialogActionResult {
 }
 
 pub fn prepare_custom_dialog<T: Widget>(
-    widget_for_window: gtk::Widget,
-    width: i32,
-    height: i32,
-    title: String,
+    dialog: gtk::Dialog,
     dialog_contents: relm::Component<T>,
     ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
 ) -> (gtk::Dialog, relm::Component<T>, gtk::Button) {
-    let dialog = modal_dialog(widget_for_window, width, height, title);
     let save = dialog
         .add_button("Save", gtk::ResponseType::Ok)
         .downcast::<gtk::Button>()

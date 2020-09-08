@@ -63,9 +63,14 @@ impl Widget for ServerWebsiteAddEditDialog {
 
     fn model(
         relm: &relm::Relm<Self>,
-        params: (mpsc::Sender<SqlFunc>, i32, Option<ServerWebsite>),
+        params: (
+            mpsc::Sender<SqlFunc>,
+            i32,
+            Option<ServerWebsite>,
+            gtk::AccelGroup,
+        ),
     ) -> Model {
-        let (db_sender, server_id, server_www) = params;
+        let (db_sender, server_id, server_www, _) = params;
         let sw = server_www.as_ref();
         let stream = relm.stream().clone();
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {

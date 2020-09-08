@@ -271,12 +271,25 @@ pub fn fetch_server_groups(
 
 pub trait ServerItemDialogModelParam<T> {
     fn get_item(&self) -> Option<&T>;
+    fn get_accel_group(&self) -> &gtk::AccelGroup;
 }
 
-impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, i32, Option<T>) {
+impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, i32, Option<T>, gtk::AccelGroup) {
     fn get_item(&self) -> Option<&T> {
         self.2.as_ref()
     }
+
+    fn get_accel_group(&self) -> &gtk::AccelGroup {
+        &self.3
+    }
+}
+
+pub fn prepare_dialog_param<T>(
+    db_sender: mpsc::Sender<SqlFunc>,
+    server_id: i32,
+    val: Option<T>,
+) -> (mpsc::Sender<SqlFunc>, i32, Option<T>, gtk::AccelGroup) {
+    (db_sender, server_id, val, gtk::AccelGroup::new())
 }
 
 /// you must keep a reference to the component in your model,
@@ -299,18 +312,15 @@ where
     }
     .to_string()
         + item_desc;
+    let accel_group = widget_param.get_accel_group();
+    let dialog = standard_dialogs::modal_dialog(widget_for_window.clone(), 600, 200, title);
+    let main_win = standard_dialogs::get_main_window(widget_for_window);
+    dialog.add_accel_group(accel_group);
     let dialog_contents =
         relm::init::<Dlg>(widget_param).expect("error initializing the server item add edit modal");
     let d_c = dialog_contents.clone();
-    standard_dialogs::prepare_custom_dialog(
-        widget_for_window,
-        600,
-        200,
-        title,
-        dialog_contents,
-        move |_| {
-            d_c.emit(ok_pressed_event.clone());
-            standard_dialogs::DialogActionResult::CloseDialog
-        },
-    )
+    standard_dialogs::prepare_custom_dialog(dialog, dialog_contents, move |_| {
+        d_c.emit(ok_pressed_event.clone());
+        standard_dialogs::DialogActionResult::CloseDialog
+    })
 }

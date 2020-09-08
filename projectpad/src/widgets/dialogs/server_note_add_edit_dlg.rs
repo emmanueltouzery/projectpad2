@@ -32,6 +32,7 @@ type SaveResult = Result<ServerNote, (String, Option<String>)>;
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
+    accel_group: gtk::AccelGroup,
     server_id: i32,
     server_note_id: Option<i32>,
 
@@ -60,6 +61,28 @@ impl Widget for ServerNoteAddEditDialog {
             .set_text(&self.model.contents);
         self.grid.set_property_width_request(700);
         self.grid.set_property_height_request(500);
+
+        self.bold_btn.add_accelerator(
+            "clicked",
+            &self.model.accel_group,
+            'b'.into(),
+            gdk::ModifierType::CONTROL_MASK,
+            gtk::AccelFlags::VISIBLE,
+        );
+        self.italic_btn.add_accelerator(
+            "clicked",
+            &self.model.accel_group,
+            'i'.into(),
+            gdk::ModifierType::CONTROL_MASK,
+            gtk::AccelFlags::VISIBLE,
+        );
+        self.strikethrough_btn.add_accelerator(
+            "clicked",
+            &self.model.accel_group,
+            's'.into(),
+            gdk::ModifierType::CONTROL_MASK,
+            gtk::AccelFlags::VISIBLE,
+        );
     }
 
     fn init_group(&self) {
@@ -73,9 +96,14 @@ impl Widget for ServerNoteAddEditDialog {
 
     fn model(
         relm: &relm::Relm<Self>,
-        params: (mpsc::Sender<SqlFunc>, i32, Option<ServerNote>),
+        params: (
+            mpsc::Sender<SqlFunc>,
+            i32,
+            Option<ServerNote>,
+            gtk::AccelGroup,
+        ),
     ) -> Model {
-        let (db_sender, server_id, server_note) = params;
+        let (db_sender, server_id, server_note, accel_group) = params;
         let sn = server_note.as_ref();
         let stream = relm.stream().clone();
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
@@ -89,6 +117,7 @@ impl Widget for ServerNoteAddEditDialog {
             });
         Model {
             db_sender,
+            accel_group,
             server_id,
             server_note_id: sn.map(|d| d.id),
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
@@ -430,14 +459,17 @@ impl Widget for ServerNoteAddEditDialog {
                     top_attach: 2,
                     width: 2,
                 },
+                #[name="bold_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::BOLD.name()),
                     clicked => Msg::TextBold
                 },
+                #[name="italic_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::ITALIC.name()),
                     clicked => Msg::TextItalic
                 },
+                #[name="strikethrough_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::STRIKETHROUGH.name()),
                     clicked => Msg::TextStrikethrough

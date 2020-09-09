@@ -2,6 +2,7 @@
 pub mod dialog_helpers;
 mod auth_key_button;
 mod pick_projectpad_item_button;
+pub mod project_poi_add_edit_dlg;
 pub mod server_add_edit_dlg;
 pub mod server_add_item_dlg;
 pub mod server_database_add_edit_dlg;
@@ -11,7 +12,7 @@ pub mod server_poi_add_edit_dlg;
 pub mod server_website_add_edit_dlg;
 pub mod standard_dialogs;
 
-pub enum AddEditDialogComponent {
+pub enum ServerAddEditDialogComponent {
     Poi(relm::Component<server_poi_add_edit_dlg::ServerPoiAddEditDialog>),
     Db(relm::Component<server_database_add_edit_dlg::ServerDatabaseAddEditDialog>),
     User(relm::Component<server_extra_user_add_edit_dlg::ServerExtraUserAddEditDialog>),
@@ -19,14 +20,19 @@ pub enum AddEditDialogComponent {
     Note(relm::Component<server_note_add_edit_dlg::ServerNoteAddEditDialog>),
 }
 
-impl AddEditDialogComponent {
+impl ServerAddEditDialogComponent {
     fn get_widget(&self) -> &gtk::Grid {
         match self {
-            AddEditDialogComponent::Poi(ref x) => x.widget(),
-            AddEditDialogComponent::Db(ref x) => x.widget(),
-            AddEditDialogComponent::User(ref x) => x.widget(),
-            AddEditDialogComponent::Website(ref x) => x.widget(),
-            AddEditDialogComponent::Note(ref x) => x.widget(),
+            ServerAddEditDialogComponent::Poi(ref x) => x.widget(),
+            ServerAddEditDialogComponent::Db(ref x) => x.widget(),
+            ServerAddEditDialogComponent::User(ref x) => x.widget(),
+            ServerAddEditDialogComponent::Website(ref x) => x.widget(),
+            ServerAddEditDialogComponent::Note(ref x) => x.widget(),
         }
     }
+}
+
+pub enum ProjectAddEditDialogComponent {
+    Server(relm::Component<server_add_edit_dlg::ServerAddEditDialog>),
+    ProjectPoi(relm::Component<project_poi_add_edit_dlg::ProjectPoiAddEditDialog>),
 }

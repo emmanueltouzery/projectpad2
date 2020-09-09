@@ -12,7 +12,7 @@ use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAdd
 use super::dialogs::server_note_add_edit_dlg::Msg as MsgServerNoteAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
-use super::dialogs::AddEditDialogComponent;
+use super::dialogs::ServerAddEditDialogComponent;
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
 use super::server_item_list_item;
@@ -147,7 +147,7 @@ pub struct Model {
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
     server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
-    server_item_add_edit_dialog: Option<AddEditDialogComponent>,
+    server_item_add_edit_dialog: Option<ServerAddEditDialogComponent>,
     save_btn: Option<gtk::Button>,
 }
 
@@ -510,7 +510,7 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_item_add_edit_dialog =
-                        Some(AddEditDialogComponent::Poi(component));
+                        Some(ServerAddEditDialogComponent::Poi(component));
                     dialog.show();
                 }
                 ProjectPadItem::ServerDatabase(srv_db) => {
@@ -530,7 +530,7 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_item_add_edit_dialog =
-                        Some(AddEditDialogComponent::Db(component));
+                        Some(ServerAddEditDialogComponent::Db(component));
                     dialog.show();
                 }
                 ProjectPadItem::ServerExtraUserAccount(srv_usr) => {
@@ -550,7 +550,7 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_item_add_edit_dialog =
-                        Some(AddEditDialogComponent::User(component));
+                        Some(ServerAddEditDialogComponent::User(component));
                     dialog.show();
                 }
                 ProjectPadItem::ServerWebsite(srv_www) => {
@@ -570,7 +570,7 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_item_add_edit_dialog =
-                        Some(AddEditDialogComponent::Website(component));
+                        Some(ServerAddEditDialogComponent::Website(component));
                     dialog.show();
                 }
                 ProjectPadItem::ServerNote(srv_note) => {
@@ -590,7 +590,7 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_item_add_edit_dialog =
-                        Some(AddEditDialogComponent::Note(component));
+                        Some(ServerAddEditDialogComponent::Note(component));
                     dialog.show();
                 }
                 _ => {

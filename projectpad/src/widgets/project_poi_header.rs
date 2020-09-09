@@ -1,4 +1,7 @@
+use super::dialogs;
 use super::dialogs::dialog_helpers;
+use super::dialogs::project_poi_add_edit_dlg;
+use super::dialogs::project_poi_add_edit_dlg::Msg as MsgProjectPoiAddEditDialog;
 use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
@@ -27,7 +30,7 @@ enum ActionTypes {
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     HeaderActionClicked((ActionTypes, String)),
-    ServerUpdated(Server),
+    ProjectItemRefresh(ProjectItem),
     ServerDeleted(Server),
     DeleteCurrentServer(Server),
     ServerAddItemActionCompleted,
@@ -44,7 +47,7 @@ pub struct Model {
     project_item: Option<ProjectItem>,
     header_popover: gtk::Popover,
     title: gtk::Label,
-    server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
+    project_add_edit_dialog: Option<dialogs::ProjectAddEditDialogComponent>,
     server_add_item_dialog_component: Option<relm::Component<ServerAddItemDialog>>,
     server_add_item_dialog: Option<gtk::Dialog>,
     _server_deleted_channel: relm::Channel<DeleteResult>,
@@ -271,7 +274,7 @@ impl Widget for ProjectPoiHeader {
                 .margin_bottom(8)
                 .hexpand(true)
                 .build(),
-            server_add_edit_dialog: None,
+            project_add_edit_dialog: None,
             server_add_item_dialog: None,
             server_add_item_dialog_component: None,
             _server_deleted_channel,
@@ -306,9 +309,31 @@ impl Widget for ProjectPoiHeader {
                         relm::connect!(
                             component@MsgServerAddEditDialog::ServerUpdated(ref srv),
                             self.model.relm,
-                            Msg::ServerUpdated(srv.clone())
+                            Msg::ProjectItemRefresh(ProjectItem::Server(srv.clone()))
                         );
-                        self.model.server_add_edit_dialog = Some(component);
+                        self.model.project_add_edit_dialog =
+                            Some(dialogs::ProjectAddEditDialogComponent::Server(component));
+                        dialog.show();
+                    }
+                    Some(ProjectItem::ProjectPointOfInterest(ref poi)) => {
+                        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            dialog_helpers::prepare_dialog_param(
+                                self.model.db_sender.clone(),
+                                poi.project_id,
+                                Some(poi.clone()),
+                            ),
+                            project_poi_add_edit_dlg::Msg::OkPressed,
+                            "Project POI",
+                        );
+                        relm::connect!(
+                            component@MsgProjectPoiAddEditDialog::PoiUpdated(ref poi),
+                            self.model.relm,
+                            Msg::ProjectItemRefresh(ProjectItem::ProjectPointOfInterest(poi.clone()))
+                        );
+                        self.model.project_add_edit_dialog = Some(
+                            dialogs::ProjectAddEditDialogComponent::ProjectPoi(component),
+                        );
                         dialog.show();
                     }
                     Some(_) => {
@@ -337,13 +362,10 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::AddItem, _)) => {
                 self.show_server_add_item_dialog();
             }
-            Msg::ServerUpdated(server) => match self.model.project_item.as_ref() {
-                Some(ProjectItem::Server(srv)) => {
-                    self.model.project_item = Some(ProjectItem::Server(server));
-                    self.load_project_item();
-                }
-                _ => {}
-            },
+            Msg::ProjectItemRefresh(project_item) => {
+                self.model.project_item = Some(project_item);
+                self.load_project_item();
+            }
             Msg::DeleteCurrentServer(srv) => {
                 self.delete_current_server(srv);
             }

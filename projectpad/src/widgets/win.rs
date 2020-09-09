@@ -6,9 +6,9 @@ use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::Msg::RequestDisplayServerItem as ProjectPoiContentsMsgRequestDisplayServerItem;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
+use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjectItemRefreshMsg;
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
 use super::project_poi_header::Msg::ServerDeleted as ProjectPoiHeaderServerDeletedMsg;
-use super::project_poi_header::Msg::ServerUpdated as ProjectPoiHeaderServerUpdatedMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::Msg::ServerAdded as ProjectSummaryServerAddedMsg;
@@ -43,7 +43,7 @@ pub enum Msg {
     SearchTextChanged(String),
     DisplayItem(DisplayItemParams),
     KeyPress(gdk::EventKey),
-    ServerUpdated(Server),
+    ProjectItemUpdated(ProjectItem),
     ServerDeleted(Server),
     RequestDisplayItem(ServerItem),
 }
@@ -219,11 +219,11 @@ impl Widget for Win {
                         )));
                 }
             }
-            Msg::ServerUpdated(ref srv) => {
+            Msg::ProjectItemUpdated(ref project_item) => {
                 self.project_items_list
                     .stream()
                     .emit(ProjectItemsListMsg::RefreshItemList(Some(
-                        ProjectItem::Server(srv.clone()),
+                        project_item.clone(),
                     )));
             }
             Msg::ServerDeleted(ref srv) => {
@@ -268,7 +268,7 @@ impl Widget for Win {
                         #[name="project_summary"]
                         ProjectSummary(self.model.db_sender.clone()) {
                             EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
-                            ProjectSummaryServerAddedMsg(ref srv) => Msg::ServerUpdated(srv.clone()),
+                            ProjectSummaryServerAddedMsg(ref srv) => Msg::ProjectItemUpdated(ProjectItem::Server(srv.clone())),
                         },
                         #[name="project_items_list"]
                         ProjectItemsList(self.model.db_sender.clone()) {
@@ -289,7 +289,7 @@ impl Widget for Win {
                         },
                         #[name="project_poi_header"]
                         ProjectPoiHeader((self.model.db_sender.clone(), None)) {
-                            ProjectPoiHeaderServerUpdatedMsg(ref srv) => Msg::ServerUpdated(srv.clone()),
+                            ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
                             ProjectPoiHeaderServerDeletedMsg(ref srv) => Msg::ServerDeleted(srv.clone()),
                             ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone())
                         },

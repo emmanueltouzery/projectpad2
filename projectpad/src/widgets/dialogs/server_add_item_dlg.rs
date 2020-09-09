@@ -14,7 +14,7 @@ use super::server_poi_add_edit_dlg::ServerPoiAddEditDialog;
 use super::server_website_add_edit_dlg;
 use super::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
 use super::server_website_add_edit_dlg::ServerWebsiteAddEditDialog;
-use super::AddEditDialogComponent;
+use super::ServerAddEditDialogComponent;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use relm::Widget;
@@ -33,7 +33,7 @@ pub struct Model {
     relm: relm::Relm<ServerAddItemDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
-    dialog_component: Option<AddEditDialogComponent>,
+    dialog_component: Option<ServerAddEditDialogComponent>,
 }
 
 // i would really like to use a function not a macro here, but
@@ -91,7 +91,7 @@ impl Widget for ServerAddItemDialog {
                             dialog,
                             ServerPoiAddEditDialog,
                             MsgServerPoiAddEditDialog::ServerPoiUpdated,
-                            AddEditDialogComponent::Poi,
+                            ServerAddEditDialogComponent::Poi,
                         ),
                         "Add Server Point of Interest",
                     )
@@ -102,7 +102,7 @@ impl Widget for ServerAddItemDialog {
                             dialog,
                             ServerDatabaseAddEditDialog,
                             MsgServerDatabaseAddEditDialog::ServerDbUpdated,
-                            AddEditDialogComponent::Db,
+                            ServerAddEditDialogComponent::Db,
                         ),
                         "Add server database",
                     )
@@ -113,7 +113,7 @@ impl Widget for ServerAddItemDialog {
                             dialog,
                             ServerExtraUserAddEditDialog,
                             MsgServerExtraUserAddEditDialog::ServerUserUpdated,
-                            AddEditDialogComponent::User,
+                            ServerAddEditDialogComponent::User,
                         ),
                         "Add server extra user",
                     )
@@ -124,7 +124,7 @@ impl Widget for ServerAddItemDialog {
                             dialog,
                             ServerWebsiteAddEditDialog,
                             MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
-                            AddEditDialogComponent::Website,
+                            ServerAddEditDialogComponent::Website,
                         ),
                         "Add server website",
                     )
@@ -135,7 +135,7 @@ impl Widget for ServerAddItemDialog {
                             dialog,
                             ServerNoteAddEditDialog,
                             MsgServerNoteAddEditDialog::ServerNoteUpdated,
-                            AddEditDialogComponent::Note,
+                            ServerAddEditDialogComponent::Note,
                         ),
                         "Add server note",
                     )
@@ -148,19 +148,19 @@ impl Widget for ServerAddItemDialog {
                 self.tabs_stack.set_visible_child_name("dialog");
             }
             Msg::OkPressed => match self.model.dialog_component.as_ref() {
-                Some(AddEditDialogComponent::Poi(poi_c)) => {
+                Some(ServerAddEditDialogComponent::Poi(poi_c)) => {
                     poi_c.stream().emit(server_poi_add_edit_dlg::Msg::OkPressed)
                 }
-                Some(AddEditDialogComponent::Db(poi_d)) => poi_d
+                Some(ServerAddEditDialogComponent::Db(poi_d)) => poi_d
                     .stream()
                     .emit(server_database_add_edit_dlg::Msg::OkPressed),
-                Some(AddEditDialogComponent::Website(www_d)) => www_d
+                Some(ServerAddEditDialogComponent::Website(www_d)) => www_d
                     .stream()
                     .emit(server_website_add_edit_dlg::Msg::OkPressed),
-                Some(AddEditDialogComponent::User(user_d)) => user_d
+                Some(ServerAddEditDialogComponent::User(user_d)) => user_d
                     .stream()
                     .emit(server_extra_user_add_edit_dlg::Msg::OkPressed),
-                Some(AddEditDialogComponent::Note(note_d)) => note_d
+                Some(ServerAddEditDialogComponent::Note(note_d)) => note_d
                     .stream()
                     .emit(server_note_add_edit_dlg::Msg::OkPressed),
                 x => eprintln!("Got ok but wrong component? {}", x.is_some()),

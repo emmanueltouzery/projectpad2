@@ -205,18 +205,23 @@ impl Widget for Win {
                         .stream()
                         .emit(WinTitleBarMsg::SearchActiveChanged(false));
                 } else if let Some(k) = e.get_keyval().to_unicode() {
-                    self.model
-                        .relm
-                        .stream()
-                        .emit(Msg::SearchActiveChanged(true));
-                    self.search_view
-                        .emit(SearchViewMsg::FilterChanged(Some(k.to_string())));
-                    self.model
-                        .titlebar
-                        .emit(WinTitleBarMsg::SearchTextChangedFromElsewhere((
-                            k.to_string(),
-                            e,
-                        )));
+                    if e.get_state().is_empty() {
+                        // do nothing if control and others were pressed
+                        // (then the state won't be empty)
+                        // could be ctrl-c on notes for instance
+                        self.model
+                            .relm
+                            .stream()
+                            .emit(Msg::SearchActiveChanged(true));
+                        self.search_view
+                            .emit(SearchViewMsg::FilterChanged(Some(k.to_string())));
+                        self.model
+                            .titlebar
+                            .emit(WinTitleBarMsg::SearchTextChangedFromElsewhere((
+                                k.to_string(),
+                                e,
+                            )));
+                    }
                 }
             }
             Msg::ProjectItemUpdated(ref project_item) => {

@@ -2,7 +2,7 @@ use super::dialogs::dialog_helpers;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDatabaseAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
 use super::dialogs::server_note_add_edit_dlg::Msg as MsgServerNoteAddEditDialog;
-use super::dialogs::server_poi_add_edit_dlg::server_poi_get_text_label;
+use super::dialogs::server_poi_add_edit_dlg::poi_get_text_label;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
 use super::dialogs::standard_dialogs;
@@ -130,7 +130,7 @@ fn get_poi_grid_items(poi: &ServerPointOfInterest) -> Vec<GridItem> {
             poi.path.clone(),
         ),
         GridItem::new(
-            server_poi_get_text_label(poi.interest_type),
+            poi_get_text_label(poi.interest_type),
             None,
             LabelText::PlainText(poi.text.clone()),
             poi.text.clone(),

@@ -21,11 +21,33 @@ pub enum Msg {
 // String for details, because I can't pass Error across threads
 type SaveResult = Result<ServerPointOfInterest, (String, Option<String>)>;
 
-pub fn server_poi_get_text_label(interest_type: InterestType) -> &'static str {
+pub fn poi_get_text_label(interest_type: InterestType) -> &'static str {
     match interest_type {
         InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
         _ => "Text",
     }
+}
+
+fn interest_type_desc(interest_type: InterestType) -> &'static str {
+    match interest_type {
+        InterestType::PoiLogFile => "Log file",
+        InterestType::PoiConfigFile => "Config file",
+        InterestType::PoiApplication => "Application",
+        InterestType::PoiCommandToRun => "Command to run",
+        InterestType::PoiBackupArchive => "Backup/archive",
+        InterestType::PoiCommandTerminal => "Command to run (terminal)",
+    }
+}
+
+pub fn init_interest_type_combo(combo: &gtk::ComboBoxText, interest_type: &str) {
+    let mut entries: Vec<_> = InterestType::iter()
+        .map(|st| (st, interest_type_desc(st)))
+        .collect();
+    entries.sort_by_key(|p| p.1);
+    for (entry_type, entry_desc) in entries {
+        combo.append(Some(&entry_type.to_string()), entry_desc);
+    }
+    combo.set_active_id(Some(interest_type));
 }
 
 pub struct Model {
@@ -57,28 +79,11 @@ impl Widget for ServerPoiAddEditDialog {
         self.init_run_on();
     }
 
-    fn interest_type_desc(interest_type: InterestType) -> &'static str {
-        match interest_type {
-            InterestType::PoiLogFile => "Log file",
-            InterestType::PoiConfigFile => "Config file",
-            InterestType::PoiApplication => "Application",
-            InterestType::PoiCommandToRun => "Command to run",
-            InterestType::PoiBackupArchive => "Backup/archive",
-            InterestType::PoiCommandTerminal => "Command to run (terminal)",
-        }
-    }
-
     fn init_interest_type(&self) {
-        let mut entries: Vec<_> = InterestType::iter()
-            .map(|st| (st, Self::interest_type_desc(st)))
-            .collect();
-        entries.sort_by_key(|p| p.1);
-        for (entry_type, entry_desc) in entries {
-            self.interest_type
-                .append(Some(&entry_type.to_string()), entry_desc);
-        }
-        self.interest_type
-            .set_active_id(Some(&self.model.interest_type.to_string()));
+        init_interest_type_combo(
+            &self.interest_type,
+            self.model.interest_type.to_string().as_str(),
+        );
     }
 
     fn run_on_desc(run_on: RunOn) -> &'static str {
@@ -277,7 +282,7 @@ impl Widget for ServerPoiAddEditDialog {
                 },
             },
             gtk::Label {
-                text: server_poi_get_text_label(self.model.interest_type),
+                text: poi_get_text_label(self.model.interest_type),
                 halign: gtk::Align::End,
                 cell: {
                     left_attach: 0,

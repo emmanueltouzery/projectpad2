@@ -23,6 +23,7 @@ use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use diesel::prelude::*;
+use gdk::ModifierType;
 use gtk::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project, Server};
 use relm::{Component, Widget};
@@ -205,10 +206,14 @@ impl Widget for Win {
                         .stream()
                         .emit(WinTitleBarMsg::SearchActiveChanged(false));
                 } else if let Some(k) = e.get_keyval().to_unicode() {
-                    if e.get_state().is_empty() {
-                        // do nothing if control and others were pressed
-                        // (then the state won't be empty)
-                        // could be ctrl-c on notes for instance
+                    // do nothing if control and others were pressed
+                    // (then the state won't be empty)
+                    // could be ctrl-c on notes for instance
+                    // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
+                    let mut state = e.get_state();
+                    state.remove(ModifierType::MOD2_MASK);
+                    state.remove(ModifierType::LOCK_MASK);
+                    if state.is_empty() {
                         self.model
                             .relm
                             .stream()

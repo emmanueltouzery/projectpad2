@@ -184,6 +184,8 @@ impl Widget for ServerPoiAddEditDialog {
             Msg::InterestTypeChanged => {
                 self.model.is_run_on_visible =
                     Self::is_run_on_visible(self.combo_read_interest_type());
+                // need to update so the 'text' label gets updated
+                self.model.interest_type = self.combo_read_interest_type();
             }
             Msg::OkPressed => {
                 self.update_server_poi();
@@ -281,6 +283,7 @@ impl Widget for ServerPoiAddEditDialog {
                     top_attach: 1,
                 },
             },
+            #[name="text"]
             gtk::Label {
                 text: poi_get_text_label(self.model.interest_type),
                 halign: gtk::Align::End,

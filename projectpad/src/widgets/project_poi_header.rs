@@ -4,7 +4,6 @@ use super::dialogs::project_poi_add_edit_dlg;
 use super::dialogs::project_poi_add_edit_dlg::Msg as MsgProjectPoiAddEditDialog;
 use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
-use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_add_item_dlg;
 use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
 use super::dialogs::standard_dialogs;
@@ -524,7 +523,11 @@ impl Widget for ProjectPoiHeader {
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::Delete, "".to_string()))
         );
-        let extra_btns = [edit_btn, add_btn, delete_btn];
+        let extra_btns = match &self.model.project_item {
+            Some(ProjectItem::Server(_)) => vec![edit_btn, add_btn, delete_btn],
+            Some(_) => vec![edit_btn, delete_btn],
+            _ => vec![],
+        };
         populate_grid(
             self.header_grid.clone(),
             self.model.header_popover.clone(),

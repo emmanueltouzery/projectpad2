@@ -10,6 +10,7 @@ use std::sync::mpsc;
 
 #[derive(Msg, Clone)]
 pub enum Msg {
+    GotGroups(Vec<String>),
     OkPressed,
     InterestTypeChanged,
     PoiUpdated(ProjectPointOfInterest),
@@ -17,6 +18,11 @@ pub enum Msg {
 
 pub struct Model {
     relm: relm::Relm<ProjectPoiAddEditDialog>,
+    db_sender: mpsc::Sender<SqlFunc>,
+    _groups_channel: relm::Channel<Vec<String>>,
+    groups_sender: relm::Sender<Vec<String>>,
+    groups_store: gtk::ListStore,
+    project_id: i32,
 
     description: String,
     path: String,
@@ -30,7 +36,7 @@ impl Widget for ProjectPoiAddEditDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
         self.init_interest_type();
-        // self.init_group();
+        self.init_group();
     }
 
     fn init_interest_type(&self) {
@@ -38,6 +44,19 @@ impl Widget for ProjectPoiAddEditDialog {
             &self.interest_type,
             self.model.interest_type.to_string().as_str(),
         );
+    }
+
+    fn init_group(&self) {
+        let s = self.model.groups_sender.clone();
+        let pid = self.model.project_id;
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                s.send(dialog_helpers::get_project_group_names(sql_conn, pid))
+                    .unwrap();
+            }))
+            .unwrap();
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
     }
 
     fn model(
@@ -50,6 +69,10 @@ impl Widget for ProjectPoiAddEditDialog {
         ),
     ) -> Model {
         let (db_sender, project_id, project_poi, _) = params;
+        let stream = relm.stream().clone();
+        let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
+            stream.emit(Msg::GotGroups(groups));
+        });
         let interest_type = project_poi
             .as_ref()
             .map(|s| s.interest_type)
@@ -57,6 +80,11 @@ impl Widget for ProjectPoiAddEditDialog {
         let poi = project_poi.as_ref();
         Model {
             relm: relm.clone(),
+            db_sender,
+            project_id,
+            _groups_channel: groups_channel,
+            groups_sender,
+            groups_store: gtk::ListStore::new(&[glib::Type::String]),
             description: poi
                 .map(|s| s.desc.clone())
                 .unwrap_or_else(|| "".to_string()),

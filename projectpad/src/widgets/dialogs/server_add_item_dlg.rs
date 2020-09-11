@@ -39,10 +39,11 @@ pub struct Model {
 // i would really like to use a function not a macro here, but
 // because of the relm::connect! i don't see many other options...
 macro_rules! plug_second_tab {
-        ($self: ident, $dialog: ident, $dialog_type:tt, $event:path, $component_ctor:path,) => {{
+    ($self: ident, $dialog: ident, $parent: expr, $dialog_type:tt,
+     $event: path, $component_ctor: path,) => {{
         let dialog_params = dialog_helpers::prepare_dialog_param(
                 $self.model.db_sender.clone(),
-                $self.model.server_id,
+                $parent,
                 None,
         );
         $dialog.add_accel_group(&dialog_params.3);
@@ -89,6 +90,7 @@ impl Widget for ServerAddItemDialog {
                         plug_second_tab!(
                             self,
                             dialog,
+                            self.model.server_id,
                             ServerPoiAddEditDialog,
                             MsgServerPoiAddEditDialog::ServerPoiUpdated,
                             ServerAddEditDialogComponent::Poi,
@@ -100,6 +102,7 @@ impl Widget for ServerAddItemDialog {
                         plug_second_tab!(
                             self,
                             dialog,
+                            self.model.server_id,
                             ServerDatabaseAddEditDialog,
                             MsgServerDatabaseAddEditDialog::ServerDbUpdated,
                             ServerAddEditDialogComponent::Db,
@@ -111,6 +114,7 @@ impl Widget for ServerAddItemDialog {
                         plug_second_tab!(
                             self,
                             dialog,
+                            self.model.server_id,
                             ServerExtraUserAddEditDialog,
                             MsgServerExtraUserAddEditDialog::ServerUserUpdated,
                             ServerAddEditDialogComponent::User,
@@ -122,6 +126,7 @@ impl Widget for ServerAddItemDialog {
                         plug_second_tab!(
                             self,
                             dialog,
+                            self.model.server_id,
                             ServerWebsiteAddEditDialog,
                             MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
                             ServerAddEditDialogComponent::Website,
@@ -133,6 +138,7 @@ impl Widget for ServerAddItemDialog {
                         plug_second_tab!(
                             self,
                             dialog,
+                            self.model.server_id,
                             ServerNoteAddEditDialog,
                             MsgServerNoteAddEditDialog::ServerNoteUpdated,
                             ServerAddEditDialogComponent::Note,

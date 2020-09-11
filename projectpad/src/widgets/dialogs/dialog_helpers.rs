@@ -286,10 +286,10 @@ impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, i32, Option<T>
 
 pub fn prepare_dialog_param<T>(
     db_sender: mpsc::Sender<SqlFunc>,
-    server_id: i32,
+    parent_id: i32,
     val: Option<T>,
 ) -> (mpsc::Sender<SqlFunc>, i32, Option<T>, gtk::AccelGroup) {
-    (db_sender, server_id, val, gtk::AccelGroup::new())
+    (db_sender, parent_id, val, gtk::AccelGroup::new())
 }
 
 /// you must keep a reference to the component in your model,

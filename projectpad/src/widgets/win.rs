@@ -11,7 +11,7 @@ use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjec
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
-use super::project_summary::Msg::ServerAdded as ProjectSummaryServerAddedMsg;
+use super::project_summary::Msg::ProjectItemAdded as ProjectSummaryItemAddedMsg;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
@@ -278,7 +278,7 @@ impl Widget for Win {
                         #[name="project_summary"]
                         ProjectSummary(self.model.db_sender.clone()) {
                             EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
-                            ProjectSummaryServerAddedMsg(ref srv) => Msg::ProjectItemUpdated(ProjectItem::Server(srv.clone())),
+                            ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
                         },
                         #[name="project_items_list"]
                         ProjectItemsList(self.model.db_sender.clone()) {

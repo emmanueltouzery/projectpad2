@@ -1,10 +1,12 @@
 #[macro_use]
 pub mod dialog_helpers;
+#[macro_use]
+pub mod server_add_item_dlg;
 mod auth_key_button;
 mod pick_projectpad_item_button;
+pub mod project_add_item_dlg;
 pub mod project_poi_add_edit_dlg;
 pub mod server_add_edit_dlg;
-pub mod server_add_item_dlg;
 pub mod server_database_add_edit_dlg;
 pub mod server_extra_user_add_edit_dlg;
 pub mod server_note_add_edit_dlg;
@@ -35,4 +37,13 @@ impl ServerAddEditDialogComponent {
 pub enum ProjectAddEditDialogComponent {
     Server(relm::Component<server_add_edit_dlg::ServerAddEditDialog>),
     ProjectPoi(relm::Component<project_poi_add_edit_dlg::ProjectPoiAddEditDialog>),
+}
+
+impl ProjectAddEditDialogComponent {
+    fn get_widget(&self) -> &gtk::Grid {
+        match self {
+            ProjectAddEditDialogComponent::Server(ref x) => x.widget(),
+            ProjectAddEditDialogComponent::ProjectPoi(ref x) => x.widget(),
+        }
+    }
 }

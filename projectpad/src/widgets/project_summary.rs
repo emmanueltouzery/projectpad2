@@ -2,6 +2,7 @@ use super::dialogs::dialog_helpers;
 use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
+use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
@@ -17,8 +18,8 @@ pub enum Msg {
     EnvironmentToggled(EnvironmentType), // implementation detail
     EnvironmentChanged(EnvironmentType),
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
-    AddServer,
-    ServerAdded(Server),
+    AddProjectItem,
+    ProjectItemAdded(ProjectItem),
 }
 
 pub struct Model {
@@ -82,12 +83,12 @@ impl Widget for ProjectSummary {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_btn = gtk::ModelButtonBuilder::new().label("Add server").build();
+        let popover_btn = gtk::ModelButtonBuilder::new().label("Add...").build();
         relm::connect!(
             self.model.relm,
             popover_btn,
             connect_clicked(_),
-            Msg::AddServer
+            Msg::AddProjectItem
         );
         popover_vbox.add(&popover_btn);
         popover_vbox.show_all();
@@ -208,28 +209,33 @@ impl Widget for ProjectSummary {
                     btn.unblock_signal(handler_id);
                 }
             }
-            Msg::AddServer => {
-                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.header_actions_btn.clone().upcast::<gtk::Widget>(),
-                    dialog_helpers::prepare_dialog_param(
-                        self.model.db_sender.clone(),
-                        self.model.project.as_ref().unwrap().id,
-                        None,
-                    ),
-                    server_add_edit_dlg::Msg::OkPressed,
-                    "Server",
-                );
-                relm::connect!(
-                    component@MsgServerAddEditDialog::ServerUpdated(ref srv),
-                    self.model.relm,
-                    Msg::ServerAdded(srv.clone())
-                );
-                self.model.server_add_edit_dialog = Some(component);
-                dialog.show();
+            Msg::AddProjectItem => {
+                self.show_project_add_item_dialog();
             }
             // meant for my parent
-            Msg::ServerAdded(_) => {}
+            Msg::ProjectItemAdded(_) => {}
         }
+    }
+
+    fn show_project_add_item_dialog(&mut self) {
+        // TODO here move towards project_poi_header::show_server_add_item_dialog
+        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+            self.header_actions_btn.clone().upcast::<gtk::Widget>(),
+            dialog_helpers::prepare_dialog_param(
+                self.model.db_sender.clone(),
+                self.model.project.as_ref().unwrap().id,
+                None,
+            ),
+            server_add_edit_dlg::Msg::OkPressed,
+            "Server",
+        );
+        relm::connect!(
+            component@MsgServerAddEditDialog::ServerUpdated(ref srv),
+            self.model.relm,
+            Msg::ProjectItemAdded(ProjectItem::Server(srv.clone()))
+        );
+        self.model.server_add_edit_dialog = Some(component);
+        dialog.show();
     }
 
     view! {

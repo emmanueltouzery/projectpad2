@@ -6,9 +6,9 @@ use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::Msg::RequestDisplayServerItem as ProjectPoiContentsMsgRequestDisplayServerItem;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
+use super::project_poi_header::Msg::ProjectItemDeleted as ProjectPoiHeaderProjectItemDeletedMsg;
 use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjectItemRefreshMsg;
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
-use super::project_poi_header::Msg::ServerDeleted as ProjectPoiHeaderServerDeletedMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::Msg::ServerAdded as ProjectSummaryServerAddedMsg;
@@ -45,7 +45,7 @@ pub enum Msg {
     DisplayItem(DisplayItemParams),
     KeyPress(gdk::EventKey),
     ProjectItemUpdated(ProjectItem),
-    ServerDeleted(Server),
+    ProjectItemDeleted(ProjectItem),
     RequestDisplayItem(ServerItem),
 }
 
@@ -236,7 +236,7 @@ impl Widget for Win {
                         project_item.clone(),
                     )));
             }
-            Msg::ServerDeleted(ref srv) => {
+            Msg::ProjectItemDeleted(ref srv) => {
                 self.project_items_list
                     .stream()
                     .emit(ProjectItemsListMsg::RefreshItemList(None));
@@ -300,7 +300,7 @@ impl Widget for Win {
                         #[name="project_poi_header"]
                         ProjectPoiHeader((self.model.db_sender.clone(), None)) {
                             ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                            ProjectPoiHeaderServerDeletedMsg(ref srv) => Msg::ServerDeleted(srv.clone()),
+                            ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
                             ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone())
                         },
                         #[name="project_poi_contents"]

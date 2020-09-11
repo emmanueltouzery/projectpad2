@@ -12,7 +12,9 @@ use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Server, ServerAccessType, ServerDatabase, ServerWebsite};
+use projectpadsql::models::{
+    ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase, ServerWebsite,
+};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -25,20 +27,21 @@ enum ActionTypes {
     AddItem,
 }
 
-#[derive(Msg)]
+#[derive(Msg, Clone)]
 pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     HeaderActionClicked((ActionTypes, String)),
     ProjectItemRefresh(ProjectItem),
-    ServerDeleted(Server),
+    ProjectItemDeleted(ProjectItem),
     DeleteCurrentServer(Server),
+    DeleteCurrentProjectPoi(ProjectPointOfInterest),
     ServerAddItemActionCompleted,
     ServerAddItemChangeTitleTitle(&'static str),
     ProjectItemUpdated(Option<ProjectItem>),
 }
 
 // String for details, because I can't pass Error across threads
-type DeleteResult = Result<Server, (&'static str, Option<String>)>;
+type DeleteResult = Result<ProjectItem, (&'static str, Option<String>)>;
 
 pub struct Model {
     relm: relm::Relm<ProjectPoiHeader>,
@@ -49,8 +52,8 @@ pub struct Model {
     project_add_edit_dialog: Option<dialogs::ProjectAddEditDialogComponent>,
     server_add_item_dialog_component: Option<relm::Component<ServerAddItemDialog>>,
     server_add_item_dialog: Option<gtk::Dialog>,
-    _server_deleted_channel: relm::Channel<DeleteResult>,
-    server_deleted_sender: relm::Sender<DeleteResult>,
+    _project_item_deleted_channel: relm::Channel<DeleteResult>,
+    project_item_deleted_sender: relm::Sender<DeleteResult>,
 }
 
 #[derive(Debug)]
@@ -258,9 +261,9 @@ impl Widget for ProjectPoiHeader {
     ) -> Model {
         let (db_sender, project_item) = params;
         let stream = relm.stream().clone();
-        let (_server_deleted_channel, server_deleted_sender) =
+        let (_project_item_deleted_channel, project_item_deleted_sender) =
             relm::Channel::new(move |r: DeleteResult| match r {
-                Ok(srv) => stream.emit(Msg::ServerDeleted(srv)),
+                Ok(pi) => stream.emit(Msg::ProjectItemDeleted(pi)),
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         Model {
@@ -276,8 +279,8 @@ impl Widget for ProjectPoiHeader {
             project_add_edit_dialog: None,
             server_add_item_dialog: None,
             server_add_item_dialog_component: None,
-            _server_deleted_channel,
-            server_deleted_sender,
+            _project_item_deleted_channel,
+            project_item_deleted_sender,
         }
     }
 
@@ -344,13 +347,17 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::Delete, _)) => {
                 match self.model.project_item.as_ref() {
                     Some(ProjectItem::Server(srv)) => {
-                        let relm = self.model.relm.clone();
-                        let server = srv.clone();
-                        standard_dialogs::confirm_deletion(
-                            "Delete server",
-                            &format!("Are you sure you want to delete the server {}? This action cannot be undone.", srv.desc),
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
-                            move || relm.stream().emit(Msg::DeleteCurrentServer(server.clone()))
+                        self.ask_deletion(
+                            "server",
+                            srv.desc.as_str(),
+                            Msg::DeleteCurrentServer(srv.clone()),
+                        );
+                    }
+                    Some(ProjectItem::ProjectPointOfInterest(poi)) => {
+                        self.ask_deletion(
+                            "project point of interest",
+                            poi.desc.as_str(),
+                            Msg::DeleteCurrentProjectPoi(poi.clone()),
                         );
                     }
                     _ => {
@@ -368,8 +375,27 @@ impl Widget for ProjectPoiHeader {
             Msg::DeleteCurrentServer(srv) => {
                 self.delete_current_server(srv);
             }
+            Msg::DeleteCurrentProjectPoi(poi) => {
+                let poi_id = poi.id;
+                let s = self.model.project_item_deleted_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
+                        s.send(
+                            dialog_helpers::delete_row(
+                                sql_conn,
+                                prj_poi::project_point_of_interest,
+                                poi_id,
+                            )
+                            .map(|_| ProjectItem::ProjectPointOfInterest(poi.clone())),
+                        )
+                        .unwrap();
+                    }))
+                    .unwrap();
+            }
             // for my parent
-            Msg::ServerDeleted(_) => {}
+            Msg::ProjectItemDeleted(_) => {}
             Msg::ServerAddItemActionCompleted => {
                 self.model.server_add_item_dialog.as_ref().unwrap().close();
                 self.model.server_add_item_dialog = None;
@@ -390,6 +416,19 @@ impl Widget for ProjectPoiHeader {
             // meant for my parent
             Msg::ProjectItemUpdated(pi) => {}
         }
+    }
+
+    fn ask_deletion(&self, item_type_desc: &str, item_desc: &str, msg: Msg) {
+        let relm = self.model.relm.clone();
+        standard_dialogs::confirm_deletion(
+            &format!("Delete {}", item_type_desc),
+            &format!(
+                "Are you sure you want to delete the {} {}? This action cannot be undone.",
+                item_type_desc, item_desc
+            ),
+            self.items_frame.clone().upcast::<gtk::Widget>(),
+            move || relm.stream().emit(msg.clone()),
+        );
     }
 
     fn show_server_add_item_dialog(&mut self) {
@@ -439,7 +478,7 @@ impl Widget for ProjectPoiHeader {
 
     fn delete_current_server(&self, server: Server) {
         let server_id = server.id;
-        let s = self.model.server_deleted_sender.clone();
+        let s = self.model.project_item_deleted_sender.clone();
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
@@ -466,7 +505,7 @@ impl Widget for ProjectPoiHeader {
                 } else {
                     s.send(
                         dialog_helpers::delete_row(sql_conn, srv::server, server_id)
-                            .map(|_| server.clone()),
+                            .map(|_| ProjectItem::Server(server.clone())),
                     )
                 }
                 .unwrap();

@@ -1,5 +1,6 @@
 use super::dialogs;
 use super::dialogs::dialog_helpers;
+use super::dialogs::project_note_add_edit_dlg;
 use super::dialogs::project_poi_add_edit_dlg;
 use super::dialogs::project_poi_add_edit_dlg::Msg as MsgProjectPoiAddEditDialog;
 use super::dialogs::server_add_edit_dlg;
@@ -335,6 +336,27 @@ impl Widget for ProjectPoiHeader {
                         );
                         self.model.project_add_edit_dialog = Some(
                             dialogs::ProjectAddEditDialogComponent::ProjectPoi(component),
+                        );
+                        dialog.show();
+                    }
+                    Some(ProjectItem::ProjectNote(ref note)) => {
+                        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            dialog_helpers::prepare_dialog_param(
+                                self.model.db_sender.clone(),
+                                note.project_id,
+                                Some(note.clone()),
+                            ),
+                            project_note_add_edit_dlg::Msg::OkPressed,
+                            "Project note",
+                        );
+                        // relm::connect!(
+                        //     component@MsgProjectPoiAddEditDialog::PoiUpdated(ref poi),
+                        //     self.model.relm,
+                        //     Msg::ProjectItemRefresh(ProjectItem::ProjectPointOfInterest(poi.clone()))
+                        // );
+                        self.model.project_add_edit_dialog = Some(
+                            dialogs::ProjectAddEditDialogComponent::ProjectNote(component),
                         );
                         dialog.show();
                     }

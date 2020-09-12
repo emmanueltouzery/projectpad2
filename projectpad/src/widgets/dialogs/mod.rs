@@ -5,6 +5,7 @@ pub mod server_add_item_dlg;
 mod auth_key_button;
 mod pick_projectpad_item_button;
 pub mod project_add_item_dlg;
+pub mod project_note_add_edit_dlg;
 pub mod project_poi_add_edit_dlg;
 pub mod server_add_edit_dlg;
 pub mod server_database_add_edit_dlg;
@@ -37,6 +38,7 @@ impl ServerAddEditDialogComponent {
 pub enum ProjectAddEditDialogComponent {
     Server(relm::Component<server_add_edit_dlg::ServerAddEditDialog>),
     ProjectPoi(relm::Component<project_poi_add_edit_dlg::ProjectPoiAddEditDialog>),
+    ProjectNote(relm::Component<project_note_add_edit_dlg::ProjectNoteAddEditDialog>),
 }
 
 impl ProjectAddEditDialogComponent {
@@ -44,6 +46,7 @@ impl ProjectAddEditDialogComponent {
         match self {
             ProjectAddEditDialogComponent::Server(ref x) => x.widget(),
             ProjectAddEditDialogComponent::ProjectPoi(ref x) => x.widget(),
+            ProjectAddEditDialogComponent::ProjectNote(ref x) => x.widget(),
         }
     }
 }

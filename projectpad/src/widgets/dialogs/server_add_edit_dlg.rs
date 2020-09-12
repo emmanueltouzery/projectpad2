@@ -141,9 +141,9 @@ impl Widget for ServerAddEditDialog {
             db_sender,
             _groups_channel: groups_channel,
             groups_sender,
+            groups_store: gtk::ListStore::new(&[glib::Type::String]),
             _server_updated_channel: server_updated_channel,
             server_updated_sender,
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
             project_id,
             server_id: srv.map(|s| s.id),
             description: srv

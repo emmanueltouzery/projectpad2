@@ -8,10 +8,18 @@ use std::sync::mpsc;
 
 #[derive(Msg, Clone)]
 pub enum Msg {
+    GotGroups(Vec<String>),
     OkPressed,
 }
 
 pub struct Model {
+    db_sender: mpsc::Sender<SqlFunc>,
+    project_id: i32,
+
+    groups_store: gtk::ListStore,
+    _groups_channel: relm::Channel<Vec<String>>,
+    groups_sender: relm::Sender<Vec<String>>,
+
     title: String,
     group_name: Option<String>,
 }
@@ -20,6 +28,20 @@ pub struct Model {
 impl Widget for ProjectNoteAddEditDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
+        self.init_group();
+    }
+
+    fn init_group(&self) {
+        let s = self.model.groups_sender.clone();
+        let pid = self.model.project_id;
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                s.send(dialog_helpers::get_project_group_names(sql_conn, pid))
+                    .unwrap();
+            }))
+            .unwrap();
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
     }
 
     fn model(
@@ -33,7 +55,16 @@ impl Widget for ProjectNoteAddEditDialog {
     ) -> Model {
         let (db_sender, project_id, project_note, accel_group) = params;
         let pn = project_note.as_ref();
+        let stream = relm.stream().clone();
+        let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
+            stream.emit(Msg::GotGroups(groups));
+        });
         Model {
+            db_sender,
+            project_id,
+            _groups_channel: groups_channel,
+            groups_sender,
+            groups_store: gtk::ListStore::new(&[glib::Type::String]),
             title: pn
                 .map(|d| d.title.clone())
                 .unwrap_or_else(|| "".to_string()),
@@ -41,7 +72,19 @@ impl Widget for ProjectNoteAddEditDialog {
         }
     }
 
-    fn update(&mut self, event: Msg) {}
+    fn update(&mut self, event: Msg) {
+        match event {
+            Msg::GotGroups(groups) => {
+                dialog_helpers::fill_groups(
+                    &self.model.groups_store,
+                    &self.group,
+                    &groups,
+                    &self.model.group_name,
+                );
+            }
+            Msg::OkPressed => {}
+        }
+    }
 
     view! {
         #[name="grid"]

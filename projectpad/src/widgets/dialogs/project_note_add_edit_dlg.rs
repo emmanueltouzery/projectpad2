@@ -1,4 +1,7 @@
 use super::dialog_helpers;
+use super::note_edit;
+use super::note_edit::Msg::PublishContents as NotePublishContents;
+use super::note_edit::NoteEdit;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use projectpadsql::models::ProjectNote;
@@ -10,10 +13,12 @@ use std::sync::mpsc;
 pub enum Msg {
     GotGroups(Vec<String>),
     OkPressed,
+    UpdateProjectNote(String),
 }
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
+    accel_group: gtk::AccelGroup,
     project_id: i32,
 
     groups_store: gtk::ListStore,
@@ -22,6 +27,7 @@ pub struct Model {
 
     title: String,
     group_name: Option<String>,
+    contents: String,
 }
 
 #[widget]
@@ -29,6 +35,8 @@ impl Widget for ProjectNoteAddEditDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
         self.init_group();
+        self.grid.set_property_width_request(700);
+        self.grid.set_property_height_request(500);
     }
 
     fn init_group(&self) {
@@ -61,12 +69,16 @@ impl Widget for ProjectNoteAddEditDialog {
         });
         Model {
             db_sender,
+            accel_group,
             project_id,
             _groups_channel: groups_channel,
             groups_sender,
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             title: pn
                 .map(|d| d.title.clone())
+                .unwrap_or_else(|| "".to_string()),
+            contents: pn
+                .map(|d| d.contents.clone())
                 .unwrap_or_else(|| "".to_string()),
             group_name: pn.and_then(|s| s.group_name.clone()),
         }
@@ -83,6 +95,7 @@ impl Widget for ProjectNoteAddEditDialog {
                 );
             }
             Msg::OkPressed => {}
+            Msg::UpdateProjectNote(new_contents) => {}
         }
     }
 
@@ -122,6 +135,15 @@ impl Widget for ProjectNoteAddEditDialog {
                     top_attach: 1,
                 },
             },
+            #[name="note_edit"]
+            NoteEdit((self.model.contents.clone(), self.model.accel_group.clone())) {
+                cell: {
+                    left_attach: 0,
+                    top_attach: 2,
+                    width: 2,
+                },
+                NotePublishContents(ref contents) => Msg::UpdateProjectNote(contents.clone())
+            }
         }
     }
 }

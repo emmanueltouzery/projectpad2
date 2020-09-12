@@ -56,16 +56,10 @@ pub fn get_main_window(widget_for_window: gtk::Widget) -> gtk::Window {
         .unwrap()
 }
 
-#[derive(PartialEq, Eq)]
-pub enum DialogActionResult {
-    CloseDialog,
-    DontCloseDialog,
-}
-
 pub fn prepare_custom_dialog<T: Widget>(
     dialog: gtk::Dialog,
     dialog_contents: relm::Component<T>,
-    ok_callback: impl Fn(gtk::Button) -> DialogActionResult + 'static,
+    ok_callback: impl Fn(gtk::Button) + 'static,
 ) -> (gtk::Dialog, relm::Component<T>, gtk::Button) {
     let save = dialog
         .add_button("Save", gtk::ResponseType::Ok)
@@ -76,9 +70,7 @@ pub fn prepare_custom_dialog<T: Widget>(
     let save_btn = save.clone();
     dialog.connect_response(move |d, r| {
         if r == gtk::ResponseType::Ok {
-            if ok_callback(save_btn.clone()) == DialogActionResult::CloseDialog {
-                d.close();
-            }
+            ok_callback(save_btn.clone());
         } else {
             d.close();
         }

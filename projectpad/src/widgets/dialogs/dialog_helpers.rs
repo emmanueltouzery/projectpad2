@@ -320,6 +320,5 @@ where
     let d_c = dialog_contents.clone();
     standard_dialogs::prepare_custom_dialog(dialog, dialog_contents, move |_| {
         d_c.emit(ok_pressed_event.clone());
-        standard_dialogs::DialogActionResult::CloseDialog
     })
 }

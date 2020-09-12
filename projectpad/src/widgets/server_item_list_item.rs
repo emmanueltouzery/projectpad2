@@ -52,7 +52,7 @@ type DeleteResult = Result<ServerItem, (&'static str, Option<String>)>;
 pub struct Model {
     relm: relm::Relm<ServerItemListItem>,
     db_sender: mpsc::Sender<SqlFunc>,
-    server_add_edit_dialog: Option<ServerAddEditDialogComponent>,
+    server_add_edit_dialog: Option<(ServerAddEditDialogComponent, gtk::Dialog)>,
     server_item: ServerItem,
     database_for_item: Option<ServerDatabase>,
     websites_for_item: Vec<ServerWebsite>,
@@ -511,8 +511,10 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     Msg::ServerItemUpdated(ServerItem::Note(note.clone()))
                 );
-                self.model.server_add_edit_dialog =
-                    Some(ServerAddEditDialogComponent::Note(component));
+                self.model.server_add_edit_dialog = Some((
+                    ServerAddEditDialogComponent::Note(component),
+                    dialog.clone(),
+                ));
                 dialog.show();
             }
             Msg::EditPoi(poi) => {
@@ -532,7 +534,7 @@ impl Widget for ServerItemListItem {
                     Msg::ServerItemUpdated(ServerItem::PointOfInterest(srv.clone()))
                 );
                 self.model.server_add_edit_dialog =
-                    Some(ServerAddEditDialogComponent::Poi(component));
+                    Some((ServerAddEditDialogComponent::Poi(component), dialog.clone()));
                 dialog.show();
             }
             Msg::EditDb(db) => {
@@ -552,7 +554,7 @@ impl Widget for ServerItemListItem {
                     Msg::ServerItemUpdated(ServerItem::Database(srv.clone()))
                 );
                 self.model.server_add_edit_dialog =
-                    Some(ServerAddEditDialogComponent::Db(component));
+                    Some((ServerAddEditDialogComponent::Db(component), dialog.clone()));
                 dialog.show();
             }
             Msg::EditWebsite(www) => {
@@ -571,8 +573,10 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     Msg::ServerItemUpdated(ServerItem::Website(srv.clone()))
                 );
-                self.model.server_add_edit_dialog =
-                    Some(ServerAddEditDialogComponent::Website(component));
+                self.model.server_add_edit_dialog = Some((
+                    ServerAddEditDialogComponent::Website(component),
+                    dialog.clone(),
+                ));
                 dialog.show();
             }
             Msg::EditUser(usr) => {
@@ -591,11 +595,20 @@ impl Widget for ServerItemListItem {
                     self.model.relm,
                     Msg::ServerItemUpdated(ServerItem::ExtraUserAccount(usr.clone()))
                 );
-                self.model.server_add_edit_dialog =
-                    Some(ServerAddEditDialogComponent::User(component));
+                self.model.server_add_edit_dialog = Some((
+                    ServerAddEditDialogComponent::User(component),
+                    dialog.clone(),
+                ));
                 dialog.show();
             }
             Msg::ServerItemUpdated(server_item) => {
+                self.model
+                    .server_add_edit_dialog
+                    .as_ref()
+                    .unwrap()
+                    .1
+                    .close();
+                self.model.server_add_edit_dialog = None;
                 self.model.server_item = server_item;
                 self.model.title = Self::get_title(&self.model.server_item);
                 self.load_server_item();

@@ -260,7 +260,6 @@ impl Widget for ProjectSummary {
                 } else {
                     d_c.emit(project_add_item_dlg::Msg::OkPressed);
                 }
-                standard_dialogs::DialogActionResult::DontCloseDialog
             },
         );
         ok_btn.set_label("Next");

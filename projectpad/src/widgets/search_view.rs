@@ -146,8 +146,8 @@ pub struct Model {
     action_areas: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
-    server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
-    server_item_add_edit_dialog: Option<ServerAddEditDialogComponent>,
+    server_add_edit_dialog: Option<(relm::Component<ServerAddEditDialog>, gtk::Dialog)>,
+    server_item_add_edit_dialog: Option<(ServerAddEditDialogComponent, gtk::Dialog)>,
     save_btn: Option<gtk::Button>,
 }
 
@@ -490,7 +490,7 @@ impl Widget for SearchView {
                         self.model.relm,
                         Msg::SearchResultsModified
                     );
-                    self.model.server_add_edit_dialog = Some(component);
+                    self.model.server_add_edit_dialog = Some((component, dialog.clone()));
                     dialog.show();
                 }
                 ProjectPadItem::ServerPoi(srv_poi) => {
@@ -510,7 +510,7 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_item_add_edit_dialog =
-                        Some(ServerAddEditDialogComponent::Poi(component));
+                        Some((ServerAddEditDialogComponent::Poi(component), dialog.clone()));
                     dialog.show();
                 }
                 ProjectPadItem::ServerDatabase(srv_db) => {
@@ -530,7 +530,7 @@ impl Widget for SearchView {
                         Msg::SearchResultsModified
                     );
                     self.model.server_item_add_edit_dialog =
-                        Some(ServerAddEditDialogComponent::Db(component));
+                        Some((ServerAddEditDialogComponent::Db(component), dialog.clone()));
                     dialog.show();
                 }
                 ProjectPadItem::ServerExtraUserAccount(srv_usr) => {
@@ -549,8 +549,10 @@ impl Widget for SearchView {
                         self.model.relm,
                         Msg::SearchResultsModified
                     );
-                    self.model.server_item_add_edit_dialog =
-                        Some(ServerAddEditDialogComponent::User(component));
+                    self.model.server_item_add_edit_dialog = Some((
+                        ServerAddEditDialogComponent::User(component),
+                        dialog.clone(),
+                    ));
                     dialog.show();
                 }
                 ProjectPadItem::ServerWebsite(srv_www) => {
@@ -569,8 +571,10 @@ impl Widget for SearchView {
                         self.model.relm,
                         Msg::SearchResultsModified
                     );
-                    self.model.server_item_add_edit_dialog =
-                        Some(ServerAddEditDialogComponent::Website(component));
+                    self.model.server_item_add_edit_dialog = Some((
+                        ServerAddEditDialogComponent::Website(component),
+                        dialog.clone(),
+                    ));
                     dialog.show();
                 }
                 ProjectPadItem::ServerNote(srv_note) => {
@@ -589,8 +593,10 @@ impl Widget for SearchView {
                         self.model.relm,
                         Msg::SearchResultsModified
                     );
-                    self.model.server_item_add_edit_dialog =
-                        Some(ServerAddEditDialogComponent::Note(component));
+                    self.model.server_item_add_edit_dialog = Some((
+                        ServerAddEditDialogComponent::Note(component),
+                        dialog.clone(),
+                    ));
                     dialog.show();
                 }
                 _ => {
@@ -598,6 +604,14 @@ impl Widget for SearchView {
                 }
             },
             Msg::SearchResultsModified => {
+                if let Some((_, dialog)) = self.model.server_add_edit_dialog.as_ref() {
+                    dialog.close();
+                    self.model.server_add_edit_dialog = None;
+                }
+                if let Some((_, dialog)) = self.model.server_item_add_edit_dialog.as_ref() {
+                    dialog.close();
+                    self.model.server_item_add_edit_dialog = None;
+                }
                 self.fetch_search_results();
             }
             Msg::RequestSelectedItem => {

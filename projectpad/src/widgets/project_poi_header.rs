@@ -50,7 +50,7 @@ pub struct Model {
     project_item: Option<ProjectItem>,
     header_popover: gtk::Popover,
     title: gtk::Label,
-    project_add_edit_dialog: Option<dialogs::ProjectAddEditDialogComponent>,
+    project_add_edit_dialog: Option<(dialogs::ProjectAddEditDialogComponent, gtk::Dialog)>,
     server_add_item_dialog_component: Option<relm::Component<ServerAddItemDialog>>,
     server_add_item_dialog: Option<gtk::Dialog>,
     _project_item_deleted_channel: relm::Channel<DeleteResult>,
@@ -314,8 +314,10 @@ impl Widget for ProjectPoiHeader {
                             self.model.relm,
                             Msg::ProjectItemRefresh(ProjectItem::Server(srv.clone()))
                         );
-                        self.model.project_add_edit_dialog =
-                            Some(dialogs::ProjectAddEditDialogComponent::Server(component));
+                        self.model.project_add_edit_dialog = Some((
+                            dialogs::ProjectAddEditDialogComponent::Server(component),
+                            dialog.clone(),
+                        ));
                         dialog.show();
                     }
                     Some(ProjectItem::ProjectPointOfInterest(ref poi)) => {
@@ -334,9 +336,10 @@ impl Widget for ProjectPoiHeader {
                             self.model.relm,
                             Msg::ProjectItemRefresh(ProjectItem::ProjectPointOfInterest(poi.clone()))
                         );
-                        self.model.project_add_edit_dialog = Some(
+                        self.model.project_add_edit_dialog = Some((
                             dialogs::ProjectAddEditDialogComponent::ProjectPoi(component),
-                        );
+                            dialog.clone(),
+                        ));
                         dialog.show();
                     }
                     Some(ProjectItem::ProjectNote(ref note)) => {
@@ -355,9 +358,10 @@ impl Widget for ProjectPoiHeader {
                         //     self.model.relm,
                         //     Msg::ProjectItemRefresh(ProjectItem::ProjectPointOfInterest(poi.clone()))
                         // );
-                        self.model.project_add_edit_dialog = Some(
+                        self.model.project_add_edit_dialog = Some((
                             dialogs::ProjectAddEditDialogComponent::ProjectNote(component),
-                        );
+                            dialog.clone(),
+                        ));
                         dialog.show();
                     }
                     Some(_) => {
@@ -391,6 +395,10 @@ impl Widget for ProjectPoiHeader {
                 self.show_server_add_item_dialog();
             }
             Msg::ProjectItemRefresh(project_item) => {
+                if let Some((_, dialog)) = self.model.project_add_edit_dialog.as_ref() {
+                    dialog.close();
+                    self.model.project_add_edit_dialog = None;
+                }
                 self.model.project_item = Some(project_item);
                 self.load_project_item();
             }
@@ -479,7 +487,6 @@ impl Widget for ProjectPoiHeader {
                 } else {
                     d_c.emit(server_add_item_dlg::Msg::OkPressed);
                 }
-                standard_dialogs::DialogActionResult::DontCloseDialog
             },
         );
         ok_btn.set_label("Next");

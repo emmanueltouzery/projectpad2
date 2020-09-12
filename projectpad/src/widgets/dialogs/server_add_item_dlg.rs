@@ -16,6 +16,7 @@ use super::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
 use super::server_website_add_edit_dlg::ServerWebsiteAddEditDialog;
 use super::ServerAddEditDialogComponent;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::server_poi_contents::ServerItem;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -25,7 +26,7 @@ use std::sync::mpsc;
 pub enum Msg {
     ShowSecondTab(gtk::Dialog),
     OkPressed,
-    ActionCompleted,
+    ActionCompleted(ServerItem),
     ChangeDialogTitle(&'static str),
 }
 
@@ -40,7 +41,7 @@ pub struct Model {
 // because of the relm::connect! i don't see many other options...
 macro_rules! plug_second_tab {
     ($self: ident, $dialog: ident, $parent: expr, $dialog_type:tt,
-     $event: path, $component_ctor: path,) => {{
+     $event: path, $component_ctor: path, $to_server_item: path,) => {{
         let dialog_params = dialog_helpers::prepare_dialog_param(
                 $self.model.db_sender.clone(),
                 $parent,
@@ -50,9 +51,9 @@ macro_rules! plug_second_tab {
         let dialog_contents = relm::init::<$dialog_type>(dialog_params)
                 .expect("error initializing add edit modal");
         relm::connect!(
-            dialog_contents@$event(_),
+            dialog_contents@$event(ref x),
             $self.model.relm,
-            Msg::ActionCompleted
+            Msg::ActionCompleted($to_server_item(x.clone()))
         );
         $self.model.dialog_component = Some($component_ctor(dialog_contents));
         $self.model
@@ -94,6 +95,7 @@ impl Widget for ServerAddItemDialog {
                             ServerPoiAddEditDialog,
                             MsgServerPoiAddEditDialog::ServerPoiUpdated,
                             ServerAddEditDialogComponent::Poi,
+                            ServerItem::PointOfInterest,
                         ),
                         "Add Server Point of Interest",
                     )
@@ -106,6 +108,7 @@ impl Widget for ServerAddItemDialog {
                             ServerDatabaseAddEditDialog,
                             MsgServerDatabaseAddEditDialog::ServerDbUpdated,
                             ServerAddEditDialogComponent::Db,
+                            ServerItem::Database,
                         ),
                         "Add server database",
                     )
@@ -118,6 +121,7 @@ impl Widget for ServerAddItemDialog {
                             ServerExtraUserAddEditDialog,
                             MsgServerExtraUserAddEditDialog::ServerUserUpdated,
                             ServerAddEditDialogComponent::User,
+                            ServerItem::ExtraUserAccount,
                         ),
                         "Add server extra user",
                     )
@@ -130,6 +134,7 @@ impl Widget for ServerAddItemDialog {
                             ServerWebsiteAddEditDialog,
                             MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
                             ServerAddEditDialogComponent::Website,
+                            ServerItem::Website,
                         ),
                         "Add server website",
                     )
@@ -142,6 +147,7 @@ impl Widget for ServerAddItemDialog {
                             ServerNoteAddEditDialog,
                             MsgServerNoteAddEditDialog::ServerNoteUpdated,
                             ServerAddEditDialogComponent::Note,
+                            ServerItem::Note,
                         ),
                         "Add server note",
                     )
@@ -174,7 +180,7 @@ impl Widget for ServerAddItemDialog {
             // meant for my parent
             Msg::ChangeDialogTitle(_) => {}
             // meant for my parent
-            Msg::ActionCompleted => {}
+            Msg::ActionCompleted(_) => {}
         }
     }
 

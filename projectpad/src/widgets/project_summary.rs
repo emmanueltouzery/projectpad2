@@ -1,12 +1,11 @@
 use super::dialogs::dialog_helpers;
-use super::dialogs::server_add_edit_dlg;
-use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
-use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
+use super::dialogs::project_add_item_dlg;
+use super::dialogs::project_add_item_dlg::ProjectAddItemDialog;
+use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
-use projectpadsql::models::Server;
 use projectpadsql::models::{EnvironmentType, Project};
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -19,6 +18,8 @@ pub enum Msg {
     EnvironmentChanged(EnvironmentType),
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
     AddProjectItem,
+    ProjectAddItemActionCompleted(ProjectItem),
+    ProjectAddItemChangeTitleTitle(&'static str),
     ProjectItemAdded(ProjectItem),
 }
 
@@ -29,7 +30,8 @@ pub struct Model {
     title: gtk::Label,
     btn_and_handler: Vec<(gtk::RadioButton, glib::SignalHandlerId)>,
     header_popover: gtk::Popover,
-    server_add_edit_dialog: Option<relm::Component<ServerAddEditDialog>>,
+    project_add_item_component: Option<relm::Component<ProjectAddItemDialog>>,
+    project_add_item_dialog: Option<gtk::Dialog>,
 }
 
 #[widget]
@@ -108,7 +110,8 @@ impl Widget for ProjectSummary {
                 .build(),
             btn_and_handler: vec![],
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
-            server_add_edit_dialog: None,
+            project_add_item_dialog: None,
+            project_add_item_component: None,
         }
     }
 
@@ -209,6 +212,23 @@ impl Widget for ProjectSummary {
                     btn.unblock_signal(handler_id);
                 }
             }
+            Msg::ProjectAddItemActionCompleted(project_item) => {
+                self.model.project_add_item_dialog.as_ref().unwrap().close();
+                self.model.project_add_item_dialog = None;
+                self.model.project_add_item_component = None;
+                // refresh
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ProjectItemAdded(project_item.clone()));
+            }
+            Msg::ProjectAddItemChangeTitleTitle(title) => {
+                self.model
+                    .project_add_item_dialog
+                    .as_ref()
+                    .unwrap()
+                    .set_title(title);
+            }
             Msg::AddProjectItem => {
                 self.show_project_add_item_dialog();
             }
@@ -218,27 +238,49 @@ impl Widget for ProjectSummary {
     }
 
     fn show_project_add_item_dialog(&mut self) {
-        // TODO here move towards project_poi_header::show_server_add_item_dialog
-        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-            self.header_actions_btn.clone().upcast::<gtk::Widget>(),
-            dialog_helpers::prepare_dialog_param(
-                self.model.db_sender.clone(),
-                self.model.project.as_ref().unwrap().id,
-                None,
-            ),
-            server_add_edit_dlg::Msg::OkPressed,
-            "Server",
+        let dialog_contents = relm::init::<ProjectAddItemDialog>((
+            self.model.db_sender.clone(),
+            self.model.project.as_ref().unwrap().id,
+        ))
+        .expect("error initializing the server add item modal");
+        let d_c = dialog_contents.clone();
+        let dialog = standard_dialogs::modal_dialog(
+            self.project_summary_root.clone().upcast::<gtk::Widget>(),
+            600,
+            200,
+            "Add project item".to_string(),
+        );
+        let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
+            dialog.clone(),
+            dialog_contents,
+            move |ok_btn| {
+                if ok_btn.get_label() == Some("Next".into()) {
+                    d_c.emit(project_add_item_dlg::Msg::ShowSecondTab(dialog.clone()));
+                    ok_btn.set_label("Done");
+                } else {
+                    d_c.emit(project_add_item_dlg::Msg::OkPressed);
+                }
+                standard_dialogs::DialogActionResult::DontCloseDialog
+            },
+        );
+        ok_btn.set_label("Next");
+        relm::connect!(
+            component@project_add_item_dlg::Msg::ActionCompleted(ref pi),
+            self.model.relm,
+            Msg::ProjectAddItemActionCompleted(pi.clone())
         );
         relm::connect!(
-            component@MsgServerAddEditDialog::ServerUpdated(ref srv),
+            component@project_add_item_dlg::Msg::ChangeDialogTitle(title),
             self.model.relm,
-            Msg::ProjectItemAdded(ProjectItem::Server(srv.clone()))
+            Msg::ProjectAddItemChangeTitleTitle(title)
         );
-        self.model.server_add_edit_dialog = Some(component);
+        self.model.project_add_item_component = Some(component);
+        self.model.project_add_item_dialog = Some(dialog.clone());
         dialog.show();
     }
 
     view! {
+        #[name="project_summary_root"]
         gtk::Box {
             orientation: gtk::Orientation::Vertical,
             gtk::Box {

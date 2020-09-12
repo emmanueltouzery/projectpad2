@@ -1,10 +1,13 @@
 use super::dialog_helpers;
+use super::project_poi_add_edit_dlg;
 use super::project_poi_add_edit_dlg::Msg as MsgProjectPoiAddEditDialog;
 use super::project_poi_add_edit_dlg::ProjectPoiAddEditDialog;
+use super::server_add_edit_dlg;
 use super::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::server_add_edit_dlg::ServerAddEditDialog;
 use super::ProjectAddEditDialogComponent;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::project_items_list::ProjectItem;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -14,7 +17,8 @@ use std::sync::mpsc;
 pub enum Msg {
     ShowSecondTab(gtk::Dialog),
     ChangeDialogTitle(&'static str),
-    ActionCompleted,
+    OkPressed,
+    ActionCompleted(ProjectItem),
 }
 
 pub struct Model {
@@ -52,6 +56,7 @@ impl Widget for ProjectAddItemDialog {
                             ServerAddEditDialog,
                             MsgServerAddEditDialog::ServerUpdated,
                             ProjectAddEditDialogComponent::Server,
+                            ProjectItem::Server,
                         ),
                         "Add Server",
                     )
@@ -64,6 +69,7 @@ impl Widget for ProjectAddItemDialog {
                             ProjectPoiAddEditDialog,
                             MsgProjectPoiAddEditDialog::PoiUpdated,
                             ProjectAddEditDialogComponent::ProjectPoi,
+                            ProjectItem::ProjectPointOfInterest,
                         ),
                         "Add Project POI",
                     )
@@ -77,8 +83,17 @@ impl Widget for ProjectAddItemDialog {
             }
             // meant for my parent
             Msg::ChangeDialogTitle(_) => {}
+            Msg::OkPressed => match self.model.dialog_component.as_ref() {
+                Some(ProjectAddEditDialogComponent::ProjectPoi(poi_c)) => poi_c
+                    .stream()
+                    .emit(project_poi_add_edit_dlg::Msg::OkPressed),
+                Some(ProjectAddEditDialogComponent::Server(srv_c)) => {
+                    srv_c.stream().emit(server_add_edit_dlg::Msg::OkPressed)
+                }
+                x => eprintln!("Got ok but wrong component? {}", x.is_some()),
+            },
             // meant for my parent
-            Msg::ActionCompleted => {}
+            Msg::ActionCompleted(_) => {}
         }
     }
 

@@ -462,7 +462,7 @@ impl Widget for ProjectPoiHeader {
         );
         ok_btn.set_label("Next");
         relm::connect!(
-            component@server_add_item_dlg::Msg::ActionCompleted,
+            component@server_add_item_dlg::Msg::ActionCompleted(ref si),
             self.model.relm,
             Msg::ServerAddItemActionCompleted
         );

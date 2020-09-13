@@ -115,7 +115,6 @@ impl Widget for ServerNoteAddEditDialog {
                     .emit(note_edit::Msg::RequestContents);
             }
             Msg::UpdateServerNote(new_contents) => {
-                println!("update server note {}", &new_contents);
                 self.update_server_note(new_contents);
             }
             // meant for my parent

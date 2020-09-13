@@ -3,6 +3,7 @@ pub mod dialog_helpers;
 #[macro_use]
 pub mod server_add_item_dlg;
 mod auth_key_button;
+mod environments_picker;
 mod note_edit;
 mod pick_projectpad_item_button;
 pub mod project_add_item_dlg;

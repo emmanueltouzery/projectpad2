@@ -1,4 +1,6 @@
 use super::dialog_helpers;
+use super::environments_picker;
+use super::environments_picker::EnvironmentsPicker;
 use super::note_edit;
 use super::note_edit::Msg::PublishContents as NotePublishContents;
 use super::note_edit::NoteEdit;
@@ -27,6 +29,7 @@ pub struct Model {
 
     title: String,
     group_name: Option<String>,
+    selected_environments: environments_picker::SelectedEnvironments,
     contents: String,
 }
 
@@ -67,6 +70,12 @@ impl Widget for ProjectNoteAddEditDialog {
         let (groups_channel, groups_sender) = relm::Channel::new(move |groups: Vec<String>| {
             stream.emit(Msg::GotGroups(groups));
         });
+        let selected_environments = environments_picker::SelectedEnvironments {
+            has_dev: pn.map(|d| d.has_dev).unwrap_or(false),
+            has_stg: pn.map(|d| d.has_stage).unwrap_or(false),
+            has_uat: pn.map(|d| d.has_uat).unwrap_or(false),
+            has_prod: pn.map(|d| d.has_prod).unwrap_or(false),
+        };
         Model {
             db_sender,
             accel_group,
@@ -77,6 +86,7 @@ impl Widget for ProjectNoteAddEditDialog {
             title: pn
                 .map(|d| d.title.clone())
                 .unwrap_or_else(|| "".to_string()),
+            selected_environments,
             contents: pn
                 .map(|d| d.contents.clone())
                 .unwrap_or_else(|| "".to_string()),
@@ -135,11 +145,18 @@ impl Widget for ProjectNoteAddEditDialog {
                     top_attach: 1,
                 },
             },
+            EnvironmentsPicker(self.model.selected_environments.clone()) {
+                cell: {
+                    left_attach: 0,
+                    top_attach: 2,
+                    width: 2,
+                },
+            },
             #[name="note_edit"]
             NoteEdit((self.model.contents.clone(), self.model.accel_group.clone())) {
                 cell: {
                     left_attach: 0,
-                    top_attach: 2,
+                    top_attach: 3,
                     width: 2,
                 },
                 NotePublishContents(ref contents) => Msg::UpdateProjectNote(contents.clone())

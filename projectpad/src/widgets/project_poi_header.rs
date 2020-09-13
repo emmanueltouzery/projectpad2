@@ -15,7 +15,7 @@ use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase, ServerWebsite,
+    ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase, ServerWebsite,
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -37,6 +37,7 @@ pub enum Msg {
     ProjectItemDeleted(ProjectItem),
     DeleteCurrentServer(Server),
     DeleteCurrentProjectPoi(ProjectPointOfInterest),
+    DeleteCurrentProjectNote(ProjectNote),
     ServerAddItemActionCompleted,
     ServerAddItemChangeTitleTitle(&'static str),
     ProjectItemUpdated(Option<ProjectItem>),
@@ -387,6 +388,13 @@ impl Widget for ProjectPoiHeader {
                             Msg::DeleteCurrentProjectPoi(poi.clone()),
                         );
                     }
+                    Some(ProjectItem::ProjectNote(note)) => {
+                        self.ask_deletion(
+                            "project note",
+                            note.title.as_str(),
+                            Msg::DeleteCurrentProjectNote(note.clone()),
+                        );
+                    }
                     _ => {
                         eprintln!("TODO");
                     }
@@ -420,6 +428,21 @@ impl Widget for ProjectPoiHeader {
                                 poi_id,
                             )
                             .map(|_| ProjectItem::ProjectPointOfInterest(poi.clone())),
+                        )
+                        .unwrap();
+                    }))
+                    .unwrap();
+            }
+            Msg::DeleteCurrentProjectNote(note) => {
+                let note_id = note.id;
+                let s = self.model.project_item_deleted_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        use projectpadsql::schema::project_note::dsl as prj_note;
+                        s.send(
+                            dialog_helpers::delete_row(sql_conn, prj_note::project_note, note_id)
+                                .map(|_| ProjectItem::ProjectNote(note.clone())),
                         )
                         .unwrap();
                     }))

@@ -4,6 +4,10 @@
 // https://discourse.gnome.org/t/lazy-scrollable-list/3774
 
 use super::dialogs::dialog_helpers;
+use super::dialogs::project_note_add_edit_dlg;
+use super::dialogs::project_note_add_edit_dlg::Msg as MsgProjectNoteAddEditDialog;
+use super::dialogs::project_poi_add_edit_dlg;
+use super::dialogs::project_poi_add_edit_dlg::Msg as MsgProjectPoiAddEditDialog;
 use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
@@ -12,7 +16,7 @@ use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAdd
 use super::dialogs::server_note_add_edit_dlg::Msg as MsgServerNoteAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
-use super::dialogs::ServerAddEditDialogComponent;
+use super::dialogs::{ProjectAddEditDialogComponent, ServerAddEditDialogComponent};
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
 use super::server_item_list_item;
@@ -146,7 +150,7 @@ pub struct Model {
     action_areas: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
-    server_add_edit_dialog: Option<(relm::Component<ServerAddEditDialog>, gtk::Dialog)>,
+    project_item_add_edit_dialog: Option<(ProjectAddEditDialogComponent, gtk::Dialog)>,
     server_item_add_edit_dialog: Option<(ServerAddEditDialogComponent, gtk::Dialog)>,
     save_btn: Option<gtk::Button>,
 }
@@ -421,7 +425,7 @@ impl Widget for SearchView {
             action_areas: Rc::new(RefCell::new(vec![])),
             action_popover: None,
             item_with_depressed_action: Rc::new(RefCell::new(None)),
-            server_add_edit_dialog: None,
+            project_item_add_edit_dialog: None,
             server_item_add_edit_dialog: None,
             selected_item: Rc::new(RefCell::new(selected_item)),
             save_btn,
@@ -490,7 +494,54 @@ impl Widget for SearchView {
                         self.model.relm,
                         Msg::SearchResultsModified
                     );
-                    self.model.server_add_edit_dialog = Some((component, dialog.clone()));
+                    self.model.project_item_add_edit_dialog = Some((
+                        ProjectAddEditDialogComponent::Server(component),
+                        dialog.clone(),
+                    ));
+                    dialog.show();
+                }
+                ProjectPadItem::ProjectPoi(prj_poi) => {
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        dialog_helpers::prepare_dialog_param(
+                            self.model.db_sender.clone(),
+                            prj_poi.project_id,
+                            Some(prj_poi),
+                        ),
+                        project_poi_add_edit_dlg::Msg::OkPressed,
+                        "Project point of interest",
+                    );
+                    relm::connect!(
+                        component@MsgProjectPoiAddEditDialog::PoiUpdated(_),
+                        self.model.relm,
+                        Msg::SearchResultsModified
+                    );
+                    self.model.project_item_add_edit_dialog = Some((
+                        ProjectAddEditDialogComponent::ProjectPoi(component),
+                        dialog.clone(),
+                    ));
+                    dialog.show();
+                }
+                ProjectPadItem::ProjectNote(prj_note) => {
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        dialog_helpers::prepare_dialog_param(
+                            self.model.db_sender.clone(),
+                            prj_note.project_id,
+                            Some(prj_note),
+                        ),
+                        project_note_add_edit_dlg::Msg::OkPressed,
+                        "Project note",
+                    );
+                    relm::connect!(
+                        component@MsgProjectNoteAddEditDialog::ProjectNoteUpdated(_),
+                        self.model.relm,
+                        Msg::SearchResultsModified
+                    );
+                    self.model.project_item_add_edit_dialog = Some((
+                        ProjectAddEditDialogComponent::ProjectNote(component),
+                        dialog.clone(),
+                    ));
                     dialog.show();
                 }
                 ProjectPadItem::ServerPoi(srv_poi) => {
@@ -604,9 +655,9 @@ impl Widget for SearchView {
                 }
             },
             Msg::SearchResultsModified => {
-                if let Some((_, dialog)) = self.model.server_add_edit_dialog.as_ref() {
+                if let Some((_, dialog)) = self.model.project_item_add_edit_dialog.as_ref() {
                     dialog.close();
-                    self.model.server_add_edit_dialog = None;
+                    self.model.project_item_add_edit_dialog = None;
                 }
                 if let Some((_, dialog)) = self.model.server_item_add_edit_dialog.as_ref() {
                     dialog.close();

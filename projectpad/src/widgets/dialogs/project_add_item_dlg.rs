@@ -1,4 +1,7 @@
 use super::dialog_helpers;
+use super::project_note_add_edit_dlg;
+use super::project_note_add_edit_dlg::Msg as MsgProjectNoteAddEditDialog;
+use super::project_note_add_edit_dlg::ProjectNoteAddEditDialog;
 use super::project_poi_add_edit_dlg;
 use super::project_poi_add_edit_dlg::Msg as MsgProjectPoiAddEditDialog;
 use super::project_poi_add_edit_dlg::ProjectPoiAddEditDialog;
@@ -32,6 +35,7 @@ pub struct Model {
 impl Widget for ProjectAddItemDialog {
     fn init_view(&mut self) {
         self.add_project_poi.join_group(Some(&self.add_server));
+        self.add_project_note.join_group(Some(&self.add_server));
     }
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, i32)) -> Model {
@@ -73,6 +77,19 @@ impl Widget for ProjectAddItemDialog {
                         ),
                         "Add Project POI",
                     )
+                } else if self.add_project_note.get_active() {
+                    (
+                        plug_second_tab!(
+                            self,
+                            dialog,
+                            self.model.project_id,
+                            ProjectNoteAddEditDialog,
+                            MsgProjectNoteAddEditDialog::ProjectNoteUpdated,
+                            ProjectAddEditDialogComponent::ProjectNote,
+                            ProjectItem::ProjectNote,
+                        ),
+                        "Add Project note",
+                    )
                 } else {
                     panic!();
                 };
@@ -90,6 +107,9 @@ impl Widget for ProjectAddItemDialog {
                 Some(ProjectAddEditDialogComponent::Server(srv_c)) => {
                     srv_c.stream().emit(server_add_edit_dlg::Msg::OkPressed)
                 }
+                Some(ProjectAddEditDialogComponent::ProjectNote(srv_c)) => srv_c
+                    .stream()
+                    .emit(project_note_add_edit_dlg::Msg::OkPressed),
                 x => eprintln!("Got ok but wrong component? {}", x.is_some()),
             },
             // meant for my parent
@@ -114,6 +134,10 @@ impl Widget for ProjectAddItemDialog {
                 #[name="add_project_poi"]
                 gtk::RadioButton {
                     label: "Add point of interest",
+                },
+                #[name="add_project_note"]
+                gtk::RadioButton {
+                    label: "Add project note",
                 },
             }
         }

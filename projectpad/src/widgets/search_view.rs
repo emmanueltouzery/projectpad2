@@ -675,6 +675,13 @@ impl Widget for SearchView {
                             db.desc.clone(),
                         )))
                     }
+                    Some(ProjectPadItem::Server(srv)) => {
+                        self.model.relm.stream().emit(Msg::SelectedItem((
+                            ProjectPadItem::Server(srv.clone()),
+                            srv.id,
+                            srv.desc.clone(),
+                        )))
+                    }
                     _ => {}
                 }
             }

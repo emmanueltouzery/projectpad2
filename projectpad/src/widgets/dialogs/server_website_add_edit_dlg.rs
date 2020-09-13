@@ -15,10 +15,10 @@ use std::sync::mpsc;
 #[derive(Msg, Clone)]
 pub enum Msg {
     GotGroups(Vec<String>),
-    OkPressed,
     ServerDbSelected(i32),
-    ServerWwwUpdated(ServerWebsite),
     ServerDbRemoved,
+    OkPressed,
+    ServerWwwUpdated(ServerWebsite),
 }
 
 // String for details, because I can't pass Error across threads
@@ -115,14 +115,14 @@ impl Widget for ServerWebsiteAddEditDialog {
                     &self.model.group_name,
                 );
             }
-            Msg::OkPressed => {
-                self.update_server_www();
-            }
             Msg::ServerDbSelected(db_id) => {
                 self.model.server_database_id = Some(db_id);
             }
             Msg::ServerDbRemoved => {
                 self.model.server_database_id = None;
+            }
+            Msg::OkPressed => {
+                self.update_server_www();
             }
             // meant for my parent
             Msg::ServerWwwUpdated(_) => {}

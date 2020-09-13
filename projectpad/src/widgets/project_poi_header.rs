@@ -9,6 +9,7 @@ use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_item_dlg;
 use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
 use super::dialogs::server_link_add_edit_dlg;
+use super::dialogs::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
@@ -378,11 +379,11 @@ impl Widget for ProjectPoiHeader {
                             server_link_add_edit_dlg::Msg::OkPressed,
                             "Server link",
                         );
-                        // relm::connect!(
-                        //     component@MsgProjectNoteAddEditDialog::ProjectNoteUpdated(ref note),
-                        //     self.model.relm,
-                        //     Msg::ProjectItemRefresh(ProjectItem::ProjectNote(note.clone()))
-                        // );
+                        relm::connect!(
+                            component@MsgServerLinkAddEditDialog::ServerLinkUpdated(ref srv_link),
+                            self.model.relm,
+                            Msg::ProjectItemRefresh(ProjectItem::ServerLink(srv_link.clone()))
+                        );
                         self.model.project_add_edit_dialog = Some((
                             dialogs::ProjectAddEditDialogComponent::ServerLink(component),
                             dialog.clone(),

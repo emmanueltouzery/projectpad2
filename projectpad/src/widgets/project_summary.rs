@@ -32,6 +32,7 @@ pub struct Model {
     header_popover: gtk::Popover,
     project_add_item_component: Option<relm::Component<ProjectAddItemDialog>>,
     project_add_item_dialog: Option<gtk::Dialog>,
+    cur_environment: EnvironmentType,
 }
 
 #[widget]
@@ -112,6 +113,7 @@ impl Widget for ProjectSummary {
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             project_add_item_dialog: None,
             project_add_item_component: None,
+            cur_environment: EnvironmentType::EnvDevelopment,
         }
     }
 
@@ -189,7 +191,10 @@ impl Widget for ProjectSummary {
                     .emit(Msg::EnvironmentChanged(EnvironmentType::EnvProd)),
                 _ => {}
             },
-            Msg::EnvironmentChanged(_) => { /* meant for my parent */ }
+            Msg::EnvironmentChanged(env) => {
+                /* also meant for my parent */
+                self.model.cur_environment = env;
+            }
             Msg::ProjectEnvironmentSelectedFromElsewhere((prj, env)) => {
                 for (btn, handler_id) in &self.model.btn_and_handler {
                     // block the event handlers so that we don't spuriously notify
@@ -241,6 +246,7 @@ impl Widget for ProjectSummary {
         let dialog_contents = relm::init::<ProjectAddItemDialog>((
             self.model.db_sender.clone(),
             self.model.project.as_ref().unwrap().id,
+            self.model.cur_environment,
         ))
         .expect("error initializing the server add item modal");
         let d_c = dialog_contents.clone();

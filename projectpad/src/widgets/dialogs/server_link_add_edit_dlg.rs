@@ -7,13 +7,14 @@ use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::ServerLink;
+use projectpadsql::models::{EnvironmentType, ServerLink};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
 #[derive(Msg, Clone)]
 pub enum Msg {
+    SetEnvironmentType(EnvironmentType),
     GotGroups(Vec<String>),
     ServerSelected(i32),
     ServerRemoved,
@@ -28,6 +29,7 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     project_id: i32,
     server_link_id: Option<i32>,
+    environment_type: Option<EnvironmentType>,
 
     groups_store: gtk::ListStore,
     _groups_channel: relm::Channel<Vec<String>>,
@@ -93,6 +95,7 @@ impl Widget for ServerLinkAddEditDialog {
         Model {
             db_sender,
             project_id,
+            environment_type: None,
             server_link_id: sl.map(|s| s.id),
             _groups_channel: groups_channel,
             groups_sender,
@@ -107,6 +110,7 @@ impl Widget for ServerLinkAddEditDialog {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::SetEnvironmentType(env) => self.model.environment_type = Some(env),
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
@@ -139,6 +143,7 @@ impl Widget for ServerLinkAddEditDialog {
         let new_linked_server_id = self.model.linked_server_id.unwrap();
         let new_desc = self.desc_entry.get_text();
         let new_group = self.group.get_active_text();
+        let new_env_type = self.model.environment_type.unwrap();
         let s = self.model.server_link_updated_sender.clone();
         self.model
             .db_sender
@@ -153,6 +158,7 @@ impl Widget for ServerLinkAddEditDialog {
                         .filter(|s| !s.is_empty())),
                     srv_link::linked_server_id.eq(new_linked_server_id),
                     srv_link::project_id.eq(project_id),
+                    srv_link::environment.eq(new_env_type),
                 );
                 let server_link_after_result = perform_insert_or_update!(
                     sql_conn,

@@ -12,6 +12,7 @@ pub mod project_poi_add_edit_dlg;
 pub mod server_add_edit_dlg;
 pub mod server_database_add_edit_dlg;
 pub mod server_extra_user_add_edit_dlg;
+pub mod server_link_add_edit_dlg;
 pub mod server_note_add_edit_dlg;
 pub mod server_poi_add_edit_dlg;
 pub mod server_website_add_edit_dlg;
@@ -41,6 +42,7 @@ pub enum ProjectAddEditDialogComponent {
     Server(relm::Component<server_add_edit_dlg::ServerAddEditDialog>),
     ProjectPoi(relm::Component<project_poi_add_edit_dlg::ProjectPoiAddEditDialog>),
     ProjectNote(relm::Component<project_note_add_edit_dlg::ProjectNoteAddEditDialog>),
+    ServerLink(relm::Component<server_link_add_edit_dlg::ServerLinkAddEditDialog>),
 }
 
 impl ProjectAddEditDialogComponent {
@@ -49,6 +51,7 @@ impl ProjectAddEditDialogComponent {
             ProjectAddEditDialogComponent::Server(ref x) => x.widget(),
             ProjectAddEditDialogComponent::ProjectPoi(ref x) => x.widget(),
             ProjectAddEditDialogComponent::ProjectNote(ref x) => x.widget(),
+            ProjectAddEditDialogComponent::ServerLink(ref x) => x.widget(),
         }
     }
 }

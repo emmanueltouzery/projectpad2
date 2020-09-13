@@ -4,7 +4,7 @@ use crate::widgets::search_view;
 use crate::widgets::search_view::Msg as SearchViewMsg;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::ServerDatabase;
+use projectpadsql::models::{Server, ServerDatabase};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -17,8 +17,10 @@ pub enum Msg {
     ItemSelected((search_view::ProjectPadItem, i32, String)),
 }
 
+#[derive(Copy, Clone)]
 pub enum ItemType {
     ServerDatabase,
+    Server,
 }
 
 pub struct Model {
@@ -55,16 +57,26 @@ impl Widget for PickProjectpadItemButton {
     }
 
     fn fetch_item_name(&self, item_id: i32) {
+        let item_type = self.model.item_type;
         let s = self.model.item_sender.clone();
         self.model
             .db_sender
-            .send(SqlFunc::new(move |sql_conn| {
-                use projectpadsql::schema::server_database::dsl as db;
-                let server_db: ServerDatabase =
-                    db::server_database.find(item_id).first(sql_conn).unwrap();
-                let name = server_db.desc.clone();
-                s.send((search_view::ProjectPadItem::ServerDatabase(server_db), name))
-                    .unwrap();
+            .send(SqlFunc::new(move |sql_conn| match item_type {
+                ItemType::ServerDatabase => {
+                    use projectpadsql::schema::server_database::dsl as db;
+                    let server_db: ServerDatabase =
+                        db::server_database.find(item_id).first(sql_conn).unwrap();
+                    let name = server_db.desc.clone();
+                    s.send((search_view::ProjectPadItem::ServerDatabase(server_db), name))
+                        .unwrap();
+                }
+                ItemType::Server => {
+                    use projectpadsql::schema::server::dsl as srv;
+                    let server: Server = srv::server.find(item_id).first(sql_conn).unwrap();
+                    let name = server.desc.clone();
+                    s.send((search_view::ProjectPadItem::Server(server), name))
+                        .unwrap();
+                }
             }))
             .unwrap();
     }
@@ -113,7 +125,10 @@ impl Widget for PickProjectpadItemButton {
                 let dialog_contents = relm::init::<search_view::SearchView>((
                     self.model.db_sender.clone(),
                     Some("".to_string()),
-                    search_view::SearchItemsType::ServerDbsOnly,
+                    match self.model.item_type {
+                        ItemType::ServerDatabase => search_view::SearchItemsType::ServerDbsOnly,
+                        ItemType::Server => search_view::SearchItemsType::ServersOnly,
+                    },
                     search_view::OperationMode::SelectItem,
                     Some(save_btn),
                     None,

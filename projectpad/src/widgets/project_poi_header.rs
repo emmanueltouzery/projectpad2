@@ -8,6 +8,7 @@ use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_item_dlg;
 use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
+use super::dialogs::server_link_add_edit_dlg;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
@@ -362,6 +363,28 @@ impl Widget for ProjectPoiHeader {
                         );
                         self.model.project_add_edit_dialog = Some((
                             dialogs::ProjectAddEditDialogComponent::ProjectNote(component),
+                            dialog.clone(),
+                        ));
+                        dialog.show();
+                    }
+                    Some(ProjectItem::ServerLink(ref link)) => {
+                        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            dialog_helpers::prepare_dialog_param(
+                                self.model.db_sender.clone(),
+                                link.project_id,
+                                Some(link.clone()),
+                            ),
+                            server_link_add_edit_dlg::Msg::OkPressed,
+                            "Server link",
+                        );
+                        // relm::connect!(
+                        //     component@MsgProjectNoteAddEditDialog::ProjectNoteUpdated(ref note),
+                        //     self.model.relm,
+                        //     Msg::ProjectItemRefresh(ProjectItem::ProjectNote(note.clone()))
+                        // );
+                        self.model.project_add_edit_dialog = Some((
+                            dialogs::ProjectAddEditDialogComponent::ServerLink(component),
                             dialog.clone(),
                         ));
                         dialog.show();

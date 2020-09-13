@@ -17,7 +17,8 @@ use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase, ServerWebsite,
+    ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase, ServerLink,
+    ServerWebsite,
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -40,6 +41,7 @@ pub enum Msg {
     DeleteCurrentServer(Server),
     DeleteCurrentProjectPoi(ProjectPointOfInterest),
     DeleteCurrentProjectNote(ProjectNote),
+    DeleteCurrentServerLink(ServerLink),
     ServerAddItemActionCompleted,
     ServerAddItemChangeTitleTitle(&'static str),
     ProjectItemUpdated(Option<ProjectItem>),
@@ -419,6 +421,13 @@ impl Widget for ProjectPoiHeader {
                             Msg::DeleteCurrentProjectNote(note.clone()),
                         );
                     }
+                    Some(ProjectItem::ServerLink(srv_link)) => {
+                        self.ask_deletion(
+                            "server link",
+                            srv_link.desc.as_str(),
+                            Msg::DeleteCurrentServerLink(srv_link.clone()),
+                        );
+                    }
                     _ => {
                         eprintln!("TODO");
                     }
@@ -467,6 +476,21 @@ impl Widget for ProjectPoiHeader {
                         s.send(
                             dialog_helpers::delete_row(sql_conn, prj_note::project_note, note_id)
                                 .map(|_| ProjectItem::ProjectNote(note.clone())),
+                        )
+                        .unwrap();
+                    }))
+                    .unwrap();
+            }
+            Msg::DeleteCurrentServerLink(srv_link) => {
+                let link_id = srv_link.id;
+                let s = self.model.project_item_deleted_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        use projectpadsql::schema::server_link::dsl as srv_link;
+                        s.send(
+                            dialog_helpers::delete_row(sql_conn, srv_link::server_link, link_id)
+                                .map(|_| ProjectItem::ServerLink(srv_link.clone())),
                         )
                         .unwrap();
                     }))

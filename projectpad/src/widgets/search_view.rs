@@ -13,6 +13,8 @@ use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
 use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDbAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
+use super::dialogs::server_link_add_edit_dlg;
+use super::dialogs::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
 use super::dialogs::server_note_add_edit_dlg::Msg as MsgServerNoteAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg::Msg as MsgServerPoiAddEditDialog;
 use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
@@ -540,6 +542,28 @@ impl Widget for SearchView {
                     );
                     self.model.project_item_add_edit_dialog = Some((
                         ProjectAddEditDialogComponent::ProjectNote(component),
+                        dialog.clone(),
+                    ));
+                    dialog.show();
+                }
+                ProjectPadItem::ServerLink(srv_link) => {
+                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                        self.search_result_area.clone().upcast::<gtk::Widget>(),
+                        dialog_helpers::prepare_dialog_param(
+                            self.model.db_sender.clone(),
+                            srv_link.project_id,
+                            Some(srv_link),
+                        ),
+                        server_link_add_edit_dlg::Msg::OkPressed,
+                        "Server link",
+                    );
+                    relm::connect!(
+                        component@MsgServerLinkAddEditDialog::ServerLinkUpdated(_),
+                        self.model.relm,
+                        Msg::SearchResultsModified
+                    );
+                    self.model.project_item_add_edit_dialog = Some((
+                        ProjectAddEditDialogComponent::ServerLink(component),
                         dialog.clone(),
                     ));
                     dialog.show();

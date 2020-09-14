@@ -17,6 +17,7 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     ProjectActivated(Project),
+    ProjectUpdated(Project),
     EnvironmentToggled(EnvironmentType), // implementation detail
     EnvironmentChanged(EnvironmentType),
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
@@ -145,6 +146,16 @@ impl Widget for ProjectSummary {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::ProjectUpdated(prj) => {
+                self.model
+                    .project_add_edit_dialog
+                    .as_ref()
+                    .unwrap()
+                    .1
+                    .close();
+                self.model.project_add_edit_dialog = None;
+                self.model.relm.stream().emit(Msg::ProjectActivated(prj));
+            }
             Msg::ProjectActivated(prj) => {
                 self.radio_dev.set_sensitive(prj.has_dev);
                 self.radio_stg.set_sensitive(prj.has_stage);
@@ -270,11 +281,11 @@ impl Widget for ProjectSummary {
             MsgProjectAddEditDialog::OkPressed,
             "Project",
         );
-        // relm::connect!(
-        //     component@MsgServerNoteAddEditDialog::ServerNoteUpdated(ref note),
-        //     self.model.relm,
-        //     Msg::ServerItemUpdated(ServerItem::Note(note.clone()))
-        // );
+        relm::connect!(
+            component@MsgProjectAddEditDialog::ProjectUpdated(ref project),
+            self.model.relm,
+            Msg::ProjectUpdated(project.clone())
+        );
         self.model.project_add_edit_dialog = Some((component, dialog.clone()));
         dialog.show();
     }

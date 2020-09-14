@@ -50,7 +50,6 @@ pub struct Model {
     has_prod: bool,
     group_name: Option<String>,
     project_environments: Option<environments_picker::SelectedEnvironments>,
-    selected_environments: environments_picker::SelectedEnvironments,
     contents: String,
 }
 
@@ -131,12 +130,6 @@ impl Widget for ProjectNoteAddEditDialog {
                 stream3.emit(Msg::GotProjectEnvironments(project_environments));
             },
         );
-        let selected_environments = environments_picker::SelectedEnvironments {
-            has_dev: pn.map(|d| d.has_dev).unwrap_or(false),
-            has_stg: pn.map(|d| d.has_stage).unwrap_or(false),
-            has_uat: pn.map(|d| d.has_uat).unwrap_or(false),
-            has_prod: pn.map(|d| d.has_prod).unwrap_or(false),
-        };
         Model {
             db_sender,
             accel_group,
@@ -157,7 +150,6 @@ impl Widget for ProjectNoteAddEditDialog {
                 .map(|d| d.title.clone())
                 .unwrap_or_else(|| "".to_string()),
             project_environments: None,
-            selected_environments,
             contents: pn
                 .map(|d| d.contents.clone())
                 .unwrap_or_else(|| "".to_string()),
@@ -304,7 +296,12 @@ impl Widget for ProjectNoteAddEditDialog {
                     top_attach: 2,
                 },
             },
-            EnvironmentsPicker(self.model.selected_environments.clone()) {
+            EnvironmentsPicker(environments_picker::SelectedEnvironments {
+                has_dev: self.model.has_dev,
+                has_stg: self.model.has_stg,
+                has_uat: self.model.has_uat,
+                has_prod: self.model.has_prod,
+            }) {
                 cell: {
                     left_attach: 0,
                     top_attach: 3,

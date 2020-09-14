@@ -1,8 +1,8 @@
-use super::auth_key_button::AuthKeyButton;
-use super::auth_key_button::Msg::AuthFileChanged as AuthKeyButtonFileChanged;
 use super::dialog_helpers;
 use super::environments_picker::Msg::EnvironmentToggled as EnvironmentsPickerMsgEnvToggled;
 use super::environments_picker::{EnvironmentsPicker, SelectedEnvironments};
+use super::file_contents_button::FileContentsButton;
+use super::file_contents_button::Msg::FileChanged as FileContentsButtonFileChanged;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use projectpadsql::models::Project;
@@ -74,11 +74,11 @@ impl Widget for ProjectAddEditDialog {
                     top_attach: 1,
                 },
             },
-            AuthKeyButton((
-                Some(self.model.name.clone()).filter(|n| !n.is_empty()),
+            FileContentsButton((
+                Some(self.model.name.clone()).filter(|n| !n.is_empty()).map(|n| format!("<{} picture>", &n)),
                 self.model.icon.clone(),
             )) {
-                // AuthKeyButtonFileChanged(ref val) => Msg::AuthFileChanged(val.clone()),
+                // FileContentsButtonFileChanged(ref val) => Msg::FileContentsFileChanged(val.clone()),
                 cell: {
                     left_attach: 1,
                     top_attach: 6,

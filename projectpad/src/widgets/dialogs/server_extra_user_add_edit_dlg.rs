@@ -1,6 +1,6 @@
-use super::auth_key_button::AuthKeyButton;
-use super::auth_key_button::Msg::AuthFileChanged as AuthKeyButtonFileChanged;
 use super::dialog_helpers;
+use super::file_contents_button::FileContentsButton;
+use super::file_contents_button::Msg::FileChanged as FileContentsButtonFileChanged;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -247,11 +247,11 @@ impl Widget for ServerExtraUserAddEditDialog {
                     top_attach: 6,
                 },
             },
-            AuthKeyButton((
+            FileContentsButton((
                 self.model.auth_key_filename.clone(),
                 self.model.auth_key.clone(),
             )) {
-                AuthKeyButtonFileChanged(ref val) => Msg::AuthFileChanged(val.clone()),
+                FileContentsButtonFileChanged(ref val) => Msg::AuthFileChanged(val.clone()),
                 cell: {
                     left_attach: 1,
                     top_attach: 6,

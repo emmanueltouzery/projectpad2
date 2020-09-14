@@ -11,12 +11,12 @@ use std::path::PathBuf;
 pub enum Msg {
     RemoveAuthFile,
     SaveAuthFile,
-    AuthFilePicked,
-    AuthFileChanged((Option<String>, Option<Vec<u8>>)),
+    FilePicked,
+    FileChanged((Option<String>, Option<Vec<u8>>)),
 }
 
 pub struct Model {
-    relm: relm::Relm<AuthKeyButton>,
+    relm: relm::Relm<FileContentsButton>,
     auth_key_filename: Option<String>,
     // store the auth key & not the Path, because it's what I have
     // when reading from SQL. So by storing it also when adding a new
@@ -25,7 +25,7 @@ pub struct Model {
 }
 
 #[widget]
-impl Widget for AuthKeyButton {
+impl Widget for FileContentsButton {
     fn init_view(&mut self) {
         self.update_auth_file();
     }
@@ -56,9 +56,9 @@ impl Widget for AuthKeyButton {
                 self.model
                     .relm
                     .stream()
-                    .emit(Msg::AuthFileChanged((None, None)));
+                    .emit(Msg::FileChanged((None, None)));
             }
-            Msg::AuthFilePicked => {
+            Msg::FilePicked => {
                 match self.auth_key.get_filename().and_then(|f| {
                     let path = Path::new(&f);
                     let fname = path
@@ -75,7 +75,7 @@ impl Widget for AuthKeyButton {
                         self.model.auth_key_filename = Some(f);
                         self.model.auth_key = Some(c);
                         self.update_auth_file();
-                        self.model.relm.stream().emit(Msg::AuthFileChanged((
+                        self.model.relm.stream().emit(Msg::FileChanged((
                             self.model.auth_key_filename.clone(),
                             self.model.auth_key.clone(),
                         )));
@@ -89,7 +89,7 @@ impl Widget for AuthKeyButton {
                 }
             }
             // meant for my parent
-            Msg::AuthFileChanged(_) => {}
+            Msg::FileChanged(_) => {}
             Msg::SaveAuthFile => {
                 // https://stackoverflow.com/questions/54487052/how-do-i-add-a-save-button-to-the-gtk-filechooser-dialog
                 let dialog = gtk::FileChooserDialogBuilder::new()
@@ -147,7 +147,7 @@ impl Widget for AuthKeyButton {
                     name: Some("no_file")
                 },
                 hexpand: true,
-                selection_changed(_) => Msg::AuthFilePicked,
+                selection_changed(_) => Msg::FilePicked,
             },
             // if there is a file, a label with the filename,
             // and a button to remove the file

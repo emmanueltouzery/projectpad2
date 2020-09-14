@@ -20,12 +20,14 @@ pub enum Msg {
     ProjectActivated((Project, UpdateParents)),
     GotProjects(Vec<Project>),
     ProjectSelectedFromElsewhere(i32),
+    ProjectListChanged,
 }
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     relm: relm::Relm<ProjectList>,
     projects: Vec<Project>,
+    active_project_id: Option<i32>,
     // need to keep hold of the children widgets
     children_widgets: Vec<Component<ProjectBadge>>,
     _channel: relm::Channel<Vec<Project>>,
@@ -41,7 +43,6 @@ impl Widget for ProjectList {
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
         let (channel, sender) = relm::Channel::new(move |prjs: Vec<Project>| {
-            println!("emitting {}", prjs.len());
             stream.emit(Msg::GotProjects(prjs));
         });
         Model {
@@ -50,13 +51,16 @@ impl Widget for ProjectList {
             _channel: channel,
             sender,
             projects: vec![],
+            active_project_id: None,
             children_widgets: vec![],
         }
     }
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::ProjectActivated(ref _project) => {}
+            Msg::ProjectActivated((ref project, _)) => {
+                self.model.active_project_id = Some(project.id);
+            }
             Msg::GotProjects(prjs) => {
                 self.model.projects = prjs;
                 self.update_projects_list();
@@ -67,7 +71,11 @@ impl Widget for ProjectList {
                         .relm
                         .stream()
                         .emit(Msg::ProjectActivated((prj.clone(), UpdateParents::No)));
+                    self.model.active_project_id = Some(pid);
                 }
+            }
+            Msg::ProjectListChanged => {
+                self.fetch_projects();
             }
         }
     }
@@ -109,6 +117,15 @@ impl Widget for ProjectList {
                 child,
                 ProjectBadgeMsg::ActiveProjectChanged(project.0.id));
             self.model.children_widgets.push(child);
+        }
+        if let Some(pid) = self.model.active_project_id {
+            if let Some(p) = self.model.projects.iter().find(|p| p.id == pid) {
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ProjectActivated((p.clone(), UpdateParents::No)));
+                return;
+            }
         }
         // if we have projects, select the first one
         if let Some(prj) = self.model.projects.first() {

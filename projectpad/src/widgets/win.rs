@@ -12,6 +12,7 @@ use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjec
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::Msg::ProjectItemAdded as ProjectSummaryItemAddedMsg;
+use super::project_summary::Msg::ProjectUpdated as ProjectSummaryProjectUpdated;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
@@ -47,6 +48,7 @@ pub enum Msg {
     ProjectItemUpdated(ProjectItem),
     ProjectItemDeleted(ProjectItem),
     RequestDisplayItem(ServerItem),
+    ProjectListChanged,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -241,6 +243,11 @@ impl Widget for Win {
                     .stream()
                     .emit(ProjectItemsListMsg::RefreshItemList(None));
             }
+            Msg::ProjectListChanged => {
+                self.project_list
+                    .stream()
+                    .emit(ProjectListMsg::ProjectListChanged);
+            }
         }
     }
 
@@ -279,6 +286,7 @@ impl Widget for Win {
                         ProjectSummary(self.model.db_sender.clone()) {
                             EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
                             ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                            ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
                         },
                         #[name="project_items_list"]
                         ProjectItemsList(self.model.db_sender.clone()) {

@@ -1,4 +1,7 @@
 use super::dialogs::dialog_helpers;
+use super::dialogs::project_add_edit_dlg;
+use super::dialogs::project_add_edit_dlg::Msg as MsgProjectAddEditDialog;
+use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
 use super::dialogs::project_add_item_dlg;
 use super::dialogs::project_add_item_dlg::ProjectAddItemDialog;
 use super::dialogs::standard_dialogs;
@@ -18,6 +21,7 @@ pub enum Msg {
     EnvironmentChanged(EnvironmentType),
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
     AddProjectItem,
+    EditProject,
     ProjectAddItemActionCompleted(ProjectItem),
     ProjectAddItemChangeTitleTitle(&'static str),
     ProjectItemAdded(ProjectItem),
@@ -30,6 +34,7 @@ pub struct Model {
     title: gtk::Label,
     btn_and_handler: Vec<(gtk::RadioButton, glib::SignalHandlerId)>,
     header_popover: gtk::Popover,
+    project_add_edit_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
     project_add_item_component: Option<relm::Component<ProjectAddItemDialog>>,
     project_add_item_dialog: Option<gtk::Dialog>,
     cur_environment: EnvironmentType,
@@ -94,6 +99,14 @@ impl Widget for ProjectSummary {
             Msg::AddProjectItem
         );
         popover_vbox.add(&popover_btn);
+        let popover_edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+        relm::connect!(
+            self.model.relm,
+            popover_edit_btn,
+            connect_clicked(_),
+            Msg::EditProject
+        );
+        popover_vbox.add(&popover_edit_btn);
         popover_vbox.show_all();
         self.model.header_popover.add(&popover_vbox);
         self.header_actions_btn
@@ -113,6 +126,7 @@ impl Widget for ProjectSummary {
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             project_add_item_dialog: None,
             project_add_item_component: None,
+            project_add_edit_dialog: None,
             cur_environment: EnvironmentType::EnvDevelopment,
         }
     }
@@ -237,9 +251,32 @@ impl Widget for ProjectSummary {
             Msg::AddProjectItem => {
                 self.show_project_add_item_dialog();
             }
+            Msg::EditProject => {
+                self.show_project_edit_dialog();
+            }
             // meant for my parent
             Msg::ProjectItemAdded(_) => {}
         }
+    }
+
+    fn show_project_edit_dialog(&mut self) {
+        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+            self.project_summary_root.clone().upcast::<gtk::Widget>(),
+            (
+                self.model.db_sender.clone(),
+                self.model.project.clone(),
+                gtk::AccelGroup::new(),
+            ),
+            MsgProjectAddEditDialog::OkPressed,
+            "Project",
+        );
+        // relm::connect!(
+        //     component@MsgServerNoteAddEditDialog::ServerNoteUpdated(ref note),
+        //     self.model.relm,
+        //     Msg::ServerItemUpdated(ServerItem::Note(note.clone()))
+        // );
+        self.model.project_add_edit_dialog = Some((component, dialog.clone()));
+        dialog.show();
     }
 
     fn show_project_add_item_dialog(&mut self) {

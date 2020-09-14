@@ -6,6 +6,7 @@ mod auth_key_button;
 mod environments_picker;
 mod note_edit;
 mod pick_projectpad_item_button;
+pub mod project_add_edit_dlg;
 pub mod project_add_item_dlg;
 pub mod project_note_add_edit_dlg;
 pub mod project_poi_add_edit_dlg;

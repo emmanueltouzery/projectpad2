@@ -284,6 +284,16 @@ impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, i32, Option<T>
     }
 }
 
+impl<T> ServerItemDialogModelParam<T> for (mpsc::Sender<SqlFunc>, Option<T>, gtk::AccelGroup) {
+    fn get_item(&self) -> Option<&T> {
+        self.1.as_ref()
+    }
+
+    fn get_accel_group(&self) -> &gtk::AccelGroup {
+        &self.2
+    }
+}
+
 pub fn prepare_dialog_param<T>(
     db_sender: mpsc::Sender<SqlFunc>,
     parent_id: i32,

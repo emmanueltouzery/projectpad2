@@ -585,6 +585,7 @@ impl Widget for ProjectPoiHeader {
             .send(SqlFunc::new(move |sql_conn| {
                 use projectpadsql::schema::server::dsl as srv;
                 use projectpadsql::schema::server_database::dsl as db;
+                use projectpadsql::schema::server_link::dsl as srv_link;
                 use projectpadsql::schema::server_website::dsl as srvw;
 
                 // we cannot delete a server if a database under it
@@ -594,6 +595,10 @@ impl Widget for ProjectPoiHeader {
                     .filter(db::server_id.eq(server_id))
                     .load::<(ServerWebsite, ServerDatabase)>(sql_conn)
                     .unwrap();
+                let dependent_serverlinks = srv_link::server_link
+                    .filter(srv_link::linked_server_id.eq(server_id))
+                    .load::<ServerLink>(sql_conn)
+                    .unwrap();
                 if !dependent_websites.is_empty() {
                     s.send(Err((
                         "Cannot delete server",
@@ -601,6 +606,14 @@ impl Widget for ProjectPoiHeader {
                             "databases {} on that server are used by websites {}",
                             itertools::join(dependent_websites.iter().map(|(_, d)| &d.name), ", "),
                             itertools::join(dependent_websites.iter().map(|(w, _)| &w.desc), ", ")
+                        )),
+                    )))
+                } else if !dependent_serverlinks.is_empty() {
+                    s.send(Err((
+                        "Cannot delete server",
+                        Some(format!(
+                            "server links {} are tied to this server",
+                            itertools::join(dependent_serverlinks.iter().map(|l| &l.desc), ", "),
                         )),
                     )))
                 } else {

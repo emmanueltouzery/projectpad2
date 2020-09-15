@@ -95,7 +95,7 @@ impl Widget for ServerLinkAddEditDialog {
         Model {
             db_sender,
             project_id,
-            environment_type: None,
+            environment_type: sl.map(|s| s.environment),
             server_link_id: sl.map(|s| s.id),
             _groups_channel: groups_channel,
             groups_sender,

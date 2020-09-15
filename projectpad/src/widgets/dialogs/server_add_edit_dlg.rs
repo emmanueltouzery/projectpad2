@@ -5,7 +5,7 @@ use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{Server, ServerAccessType, ServerType};
+use projectpadsql::models::{EnvironmentType, Server, ServerAccessType, ServerType};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::str::FromStr;
@@ -14,6 +14,7 @@ use strum::IntoEnumIterator;
 
 #[derive(Msg, Debug, Clone)]
 pub enum Msg {
+    SetEnvironmentType(EnvironmentType),
     GotGroups(Vec<String>),
     AuthFileChanged((Option<String>, Option<Vec<u8>>)),
     OkPressed,
@@ -33,6 +34,7 @@ pub struct Model {
     groups_store: gtk::ListStore,
     project_id: i32,
     server_id: Option<i32>,
+    environment_type: Option<EnvironmentType>,
 
     description: String,
     is_retired: bool,
@@ -138,6 +140,7 @@ impl Widget for ServerAddEditDialog {
         let srv = server.as_ref();
         Model {
             relm: relm.clone(),
+            environment_type: srv.map(|s| s.environment),
             db_sender,
             _groups_channel: groups_channel,
             groups_sender,
@@ -174,6 +177,7 @@ impl Widget for ServerAddEditDialog {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::SetEnvironmentType(env) => self.model.environment_type = Some(env),
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
@@ -194,6 +198,7 @@ impl Widget for ServerAddEditDialog {
     }
 
     fn update_server(&self) {
+        let new_env_type = self.model.environment_type.unwrap();
         let server_id = self.model.server_id;
         let project_id = self.model.project_id;
         let new_desc = self.desc_entry.get_text();
@@ -239,6 +244,7 @@ impl Widget for ServerAddEditDialog {
                     srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
                     srv::server_type.eq(new_servertype),
                     srv::access_type.eq(new_server_accesstype),
+                    srv::environment.eq(new_env_type),
                     srv::project_id.eq(project_id),
                 );
                 let server_after_result = perform_insert_or_update!(

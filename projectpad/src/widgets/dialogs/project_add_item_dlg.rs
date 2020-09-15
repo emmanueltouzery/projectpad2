@@ -101,7 +101,7 @@ impl Widget for ProjectAddItemDialog {
                         "Add Project note",
                     )
                 } else if self.add_server_link.get_active() {
-                    let r = (
+                    (
                         plug_second_tab!(
                             self,
                             dialog,
@@ -112,19 +112,24 @@ impl Widget for ProjectAddItemDialog {
                             ProjectItem::ServerLink,
                         ),
                         "Add server link",
-                    );
-                    match self.model.dialog_component.as_ref() {
-                        Some(ProjectAddEditDialogComponent::ServerLink(lnk)) => {
-                            lnk.stream()
-                                .emit(MsgServerLinkAddEditDialog::SetEnvironmentType(
-                                    self.model.environment_type,
-                                ))
-                        }
-                        _ => panic!(),
-                    };
-                    r
+                    )
                 } else {
                     panic!();
+                };
+                match self.model.dialog_component.as_ref() {
+                    Some(ProjectAddEditDialogComponent::ServerLink(lnk)) => {
+                        lnk.stream()
+                            .emit(MsgServerLinkAddEditDialog::SetEnvironmentType(
+                                self.model.environment_type,
+                            ))
+                    }
+                    Some(ProjectAddEditDialogComponent::Server(srv)) => {
+                        srv.stream()
+                            .emit(MsgServerAddEditDialog::SetEnvironmentType(
+                                self.model.environment_type,
+                            ))
+                    }
+                    _ => {}
                 };
                 self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
                 self.tabs_stack.add_named(widget, "dialog");

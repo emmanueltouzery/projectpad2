@@ -121,22 +121,6 @@ impl Widget for ProjectList {
                 ProjectBadgeMsg::ActiveProjectChanged(project.0.id));
             self.model.children_widgets.push(child);
         }
-        if let Some(pid) = self.model.active_project_id {
-            if let Some(p) = self.model.projects.iter().find(|p| p.id == pid) {
-                self.model
-                    .relm
-                    .stream()
-                    .emit(Msg::ProjectActivated((p.clone(), UpdateParents::No)));
-                return;
-            }
-        }
-        // if we have projects, select the first one
-        if let Some(prj) = self.model.projects.first() {
-            self.model
-                .relm
-                .stream()
-                .emit(Msg::ProjectActivated((prj.clone(), UpdateParents::Yes)));
-        }
         let add_btn = gtk::ButtonBuilder::new()
             .always_show_image(true)
             .image(&gtk::Image::from_icon_name(
@@ -153,6 +137,22 @@ impl Widget for ProjectList {
             Msg::AddProject
         );
         self.project_list.add(&add_btn);
+        if let Some(pid) = self.model.active_project_id {
+            if let Some(p) = self.model.projects.iter().find(|p| p.id == pid) {
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ProjectActivated((p.clone(), UpdateParents::No)));
+                return;
+            }
+        }
+        // if we have projects, select the first one
+        if let Some(prj) = self.model.projects.first() {
+            self.model
+                .relm
+                .stream()
+                .emit(Msg::ProjectActivated((prj.clone(), UpdateParents::Yes)));
+        }
     }
 
     view! {

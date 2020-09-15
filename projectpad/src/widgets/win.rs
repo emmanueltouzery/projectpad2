@@ -1,7 +1,10 @@
+use super::dialogs::dialog_helpers;
+use super::dialogs::project_add_edit_dlg::Msg as MsgProjectAddEditDialog;
+use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
 use super::project_items_list::Msg as ProjectItemsListMsg;
 use super::project_items_list::{ProjectItem, ProjectItemsList};
 use super::project_list::Msg as ProjectListMsg;
-use super::project_list::{Msg::ProjectActivated, ProjectList, UpdateParents};
+use super::project_list::{Msg::AddProject, Msg::ProjectActivated, ProjectList, UpdateParents};
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::Msg::RequestDisplayServerItem as ProjectPoiContentsMsgRequestDisplayServerItem;
 use super::project_poi_contents::ProjectPoiContents;
@@ -48,6 +51,7 @@ pub enum Msg {
     ProjectItemUpdated(ProjectItem),
     ProjectItemDeleted(ProjectItem),
     RequestDisplayItem(ServerItem),
+    AddProject,
     ProjectListChanged,
 }
 
@@ -62,6 +66,7 @@ pub struct Model {
     titlebar: Component<WinTitleBar>,
     _display_item_channel: relm::Channel<DisplayItemParams>,
     display_item_sender: relm::Sender<DisplayItemParams>,
+    project_add_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
 }
 
 const CHILD_NAME_NORMAL: &str = "normal";
@@ -97,6 +102,7 @@ impl Widget for Win {
             titlebar,
             display_item_sender,
             _display_item_channel: display_item_channel,
+            project_add_dialog: None,
         }
     }
 
@@ -244,9 +250,28 @@ impl Widget for Win {
                     .emit(ProjectItemsListMsg::RefreshItemList(None));
             }
             Msg::ProjectListChanged => {
+                if let Some((_, dlg)) = &self.model.project_add_dialog {
+                    dlg.close();
+                    self.model.project_add_dialog = None;
+                }
                 self.project_list
                     .stream()
                     .emit(ProjectListMsg::ProjectListChanged);
+            }
+            Msg::AddProject => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.window.clone().upcast::<gtk::Widget>(),
+                    (self.model.db_sender.clone(), None, gtk::AccelGroup::new()),
+                    MsgProjectAddEditDialog::OkPressed,
+                    "Project",
+                );
+                relm::connect!(
+                    component@MsgProjectAddEditDialog::ProjectUpdated(ref project),
+                    self.model.relm,
+                    Msg::ProjectListChanged
+                );
+                self.model.project_add_dialog = Some((component, dialog.clone()));
+                dialog.show();
             }
         }
     }
@@ -278,7 +303,8 @@ impl Widget for Win {
                     #[name="project_list"]
                     ProjectList(self.model.db_sender.clone()) {
                         property_width_request: 60,
-                        ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone())
+                        ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone()),
+                        AddProject => Msg::AddProject,
                     },
                     gtk::Box {
                         orientation: gtk::Orientation::Vertical,

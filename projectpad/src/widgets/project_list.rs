@@ -21,6 +21,7 @@ pub enum Msg {
     GotProjects(Vec<Project>),
     ProjectSelectedFromElsewhere(i32),
     ProjectListChanged,
+    AddProject,
 }
 
 pub struct Model {
@@ -77,6 +78,8 @@ impl Widget for ProjectList {
             Msg::ProjectListChanged => {
                 self.fetch_projects();
             }
+            // for my parent
+            Msg::AddProject => {}
         }
     }
 
@@ -134,6 +137,22 @@ impl Widget for ProjectList {
                 .stream()
                 .emit(Msg::ProjectActivated((prj.clone(), UpdateParents::Yes)));
         }
+        let add_btn = gtk::ButtonBuilder::new()
+            .always_show_image(true)
+            .image(&gtk::Image::from_icon_name(
+                Some("list-add-symbolic"),
+                gtk::IconSize::Menu,
+            ))
+            .relief(gtk::ReliefStyle::None)
+            .build();
+        add_btn.show();
+        relm::connect!(
+            self.model.relm,
+            add_btn,
+            connect_clicked(_),
+            Msg::AddProject
+        );
+        self.project_list.add(&add_btn);
     }
 
     view! {

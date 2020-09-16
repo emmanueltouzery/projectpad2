@@ -14,7 +14,7 @@ impl Icon {
     pub const MONITORING: Icon = Icon("monitoring"); // heartbeat?
     pub const NOTE: Icon = Icon("clipboard"); // sticky-note?
     pub const POINT_OF_INTEREST: Icon = Icon("cube"); // cube, file, flag, folder, map_marker_alt?
-    pub const SERVER_LINK: Icon = Icon("link"); // link, hdd?
+    pub const SERVER_LINK: Icon = Icon("link"); // link, hdd, share-square?
     pub const USER: Icon = Icon("user");
     pub const LOG_FILE: Icon = Icon("log-file");
     pub const CONFIG_FILE: Icon = Icon("config-file");

@@ -22,6 +22,9 @@ pub enum Msg {
     ProjectSelectedFromElsewhere(i32),
     ProjectListChanged,
     AddProject,
+    MouseEnterProject(i32),
+    MouseLeaveProject(i32),
+    UpdateProjectTooltip(Option<(String, i32)>),
 }
 
 pub struct Model {
@@ -80,6 +83,30 @@ impl Widget for ProjectList {
             }
             // for my parent
             Msg::AddProject => {}
+            Msg::MouseEnterProject(id) => {
+                if let Some(idx) = self.model.projects.iter().position(|p| p.id == id) {
+                    let child_widget = self.model.children_widgets[idx as usize].widget();
+                    let y = -self
+                        .scroll
+                        .translate_coordinates(child_widget, 0, 0)
+                        .unwrap()
+                        .1;
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::UpdateProjectTooltip(Some((
+                            self.model.projects[idx].name.clone(),
+                            y,
+                        ))));
+                }
+            }
+            Msg::MouseLeaveProject(id) => {
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::UpdateProjectTooltip(None));
+            }
+            Msg::UpdateProjectTooltip(_) => {}
         }
     }
 
@@ -113,6 +140,16 @@ impl Widget for ProjectList {
                 child@ProjectBadgeMsg::Activate(ref project),
                 self.model.relm,
                 Msg::ProjectActivated((project.clone(), UpdateParents::Yes))
+            );
+            relm::connect!(
+                child@ProjectBadgeMsg::MouseEnterProject(id),
+                self.model.relm,
+                Msg::MouseEnterProject(id)
+            );
+            relm::connect!(
+                child@ProjectBadgeMsg::MouseLeaveProject(id),
+                self.model.relm,
+                Msg::MouseLeaveProject(id)
             );
             let relm = &self.model.relm;
             relm::connect!(
@@ -156,6 +193,7 @@ impl Widget for ProjectList {
     }
 
     view! {
+        #[name="scroll"]
         gtk::ScrolledWindow {
             #[name="project_list"]
             gtk::Box {

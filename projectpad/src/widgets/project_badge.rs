@@ -5,7 +5,7 @@ use relm::{DrawHandler, Widget};
 use relm_derive::{widget, Msg};
 use std::f64::consts::PI;
 
-const OUTER_SIZE: i32 = 60;
+pub const OUTER_SIZE: i32 = 60;
 const PADDING: i32 = 5;
 
 #[derive(Msg)]
@@ -14,6 +14,10 @@ pub enum Msg {
     Click,
     Activate(Project),
     ActiveProjectChanged(i32),
+    MouseEnter,
+    MouseLeave,
+    MouseEnterProject(i32),
+    MouseLeaveProject(i32),
 }
 
 pub struct Model {
@@ -28,11 +32,13 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
-        println!("badge init_view called");
         self.drawing_area.set_size_request(OUTER_SIZE, OUTER_SIZE);
         self.model.draw_handler.init(&self.drawing_area);
-        self.drawing_area
-            .add_events(gdk::EventMask::BUTTON_PRESS_MASK);
+        self.drawing_area.add_events(
+            gdk::EventMask::BUTTON_PRESS_MASK
+                | gdk::EventMask::ENTER_NOTIFY_MASK
+                | gdk::EventMask::LEAVE_NOTIFY_MASK,
+        );
     }
 
     fn model(relm: &relm::Relm<Self>, project: Project) -> Model {
@@ -206,6 +212,20 @@ impl Widget for ProjectBadge {
                     self.model.backing_buffer = None;
                 }
             }
+            Msg::MouseEnter => {
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::MouseEnterProject(self.model.project.id));
+            }
+            Msg::MouseLeave => {
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::MouseLeaveProject(self.model.project.id));
+            }
+            Msg::MouseEnterProject(_) => {}
+            Msg::MouseLeaveProject(_) => {}
         }
     }
 
@@ -214,6 +234,8 @@ impl Widget for ProjectBadge {
         gtk::DrawingArea {
             draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
             button_press_event(_, _) => (Msg::Click, Inhibit(false)),
+            enter_notify_event(_, _) => (Msg::MouseEnter, Inhibit(false)),
+            leave_notify_event(_, _) => (Msg::MouseLeave, Inhibit(false)),
         }
     }
 }

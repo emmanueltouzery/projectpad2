@@ -458,10 +458,6 @@ impl Widget for SearchView {
                     } else {
                         SCROLLBAR_WHEEL_DY
                     };
-                println!(
-                    "scroll!! {} {} {} {} {}",
-                    direction, old_val, new_val, dx, dy
-                );
                 self.search_scroll.set_value(new_val);
             }
             Msg::ScrollChanged => self.search_result_area.queue_draw(),

@@ -4,7 +4,9 @@ use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
 use super::project_items_list::Msg as ProjectItemsListMsg;
 use super::project_items_list::{ProjectItem, ProjectItemsList};
 use super::project_list::Msg as ProjectListMsg;
-use super::project_list::{Msg::AddProject, Msg::ProjectActivated, ProjectList, UpdateParents};
+use super::project_list::{
+    Msg::AddProject, Msg::ProjectActivated, Msg::UpdateProjectTooltip, ProjectList, UpdateParents,
+};
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::Msg::RequestDisplayServerItem as ProjectPoiContentsMsgRequestDisplayServerItem;
 use super::project_poi_contents::ProjectPoiContents;
@@ -21,6 +23,8 @@ use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
 use super::search_view::{OperationMode, SearchItemsType, SearchView};
 use super::server_poi_contents::ServerItem;
+use super::tooltips_overlay;
+use super::tooltips_overlay::TooltipsOverlay;
 use super::wintitlebar::Msg as WinTitleBarMsg;
 use super::wintitlebar::WinTitleBar;
 use crate::sql_thread::SqlFunc;
@@ -28,6 +32,7 @@ use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use diesel::prelude::*;
 use gdk::ModifierType;
+use gdk::WindowExt;
 use gtk::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project, Server};
 use relm::{Component, Widget};
@@ -53,6 +58,7 @@ pub enum Msg {
     RequestDisplayItem(ServerItem),
     AddProject,
     ProjectListChanged,
+    UpdateProjectTooltip(Option<(String, i32)>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,6 +73,7 @@ pub struct Model {
     _display_item_channel: relm::Channel<DisplayItemParams>,
     display_item_sender: relm::Sender<DisplayItemParams>,
     project_add_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
+    tooltips_overlay: Component<TooltipsOverlay>,
 }
 
 const CHILD_NAME_NORMAL: &str = "normal";
@@ -79,6 +86,11 @@ impl Widget for Win {
             println!("Error loading the CSS: {}", err);
         }
         let titlebar = &self.model.titlebar;
+        let overlay_widget = self.model.tooltips_overlay.widget();
+        self.tooltip_overlay.add_overlay(overlay_widget);
+        self.tooltip_overlay
+            .set_overlay_pass_through(overlay_widget, true);
+        overlay_widget.get_window().unwrap().set_pass_through(true);
         relm::connect!(titlebar@WinTitleBarMsg::SearchActiveChanged(is_active),
                                self.model.relm, Msg::SearchActiveChanged(is_active));
         relm::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
@@ -90,6 +102,7 @@ impl Widget for Win {
             .unwrap()
             .add_resource_path("/icons");
         let titlebar = relm::init::<WinTitleBar>(()).expect("win title bar init");
+        let tooltips_overlay = relm::init::<TooltipsOverlay>(()).expect("tooltips overlay init");
 
         let stream = relm.stream().clone();
         let (display_item_channel, display_item_sender) =
@@ -100,6 +113,7 @@ impl Widget for Win {
             relm: relm.clone(),
             db_sender,
             titlebar,
+            tooltips_overlay,
             display_item_sender,
             _display_item_channel: display_item_channel,
             project_add_dialog: None,
@@ -273,6 +287,12 @@ impl Widget for Win {
                 self.model.project_add_dialog = Some((component, dialog.clone()));
                 dialog.show();
             }
+            Msg::UpdateProjectTooltip(params) => {
+                self.model
+                    .tooltips_overlay
+                    .stream()
+                    .emit(tooltips_overlay::Msg::UpdateProjectTooltip(params.clone()));
+            }
         }
     }
 
@@ -305,23 +325,30 @@ impl Widget for Win {
                         property_width_request: 60,
                         ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone()),
                         AddProject => Msg::AddProject,
+                        UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
                     },
-                    gtk::Box {
-                        orientation: gtk::Orientation::Vertical,
-                        #[name="project_summary"]
-                        ProjectSummary(self.model.db_sender.clone()) {
-                            EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
-                            ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                            ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
-                        },
-                        #[name="project_items_list"]
-                        ProjectItemsList(self.model.db_sender.clone()) {
-                            property_width_request: 260,
-                            child: {
-                                fill: true,
-                                expand: true,
+                    // we use the overlay to display a tooltip with the name
+                    // of the project from the project_list that the mouse
+                    // currently hovers.
+                    #[name="tooltip_overlay"]
+                    gtk::Overlay {
+                        gtk::Box {
+                            orientation: gtk::Orientation::Vertical,
+                            #[name="project_summary"]
+                            ProjectSummary(self.model.db_sender.clone()) {
+                                EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
+                                ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
                             },
-                            ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                            #[name="project_items_list"]
+                            ProjectItemsList(self.model.db_sender.clone()) {
+                                property_width_request: 260,
+                                child: {
+                                    fill: true,
+                                    expand: true,
+                                },
+                                ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                            },
                         },
                     },
                     gtk::Box {

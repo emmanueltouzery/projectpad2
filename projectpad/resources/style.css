@@ -51,6 +51,15 @@
   margin-bottom: 5px;
 }
 
+.project_name_tooltip {
+  color: @theme_base_color;
+  background-color: @theme_text_color;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 10px;
+  border: 2px solid @theme_base_color;
+}
+
 .item_label {
   opacity: 0.6;
   font-weight: bold;

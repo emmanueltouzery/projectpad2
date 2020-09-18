@@ -11,6 +11,7 @@ use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::Msg::RequestDisplayServerItem as ProjectPoiContentsMsgRequestDisplayServerItem;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
+use super::project_poi_header::Msg::GotoItem as ProjectPoiHeaderGotoItemMsg;
 use super::project_poi_header::Msg::ProjectItemDeleted as ProjectPoiHeaderProjectItemDeletedMsg;
 use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjectItemRefreshMsg;
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
@@ -201,13 +202,10 @@ impl Widget for Win {
                     .send(SqlFunc::new(move |sql_conn| {
                         use projectpadsql::schema::project::dsl as prj;
                         use projectpadsql::schema::server::dsl as srv;
-                        let server: Server = srv::server
-                            .find(server_item.server_id())
-                            .first(sql_conn)
-                            .unwrap();
-                        let project = prj::project
-                            .find(server.project_id)
-                            .first(sql_conn)
+                        let (server, project) = srv::server
+                            .inner_join(prj::project)
+                            .filter(srv::id.eq(server_item.server_id()))
+                            .first::<(Server, Project)>(sql_conn)
                             .unwrap();
                         s.send((
                             project,
@@ -364,7 +362,9 @@ impl Widget for Win {
                         ProjectPoiHeader((self.model.db_sender.clone(), None)) {
                             ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
                             ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
-                            ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                            ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
+                            ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
+                                (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
                         },
                         #[name="project_poi_contents"]
                         ProjectPoiContents(self.model.db_sender.clone()) {

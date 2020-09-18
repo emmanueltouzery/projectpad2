@@ -17,8 +17,8 @@ use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase, ServerLink,
-    ServerWebsite,
+    Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase,
+    ServerLink, ServerWebsite,
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -30,6 +30,7 @@ enum ActionTypes {
     Copy,
     Delete,
     AddItem,
+    GotoItem,
 }
 
 #[derive(Msg, Clone)]
@@ -45,10 +46,13 @@ pub enum Msg {
     ServerAddItemActionCompleted,
     ServerAddItemChangeTitleTitle(&'static str),
     ProjectItemUpdated(Option<ProjectItem>),
+    GotoItem(Project, Server),
 }
 
 // String for details, because I can't pass Error across threads
 type DeleteResult = Result<ProjectItem, (&'static str, Option<String>)>;
+
+type GotoResult = (Project, Server);
 
 pub struct Model {
     relm: relm::Relm<ProjectPoiHeader>,
@@ -61,6 +65,8 @@ pub struct Model {
     server_add_item_dialog: Option<gtk::Dialog>,
     _project_item_deleted_channel: relm::Channel<DeleteResult>,
     project_item_deleted_sender: relm::Sender<DeleteResult>,
+    _goto_server_channel: relm::Channel<GotoResult>,
+    goto_server_sender: relm::Sender<GotoResult>,
 }
 
 #[derive(Debug)]
@@ -273,6 +279,11 @@ impl Widget for ProjectPoiHeader {
                 Ok(pi) => stream.emit(Msg::ProjectItemDeleted(pi)),
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
+        let stream2 = relm.stream().clone();
+        let (_goto_server_channel, goto_server_sender) =
+            relm::Channel::new(move |r: GotoResult| {
+                stream2.emit(Msg::GotoItem(r.0.clone(), r.1.clone()))
+            });
         Model {
             relm: relm.clone(),
             db_sender,
@@ -288,6 +299,8 @@ impl Widget for ProjectPoiHeader {
             server_add_item_dialog_component: None,
             _project_item_deleted_channel,
             project_item_deleted_sender,
+            _goto_server_channel,
+            goto_server_sender,
         }
     }
 
@@ -300,6 +313,28 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::Copy, val)) => {
                 if let Some(clip) = gtk::Clipboard::get_default(&self.header_grid.get_display()) {
                     clip.set_text(&val);
+                }
+            }
+            Msg::HeaderActionClicked((ActionTypes::GotoItem, val)) => {
+                match &self.model.project_item {
+                    Some(ProjectItem::ServerLink(l)) => {
+                        let s = self.model.goto_server_sender.clone();
+                        let linked_server_id = l.linked_server_id;
+                        self.model
+                            .db_sender
+                            .send(SqlFunc::new(move |sql_conn| {
+                                use projectpadsql::schema::project::dsl as prj;
+                                use projectpadsql::schema::server::dsl as srv;
+                                let (srv, prj) = srv::server
+                                    .inner_join(prj::project)
+                                    .filter(srv::id.eq(linked_server_id))
+                                    .first::<(Server, Project)>(sql_conn)
+                                    .unwrap();
+                                s.send((prj, srv)).unwrap();
+                            }))
+                            .unwrap();
+                    }
+                    _ => {}
                 }
             }
             Msg::HeaderActionClicked((ActionTypes::Edit, _)) => {
@@ -517,6 +552,7 @@ impl Widget for ProjectPoiHeader {
             }
             // meant for my parent
             Msg::ProjectItemUpdated(pi) => {}
+            Msg::GotoItem(_, _) => {}
         }
     }
 
@@ -669,6 +705,13 @@ impl Widget for ProjectPoiHeader {
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::AddItem, "".to_string()))
         );
+        let goto_btn = gtk::ModelButtonBuilder::new().label("Go to").build();
+        relm::connect!(
+            self.model.relm,
+            &goto_btn,
+            connect_clicked(_),
+            Msg::HeaderActionClicked((ActionTypes::GotoItem, "".to_string()))
+        );
         let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
         relm::connect!(
             self.model.relm,
@@ -678,6 +721,7 @@ impl Widget for ProjectPoiHeader {
         );
         let extra_btns = match &self.model.project_item {
             Some(ProjectItem::Server(_)) => vec![edit_btn, add_btn, delete_btn],
+            Some(ProjectItem::ServerLink(_)) => vec![edit_btn, goto_btn, delete_btn],
             Some(_) => vec![edit_btn, delete_btn],
             _ => vec![],
         };

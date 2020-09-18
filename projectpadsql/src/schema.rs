@@ -143,3 +143,6 @@ joinable!(server_link -> server (linked_server_id));
 allow_tables_to_appear_in_same_query!(server_link, server);
 
 joinable!(server_database -> server (server_id));
+
+joinable!(server -> project (project_id));
+allow_tables_to_appear_in_same_query!(project, server);

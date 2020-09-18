@@ -1,5 +1,4 @@
 use super::dialogs::dialog_helpers;
-use super::dialogs::project_add_edit_dlg;
 use super::dialogs::project_add_edit_dlg::Msg as MsgProjectAddEditDialog;
 use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
 use super::dialogs::project_add_item_dlg;
@@ -8,8 +7,11 @@ use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
+use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::{EnvironmentType, Project};
+use projectpadsql::models::{
+    EnvironmentType, Project, Server, ServerDatabase, ServerLink, ServerWebsite,
+};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -23,10 +25,16 @@ pub enum Msg {
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
     AddProjectItem,
     EditProject,
+    AskDeleteProject,
+    DeleteProject,
+    ProjectDeleted(Project),
     ProjectAddItemActionCompleted(ProjectItem),
     ProjectAddItemChangeTitleTitle(&'static str),
     ProjectItemAdded(ProjectItem),
 }
+
+// String for details, because I can't pass Error across threads
+type DeleteResult = Result<Project, (&'static str, Option<String>)>;
 
 pub struct Model {
     relm: relm::Relm<ProjectSummary>,
@@ -39,6 +47,8 @@ pub struct Model {
     project_add_item_component: Option<relm::Component<ProjectAddItemDialog>>,
     project_add_item_dialog: Option<gtk::Dialog>,
     cur_environment: EnvironmentType,
+    _project_deleted_channel: relm::Channel<DeleteResult>,
+    project_deleted_sender: relm::Sender<DeleteResult>,
 }
 
 #[widget]
@@ -92,14 +102,6 @@ impl Widget for ProjectSummary {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_btn = gtk::ModelButtonBuilder::new().label("Add...").build();
-        relm::connect!(
-            self.model.relm,
-            popover_btn,
-            connect_clicked(_),
-            Msg::AddProjectItem
-        );
-        popover_vbox.add(&popover_btn);
         let popover_edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
         relm::connect!(
             self.model.relm,
@@ -108,6 +110,22 @@ impl Widget for ProjectSummary {
             Msg::EditProject
         );
         popover_vbox.add(&popover_edit_btn);
+        let popover_btn = gtk::ModelButtonBuilder::new().label("Add...").build();
+        relm::connect!(
+            self.model.relm,
+            popover_btn,
+            connect_clicked(_),
+            Msg::AddProjectItem
+        );
+        popover_vbox.add(&popover_btn);
+        let popover_delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+        relm::connect!(
+            self.model.relm,
+            popover_delete_btn,
+            connect_clicked(_),
+            Msg::AskDeleteProject
+        );
+        popover_vbox.add(&popover_delete_btn);
         popover_vbox.show_all();
         self.model.header_popover.add(&popover_vbox);
         self.header_actions_btn
@@ -115,6 +133,12 @@ impl Widget for ProjectSummary {
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
+        let stream = relm.stream().clone();
+        let (_project_deleted_channel, project_deleted_sender) =
+            relm::Channel::new(move |r: DeleteResult| match r {
+                Ok(p) => stream.emit(Msg::ProjectDeleted(p)),
+                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+            });
         Model {
             project: None,
             db_sender,
@@ -129,6 +153,8 @@ impl Widget for ProjectSummary {
             project_add_item_component: None,
             project_add_edit_dialog: None,
             cur_environment: EnvironmentType::EnvDevelopment,
+            _project_deleted_channel,
+            project_deleted_sender,
         }
     }
 
@@ -265,8 +291,121 @@ impl Widget for ProjectSummary {
             Msg::EditProject => {
                 self.show_project_edit_dialog();
             }
+            Msg::AskDeleteProject => {
+                self.handle_project_delete();
+            }
+            Msg::DeleteProject => {
+                if let Some(prj) = self.model.project.clone() {
+                    self.delete_project(prj);
+                }
+            }
+            // meant for my parent
+            Msg::ProjectDeleted(_) => {}
             // meant for my parent
             Msg::ProjectItemAdded(_) => {}
+        }
+    }
+
+    fn delete_project(&self, prj: Project) {
+        let prj_id = prj.id;
+        let s = self.model.project_deleted_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                use projectpadsql::schema::server::dsl as srv;
+                use projectpadsql::schema::server_database::dsl as db;
+                use projectpadsql::schema::server_link::dsl as srv_link;
+                use projectpadsql::schema::server_website::dsl as srvw;
+
+                // we cannot delete a project if a server under it is
+                // linked to from another project
+                let dependent_serverlinks = srv_link::server_link
+                    .inner_join(srv::server)
+                    .filter(
+                        srv::project_id
+                            .eq(prj_id)
+                            .and(srv_link::project_id.ne(prj_id)),
+                    )
+                    .load::<(ServerLink, Server)>(sql_conn)
+                    .unwrap();
+
+                let contained_dbs: Vec<_> = db::server_database
+                    .inner_join(srv::server)
+                    .filter(srv::project_id.eq(prj_id))
+                    .load::<(ServerDatabase, Server)>(sql_conn)
+                    .unwrap()
+                    .into_iter()
+                    .map(|x| x.0)
+                    .collect();
+
+                let dependent_websites: Vec<_> = srvw::server_website
+                    .inner_join(srv::server)
+                    .filter(
+                        srv::project_id.ne(prj_id).and(
+                            srvw::server_database_id
+                                .eq_any(contained_dbs.iter().map(|d| d.id).collect::<Vec<_>>()),
+                        ),
+                    )
+                    .load::<(ServerWebsite, Server)>(sql_conn)
+                    .unwrap()
+                    .into_iter()
+                    .map(|x| x.0)
+                    .collect();
+                if !dependent_serverlinks.is_empty() {
+                    s.send(Err((
+                        "Cannot delete project",
+                        Some(format!(
+                            "servers {} on that server are linked to by servers {}",
+                            itertools::join(
+                                dependent_serverlinks.iter().map(|(_, s)| &s.desc),
+                                ", "
+                            ),
+                            itertools::join(
+                                dependent_serverlinks.iter().map(|(l, _)| &l.desc),
+                                ", "
+                            )
+                        )),
+                    )))
+                } else if !dependent_websites.is_empty() {
+                    s.send(Err((
+                        "Cannot delete project",
+                        Some(format!(
+                            "databases {} on that server are linked to by websites {}",
+                            itertools::join(
+                                dependent_websites.iter().map(|w| &contained_dbs
+                                    .iter()
+                                    .find(|d| Some(d.id) == w.server_database_id)
+                                    .unwrap()
+                                    .desc),
+                                ", "
+                            ),
+                            itertools::join(dependent_websites.iter().map(|w| &w.desc), ", ")
+                        )),
+                    )))
+                } else {
+                    s.send(
+                        dialog_helpers::delete_row(sql_conn, prj::project, prj_id)
+                            .map(|_| prj.clone()),
+                    )
+                }
+                .unwrap();
+            }))
+            .unwrap();
+    }
+
+    fn handle_project_delete(&self) {
+        if let Some(prj) = self.model.project.as_ref() {
+            let relm = self.model.relm.clone();
+            standard_dialogs::confirm_deletion(
+                &format!("Delete {}", prj.name),
+                &format!(
+                    "Are you sure you want to delete the project {}? This action cannot be undone.",
+                    prj.name
+                ),
+                self.project_summary_root.clone().upcast::<gtk::Widget>(),
+                move || relm.stream().emit(Msg::DeleteProject),
+            );
         }
     }
 

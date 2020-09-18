@@ -16,6 +16,7 @@ use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjec
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
+use super::project_summary::Msg::ProjectDeleted as ProjectSummaryProjectDeleted;
 use super::project_summary::Msg::ProjectItemAdded as ProjectSummaryItemAddedMsg;
 use super::project_summary::Msg::ProjectUpdated as ProjectSummaryProjectUpdated;
 use super::project_summary::ProjectSummary;
@@ -339,6 +340,7 @@ impl Widget for Win {
                                 EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
                                 ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
                                 ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
+                                ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
                             },
                             #[name="project_items_list"]
                             ProjectItemsList(self.model.db_sender.clone()) {

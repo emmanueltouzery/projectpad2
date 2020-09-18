@@ -66,15 +66,15 @@ impl Widget for ProjectPoiContents {
             Msg::ProjectItemSelected(pi) => {
                 self.model.cur_project_item = pi;
                 self.server_contents
-                    .emit(ServerPoiContentsMsg::ServerSelected(
-                        self.model
-                            .cur_project_item
-                            .as_ref()
-                            .and_then(|pi| match pi {
-                                ProjectItem::Server(srv) => Some(srv.clone()),
-                                _ => None,
-                            }),
-                    ));
+                    .emit(match &self.model.cur_project_item.as_ref() {
+                        Some(ProjectItem::Server(srv)) => {
+                            ServerPoiContentsMsg::ServerSelected(Some(srv.clone()))
+                        }
+                        Some(ProjectItem::ServerLink(srv_l)) => {
+                            ServerPoiContentsMsg::ServerLinkSelected(srv_l.clone())
+                        }
+                        _ => ServerPoiContentsMsg::ServerSelected(None),
+                    });
                 if let Some(pi) = self.model.cur_project_item.clone() {
                     match pi {
                         ProjectItem::ProjectNote(ref note) => {
@@ -266,7 +266,7 @@ impl Widget for ProjectPoiContents {
                     name: Some(CHILD_NAME_SERVER)
                 },
                 ServerPoiContentsMsgViewNote(ref n) => Msg::ViewServerNote(n.clone()),
-                    ServerPoiContentsRequestDisplayServerItem(ref si) => Msg::RequestDisplayServerItem(si.clone())
+                ServerPoiContentsRequestDisplayServerItem(ref si) => Msg::RequestDisplayServerItem(si.clone())
             },
             gtk::Box {
                 child: {

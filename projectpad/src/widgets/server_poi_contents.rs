@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use gtk::prelude::*;
 use itertools::Itertools;
 use projectpadsql::models::{
-    Server, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
+    Server, ServerDatabase, ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest,
     ServerWebsite,
 };
 use relm::{Component, ContainerWidget, Widget};
@@ -23,6 +23,7 @@ struct ChannelData {
 #[derive(Msg)]
 pub enum Msg {
     ServerSelected(Option<Server>),
+    ServerLinkSelected(ServerLink),
     GotItems(ChannelData),
     ViewNote(ServerNote),
     RefreshItems,
@@ -75,7 +76,7 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     sender: relm::Sender<ChannelData>,
     _channel: relm::Channel<ChannelData>,
-    cur_project_item: Option<Server>,
+    cur_server_id: Option<i32>,
     server_items: Vec<ServerItem>,
     server_item_groups_start_indexes: HashMap<i32, String>,
     databases_for_websites: HashMap<i32, ServerDatabase>,
@@ -105,7 +106,7 @@ impl Widget for ServerPoiContents {
             _channel: channel,
             sender,
             db_sender,
-            cur_project_item: None,
+            cur_server_id: None,
             server_items: vec![],
             server_item_groups_start_indexes: HashMap::new(),
             databases_for_websites: HashMap::new(),
@@ -117,7 +118,11 @@ impl Widget for ServerPoiContents {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ServerSelected(srv) => {
-                self.model.cur_project_item = srv;
+                self.model.cur_server_id = srv.map(|s| s.id);
+                self.fetch_items();
+            }
+            Msg::ServerLinkSelected(srv_l) => {
+                self.model.cur_server_id = Some(srv_l.linked_server_id);
                 self.fetch_items();
             }
             Msg::GotItems(items) => {
@@ -202,7 +207,7 @@ impl Widget for ServerPoiContents {
 
     fn fetch_items(&mut self) {
         let s = self.model.sender.clone();
-        let cur_server_id = self.model.cur_project_item.as_ref().map(|srv| srv.id);
+        let cur_server_id = self.model.cur_server_id;
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {

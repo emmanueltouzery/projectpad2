@@ -59,6 +59,11 @@ impl Widget for PasswordField {
         popover_vbox.add(&popover_copy_btn);
         popover_vbox.show_all();
         self.model.popover.as_ref().unwrap().add(&popover_vbox);
+        self.model
+            .popover
+            .as_ref()
+            .unwrap()
+            .set_position(gtk::PositionType::Left);
     }
 
     fn model(relm: &relm::Relm<Self>, text: String) -> Model {

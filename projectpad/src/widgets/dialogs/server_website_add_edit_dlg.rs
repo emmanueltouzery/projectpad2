@@ -5,6 +5,9 @@ use super::pick_projectpad_item_button::Msg::RemoveItem as PickPpItemRemoved;
 use super::pick_projectpad_item_button::PickProjectpadItemButton;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::password_field::Msg as PasswordFieldMsg;
+use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
+use crate::widgets::password_field::PasswordField;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerWebsite;
@@ -18,6 +21,7 @@ pub enum Msg {
     ServerDbSelected(i32),
     ServerDbRemoved,
     OkPressed,
+    GotPassword(String),
     ServerWwwUpdated(ServerWebsite),
 }
 
@@ -122,14 +126,19 @@ impl Widget for ServerWebsiteAddEditDialog {
                 self.model.server_database_id = None;
             }
             Msg::OkPressed => {
-                self.update_server_www();
+                self.password_entry
+                    .stream()
+                    .emit(PasswordFieldMsg::RequestPassword);
+            }
+            Msg::GotPassword(pass) => {
+                self.update_server_www(pass);
             }
             // meant for my parent
             Msg::ServerWwwUpdated(_) => {}
         }
     }
 
-    fn update_server_www(&self) {
+    fn update_server_www(&self, new_password: String) {
         let server_id = self.model.server_id;
         let server_www_id = self.model.server_www_id;
         let new_desc = self.desc_entry.get_text();
@@ -137,7 +146,6 @@ impl Widget for ServerWebsiteAddEditDialog {
         let new_text = self.text_entry.get_text();
         let new_group = self.group.get_active_text();
         let new_username = self.username_entry.get_text();
-        let new_password = self.password_entry.get_text();
         let new_databaseid = self.model.server_database_id;
         let s = self.model.server_www_updated_sender.clone();
         self.model
@@ -267,15 +275,13 @@ impl Widget for ServerWebsiteAddEditDialog {
                 },
             },
             #[name="password_entry"]
-            gtk::Entry {
+            PasswordField(self.model.password.clone()) {
                 hexpand: true,
-                text: &self.model.password,
-                visibility: false,
-                input_purpose: gtk::InputPurpose::Password,
                 cell: {
                     left_attach: 1,
                     top_attach: 5,
                 },
+                PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPassword(pass.clone())
             },
             gtk::Label {
                 text: "Database",

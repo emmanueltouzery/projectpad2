@@ -5,7 +5,7 @@ use relm_derive::{widget, Msg};
 
 #[derive(Msg)]
 pub enum Msg {
-    RevealPassword,
+    RevealPassword(gtk::ModelButton),
     CopyPassword,
     RequestPassword,
     PublishPassword(String),
@@ -38,12 +38,15 @@ impl Widget for PasswordField {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_reveal_btn = gtk::ModelButtonBuilder::new().label("Reveal").build();
+        let popover_reveal_btn = gtk::ModelButtonBuilder::new()
+            .label("Reveal")
+            .role(gtk::ButtonRole::Check)
+            .build();
         relm::connect!(
             self.model.relm,
             popover_reveal_btn,
-            connect_clicked(_),
-            Msg::RevealPassword
+            connect_clicked(ref btn),
+            Msg::RevealPassword((*btn).clone())
         );
         popover_vbox.add(&popover_reveal_btn);
         let popover_copy_btn = gtk::ModelButtonBuilder::new().label("Copy").build();
@@ -68,8 +71,17 @@ impl Widget for PasswordField {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::RevealPassword => {}
-            Msg::CopyPassword => {}
+            Msg::RevealPassword(popover_reveal_btn) => {
+                let new_reveal = !self.password_entry.get_visibility();
+                self.password_entry.set_visibility(new_reveal);
+                popover_reveal_btn.set_property_active(new_reveal);
+            }
+            Msg::CopyPassword => {
+                if let Some(clip) = gtk::Clipboard::get_default(&self.password_entry.get_display())
+                {
+                    clip.set_text(self.password_entry.get_text().as_str());
+                }
+            }
             Msg::RequestPassword => {
                 self.model.relm.stream().emit(Msg::PublishPassword(
                     self.password_entry.get_text().to_string(),

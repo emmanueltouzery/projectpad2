@@ -1,6 +1,9 @@
 use super::dialog_helpers;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::password_field::Msg as PasswordFieldMsg;
+use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
+use crate::widgets::password_field::PasswordField;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerDatabase;
@@ -12,6 +15,7 @@ use std::sync::mpsc;
 pub enum Msg {
     GotGroups(Vec<String>),
     OkPressed,
+    GotPassword(String),
     ServerDbUpdated(ServerDatabase),
 }
 
@@ -113,14 +117,19 @@ impl Widget for ServerDatabaseAddEditDialog {
                 );
             }
             Msg::OkPressed => {
-                self.update_server_db();
+                self.password_entry
+                    .stream()
+                    .emit(PasswordFieldMsg::RequestPassword);
+            }
+            Msg::GotPassword(pass) => {
+                self.update_server_db(pass);
             }
             // meant for my parent
             Msg::ServerDbUpdated(_) => {}
         }
     }
 
-    fn update_server_db(&self) {
+    fn update_server_db(&self, new_password: String) {
         let server_id = self.model.server_id;
         let server_db_id = self.model.server_db_id;
         let new_desc = self.desc_entry.get_text();
@@ -128,7 +137,6 @@ impl Widget for ServerDatabaseAddEditDialog {
         let new_group = self.group.get_active_text();
         let new_text = self.text_entry.get_text();
         let new_username = self.username_entry.get_text();
-        let new_password = self.password_entry.get_text();
         let s = self.model.server_db_updated_sender.clone();
         self.model
             .db_sender
@@ -256,15 +264,13 @@ impl Widget for ServerDatabaseAddEditDialog {
                 },
             },
             #[name="password_entry"]
-            gtk::Entry {
+            PasswordField(self.model.password.clone()) {
                 hexpand: true,
-                text: &self.model.password,
-                visibility: false,
-                input_purpose: gtk::InputPurpose::Password,
                 cell: {
                     left_attach: 1,
                     top_attach: 5,
                 },
+                PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPassword(pass.clone())
             },
         }
     }

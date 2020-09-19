@@ -3,6 +3,9 @@ use super::file_contents_button::FileContentsButton;
 use super::file_contents_button::Msg::FileChanged as FileContentsButtonFileChanged;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::password_field::Msg as PasswordFieldMsg;
+use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
+use crate::widgets::password_field::PasswordField;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::ServerExtraUserAccount;
@@ -15,6 +18,7 @@ pub enum Msg {
     GotGroups(Vec<String>),
     AuthFileChanged((Option<String>, Option<Vec<u8>>)),
     OkPressed,
+    GotPassword(String),
     ServerUserUpdated(ServerExtraUserAccount),
 }
 
@@ -120,20 +124,24 @@ impl Widget for ServerExtraUserAddEditDialog {
                 self.model.auth_key = kv.1.clone();
             }
             Msg::OkPressed => {
-                self.update_server_user();
+                self.password_entry
+                    .stream()
+                    .emit(PasswordFieldMsg::RequestPassword);
+            }
+            Msg::GotPassword(pass) => {
+                self.update_server_user(pass);
             }
             // meant for my parent
             Msg::ServerUserUpdated(_) => {}
         }
     }
 
-    fn update_server_user(&self) {
+    fn update_server_user(&self, new_password: String) {
         let server_id = self.model.server_id;
         let server_user_id = self.model.server_user_id;
         let new_desc = self.desc_entry.get_text();
         let new_group = self.group.get_active_text();
         let new_username = self.username_entry.get_text();
-        let new_password = self.password_entry.get_text();
         let new_authkey = self.model.auth_key.clone();
         let new_authkey_filename = self.model.auth_key_filename.clone();
         let s = self.model.server_user_updated_sender.clone();
@@ -229,15 +237,13 @@ impl Widget for ServerExtraUserAddEditDialog {
                 },
             },
             #[name="password_entry"]
-            gtk::Entry {
+            PasswordField(self.model.password.clone()) {
                 hexpand: true,
-                text: &self.model.password,
-                visibility: false,
-                input_purpose: gtk::InputPurpose::Password,
                 cell: {
                     left_attach: 1,
                     top_attach: 5,
                 },
+                PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPassword(pass.clone())
             },
             gtk::Label {
                 text: "Authentication key",

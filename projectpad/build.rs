@@ -1,4 +1,5 @@
 use flate2::read::GzDecoder;
+use includedir_codegen::Compression;
 use std::fs::*;
 use std::path::Path;
 use std::process::Command;
@@ -7,6 +8,7 @@ const FONTAWESOME_VERSION: &str = "5.13.0";
 
 fn main() {
     println!("cargo:rerun-if-changed=src/icons.gresource");
+    println!("cargo:rerun-if-changed=resources/migrations");
     let target_foldername = format!("fontawesome-{}", FONTAWESOME_VERSION);
     if !Path::new(&target_foldername).exists() {
         fetch_fontawesome_icons(&target_foldername);
@@ -20,6 +22,11 @@ fn main() {
         .wait()
         .unwrap();
     assert!(status.success());
+
+    includedir_codegen::start("MIGRATIONS")
+        .dir("resources/migrations", Compression::None)
+        .build("data.rs")
+        .unwrap();
 }
 
 fn fetch_fontawesome_icons(target_foldername: &str) {

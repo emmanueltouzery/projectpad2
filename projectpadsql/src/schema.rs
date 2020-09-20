@@ -135,6 +135,14 @@ table! {
     }
 }
 
+table! {
+    db_version {
+        id -> Integer,
+        code -> Integer,
+        upgrade_date -> Timestamp,
+    }
+}
+
 joinable!(server_website -> server_database (server_database_id));
 allow_tables_to_appear_in_same_query!(server_website, server_database, server);
 joinable!(server_website -> server (server_id));

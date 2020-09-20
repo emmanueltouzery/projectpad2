@@ -1,3 +1,4 @@
+use chrono::naive::NaiveDateTime;
 use diesel::backend::Backend;
 use diesel::prelude::*;
 use diesel::serialize::Output;
@@ -212,4 +213,11 @@ pub struct ServerDatabase {
     pub password: String,
     pub group_name: Option<String>,
     pub server_id: i32,
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+pub struct DbVersion {
+    pub id: i32,
+    pub code: i32,
+    pub update_date: NaiveDateTime,
 }

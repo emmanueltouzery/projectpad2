@@ -1,0 +1,7 @@
+CREATE TABLE server_database (id INTEGER PRIMARY KEY,
+	desc TEXT NOT NULL,
+	name TEXT NOT NULL,
+	username TEXT NOT NULL,
+	password TEXT NOT NULL,
+	server_id INTEGER NOT NULL,
+	FOREIGN KEY(server_id) REFERENCES server(id) ON DELETE CASCADE);

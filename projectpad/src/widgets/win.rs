@@ -1,6 +1,9 @@
 use super::dialogs::dialog_helpers;
 use super::dialogs::project_add_edit_dlg::Msg as MsgProjectAddEditDialog;
 use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
+use super::dialogs::standard_dialogs;
+use super::dialogs::unlock_db_dlg;
+use super::dialogs::unlock_db_dlg::UnlockDbDialog;
 use super::project_items_list::Msg as ProjectItemsListMsg;
 use super::project_items_list::{ProjectItem, ProjectItemsList};
 use super::project_list::Msg as ProjectListMsg;
@@ -29,6 +32,7 @@ use super::tooltips_overlay;
 use super::tooltips_overlay::TooltipsOverlay;
 use super::wintitlebar::Msg as WinTitleBarMsg;
 use super::wintitlebar::WinTitleBar;
+use crate::sql_thread::migrate_db_if_needed;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
@@ -48,6 +52,7 @@ type DisplayItemParams = (Project, Option<ProjectItem>, Option<ServerItem>);
 #[derive(Msg)]
 pub enum Msg {
     Quit,
+    DbUnlocked,
     ProjectActivated(Project),
     EnvironmentChanged(EnvironmentType),
     ProjectItemSelected(Option<ProjectItem>),
@@ -72,10 +77,14 @@ pub struct Model {
     relm: relm::Relm<Win>,
     db_sender: mpsc::Sender<SqlFunc>,
     titlebar: Component<WinTitleBar>,
+    is_new_db: bool,
     _display_item_channel: relm::Channel<DisplayItemParams>,
     display_item_sender: relm::Sender<DisplayItemParams>,
     project_add_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
     tooltips_overlay: Component<TooltipsOverlay>,
+    _unlock_db_channel: relm::Channel<()>,
+    unlock_db_sender: relm::Sender<()>,
+    unlock_db_component: Option<Component<UnlockDbDialog>>,
 }
 
 const CHILD_NAME_NORMAL: &str = "normal";
@@ -97,9 +106,12 @@ impl Widget for Win {
                                self.model.relm, Msg::SearchActiveChanged(is_active));
         relm::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
                                self.model.relm, Msg::SearchTextChanged(search_text.clone()));
+
+        self.unlock_db();
     }
 
-    fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
+    fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, bool)) -> Model {
+        let (db_sender, is_new_db) = params;
         gtk::IconTheme::get_default()
             .unwrap()
             .add_resource_path("/icons");
@@ -111,20 +123,93 @@ impl Widget for Win {
             relm::Channel::new(move |ch_data: DisplayItemParams| {
                 stream.emit(Msg::DisplayItem(ch_data));
             });
+        let stream2 = relm.stream().clone();
+        let (unlock_db_channel, unlock_db_sender) = relm::Channel::new(move |_| {
+            stream2.emit(Msg::DbUnlocked);
+        });
         Model {
             relm: relm.clone(),
             db_sender,
+            is_new_db,
             titlebar,
             tooltips_overlay,
             display_item_sender,
             _display_item_channel: display_item_channel,
+            unlock_db_sender,
+            _unlock_db_channel: unlock_db_channel,
             project_add_dialog: None,
+            unlock_db_component: None,
         }
+    }
+
+    fn unlock_db(&mut self) {
+        // if let Some(pass) = projectpadsql::get_pass_from_keyring() {
+        //     let s = self.model.unlock_db_sender.clone();
+        //     self.model
+        //         .db_sender
+        //         .send(SqlFunc::new(move |sql_conn| {
+        //             Self::run_unlock_db(sql_conn, &pass);
+        //             s.send(()).unwrap();
+        //         }))
+        //         .unwrap();
+        // } else {
+        let dialog = standard_dialogs::modal_dialog(
+            self.window.clone().upcast::<gtk::Widget>(),
+            600,
+            200,
+            "Welcome".to_string(),
+        );
+
+        relm::connect!(
+            self.model.relm,
+            &dialog,
+            connect_delete_event(_, _),
+            return (Msg::Quit, Inhibit(false))
+        );
+        let dialog_contents = relm::init::<UnlockDbDialog>(self.model.is_new_db)
+            .expect("error initializing the unlock db modal");
+
+        let unlock_btn = dialog
+            .add_button(
+                if self.model.is_new_db {
+                    "Create database"
+                } else {
+                    "Unlock"
+                },
+                gtk::ResponseType::Ok,
+            )
+            .downcast::<gtk::Button>()
+            .expect("error reading the dialog save button");
+        unlock_btn.get_style_context().add_class("suggested-action");
+        dialog_contents.widget().show();
+        dialog
+            .get_content_area()
+            .pack_start(dialog_contents.widget(), true, true, 0);
+        dialog.connect_response(move |d, r| {
+            if r == gtk::ResponseType::Ok {
+                // ok_callback(save_btn.clone());
+            } else {
+                d.close();
+            }
+        });
+        self.model.unlock_db_component = Some(dialog_contents);
+        dialog.show();
+        // }
+    }
+
+    fn run_unlock_db(db_conn: &SqliteConnection, pass: &str) {
+        // TODO quotes in passwords?
+        db_conn.execute(&format!("PRAGMA key='{}'", pass)).unwrap();
+        migrate_db_if_needed(&db_conn).unwrap();
+        db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
     }
 
     fn update(&mut self, event: Msg) {
         match event {
             Msg::Quit => gtk::main_quit(),
+            Msg::DbUnlocked => {
+                self.project_list.emit(ProjectListMsg::DbUnlocked);
+            }
             Msg::ProjectActivated(project) => {
                 self.project_items_list
                     .emit(ProjectItemsListMsg::ActiveProjectChanged(project.clone()));

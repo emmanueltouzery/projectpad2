@@ -33,21 +33,13 @@ pub fn start_sql_thread() -> mpsc::Sender<SqlFunc> {
         std::fs::create_dir_all(projectpadsql::config_path()).unwrap();
         let db_conn =
             SqliteConnection::establish(&projectpadsql::database_path().to_string_lossy()).unwrap();
-        db_conn
-            .execute(&format!(
-                "PRAGMA key='{}'",
-                projectpadsql::get_pass_from_keyring().unwrap()
-            ))
-            .unwrap();
-        migrate_db_if_needed(&db_conn).unwrap();
-        db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
         rx.into_iter().for_each(|fun| (fun.0)(&db_conn));
     });
 
     tx
 }
 
-fn migrate_db_if_needed(db_conn: &SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
+pub fn migrate_db_if_needed(db_conn: &SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
     use projectpadsql::schema::db_version::dsl as ver;
     let mut version = ver::db_version
         .order(ver::code.desc())

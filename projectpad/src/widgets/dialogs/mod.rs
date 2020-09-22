@@ -18,6 +18,7 @@ pub mod server_note_add_edit_dlg;
 pub mod server_poi_add_edit_dlg;
 pub mod server_website_add_edit_dlg;
 pub mod standard_dialogs;
+pub mod unlock_db_dlg;
 
 pub enum ServerAddEditDialogComponent {
     Poi(relm::Component<server_poi_add_edit_dlg::ServerPoiAddEditDialog>),

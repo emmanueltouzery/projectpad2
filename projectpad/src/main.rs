@@ -21,6 +21,8 @@ fn main() {
         process::exit(1);
     }));
 
+    let db_preexisted = projectpadsql::database_path().is_file();
+
     // TODO gui error if we fail connecting
     let sql_channel = sql_thread::start_sql_thread();
 
@@ -29,5 +31,5 @@ fn main() {
     let resource = gio::Resource::from_data(&data).unwrap();
     gio::resources_register(&resource);
 
-    widgets::win::Win::run(sql_channel).unwrap();
+    widgets::win::Win::run((sql_channel, !db_preexisted)).unwrap();
 }

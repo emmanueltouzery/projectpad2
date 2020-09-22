@@ -17,6 +17,7 @@ pub enum UpdateParents {
 
 #[derive(Msg, Clone)]
 pub enum Msg {
+    DbUnlocked,
     ProjectActivated((Project, UpdateParents)),
     GotProjects(Vec<Project>),
     ProjectSelectedFromElsewhere(i32),
@@ -40,9 +41,7 @@ pub struct Model {
 
 #[widget]
 impl Widget for ProjectList {
-    fn init_view(&mut self) {
-        self.fetch_projects();
-    }
+    fn init_view(&mut self) {}
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
@@ -62,6 +61,9 @@ impl Widget for ProjectList {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::DbUnlocked => {
+                self.fetch_projects();
+            }
             Msg::ProjectActivated((ref project, _)) => {
                 self.model.active_project_id = Some(project.id);
             }

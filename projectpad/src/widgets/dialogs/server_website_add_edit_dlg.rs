@@ -5,6 +5,7 @@ use super::pick_projectpad_item_button::Msg::RemoveItem as PickPpItemRemoved;
 use super::pick_projectpad_item_button::PickProjectpadItemButton;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::password_field;
 use crate::widgets::password_field::Msg as PasswordFieldMsg;
 use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
 use crate::widgets::password_field::PasswordField;
@@ -275,7 +276,7 @@ impl Widget for ServerWebsiteAddEditDialog {
                 },
             },
             #[name="password_entry"]
-            PasswordField(self.model.password.clone()) {
+            PasswordField((self.model.password.clone(), password_field::ActivatesDefault::No)) {
                 hexpand: true,
                 cell: {
                     left_attach: 1,

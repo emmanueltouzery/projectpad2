@@ -3,6 +3,7 @@ use super::dialogs::project_add_edit_dlg::Msg as MsgProjectAddEditDialog;
 use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
 use super::dialogs::standard_dialogs;
 use super::dialogs::unlock_db_dlg;
+use super::dialogs::unlock_db_dlg::Msg as MsgUnlockDbDlg;
 use super::dialogs::unlock_db_dlg::UnlockDbDialog;
 use super::project_items_list::Msg as ProjectItemsListMsg;
 use super::project_items_list::{ProjectItem, ProjectItemsList};
@@ -52,6 +53,7 @@ type DisplayItemParams = (Project, Option<ProjectItem>, Option<ServerItem>);
 #[derive(Msg)]
 pub enum Msg {
     Quit,
+    CloseUnlockDb,
     DbUnlocked,
     ProjectActivated(Project),
     EnvironmentChanged(EnvironmentType),
@@ -78,13 +80,14 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     titlebar: Component<WinTitleBar>,
     is_new_db: bool,
+    is_db_unlocked: bool,
     _display_item_channel: relm::Channel<DisplayItemParams>,
     display_item_sender: relm::Sender<DisplayItemParams>,
     project_add_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
     tooltips_overlay: Component<TooltipsOverlay>,
     _unlock_db_channel: relm::Channel<()>,
     unlock_db_sender: relm::Sender<()>,
-    unlock_db_component: Option<Component<UnlockDbDialog>>,
+    unlock_db_component_dialog: Option<(gtk::Dialog, Component<UnlockDbDialog>)>,
 }
 
 const CHILD_NAME_NORMAL: &str = "normal";
@@ -131,6 +134,7 @@ impl Widget for Win {
             relm: relm.clone(),
             db_sender,
             is_new_db,
+            is_db_unlocked: false,
             titlebar,
             tooltips_overlay,
             display_item_sender,
@@ -138,11 +142,13 @@ impl Widget for Win {
             unlock_db_sender,
             _unlock_db_channel: unlock_db_channel,
             project_add_dialog: None,
-            unlock_db_component: None,
+            unlock_db_component_dialog: None,
         }
     }
 
     fn unlock_db(&mut self) {
+        // TODO if we have a keyring pass but it's wrong we should open the dialog
+
         // if let Some(pass) = projectpadsql::get_pass_from_keyring() {
         //     let s = self.model.unlock_db_sender.clone();
         //     self.model
@@ -156,18 +162,24 @@ impl Widget for Win {
         let dialog = standard_dialogs::modal_dialog(
             self.window.clone().upcast::<gtk::Widget>(),
             600,
-            200,
+            100,
             "Welcome".to_string(),
         );
-
         relm::connect!(
             self.model.relm,
             &dialog,
             connect_delete_event(_, _),
-            return (Msg::Quit, Inhibit(false))
+            return (Msg::CloseUnlockDb, Inhibit(false))
         );
-        let dialog_contents = relm::init::<UnlockDbDialog>(self.model.is_new_db)
-            .expect("error initializing the unlock db modal");
+
+        let dialog_contents =
+            relm::init::<UnlockDbDialog>((self.model.is_new_db, self.model.db_sender.clone()))
+                .expect("error initializing the unlock db modal");
+        relm::connect!(
+            dialog_contents@MsgUnlockDbDlg::CheckedPassword(Ok(_)),
+            self.model.relm,
+            Msg::DbUnlocked
+        );
 
         let unlock_btn = dialog
             .add_button(
@@ -185,18 +197,21 @@ impl Widget for Win {
         dialog
             .get_content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);
+        let c = dialog_contents.clone();
         dialog.connect_response(move |d, r| {
             if r == gtk::ResponseType::Ok {
-                // ok_callback(save_btn.clone());
+                c.stream().emit(unlock_db_dlg::Msg::OkPressed);
             } else {
                 d.close();
             }
         });
-        self.model.unlock_db_component = Some(dialog_contents);
+        self.model.unlock_db_component_dialog = Some((dialog.clone(), dialog_contents));
         dialog.show();
+        unlock_btn.grab_default();
         // }
     }
 
+    // TODO must be ran in all the cases
     fn run_unlock_db(db_conn: &SqliteConnection, pass: &str) {
         // TODO quotes in passwords?
         db_conn.execute(&format!("PRAGMA key='{}'", pass)).unwrap();
@@ -208,7 +223,17 @@ impl Widget for Win {
         match event {
             Msg::Quit => gtk::main_quit(),
             Msg::DbUnlocked => {
+                self.model.is_db_unlocked = true;
+                if let Some((dialog, _)) = &self.model.unlock_db_component_dialog {
+                    dialog.close();
+                    self.model.unlock_db_component_dialog = None;
+                }
                 self.project_list.emit(ProjectListMsg::DbUnlocked);
+            }
+            Msg::CloseUnlockDb => {
+                if !self.model.is_db_unlocked {
+                    gtk::main_quit();
+                }
             }
             Msg::ProjectActivated(project) => {
                 self.project_items_list

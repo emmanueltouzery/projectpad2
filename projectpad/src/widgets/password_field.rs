@@ -11,9 +11,16 @@ pub enum Msg {
     PublishPassword(String),
 }
 
+#[derive(PartialEq, Eq)]
+pub enum ActivatesDefault {
+    Yes,
+    No,
+}
+
 pub struct Model {
     relm: relm::Relm<PasswordField>,
     text: String,
+    activates_default: ActivatesDefault,
     popover: Option<gtk::Popover>,
 }
 
@@ -66,10 +73,12 @@ impl Widget for PasswordField {
             .set_position(gtk::PositionType::Left);
     }
 
-    fn model(relm: &relm::Relm<Self>, text: String) -> Model {
+    fn model(relm: &relm::Relm<Self>, params: (String, ActivatesDefault)) -> Model {
+        let (text, activates_default) = params;
         Model {
             relm: relm.clone(),
             text,
+            activates_default: activates_default,
             popover: None,
         }
     }
@@ -102,6 +111,7 @@ impl Widget for PasswordField {
             input_purpose: gtk::InputPurpose::Password,
             visibility: false,
             text: &self.model.text,
+            activates_default: self.model.activates_default == ActivatesDefault::Yes
         }
     }
 }

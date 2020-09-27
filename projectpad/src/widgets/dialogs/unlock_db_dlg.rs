@@ -102,7 +102,7 @@ impl Widget for UnlockDbDialog {
             },
             #[name="save_password_check"]
             gtk::CheckButton {
-                label: "Save password to your OS keyring",
+                label: "Save password to the OS keyring",
                 active: false,
                 cell: {
                     left_attach: 0,

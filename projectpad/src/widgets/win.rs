@@ -54,7 +54,9 @@ type DisplayItemParams = (Project, Option<ProjectItem>, Option<ServerItem>);
 pub enum Msg {
     Quit,
     CloseUnlockDb,
+    DbUnlockAttempted(bool),
     DbUnlocked,
+    DbPrepared,
     ProjectActivated(Project),
     EnvironmentChanged(EnvironmentType),
     ProjectItemSelected(Option<ProjectItem>),
@@ -85,8 +87,10 @@ pub struct Model {
     display_item_sender: relm::Sender<DisplayItemParams>,
     project_add_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
     tooltips_overlay: Component<TooltipsOverlay>,
-    _unlock_db_channel: relm::Channel<()>,
-    unlock_db_sender: relm::Sender<()>,
+    _db_unlock_attempted_channel: relm::Channel<bool>,
+    db_unlock_attempted_sender: relm::Sender<bool>,
+    _db_prepared_channel: relm::Channel<()>,
+    db_prepared_sender: relm::Sender<()>,
     unlock_db_component_dialog: Option<(gtk::Dialog, Component<UnlockDbDialog>)>,
 }
 
@@ -127,8 +131,13 @@ impl Widget for Win {
                 stream.emit(Msg::DisplayItem(ch_data));
             });
         let stream2 = relm.stream().clone();
-        let (unlock_db_channel, unlock_db_sender) = relm::Channel::new(move |_| {
-            stream2.emit(Msg::DbUnlocked);
+        let (db_unlock_attempted_channel, db_unlock_attempted_sender) =
+            relm::Channel::new(move |val| {
+                stream2.emit(Msg::DbUnlockAttempted(val));
+            });
+        let stream3 = relm.stream().clone();
+        let (db_prepared_channel, db_prepared_sender) = relm::Channel::new(move |_| {
+            stream3.emit(Msg::DbPrepared);
         });
         Model {
             relm: relm.clone(),
@@ -139,31 +148,36 @@ impl Widget for Win {
             tooltips_overlay,
             display_item_sender,
             _display_item_channel: display_item_channel,
-            unlock_db_sender,
-            _unlock_db_channel: unlock_db_channel,
+            db_unlock_attempted_sender,
+            _db_unlock_attempted_channel: db_unlock_attempted_channel,
+            db_prepared_sender,
+            _db_prepared_channel: db_prepared_channel,
             project_add_dialog: None,
             unlock_db_component_dialog: None,
         }
     }
 
     fn unlock_db(&mut self) {
-        // TODO if we have a keyring pass but it's wrong we should open the dialog
+        if let Some(pass) = projectpadsql::get_pass_from_keyring() {
+            let s = self.model.db_unlock_attempted_sender.clone();
+            self.model
+                .db_sender
+                .send(SqlFunc::new(move |sql_conn| {
+                    let unlock_success = unlock_db_dlg::try_unlock_db(sql_conn, &pass).is_ok();
+                    s.send(unlock_success).unwrap();
+                }))
+                .unwrap();
+        } else {
+            self.display_unlock_dialog();
+        }
+    }
 
-        // if let Some(pass) = projectpadsql::get_pass_from_keyring() {
-        //     let s = self.model.unlock_db_sender.clone();
-        //     self.model
-        //         .db_sender
-        //         .send(SqlFunc::new(move |sql_conn| {
-        //             Self::run_unlock_db(sql_conn, &pass);
-        //             s.send(()).unwrap();
-        //         }))
-        //         .unwrap();
-        // } else {
+    fn display_unlock_dialog(&mut self) {
         let dialog = standard_dialogs::modal_dialog(
             self.window.clone().upcast::<gtk::Widget>(),
             600,
             100,
-            "Welcome".to_string(),
+            "Projectpad".to_string(),
         );
         relm::connect!(
             self.model.relm,
@@ -208,27 +222,43 @@ impl Widget for Win {
         self.model.unlock_db_component_dialog = Some((dialog.clone(), dialog_contents));
         dialog.show();
         unlock_btn.grab_default();
-        // }
     }
 
-    // TODO must be ran in all the cases
-    fn run_unlock_db(db_conn: &SqliteConnection, pass: &str) {
-        // TODO quotes in passwords?
-        db_conn.execute(&format!("PRAGMA key='{}'", pass)).unwrap();
-        migrate_db_if_needed(&db_conn).unwrap();
-        db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
+    fn run_prepare_db(&self) {
+        let s = self.model.db_prepared_sender.clone();
+
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |db_conn| {
+                migrate_db_if_needed(&db_conn).unwrap();
+                db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
+                s.send(()).unwrap();
+            }))
+            .unwrap();
     }
 
     fn update(&mut self, event: Msg) {
         match event {
             Msg::Quit => gtk::main_quit(),
+            Msg::DbUnlockAttempted(true) => {
+                // simpler for other components to just tie
+                // to DbUnlocked. We really want to reemit not
+                // make a simple function call.
+                self.model.relm.stream().emit(Msg::DbUnlocked);
+            }
+            Msg::DbUnlockAttempted(false) => {
+                self.display_unlock_dialog();
+            }
             Msg::DbUnlocked => {
+                self.run_prepare_db();
+            }
+            Msg::DbPrepared => {
                 self.model.is_db_unlocked = true;
                 if let Some((dialog, _)) = &self.model.unlock_db_component_dialog {
                     dialog.close();
                     self.model.unlock_db_component_dialog = None;
                 }
-                self.project_list.emit(ProjectListMsg::DbUnlocked);
+                self.project_list.emit(ProjectListMsg::DbPrepared);
             }
             Msg::CloseUnlockDb => {
                 if !self.model.is_db_unlocked {

@@ -17,7 +17,7 @@ pub enum UpdateParents {
 
 #[derive(Msg, Clone)]
 pub enum Msg {
-    DbUnlocked,
+    DbPrepared,
     ProjectActivated((Project, UpdateParents)),
     GotProjects(Vec<Project>),
     ProjectSelectedFromElsewhere(i32),
@@ -61,7 +61,7 @@ impl Widget for ProjectList {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::DbUnlocked => {
+            Msg::DbPrepared => {
                 self.fetch_projects();
             }
             Msg::ProjectActivated((ref project, _)) => {

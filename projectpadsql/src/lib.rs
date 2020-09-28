@@ -25,8 +25,8 @@ pub fn get_pass_from_keyring() -> Option<String> {
     kr.get_password().ok()
 }
 
-pub fn set_pass_in_keyring(pass: &str) {
+pub fn set_pass_in_keyring(pass: &str) -> Result<(), String> {
     let service = "projectpad-cli";
     let kr = keyring::Keyring::new(&service, &service);
-    kr.set_password(pass);
+    kr.set_password(pass).map_err(|e| e.to_string())
 }

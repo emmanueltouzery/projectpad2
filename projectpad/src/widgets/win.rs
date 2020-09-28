@@ -198,7 +198,7 @@ impl Widget for Win {
         let unlock_btn = dialog
             .add_button(
                 if self.model.is_new_db {
-                    "Create database"
+                    "Start"
                 } else {
                     "Unlock"
                 },

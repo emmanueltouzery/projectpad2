@@ -26,6 +26,8 @@ pub enum Msg {
     RequestDisplayServerItem(ServerItem),
     NoteKeyRelease(gdk::EventKey),
     NoteSearchChange(String),
+    NoteSearchPrevious,
+    NoteSearchNext,
 }
 
 pub struct Model {
@@ -38,6 +40,7 @@ pub struct Model {
     hand_cursor: Option<gdk::Cursor>,
     text_cursor: Option<gdk::Cursor>,
     search_bar: relm::Component<SearchBar>,
+    note_search_text: Option<String>,
 }
 
 const CHILD_NAME_SERVER: &str = "server";
@@ -57,6 +60,14 @@ impl Widget for ProjectPoiContents {
             search_bar@SearchBarMsg::SearchChanged(ref s),
             self.model.relm,
             Msg::NoteSearchChange(s.clone()));
+        relm::connect!(
+            search_bar@SearchBarMsg::SearchNext,
+            self.model.relm,
+            Msg::NoteSearchNext);
+        relm::connect!(
+            search_bar@SearchBarMsg::SearchPrevious,
+            self.model.relm,
+            Msg::NoteSearchPrevious);
         let search_bar_widget = self.model.search_bar.widget();
         self.note_overlay.add_overlay(search_bar_widget);
     }
@@ -72,6 +83,7 @@ impl Widget for ProjectPoiContents {
             hand_cursor: None,
             text_cursor: None,
             search_bar: relm::init::<SearchBar>(()).expect("searchbar init"),
+            note_search_text: None,
         }
     }
 
@@ -172,19 +184,54 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::NoteSearchChange(text) => {
-                let buffer = self.note_textview.get_buffer().unwrap();
-                if let Some((mut start, end)) =
-                    buffer
-                        .get_start_iter()
-                        .forward_search(&text, gtk::TextSearchFlags::all(), None)
-                {
-                    buffer.select_range(&start, &end);
+                self.apply_search(
                     self.note_textview
-                        .scroll_to_iter(&mut start, 0.0, false, 0.0, 0.0);
+                        .get_buffer()
+                        .unwrap()
+                        .get_start_iter()
+                        .forward_search(&text, gtk::TextSearchFlags::all(), None),
+                );
+                self.model.note_search_text = Some(text);
+            }
+            Msg::NoteSearchNext => {
+                let buffer = self.note_textview.get_buffer().unwrap();
+                if let (Some((_start, end)), Some(search)) = (
+                    buffer.get_selection_bounds(),
+                    self.model.note_search_text.clone(),
+                ) {
+                    self.apply_search(end.forward_search(
+                        &search,
+                        gtk::TextSearchFlags::all(),
+                        None,
+                    ));
+                }
+            }
+            Msg::NoteSearchPrevious => {
+                let buffer = self.note_textview.get_buffer().unwrap();
+                if let (Some((start, _end)), Some(search)) = (
+                    buffer.get_selection_bounds(),
+                    self.model.note_search_text.clone(),
+                ) {
+                    self.apply_search(start.backward_search(
+                        &search,
+                        gtk::TextSearchFlags::all(),
+                        None,
+                    ));
                 }
             }
             // meant for my parent
             Msg::RequestDisplayServerItem(_) => {}
+        }
+    }
+
+    fn apply_search(&self, range: Option<(gtk::TextIter, gtk::TextIter)>) {
+        if let Some((mut start, end)) = range {
+            self.note_textview
+                .get_buffer()
+                .unwrap()
+                .select_range(&start, &end);
+            self.note_textview
+                .scroll_to_iter(&mut start, 0.0, false, 0.0, 0.0);
         }
     }
 

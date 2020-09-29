@@ -10,6 +10,8 @@ pub enum Msg {
     Reveal(bool),
     SearchEntryChanged,
     SearchChanged(String),
+    SearchPrevious,
+    SearchNext,
 }
 
 pub struct Model {
@@ -18,7 +20,10 @@ pub struct Model {
 
 #[widget]
 impl Widget for SearchBar {
-    fn init_view(&mut self) {}
+    fn init_view(&mut self) {
+        // https://developer.gnome.org/Buttons/#Linked_buttons
+        self.search_box.get_style_context().add_class("linked");
+    }
 
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         Model { relm: relm.clone() }
@@ -39,6 +44,8 @@ impl Widget for SearchBar {
                     .emit(Msg::SearchChanged(self.search_entry.get_text().to_string()));
             }
             // meant for my parent
+            Msg::SearchNext => {}
+            Msg::SearchPrevious => {}
             Msg::SearchChanged(_) => {}
         }
     }
@@ -52,14 +59,33 @@ impl Widget for SearchBar {
                 hexpand: false,
                 vexpand: false,
                 margin_end: 15,
-                #[name="search_entry"]
-                gtk::SearchEntry {
-                    width_chars: 25,
-                    margin_top: 5,
-                    margin_bottom: 5,
-                    margin_start: 5,
-                    margin_end: 5,
-                    key_release_event(_, _) => (Msg::SearchEntryChanged, Inhibit(false)),
+                #[name="search_box"]
+                gtk::Box {
+                    #[name="search_entry"]
+                    gtk::SearchEntry {
+                        width_chars: 25,
+                        margin_top: 5,
+                        margin_bottom: 5,
+                        margin_start: 5,
+                        key_release_event(_, _) => (Msg::SearchEntryChanged, Inhibit(false)),
+                    },
+                    gtk::Button {
+                        margin_top: 5,
+                        margin_bottom: 5,
+                        always_show_image: true,
+                        image: Some(&gtk::Image::from_icon_name(
+                            Some("go-up-symbolic"), gtk::IconSize::Menu)),
+                        button_press_event(_, _) => (Msg::SearchPrevious, Inhibit(false)),
+                    },
+                    gtk::Button {
+                        margin_top: 5,
+                        margin_bottom: 5,
+                        margin_end: 5,
+                        always_show_image: true,
+                        image: Some(&gtk::Image::from_icon_name(
+                            Some("go-down-symbolic"), gtk::IconSize::Menu)),
+                        button_press_event(_, _) => (Msg::SearchNext, Inhibit(false)),
+                    },
                 }
             }
         }

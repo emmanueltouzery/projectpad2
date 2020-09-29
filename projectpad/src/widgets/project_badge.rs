@@ -181,7 +181,6 @@ impl Widget for ProjectBadge {
                     context.paint();
                 } else {
                     // need to set up the backing buffer
-                    println!("computing the backing buffer");
                     self.model.backing_buffer =
                         Some(self.prepare_backing_buffer(allocation.width, allocation.height));
                 }

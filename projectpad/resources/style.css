@@ -132,3 +132,7 @@
   padding: 3px;
   font-size: 11px;
 }
+
+.search_frame {
+  background-color: @theme_base_color;
+}

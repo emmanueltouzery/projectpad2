@@ -357,18 +357,28 @@ impl Widget for Win {
                     .unwrap();
             }
             Msg::KeyPress(e) => {
+                // we don't want to trigger the global search if the
+                // note search text entry is focused.
                 if self
                     .window
                     .get_focus()
+                    // is an entry focused?
                     .and_then(|w| w.downcast::<gtk::Entry>().ok())
+                    // is it visible? (because when global search is off,
+                    // the global search entry can be focused but invisible)
+                    .filter(|w| w.get_visible())
                     .is_some()
                 {
+                    // are we in search mode?
                     let is_search_mode = self
                         .normal_or_search_stack
                         .get_visible_child_name()
                         .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
                         .is_some();
                     if !is_search_mode {
+                        // the focused widget is a visible entry, and
+                        // we're not in search mode => don't grab this
+                        // key event, this is likely a note search
                         return;
                     }
                 }
@@ -542,7 +552,7 @@ impl Widget for Win {
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
-            key_release_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
+            key_press_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
         }
     }
 }

@@ -1,5 +1,6 @@
 use super::project_items_list::ProjectItem;
 use super::search_bar;
+use super::search_bar::Msg as SearchBarMsg;
 use super::search_bar::SearchBar;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
 use super::server_poi_contents::Msg::RequestDisplayServerItem as ServerPoiContentsRequestDisplayServerItem;
@@ -24,6 +25,7 @@ pub enum Msg {
     TextViewEventAfter(gdk::Event),
     RequestDisplayServerItem(ServerItem),
     NoteKeyRelease(gdk::EventKey),
+    NoteSearchChange(String),
 }
 
 pub struct Model {
@@ -50,6 +52,11 @@ impl Widget for ProjectPoiContents {
         self.server_note_title
             .get_style_context()
             .add_class("server_note_title");
+        let search_bar = &self.model.search_bar;
+        relm::connect!(
+            search_bar@SearchBarMsg::SearchChanged(ref s),
+            self.model.relm,
+            Msg::NoteSearchChange(s.clone()));
         let search_bar_widget = self.model.search_bar.widget();
         self.note_overlay.add_overlay(search_bar_widget);
     }
@@ -162,6 +169,18 @@ impl Widget for ProjectPoiContents {
                 } else if key.get_keyval() == gdk::keys::constants::Escape {
                     self.model.search_bar.emit(search_bar::Msg::Reveal(false));
                     self.note_scroll.grab_focus();
+                }
+            }
+            Msg::NoteSearchChange(text) => {
+                let buffer = self.note_textview.get_buffer().unwrap();
+                if let Some((mut start, end)) =
+                    buffer
+                        .get_start_iter()
+                        .forward_search(&text, gtk::TextSearchFlags::all(), None)
+                {
+                    buffer.select_range(&start, &end);
+                    self.note_textview
+                        .scroll_to_iter(&mut start, 0.0, false, 0.0, 0.0);
                 }
             }
             // meant for my parent

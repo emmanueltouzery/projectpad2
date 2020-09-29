@@ -1,3 +1,6 @@
+// NOTE it turns out gtk has a SearchBar OOB
+// https://gtk-rs.org/docs/gtk/struct.SearchBar.html
+// maybe migrate to that? Not sure what it brings to the table...
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};

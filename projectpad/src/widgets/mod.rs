@@ -9,6 +9,7 @@ mod project_poi_item_list_item;
 mod project_poi_list_item;
 mod project_search_header;
 mod project_summary;
+mod search_bar;
 pub mod search_view;
 mod search_view_render;
 mod server_item_list_item;

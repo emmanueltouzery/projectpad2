@@ -1,4 +1,6 @@
 use super::project_items_list::ProjectItem;
+use super::search_bar;
+use super::search_bar::SearchBar;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
 use super::server_poi_contents::Msg::RequestDisplayServerItem as ServerPoiContentsRequestDisplayServerItem;
 use super::server_poi_contents::Msg::ViewNote as ServerPoiContentsMsgViewNote;
@@ -21,6 +23,7 @@ pub enum Msg {
     TextViewMoveCursor(f64, f64),
     TextViewEventAfter(gdk::Event),
     RequestDisplayServerItem(ServerItem),
+    NoteKeyRelease(gdk::EventKey),
 }
 
 pub struct Model {
@@ -32,6 +35,7 @@ pub struct Model {
     note_passwords: Vec<ItemDataInfo>,
     hand_cursor: Option<gdk::Cursor>,
     text_cursor: Option<gdk::Cursor>,
+    search_bar: relm::Component<SearchBar>,
 }
 
 const CHILD_NAME_SERVER: &str = "server";
@@ -46,6 +50,8 @@ impl Widget for ProjectPoiContents {
         self.server_note_title
             .get_style_context()
             .add_class("server_note_title");
+        let search_bar_widget = self.model.search_bar.widget();
+        self.note_overlay.add_overlay(search_bar_widget);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -58,6 +64,7 @@ impl Widget for ProjectPoiContents {
             note_passwords: vec![],
             hand_cursor: None,
             text_cursor: None,
+            search_bar: relm::init::<SearchBar>(()).expect("searchbar init"),
         }
     }
 
@@ -145,6 +152,16 @@ impl Widget for ProjectPoiContents {
                             self.password_popover(&p);
                         }
                     }
+                }
+            }
+            Msg::NoteKeyRelease(key) => {
+                if !(key.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty()
+                    && key.get_keyval().to_unicode() == Some('f')
+                {
+                    self.model.search_bar.emit(search_bar::Msg::Reveal(true));
+                } else if key.get_keyval() == gdk::keys::constants::Escape {
+                    self.model.search_bar.emit(search_bar::Msg::Reveal(false));
+                    self.note_scroll.grab_focus();
                 }
             }
             // meant for my parent
@@ -284,22 +301,26 @@ impl Widget for ProjectPoiContents {
                     gtk::Label {
                     }
                 },
-                #[name="note_scroll"]
-                gtk::ScrolledWindow {
+                #[name="note_overlay"]
+                gtk::Overlay {
                     child: {
                         expand: true,
                     },
-                    #[name="note_textview"]
-                    gtk::TextView {
-                        margin_top: 10,
-                        margin_start: 10,
-                        margin_end: 10,
-                        margin_bottom: 10,
-                        editable: false,
-                        cursor_visible: false,
-                        motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
-                        event_after(_, event) => Msg::TextViewEventAfter(event.clone())
-                    }
+                    key_release_event(_, key) => (Msg::NoteKeyRelease(key.clone()), Inhibit(false)),
+                    #[name="note_scroll"]
+                    gtk::ScrolledWindow {
+                        #[name="note_textview"]
+                        gtk::TextView {
+                            margin_top: 10,
+                            margin_start: 10,
+                            margin_end: 10,
+                            margin_bottom: 10,
+                            editable: false,
+                            cursor_visible: false,
+                            motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
+                            event_after(_, event) => Msg::TextViewEventAfter(event.clone())
+                        }
+                    },
                 }
             }
         }

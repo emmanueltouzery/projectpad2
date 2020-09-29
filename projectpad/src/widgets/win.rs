@@ -357,6 +357,21 @@ impl Widget for Win {
                     .unwrap();
             }
             Msg::KeyPress(e) => {
+                if self
+                    .window
+                    .get_focus()
+                    .and_then(|w| w.downcast::<gtk::Entry>().ok())
+                    .is_some()
+                {
+                    let is_search_mode = self
+                        .normal_or_search_stack
+                        .get_visible_child_name()
+                        .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
+                        .is_some();
+                    if !is_search_mode {
+                        return;
+                    }
+                }
                 if e.get_keyval() == gdk::keys::constants::Escape {
                     self.model
                         .relm
@@ -527,7 +542,7 @@ impl Widget for Win {
                 }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
-            key_press_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
+            key_release_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
         }
     }
 }

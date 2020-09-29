@@ -139,15 +139,6 @@ impl Widget for ProjectBadge {
                 } else {
                     (p + (aw - aw * w / h) / 2.0, p)
                 };
-                if w > h {
-                    println!(
-                        "w {} h {} effective height: {} offsety {}",
-                        w,
-                        h,
-                        aw * h / w,
-                        offsety
-                    );
-                }
                 context.set_source_surface(&surface, offsetx / scale_ratio, offsety / scale_ratio);
                 context.paint();
             }

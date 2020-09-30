@@ -357,63 +357,7 @@ impl Widget for Win {
                     .unwrap();
             }
             Msg::KeyPress(e) => {
-                // we don't want to trigger the global search if the
-                // note search text entry is focused.
-                if self
-                    .window
-                    .get_focus()
-                    // is an entry focused?
-                    .and_then(|w| w.downcast::<gtk::Entry>().ok())
-                    // is it visible? (because when global search is off,
-                    // the global search entry can be focused but invisible)
-                    .filter(|w| w.get_visible())
-                    .is_some()
-                {
-                    // are we in search mode?
-                    let is_search_mode = self
-                        .normal_or_search_stack
-                        .get_visible_child_name()
-                        .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
-                        .is_some();
-                    if !is_search_mode {
-                        // the focused widget is a visible entry, and
-                        // we're not in search mode => don't grab this
-                        // key event, this is likely a note search
-                        return;
-                    }
-                }
-                if e.get_keyval() == gdk::keys::constants::Escape {
-                    self.model
-                        .relm
-                        .stream()
-                        .emit(Msg::SearchActiveChanged(false));
-                    self.model
-                        .titlebar
-                        .stream()
-                        .emit(WinTitleBarMsg::SearchActiveChanged(false));
-                } else if let Some(k) = e.get_keyval().to_unicode() {
-                    // do nothing if control and others were pressed
-                    // (then the state won't be empty)
-                    // could be ctrl-c on notes for instance
-                    // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
-                    let mut state = e.get_state();
-                    state.remove(ModifierType::MOD2_MASK);
-                    state.remove(ModifierType::LOCK_MASK);
-                    if state.is_empty() {
-                        self.model
-                            .relm
-                            .stream()
-                            .emit(Msg::SearchActiveChanged(true));
-                        self.search_view
-                            .emit(SearchViewMsg::FilterChanged(Some(k.to_string())));
-                        self.model
-                            .titlebar
-                            .emit(WinTitleBarMsg::SearchTextChangedFromElsewhere((
-                                k.to_string(),
-                                e,
-                            )));
-                    }
-                }
+                self.handle_keypress(e);
             }
             Msg::ProjectItemUpdated(ref project_item) => {
                 self.project_items_list
@@ -470,6 +414,76 @@ impl Widget for Win {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
         Ok(())
+    }
+
+    fn handle_keypress(&self, e: gdk::EventKey) {
+        if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty()
+            && e.get_keyval().to_unicode() == Some('f')
+        {
+            self.project_poi_contents
+                .stream()
+                .emit(ProjectPoiContentsMsg::KeyboardCtrlF);
+        } else if e.get_keyval() == gdk::keys::constants::Escape {
+            self.project_poi_contents
+                .stream()
+                .emit(ProjectPoiContentsMsg::KeyboardEscape);
+            self.model
+                .relm
+                .stream()
+                .emit(Msg::SearchActiveChanged(false));
+            self.model
+                .titlebar
+                .stream()
+                .emit(WinTitleBarMsg::SearchActiveChanged(false));
+        } else if let Some(k) = e.get_keyval().to_unicode() {
+            // do nothing if control and others were pressed
+            // (then the state won't be empty)
+            // could be ctrl-c on notes for instance
+            // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
+            let mut state = e.get_state();
+            state.remove(ModifierType::MOD2_MASK);
+            state.remove(ModifierType::LOCK_MASK);
+            if state.is_empty() {
+                // we don't want to trigger the global search if the
+                // note search text entry is focused.
+                if self
+                    .window
+                    .get_focus()
+                    // is an entry focused?
+                    .and_then(|w| w.downcast::<gtk::Entry>().ok())
+                    // is it visible? (because when global search is off,
+                    // the global search entry can be focused but invisible)
+                    .filter(|w| w.get_visible())
+                    .is_some()
+                {
+                    // are we in search mode?
+                    let is_search_mode = self
+                        .normal_or_search_stack
+                        .get_visible_child_name()
+                        .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
+                        .is_some();
+                    if !is_search_mode {
+                        // the focused widget is a visible entry, and
+                        // we're not in search mode => don't grab this
+                        // key event, this is likely a note search
+                        return;
+                    }
+                }
+
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::SearchActiveChanged(true));
+                self.search_view
+                    .emit(SearchViewMsg::FilterChanged(Some(k.to_string())));
+                self.model
+                    .titlebar
+                    .emit(WinTitleBarMsg::SearchTextChangedFromElsewhere((
+                        k.to_string(),
+                        e,
+                    )));
+            }
+        }
     }
 
     view! {

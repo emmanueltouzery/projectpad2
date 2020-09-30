@@ -24,10 +24,11 @@ pub enum Msg {
     TextViewMoveCursor(f64, f64),
     TextViewEventAfter(gdk::Event),
     RequestDisplayServerItem(ServerItem),
-    NoteKeyRelease(gdk::EventKey),
     NoteSearchChange(String),
     NoteSearchPrevious,
     NoteSearchNext,
+    KeyboardCtrlF,
+    KeyboardEscape,
 }
 
 pub struct Model {
@@ -173,15 +174,11 @@ impl Widget for ProjectPoiContents {
                     }
                 }
             }
-            Msg::NoteKeyRelease(key) => {
-                if !(key.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty()
-                    && key.get_keyval().to_unicode() == Some('f')
-                {
-                    self.model.search_bar.emit(search_bar::Msg::Reveal(true));
-                } else if key.get_keyval() == gdk::keys::constants::Escape {
-                    self.model.search_bar.emit(search_bar::Msg::Reveal(false));
-                    self.note_scroll.grab_focus();
-                }
+            Msg::KeyboardCtrlF => {
+                self.model.search_bar.emit(search_bar::Msg::Reveal(true));
+            }
+            Msg::KeyboardEscape => {
+                self.model.search_bar.emit(search_bar::Msg::Reveal(false));
             }
             Msg::NoteSearchChange(text) => {
                 self.apply_search(
@@ -372,7 +369,6 @@ impl Widget for ProjectPoiContents {
                     child: {
                         expand: true,
                     },
-                    key_release_event(_, key) => (Msg::NoteKeyRelease(key.clone()), Inhibit(false)),
                     #[name="note_scroll"]
                     gtk::ScrolledWindow {
                         #[name="note_textview"]

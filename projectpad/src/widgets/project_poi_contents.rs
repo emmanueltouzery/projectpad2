@@ -28,6 +28,8 @@ pub enum Msg {
     NoteSearchPrevious,
     NoteSearchNext,
     KeyboardCtrlF,
+    KeyboardCtrlN,
+    KeyboardCtrlP,
     KeyboardEscape,
 }
 
@@ -86,6 +88,13 @@ impl Widget for ProjectPoiContents {
             search_bar: relm::init::<SearchBar>(()).expect("searchbar init"),
             note_search_text: None,
         }
+    }
+
+    fn is_displaying_note(&self) -> bool {
+        self.contents_stack
+            .get_visible_child_name()
+            .filter(|s| s.as_str() == CHILD_NAME_NOTE)
+            .is_some()
     }
 
     fn update(&mut self, event: Msg) {
@@ -175,10 +184,24 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::KeyboardCtrlF => {
-                self.model.search_bar.emit(search_bar::Msg::Reveal(true));
+                if self.is_displaying_note() {
+                    self.model.search_bar.emit(search_bar::Msg::Reveal(true));
+                }
+            }
+            Msg::KeyboardCtrlN => {
+                if self.is_displaying_note() {
+                    self.note_search_next();
+                }
+            }
+            Msg::KeyboardCtrlP => {
+                if self.is_displaying_note() {
+                    self.note_search_previous();
+                }
             }
             Msg::KeyboardEscape => {
-                self.model.search_bar.emit(search_bar::Msg::Reveal(false));
+                if self.is_displaying_note() {
+                    self.model.search_bar.emit(search_bar::Msg::Reveal(false));
+                }
             }
             Msg::NoteSearchChange(text) => {
                 self.apply_search(
@@ -191,33 +214,33 @@ impl Widget for ProjectPoiContents {
                 self.model.note_search_text = Some(text);
             }
             Msg::NoteSearchNext => {
-                let buffer = self.note_textview.get_buffer().unwrap();
-                if let (Some((_start, end)), Some(search)) = (
-                    buffer.get_selection_bounds(),
-                    self.model.note_search_text.clone(),
-                ) {
-                    self.apply_search(end.forward_search(
-                        &search,
-                        gtk::TextSearchFlags::all(),
-                        None,
-                    ));
-                }
+                self.note_search_next();
             }
             Msg::NoteSearchPrevious => {
-                let buffer = self.note_textview.get_buffer().unwrap();
-                if let (Some((start, _end)), Some(search)) = (
-                    buffer.get_selection_bounds(),
-                    self.model.note_search_text.clone(),
-                ) {
-                    self.apply_search(start.backward_search(
-                        &search,
-                        gtk::TextSearchFlags::all(),
-                        None,
-                    ));
-                }
+                self.note_search_previous();
             }
             // meant for my parent
             Msg::RequestDisplayServerItem(_) => {}
+        }
+    }
+
+    fn note_search_next(&self) {
+        let buffer = self.note_textview.get_buffer().unwrap();
+        if let (Some((_start, end)), Some(search)) = (
+            buffer.get_selection_bounds(),
+            self.model.note_search_text.clone(),
+        ) {
+            self.apply_search(end.forward_search(&search, gtk::TextSearchFlags::all(), None));
+        }
+    }
+
+    fn note_search_previous(&self) {
+        let buffer = self.note_textview.get_buffer().unwrap();
+        if let (Some((start, _end)), Some(search)) = (
+            buffer.get_selection_bounds(),
+            self.model.note_search_text.clone(),
+        ) {
+            self.apply_search(start.backward_search(&search, gtk::TextSearchFlags::all(), None));
         }
     }
 

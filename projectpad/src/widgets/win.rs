@@ -46,6 +46,17 @@ use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
+pub fn is_plaintext_key(e: &gdk::EventKey) -> bool {
+    // return false if control and others were pressed
+    // (then the state won't be empty)
+    // could be ctrl-c on notes for instance
+    // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
+    let mut state = e.get_state();
+    state.remove(ModifierType::MOD2_MASK);
+    state.remove(ModifierType::LOCK_MASK);
+    state.is_empty()
+}
+
 const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
 
 type DisplayItemParams = (Project, Option<ProjectItem>, Option<ServerItem>);
@@ -417,12 +428,25 @@ impl Widget for Win {
     }
 
     fn handle_keypress(&self, e: gdk::EventKey) {
-        if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty()
-            && e.get_keyval().to_unicode() == Some('f')
-        {
-            self.project_poi_contents
-                .stream()
-                .emit(ProjectPoiContentsMsg::KeyboardCtrlF);
+        if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
+            match e.get_keyval().to_unicode() {
+                Some('f') => {
+                    self.project_poi_contents
+                        .stream()
+                        .emit(ProjectPoiContentsMsg::KeyboardCtrlF);
+                }
+                Some('n') => {
+                    self.project_poi_contents
+                        .stream()
+                        .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
+                }
+                Some('p') => {
+                    self.project_poi_contents
+                        .stream()
+                        .emit(ProjectPoiContentsMsg::KeyboardCtrlP);
+                }
+                _ => {}
+            }
         } else if e.get_keyval() == gdk::keys::constants::Escape {
             self.project_poi_contents
                 .stream()
@@ -440,10 +464,7 @@ impl Widget for Win {
             // (then the state won't be empty)
             // could be ctrl-c on notes for instance
             // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
-            let mut state = e.get_state();
-            state.remove(ModifierType::MOD2_MASK);
-            state.remove(ModifierType::LOCK_MASK);
-            if state.is_empty() {
+            if is_plaintext_key(&e) {
                 // we don't want to trigger the global search if the
                 // note search text entry is focused.
                 if self

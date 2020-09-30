@@ -1,6 +1,7 @@
 // NOTE it turns out gtk has a SearchBar OOB
 // https://gtk-rs.org/docs/gtk/struct.SearchBar.html
 // maybe migrate to that? Not sure what it brings to the table...
+use super::win::is_plaintext_key;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -8,7 +9,7 @@ use relm_derive::{widget, Msg};
 #[derive(Msg)]
 pub enum Msg {
     Reveal(bool),
-    SearchEntryChanged,
+    KeyRelease(gdk::EventKey),
     SearchChanged(String),
     SearchPrevious,
     SearchNext,
@@ -39,11 +40,13 @@ impl Widget for SearchBar {
                     self.search_entry.grab_focus();
                 }
             }
-            Msg::SearchEntryChanged => {
-                self.model
-                    .relm
-                    .stream()
-                    .emit(Msg::SearchChanged(self.search_entry.get_text().to_string()));
+            Msg::KeyRelease(e) => {
+                if is_plaintext_key(&e) {
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::SearchChanged(self.search_entry.get_text().to_string()));
+                }
             }
             // meant for my parent
             Msg::SearchNext => {}
@@ -70,7 +73,7 @@ impl Widget for SearchBar {
                         margin_top: 5,
                         margin_bottom: 5,
                         margin_start: 5,
-                        key_release_event(_, _) => (Msg::SearchEntryChanged, Inhibit(false)),
+                        key_release_event(_, event) => (Msg::KeyRelease(event.clone()), Inhibit(false)),
                     },
                     gtk::Button {
                         margin_top: 5,

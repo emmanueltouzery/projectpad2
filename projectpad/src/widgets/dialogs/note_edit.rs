@@ -3,6 +3,7 @@ use gtk::prelude::*;
 use itertools::Itertools;
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use sourceview::prelude::*;
 #[cfg(test)]
 use std::sync::Once;
 
@@ -34,10 +35,21 @@ pub struct Model {
 #[widget]
 impl Widget for NoteEdit {
     fn init_view(&mut self) {
-        self.note_textview
-            .get_buffer()
-            .unwrap()
-            .set_text(&self.model.contents);
+        let buf = sourceview::Buffer::new_with_language(
+            &sourceview::LanguageManager::get_default()
+                .unwrap()
+                .get_language("markdown")
+                .unwrap(),
+        );
+        buf.set_text(&self.model.contents);
+        self.note_textview.set_buffer(Some(&buf));
+        // println!(
+        //     "{:?}",
+        //     sourceview::LanguageManager::get_default()
+        //         .unwrap()
+        //         .get_language_ids()
+        // );
+        // buf.set_language(Some("markdown"));
         self.add_tool_accelerator(&self.bold_btn, 'b');
         self.add_tool_accelerator(&self.italic_btn, 'i');
         self.add_tool_accelerator(&self.strikethrough_btn, 's');
@@ -109,7 +121,7 @@ impl Widget for NoteEdit {
         }
     }
 
-    fn toggle_password(note_textview: &gtk::TextView) {
+    fn toggle_password(note_textview: &sourceview::View) {
         let buf = note_textview.get_buffer().unwrap();
         let sel_bounds = buf.get_selection_bounds();
         if sel_bounds.is_none() {
@@ -136,7 +148,7 @@ impl Widget for NoteEdit {
         Self::toggle_snippet(note_textview, &before, &after);
     }
 
-    fn toggle_preformat(note_textview: &gtk::TextView) {
+    fn toggle_preformat(note_textview: &sourceview::View) {
         let buf = note_textview.get_buffer().unwrap();
         let sel_bounds = buf.get_selection_bounds();
         if sel_bounds.is_none() {
@@ -158,7 +170,7 @@ impl Widget for NoteEdit {
         }
     }
 
-    fn toggle_blockquote(note_textview: &gtk::TextView) {
+    fn toggle_blockquote(note_textview: &sourceview::View) {
         let buf = note_textview.get_buffer().unwrap();
         let (start_offset, end_offset) = match buf.get_selection_bounds() {
             None => {
@@ -217,7 +229,7 @@ impl Widget for NoteEdit {
     }
 
     // Toggle between '#', '##', '###', "-" and no header
-    fn toggle_heading(note_textview: &gtk::TextView) {
+    fn toggle_heading(note_textview: &sourceview::View) {
         let buf = note_textview.get_buffer().unwrap();
         let mut to_insert = " # ";
         let mut clear_chars = 0;
@@ -251,7 +263,7 @@ impl Widget for NoteEdit {
         buf.insert(&mut iter, to_insert);
     }
 
-    fn toggle_snippet(note_textview: &gtk::TextView, before: &str, after: &str) {
+    fn toggle_snippet(note_textview: &sourceview::View, before: &str, after: &str) {
         let before_len = before.len() as i32;
         let after_len = after.len() as i32;
         let buf = note_textview.get_buffer().unwrap();
@@ -365,7 +377,7 @@ impl Widget for NoteEdit {
                 vexpand: true,
                 gtk::ScrolledWindow {
                     #[name="note_textview"]
-                    gtk::TextView {
+                    sourceview::View {
                         editable: true,
                     }
                 }
@@ -401,7 +413,7 @@ fn assert_tv_contents_eq(expected: &'static str, buf: &gtk::TextBuffer) {
 #[test]
 fn toggle_snippet_should_add_bold() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     NoteEdit::toggle_snippet(&tv, "**", "**");
     let buf = tv.get_buffer().unwrap();
     assert_tv_contents_eq("****", &buf);
@@ -411,7 +423,7 @@ fn toggle_snippet_should_add_bold() {
 #[test]
 fn toggle_snippet_should_untoggle_bold() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("****");
     let initial_iter = buf.get_iter_at_offset(2);
@@ -424,7 +436,7 @@ fn toggle_snippet_should_untoggle_bold() {
 #[test]
 fn toggle_snippet_should_untoggle_link() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("[](url)");
     let initial_iter = buf.get_iter_at_offset(1);
@@ -437,7 +449,7 @@ fn toggle_snippet_should_untoggle_link() {
 #[test]
 fn toggle_snippet_with_selection_should_wrap_selection() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("my amazing test");
     let select_start_iter = buf.get_iter_at_offset(3);
@@ -453,7 +465,7 @@ fn toggle_snippet_with_selection_should_wrap_selection() {
 #[test]
 fn toggle_snippet_with_selection_should_untoggle_selection() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("my **amazing** test");
     let select_start_iter = buf.get_iter_at_offset(5);
@@ -469,7 +481,7 @@ fn toggle_snippet_with_selection_should_untoggle_selection() {
 #[test]
 fn toggle_heading_should_set_heading() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     NoteEdit::toggle_heading(&tv);
     assert_tv_contents_eq(" # ", &buf);
@@ -478,7 +490,7 @@ fn toggle_heading_should_set_heading() {
 #[test]
 fn toggle_heading_should_move_to_next_heading() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\n # my **amazing** test");
     let initial_iter = buf.get_iter_at_offset(10);
@@ -490,7 +502,7 @@ fn toggle_heading_should_move_to_next_heading() {
 #[test]
 fn toggle_heading_should_wipe_heading_at_end_of_cycle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text(" - line1\nmy **amazing** test");
     let initial_iter = buf.get_iter_at_offset(2);
@@ -502,7 +514,7 @@ fn toggle_heading_should_wipe_heading_at_end_of_cycle() {
 #[test]
 fn toggle_blockquote_with_no_selection_should_toggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
     let initial_iter = buf.get_iter_at_offset(2);
@@ -514,7 +526,7 @@ fn toggle_blockquote_with_no_selection_should_toggle() {
 #[test]
 fn toggle_blockquote_with_no_selection_should_untoggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\n> my **amazing** test");
     let initial_iter = buf.get_iter_at_offset(10);
@@ -526,7 +538,7 @@ fn toggle_blockquote_with_no_selection_should_untoggle() {
 #[test]
 fn toggle_blockquote_with_selection_should_toggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
     let initial_iter = buf.get_iter_at_offset(2);
@@ -541,7 +553,7 @@ fn toggle_blockquote_with_selection_should_toggle() {
 #[test]
 fn toggle_blockquote_with_selection_should_untoggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("> line1\n> my **amazing** test");
     let initial_iter = buf.get_iter_at_offset(2);
@@ -556,7 +568,7 @@ fn toggle_blockquote_with_selection_should_untoggle() {
 #[test]
 fn toggle_password_with_no_selection_should_toggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
     let initial_iter = buf.get_iter_at_offset(2);
@@ -569,7 +581,7 @@ fn toggle_password_with_no_selection_should_toggle() {
 #[test]
 fn toggle_password_with_no_selection_should_untoggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("li[pass``]ne1\nmy **amazing** test");
     let initial_iter = buf.get_iter_at_offset(8);
@@ -582,7 +594,7 @@ fn toggle_password_with_no_selection_should_untoggle() {
 #[test]
 fn toggle_password_with_selection_should_toggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
     let initial_iter = buf.get_iter_at_offset(9);
@@ -596,7 +608,7 @@ fn toggle_password_with_selection_should_toggle() {
 #[test]
 fn toggle_password_with_selection_should_toggle_with_spaces_if_leading_backtick() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\nmy `*amazing** test");
     let initial_iter = buf.get_iter_at_offset(9);
@@ -610,7 +622,7 @@ fn toggle_password_with_selection_should_toggle_with_spaces_if_leading_backtick(
 #[test]
 fn toggle_password_with_selection_should_untoggle() {
     tests_init();
-    let tv = gtk::TextView::new();
+    let tv = sourceview::View::new();
     let buf = tv.get_buffer().unwrap();
     buf.set_text("line1\nmy [pass`**amazing**`] test");
     let initial_iter = buf.get_iter_at_offset(15);

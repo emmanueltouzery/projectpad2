@@ -56,6 +56,8 @@ impl Widget for ProjectSummary {
     fn init_view(&mut self) {
         self.model.title.show_all();
 
+        self.buttons_box.get_style_context().add_class("linked");
+
         self.radio_stg.join_group(Some(&self.radio_dev));
         self.radio_uat.join_group(Some(&self.radio_stg));
         self.radio_prd.join_group(Some(&self.radio_uat));
@@ -491,12 +493,14 @@ impl Widget for ProjectSummary {
                     margin_end: 5,
                 },
             },
+            #[name="buttons_box"]
             gtk::Box {
                 homogeneous: true,
+                margin_start: 5,
+                margin_end: 5,
                 child: {
                     padding: 5,
                 },
-                spacing: 3,
                 #[name="radio_dev"]
                 gtk::RadioButton {
                     label: "Dev",

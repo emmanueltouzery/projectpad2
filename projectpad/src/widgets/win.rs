@@ -55,6 +55,8 @@ pub fn is_plaintext_key(e: &gdk::EventKey) -> bool {
     state.remove(ModifierType::MOD2_MASK);
     state.remove(ModifierType::LOCK_MASK);
     state.is_empty()
+        && e.get_keyval() != gdk::keys::constants::Return
+        && e.get_keyval() != gdk::keys::constants::KP_Enter
 }
 
 const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
@@ -428,6 +430,11 @@ impl Widget for Win {
     }
 
     fn handle_keypress(&self, e: gdk::EventKey) {
+        let is_search_mode = self
+            .normal_or_search_stack
+            .get_visible_child_name()
+            .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
+            .is_some();
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
             match e.get_keyval().to_unicode() {
                 Some('f') => {
@@ -446,6 +453,16 @@ impl Widget for Win {
                         .emit(ProjectPoiContentsMsg::KeyboardCtrlP);
                 }
                 _ => {}
+            }
+        } else if e.get_keyval() == gdk::keys::constants::Return
+            || e.get_keyval() == gdk::keys::constants::KP_Enter
+        {
+            if is_search_mode {
+                self.search_view.stream().emit(SearchViewMsg::KeyboardEnter);
+            } else {
+                self.project_poi_contents
+                    .stream()
+                    .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
             }
         } else if e.get_keyval() == gdk::keys::constants::Escape {
             self.project_poi_contents
@@ -478,11 +495,6 @@ impl Widget for Win {
                     .is_some()
                 {
                     // are we in search mode?
-                    let is_search_mode = self
-                        .normal_or_search_stack
-                        .get_visible_child_name()
-                        .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
-                        .is_some();
                     if !is_search_mode {
                         // the focused widget is a visible entry, and
                         // we're not in search mode => don't grab this

@@ -99,6 +99,7 @@ pub enum Msg {
     SearchResultsModified,
     RequestSelectedItem,
     SelectedItem((ProjectPadItem, i32, String)),
+    KeyboardEnter,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -474,206 +475,7 @@ impl Widget for SearchView {
             Msg::OpenItemFull(item) => {
                 // meant for my parent
             }
-            Msg::EditItem(item) => match item {
-                // TODO tried to reduce duplication here, but gave up
-                ProjectPadItem::Server(srv) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            srv.project_id,
-                            Some(srv),
-                        ),
-                        server_add_edit_dlg::Msg::OkPressed,
-                        "Server",
-                    );
-                    relm::connect!(
-                        component@MsgServerAddEditDialog::ServerUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.project_item_add_edit_dialog = Some((
-                        ProjectAddEditDialogComponent::Server(component),
-                        dialog.clone(),
-                    ));
-                    dialog.show();
-                }
-                ProjectPadItem::ProjectPoi(prj_poi) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            prj_poi.project_id,
-                            Some(prj_poi),
-                        ),
-                        project_poi_add_edit_dlg::Msg::OkPressed,
-                        "Project point of interest",
-                    );
-                    relm::connect!(
-                        component@MsgProjectPoiAddEditDialog::PoiUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.project_item_add_edit_dialog = Some((
-                        ProjectAddEditDialogComponent::ProjectPoi(component),
-                        dialog.clone(),
-                    ));
-                    dialog.show();
-                }
-                ProjectPadItem::ProjectNote(prj_note) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            prj_note.project_id,
-                            Some(prj_note),
-                        ),
-                        project_note_add_edit_dlg::Msg::OkPressed,
-                        "Project note",
-                    );
-                    relm::connect!(
-                        component@MsgProjectNoteAddEditDialog::ProjectNoteUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.project_item_add_edit_dialog = Some((
-                        ProjectAddEditDialogComponent::ProjectNote(component),
-                        dialog.clone(),
-                    ));
-                    dialog.show();
-                }
-                ProjectPadItem::ServerLink(srv_link) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            srv_link.project_id,
-                            Some(srv_link),
-                        ),
-                        server_link_add_edit_dlg::Msg::OkPressed,
-                        "Server link",
-                    );
-                    relm::connect!(
-                        component@MsgServerLinkAddEditDialog::ServerLinkUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.project_item_add_edit_dialog = Some((
-                        ProjectAddEditDialogComponent::ServerLink(component),
-                        dialog.clone(),
-                    ));
-                    dialog.show();
-                }
-                ProjectPadItem::ServerPoi(srv_poi) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            srv_poi.server_id,
-                            Some(srv_poi),
-                        ),
-                        MsgServerPoiAddEditDialog::OkPressed,
-                        "Server POI",
-                    );
-                    relm::connect!(
-                        component@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.server_item_add_edit_dialog =
-                        Some((ServerAddEditDialogComponent::Poi(component), dialog.clone()));
-                    dialog.show();
-                }
-                ProjectPadItem::ServerDatabase(srv_db) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            srv_db.server_id,
-                            Some(srv_db),
-                        ),
-                        MsgServerDbAddEditDialog::OkPressed,
-                        "Server Database",
-                    );
-                    relm::connect!(
-                        component@MsgServerDbAddEditDialog::ServerDbUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.server_item_add_edit_dialog =
-                        Some((ServerAddEditDialogComponent::Db(component), dialog.clone()));
-                    dialog.show();
-                }
-                ProjectPadItem::ServerExtraUserAccount(srv_usr) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            srv_usr.server_id,
-                            Some(srv_usr),
-                        ),
-                        MsgServerExtraUserAddEditDialog::OkPressed,
-                        "Server Extra User",
-                    );
-                    relm::connect!(
-                        component@MsgServerExtraUserAddEditDialog::ServerUserUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.server_item_add_edit_dialog = Some((
-                        ServerAddEditDialogComponent::User(component),
-                        dialog.clone(),
-                    ));
-                    dialog.show();
-                }
-                ProjectPadItem::ServerWebsite(srv_www) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            srv_www.server_id,
-                            Some(srv_www),
-                        ),
-                        MsgServerWebsiteAddEditDialog::OkPressed,
-                        "Server Website",
-                    );
-                    relm::connect!(
-                        component@MsgServerWebsiteAddEditDialog::ServerWwwUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.server_item_add_edit_dialog = Some((
-                        ServerAddEditDialogComponent::Website(component),
-                        dialog.clone(),
-                    ));
-                    dialog.show();
-                }
-                ProjectPadItem::ServerNote(srv_note) => {
-                    let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                        self.search_result_area.clone().upcast::<gtk::Widget>(),
-                        dialog_helpers::prepare_dialog_param(
-                            self.model.db_sender.clone(),
-                            srv_note.server_id,
-                            Some(srv_note),
-                        ),
-                        MsgServerNoteAddEditDialog::OkPressed,
-                        "Server Note",
-                    );
-                    relm::connect!(
-                        component@MsgServerNoteAddEditDialog::ServerNoteUpdated(_),
-                        self.model.relm,
-                        Msg::SearchResultsModified
-                    );
-                    self.model.server_item_add_edit_dialog = Some((
-                        ServerAddEditDialogComponent::Note(component),
-                        dialog.clone(),
-                    ));
-                    dialog.show();
-                }
-                _ => {
-                    eprintln!("edit not implemented yet for that item type");
-                }
-            },
+            Msg::EditItem(item) => self.edit_item(item),
             Msg::SearchResultsModified => {
                 if let Some((_, dialog)) = self.model.project_item_add_edit_dialog.as_ref() {
                     dialog.close();
@@ -705,8 +507,237 @@ impl Widget for SearchView {
                     _ => {}
                 }
             }
+            Msg::KeyboardEnter => {
+                let items = self.model.search_items.borrow();
+                let level1_items: Vec<_> = items
+                    .iter()
+                    .filter(|i| match i {
+                        ProjectPadItem::Project(_) => true,
+                        _ => false,
+                    })
+                    .collect();
+                let level2_items: Vec<_> = items
+                    .iter()
+                    .filter(|i| i.to_project_item().is_some())
+                    .collect();
+                let level3_items: Vec<_> = items
+                    .iter()
+                    .filter(|i| i.to_server_item().is_some())
+                    .collect();
+                let open =
+                    |i: &ProjectPadItem| self.model.relm.stream().emit(Msg::OpenItem(i.clone()));
+                match (&level1_items[..], &level2_items[..], &level3_items[..]) {
+                    ([fst], [], []) => open(fst),
+                    ([fst], [snd], []) => open(snd),
+                    ([fst], [snd], [thrd]) => open(thrd),
+                    _ => {}
+                }
+            }
             // meant for my parent
             Msg::SelectedItem(_) => {}
+        }
+    }
+
+    fn edit_item(&mut self, item: ProjectPadItem) {
+        match item {
+            // TODO tried to reduce duplication here, but gave up
+            ProjectPadItem::Server(srv) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        srv.project_id,
+                        Some(srv),
+                    ),
+                    server_add_edit_dlg::Msg::OkPressed,
+                    "Server",
+                );
+                relm::connect!(
+                    component@MsgServerAddEditDialog::ServerUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.project_item_add_edit_dialog = Some((
+                    ProjectAddEditDialogComponent::Server(component),
+                    dialog.clone(),
+                ));
+                dialog.show();
+            }
+            ProjectPadItem::ProjectPoi(prj_poi) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        prj_poi.project_id,
+                        Some(prj_poi),
+                    ),
+                    project_poi_add_edit_dlg::Msg::OkPressed,
+                    "Project point of interest",
+                );
+                relm::connect!(
+                    component@MsgProjectPoiAddEditDialog::PoiUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.project_item_add_edit_dialog = Some((
+                    ProjectAddEditDialogComponent::ProjectPoi(component),
+                    dialog.clone(),
+                ));
+                dialog.show();
+            }
+            ProjectPadItem::ProjectNote(prj_note) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        prj_note.project_id,
+                        Some(prj_note),
+                    ),
+                    project_note_add_edit_dlg::Msg::OkPressed,
+                    "Project note",
+                );
+                relm::connect!(
+                    component@MsgProjectNoteAddEditDialog::ProjectNoteUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.project_item_add_edit_dialog = Some((
+                    ProjectAddEditDialogComponent::ProjectNote(component),
+                    dialog.clone(),
+                ));
+                dialog.show();
+            }
+            ProjectPadItem::ServerLink(srv_link) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        srv_link.project_id,
+                        Some(srv_link),
+                    ),
+                    server_link_add_edit_dlg::Msg::OkPressed,
+                    "Server link",
+                );
+                relm::connect!(
+                    component@MsgServerLinkAddEditDialog::ServerLinkUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.project_item_add_edit_dialog = Some((
+                    ProjectAddEditDialogComponent::ServerLink(component),
+                    dialog.clone(),
+                ));
+                dialog.show();
+            }
+            ProjectPadItem::ServerPoi(srv_poi) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        srv_poi.server_id,
+                        Some(srv_poi),
+                    ),
+                    MsgServerPoiAddEditDialog::OkPressed,
+                    "Server POI",
+                );
+                relm::connect!(
+                    component@MsgServerPoiAddEditDialog::ServerPoiUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.server_item_add_edit_dialog =
+                    Some((ServerAddEditDialogComponent::Poi(component), dialog.clone()));
+                dialog.show();
+            }
+            ProjectPadItem::ServerDatabase(srv_db) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        srv_db.server_id,
+                        Some(srv_db),
+                    ),
+                    MsgServerDbAddEditDialog::OkPressed,
+                    "Server Database",
+                );
+                relm::connect!(
+                    component@MsgServerDbAddEditDialog::ServerDbUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.server_item_add_edit_dialog =
+                    Some((ServerAddEditDialogComponent::Db(component), dialog.clone()));
+                dialog.show();
+            }
+            ProjectPadItem::ServerExtraUserAccount(srv_usr) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        srv_usr.server_id,
+                        Some(srv_usr),
+                    ),
+                    MsgServerExtraUserAddEditDialog::OkPressed,
+                    "Server Extra User",
+                );
+                relm::connect!(
+                    component@MsgServerExtraUserAddEditDialog::ServerUserUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.server_item_add_edit_dialog = Some((
+                    ServerAddEditDialogComponent::User(component),
+                    dialog.clone(),
+                ));
+                dialog.show();
+            }
+            ProjectPadItem::ServerWebsite(srv_www) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        srv_www.server_id,
+                        Some(srv_www),
+                    ),
+                    MsgServerWebsiteAddEditDialog::OkPressed,
+                    "Server Website",
+                );
+                relm::connect!(
+                    component@MsgServerWebsiteAddEditDialog::ServerWwwUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.server_item_add_edit_dialog = Some((
+                    ServerAddEditDialogComponent::Website(component),
+                    dialog.clone(),
+                ));
+                dialog.show();
+            }
+            ProjectPadItem::ServerNote(srv_note) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    dialog_helpers::prepare_dialog_param(
+                        self.model.db_sender.clone(),
+                        srv_note.server_id,
+                        Some(srv_note),
+                    ),
+                    MsgServerNoteAddEditDialog::OkPressed,
+                    "Server Note",
+                );
+                relm::connect!(
+                    component@MsgServerNoteAddEditDialog::ServerNoteUpdated(_),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.server_item_add_edit_dialog = Some((
+                    ServerAddEditDialogComponent::Note(component),
+                    dialog.clone(),
+                ));
+                dialog.show();
+            }
+            _ => {
+                eprintln!("edit not implemented yet for that item type");
+            }
         }
     }
 

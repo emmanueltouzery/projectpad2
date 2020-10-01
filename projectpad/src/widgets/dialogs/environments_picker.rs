@@ -22,7 +22,11 @@ pub struct Model {
 
 #[widget]
 impl Widget for EnvironmentsPicker {
-    fn init_view(&mut self) {}
+    fn init_view(&mut self) {
+        self.environments_box
+            .get_style_context()
+            .add_class("linked");
+    }
 
     fn model(relm: &relm::Relm<Self>, selected_environments: SelectedEnvironments) -> Model {
         Model {
@@ -33,15 +37,10 @@ impl Widget for EnvironmentsPicker {
     fn update(&mut self, event: Msg) {}
 
     view! {
-        gtk::Grid {
-            row_spacing: 5,
-            column_spacing: 10,
+        #[name="environments_box"]
+        gtk::Box {
             #[name="radio_dev"]
             gtk::ToggleButton {
-                cell: {
-                    left_attach: 0,
-                    top_attach: 0,
-                },
                 label: "Dev",
                 hexpand: true,
                 active: self.model.selected_environments.has_dev,
@@ -49,10 +48,6 @@ impl Widget for EnvironmentsPicker {
             },
             #[name="radio_stg"]
             gtk::ToggleButton {
-                cell: {
-                    left_attach: 1,
-                    top_attach: 0,
-                },
                 label: "Stg",
                 hexpand: true,
                 active: self.model.selected_environments.has_stg,
@@ -60,10 +55,6 @@ impl Widget for EnvironmentsPicker {
             },
             #[name="radio_uat"]
             gtk::ToggleButton {
-                cell: {
-                    left_attach: 0,
-                    top_attach: 1,
-                },
                 label: "Uat",
                 hexpand: true,
                 active: self.model.selected_environments.has_uat,
@@ -71,10 +62,6 @@ impl Widget for EnvironmentsPicker {
             },
             #[name="radio_prd"]
             gtk::ToggleButton {
-                cell: {
-                    left_attach: 1,
-                    top_attach: 1,
-                },
                 label: "Prd",
                 hexpand: true,
                 active: self.model.selected_environments.has_prod,

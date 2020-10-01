@@ -511,10 +511,7 @@ impl Widget for SearchView {
                 let items = self.model.search_items.borrow();
                 let level1_items: Vec<_> = items
                     .iter()
-                    .filter(|i| match i {
-                        ProjectPadItem::Project(_) => true,
-                        _ => false,
-                    })
+                    .filter(|i| matches!(i, ProjectPadItem::Project(_)))
                     .collect();
                 let level2_items: Vec<_> = items
                     .iter()

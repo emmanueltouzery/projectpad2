@@ -124,6 +124,10 @@ impl Widget for Win {
         }
         let titlebar = &self.model.titlebar;
         let overlay_widget = self.model.tooltips_overlay.widget();
+        self.project_items_list
+            .widget()
+            .get_style_context()
+            .add_class("sidebar");
         self.tooltip_overlay.add_overlay(overlay_widget);
         self.tooltip_overlay
             .set_overlay_pass_through(overlay_widget, true);

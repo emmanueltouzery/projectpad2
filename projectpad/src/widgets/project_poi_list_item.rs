@@ -23,8 +23,8 @@ impl Widget for ProjectPoiListItem {
 
     view! {
         gtk::Box {
-            // not sure why the -4 is needed. some padding on the parent ListBoxRow or something?
-            property_width_request: 260-4,
+            // not sure why the -5 is needed. some padding on the parent ListBoxRow or something?
+            property_width_request: 260-5,
             spacing: 10,
             border_width: 5,
             orientation: gtk::Orientation::Vertical,

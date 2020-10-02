@@ -28,6 +28,7 @@ pub enum Msg {
     ViewNote(ServerNote),
     RefreshItems,
     RequestDisplayServerItem(ServerItem),
+    ShowInfoBar(String),
 }
 
 #[derive(Clone, Debug)]
@@ -138,6 +139,7 @@ impl Widget for ServerPoiContents {
                 self.fetch_items();
             }
             // meant for my parent
+            Msg::ShowInfoBar(_) => {}
             Msg::RequestDisplayServerItem(_) => {}
         }
     }
@@ -185,6 +187,9 @@ impl Widget for ServerPoiContents {
             relm::connect!(
                 component@ServerItemListItemMsg::RequestDisplayServerItem(ref server_item),
                            self.model.relm, Msg::RequestDisplayServerItem(server_item.clone()));
+            relm::connect!(
+                component@ServerItemListItemMsg::ShowInfoBar(ref msg),
+                           self.model.relm, Msg::ShowInfoBar(msg.clone()));
             children_components.push(component);
         }
         let indexes = self.model.server_item_groups_start_indexes.clone();

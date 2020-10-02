@@ -47,6 +47,7 @@ pub enum Msg {
     ServerAddItemChangeTitleTitle(&'static str),
     ProjectItemUpdated(Option<ProjectItem>),
     GotoItem(Project, Server),
+    ShowInfoBar(String),
 }
 
 // String for details, because I can't pass Error across threads
@@ -314,6 +315,10 @@ impl Widget for ProjectPoiHeader {
                 if let Some(clip) = gtk::Clipboard::get_default(&self.header_grid.get_display()) {
                     clip.set_text(&val);
                 }
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
             }
             Msg::HeaderActionClicked((ActionTypes::GotoItem, val)) => {
                 match &self.model.project_item {
@@ -551,6 +556,7 @@ impl Widget for ProjectPoiHeader {
                     .set_title(title);
             }
             // meant for my parent
+            Msg::ShowInfoBar(_) => {}
             Msg::ProjectItemUpdated(pi) => {}
             Msg::GotoItem(_, _) => {}
         }

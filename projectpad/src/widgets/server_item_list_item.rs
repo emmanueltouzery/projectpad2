@@ -44,6 +44,7 @@ pub enum Msg {
     DeleteServerNote(ServerNote),
     ServerItemDeleted(ServerItem),
     RequestDisplayServerItem(ServerItem),
+    ShowInfoBar(String),
 }
 
 // String for details, because I can't pass Error across threads
@@ -492,6 +493,10 @@ impl Widget for ServerItemListItem {
                 if let Some(clip) = gtk::Clipboard::get_default(&self.items_grid.get_display()) {
                     clip.set_text(&val);
                 }
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
             }
             // meant for my parent
             Msg::ViewNote(_) => {}
@@ -684,8 +689,8 @@ impl Widget for ServerItemListItem {
                 self.run_delete_action(srv_note::server_note, ServerItem::Note(note));
             }
             // for my parent
+            Msg::ShowInfoBar(_) => {}
             Msg::ServerItemDeleted(_) => {}
-            // for my parent
             Msg::RequestDisplayServerItem(_) => {}
         }
     }

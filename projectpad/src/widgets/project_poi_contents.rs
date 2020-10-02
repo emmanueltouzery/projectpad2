@@ -4,6 +4,7 @@ use super::search_bar::Msg as SearchBarMsg;
 use super::search_bar::SearchBar;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
 use super::server_poi_contents::Msg::RequestDisplayServerItem as ServerPoiContentsRequestDisplayServerItem;
+use super::server_poi_contents::Msg::ShowInfoBar as ServerPoiContentsShowInfoBar;
 use super::server_poi_contents::Msg::ViewNote as ServerPoiContentsMsgViewNote;
 use super::server_poi_contents::ServerItem;
 use super::server_poi_contents::ServerPoiContents;
@@ -31,6 +32,7 @@ pub enum Msg {
     KeyboardCtrlN,
     KeyboardCtrlP,
     KeyboardEscape,
+    ShowInfoBar(String),
 }
 
 pub struct Model {
@@ -220,6 +222,8 @@ impl Widget for ProjectPoiContents {
                 self.note_search_previous();
             }
             // meant for my parent
+            Msg::ShowInfoBar(_) => {}
+            // meant for my parent
             Msg::RequestDisplayServerItem(_) => {}
         }
     }
@@ -340,17 +344,30 @@ impl Widget for ProjectPoiContents {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_btn = gtk::ModelButtonBuilder::new()
+        let popover_copy_btn = gtk::ModelButtonBuilder::new()
             .label("Copy password")
             .build();
         let textview = self.note_textview.clone();
         let p = password.to_string();
-        popover_btn.connect_clicked(move |_| {
+        let r = self.model.relm.clone();
+        popover_copy_btn.connect_clicked(move |_| {
             if let Some(clip) = gtk::Clipboard::get_default(&textview.get_display()) {
                 clip.set_text(&p);
+                r.stream()
+                    .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
             }
         });
-        popover_vbox.add(&popover_btn);
+        popover_vbox.add(&popover_copy_btn);
+        let popover_reveal_btn = gtk::ModelButtonBuilder::new()
+            .label("Reveal password")
+            .build();
+        let p2 = password.to_string();
+        let r2 = self.model.relm.clone();
+        popover_reveal_btn.connect_clicked(move |_| {
+            r2.stream()
+                .emit(Msg::ShowInfoBar(format!("The password is: {}", p2.clone())));
+        });
+        popover_vbox.add(&popover_reveal_btn);
         popover_vbox.show_all();
         popover.add(&popover_vbox);
         popover.popup();
@@ -369,7 +386,8 @@ impl Widget for ProjectPoiContents {
                     name: Some(CHILD_NAME_SERVER)
                 },
                 ServerPoiContentsMsgViewNote(ref n) => Msg::ViewServerNote(n.clone()),
-                ServerPoiContentsRequestDisplayServerItem(ref si) => Msg::RequestDisplayServerItem(si.clone())
+                ServerPoiContentsRequestDisplayServerItem(ref si) => Msg::RequestDisplayServerItem(si.clone()),
+                ServerPoiContentsShowInfoBar(ref msg) => Msg::ShowInfoBar(msg.clone()),
             },
             gtk::Box {
                 child: {

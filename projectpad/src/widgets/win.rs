@@ -13,12 +13,14 @@ use super::project_list::{
 };
 use super::project_poi_contents::Msg as ProjectPoiContentsMsg;
 use super::project_poi_contents::Msg::RequestDisplayServerItem as ProjectPoiContentsMsgRequestDisplayServerItem;
+use super::project_poi_contents::Msg::ShowInfoBar as ProjectPoiContentsMsgShowInfoBar;
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
 use super::project_poi_header::Msg::GotoItem as ProjectPoiHeaderGotoItemMsg;
 use super::project_poi_header::Msg::ProjectItemDeleted as ProjectPoiHeaderProjectItemDeletedMsg;
 use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjectItemRefreshMsg;
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
+use super::project_poi_header::Msg::ShowInfoBar as ProjectPoiHeaderShowInfoBar;
 use super::project_poi_header::ProjectPoiHeader;
 use super::project_summary::Msg as ProjectSummaryMsg;
 use super::project_summary::Msg::ProjectDeleted as ProjectSummaryProjectDeleted;
@@ -83,6 +85,8 @@ pub enum Msg {
     AddProject,
     ProjectListChanged,
     UpdateProjectTooltip(Option<(String, i32)>),
+    ShowInfoBar(String),
+    HideInfobar,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -105,6 +109,8 @@ pub struct Model {
     _db_prepared_channel: relm::Channel<()>,
     db_prepared_sender: relm::Sender<()>,
     unlock_db_component_dialog: Option<(gtk::Dialog, Component<UnlockDbDialog>)>,
+    infobar: gtk::InfoBar,
+    infobar_label: gtk::Label,
 }
 
 const CHILD_NAME_NORMAL: &str = "normal";
@@ -126,8 +132,15 @@ impl Widget for Win {
                                self.model.relm, Msg::SearchActiveChanged(is_active));
         relm::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
                                self.model.relm, Msg::SearchTextChanged(search_text.clone()));
+        self.init_infobar_overlay();
 
         self.unlock_db();
+    }
+
+    fn init_infobar_overlay(&self) {
+        self.infobar_overlay.add_overlay(&self.model.infobar);
+        self.infobar_overlay
+            .set_overlay_pass_through(&self.model.infobar, true);
     }
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, bool)) -> Model {
@@ -152,6 +165,16 @@ impl Widget for Win {
         let (db_prepared_channel, db_prepared_sender) = relm::Channel::new(move |_| {
             stream3.emit(Msg::DbPrepared);
         });
+        let infobar = gtk::InfoBarBuilder::new()
+            .revealed(false)
+            .message_type(gtk::MessageType::Info)
+            .valign(gtk::Align::Start)
+            .build();
+
+        let infobar_label = gtk::LabelBuilder::new().label("").build();
+        infobar_label.show();
+        infobar.get_content_area().add(&infobar_label);
+        infobar.show();
         Model {
             relm: relm.clone(),
             db_sender,
@@ -167,6 +190,8 @@ impl Widget for Win {
             _db_prepared_channel: db_prepared_channel,
             project_add_dialog: None,
             unlock_db_component_dialog: None,
+            infobar,
+            infobar_label,
         }
     }
 
@@ -414,6 +439,14 @@ impl Widget for Win {
                     .stream()
                     .emit(tooltips_overlay::Msg::UpdateProjectTooltip(params.clone()));
             }
+            Msg::ShowInfoBar(msg) => {
+                self.model.infobar_label.set_text(&msg);
+                self.model.infobar.set_revealed(true);
+                relm::timeout(self.model.relm.stream(), 1500, || Msg::HideInfobar);
+            }
+            Msg::HideInfobar => {
+                self.model.infobar.set_revealed(false);
+            }
         }
     }
 
@@ -527,78 +560,85 @@ impl Widget for Win {
             titlebar: Some(self.model.titlebar.widget()),
             property_default_width: 1000,
             property_default_height: 650,
-            #[name="normal_or_search_stack"]
-            gtk::Stack {
-                gtk::Box {
-                    child: {
-                        name: Some(CHILD_NAME_NORMAL)
-                    },
-                    #[name="project_list"]
-                    ProjectList(self.model.db_sender.clone()) {
-                        property_width_request: 60,
-                        ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone()),
-                        AddProject => Msg::AddProject,
-                        UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
-                    },
-                    // we use the overlay to display a tooltip with the name
-                    // of the project from the project_list that the mouse
-                    // currently hovers.
-                    #[name="tooltip_overlay"]
-                    gtk::Overlay {
+            #[name="infobar_overlay"]
+            gtk::Overlay {
+                #[name="normal_or_search_stack"]
+                gtk::Stack {
+                    gtk::Box {
+                        child: {
+                            name: Some(CHILD_NAME_NORMAL)
+                        },
+                        #[name="project_list"]
+                        ProjectList(self.model.db_sender.clone()) {
+                            property_width_request: 60,
+                            ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone()),
+                            AddProject => Msg::AddProject,
+                            UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
+                        },
+                        // we use the overlay to display a tooltip with the name
+                        // of the project from the project_list that the mouse
+                        // currently hovers.
+                        #[name="tooltip_overlay"]
+                        gtk::Overlay {
+                            gtk::Box {
+                                orientation: gtk::Orientation::Vertical,
+                                #[name="project_summary"]
+                                ProjectSummary(self.model.db_sender.clone()) {
+                                    EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
+                                    ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                    ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
+                                    ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
+                                },
+                                #[name="project_items_list"]
+                                ProjectItemsList(self.model.db_sender.clone()) {
+                                    property_width_request: 260,
+                                    child: {
+                                        fill: true,
+                                        expand: true,
+                                    },
+                                    ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                                },
+                            },
+                        },
                         gtk::Box {
                             orientation: gtk::Orientation::Vertical,
-                            #[name="project_summary"]
-                            ProjectSummary(self.model.db_sender.clone()) {
-                                EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
-                                ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                                ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
-                                ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
-                            },
-                            #[name="project_items_list"]
-                            ProjectItemsList(self.model.db_sender.clone()) {
-                                property_width_request: 260,
-                                child: {
-                                    fill: true,
-                                    expand: true,
-                                },
-                                ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
-                            },
-                        },
-                    },
-                    gtk::Box {
-                        orientation: gtk::Orientation::Vertical,
-                        spacing: 10,
-                        child: {
-                            fill: true,
-                            expand: true,
-                        },
-                        #[name="project_poi_header"]
-                        ProjectPoiHeader((self.model.db_sender.clone(), None)) {
-                            ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                            ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
-                            ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
-                            ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
-                                (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
-                        },
-                        #[name="project_poi_contents"]
-                        ProjectPoiContents(self.model.db_sender.clone()) {
+                            spacing: 10,
                             child: {
                                 fill: true,
                                 expand: true,
                             },
-                            ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
-                                Msg::RequestDisplayItem(item_info.clone())
+                            #[name="project_poi_header"]
+                            ProjectPoiHeader((self.model.db_sender.clone(), None)) {
+                                ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
+                                ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
+                                ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
+                                    (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
+                                ProjectPoiHeaderShowInfoBar(ref msg) =>
+                                    Msg::ShowInfoBar(msg.clone()),
+                            },
+                            #[name="project_poi_contents"]
+                            ProjectPoiContents(self.model.db_sender.clone()) {
+                                child: {
+                                    fill: true,
+                                    expand: true,
+                                },
+                                ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
+                                    Msg::RequestDisplayItem(item_info.clone()),
+                                ProjectPoiContentsMsgShowInfoBar(ref msg) =>
+                                    Msg::ShowInfoBar(msg.clone()),
+                            }
                         }
+                    },
+                    #[name="search_view"]
+                    SearchView((self.model.db_sender.clone(), None,
+                                SearchItemsType::All, OperationMode::ItemActions, None, None)) {
+                        child: {
+                            name: Some(CHILD_NAME_SEARCH)
+                        },
+                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(item.clone())
                     }
                 },
-                #[name="search_view"]
-                SearchView((self.model.db_sender.clone(), None,
-                            SearchItemsType::All, OperationMode::ItemActions, None, None)) {
-                    child: {
-                        name: Some(CHILD_NAME_SEARCH)
-                    },
-                    SearchViewOpenItemFull(ref item) => Msg::DisplayItem(item.clone())
-                }
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
             key_press_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),

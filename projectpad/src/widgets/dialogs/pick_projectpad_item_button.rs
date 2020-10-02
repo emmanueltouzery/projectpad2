@@ -40,6 +40,7 @@ pub struct Model {
 #[widget]
 impl Widget for PickProjectpadItemButton {
     fn init_view(&mut self) {
+        self.btn_box.get_style_context().add_class("linked");
         self.update_display();
         if let Some(id) = self.model.item_id {
             self.fetch_item_name(id);
@@ -181,6 +182,7 @@ impl Widget for PickProjectpadItemButton {
     }
 
     view! {
+        #[name="btn_box"]
         gtk::Box {
             orientation: gtk::Orientation::Horizontal,
             #[name="pick_item_btn"]

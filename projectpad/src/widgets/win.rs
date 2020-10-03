@@ -360,6 +360,9 @@ impl Widget for Win {
                             e,
                         )),
                     );
+                } else {
+                    self.project_summary
+                        .emit(ProjectSummaryMsg::ProjectActivated(project.clone()));
                 }
                 self.project_items_list.emit(
                     ProjectItemsListMsg::ProjectItemSelectedFromElsewhere((

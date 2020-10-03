@@ -10,7 +10,6 @@ use super::dialogs::project_poi_add_edit_dlg;
 use super::dialogs::project_poi_add_edit_dlg::Msg as MsgProjectPoiAddEditDialog;
 use super::dialogs::server_add_edit_dlg;
 use super::dialogs::server_add_edit_dlg::Msg as MsgServerAddEditDialog;
-use super::dialogs::server_add_edit_dlg::ServerAddEditDialog;
 use super::dialogs::server_database_add_edit_dlg::Msg as MsgServerDbAddEditDialog;
 use super::dialogs::server_extra_user_add_edit_dlg::Msg as MsgServerExtraUserAddEditDialog;
 use super::dialogs::server_link_add_edit_dlg;
@@ -151,6 +150,7 @@ pub struct Model {
     search_items: Rc<RefCell<Vec<ProjectPadItem>>>,
     links: Rc<RefCell<Vec<(Area, String)>>>,
     action_areas: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
+    item_link_areas: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
     project_item_add_edit_dialog: Option<(ProjectAddEditDialogComponent, gtk::Dialog)>,
@@ -197,6 +197,7 @@ impl Widget for SearchView {
         let search_scroll = self.search_scroll.clone();
         let links = self.model.links.clone();
         let action_areas = self.model.action_areas.clone();
+        let item_link_areas = self.model.item_link_areas.clone();
         let search_result_area = self.search_result_area.clone();
         let item_with_depressed = self.model.item_with_depressed_action.clone();
         let op_mode = self.model.operation_mode;
@@ -205,6 +206,7 @@ impl Widget for SearchView {
                 context,
                 &links,
                 &action_areas,
+                &item_link_areas,
                 &si,
                 &search_result_area,
                 &search_scroll,
@@ -215,6 +217,7 @@ impl Widget for SearchView {
             Inhibit(false)
         });
         let links_mmove = self.model.links.clone();
+        let item_links_mmove = self.model.item_link_areas.clone();
         let search_result_area_mmove = self.search_result_area.clone();
         let hand_cursor = gdk::Cursor::new_for_display(
             &self.search_result_area.get_display(),
@@ -225,19 +228,19 @@ impl Widget for SearchView {
                 let x = event_motion.get_position().0 as i32;
                 let y = event_motion.get_position().1 as i32;
                 let links = links_mmove.borrow();
+                let item_links = item_links_mmove.borrow();
                 search_result_area_mmove
                     .get_parent_window()
                     .unwrap()
-                    .set_cursor(
-                        links
-                            .iter()
-                            .find(|l| l.0.contains(x, y))
-                            .and_then(|_| Some(&hand_cursor)),
-                    );
+                    .set_cursor(Some(&hand_cursor).filter(|_| {
+                        links.iter().any(|l| l.0.contains(x, y))
+                            || item_links.iter().any(|il| il.0.contains(x, y))
+                    }));
                 Inhibit(false)
             });
         let links_btnclick = self.model.links.clone();
         let action_areas_btnclick = self.model.action_areas.clone();
+        let item_link_areas_btnclick = self.model.item_link_areas.clone();
         let search_result_area_btnclick = self.search_result_area.clone();
         let popover = self.model.action_popover.as_ref().unwrap().clone();
         let item_with_depressed_btnclick = self.model.item_with_depressed_action.clone();
@@ -253,6 +256,7 @@ impl Widget for SearchView {
                     .get_toplevel()
                     .and_then(|w| w.downcast::<gtk::Window>().ok());
                 let links = links_btnclick.borrow();
+                let item_links = item_link_areas_btnclick.borrow();
                 let action_areas = action_areas_btnclick.borrow();
                 if let Some(link) = links.iter().find(|l| l.0.contains(x, y)) {
                     if let Result::Err(err) =
@@ -269,6 +273,9 @@ impl Widget for SearchView {
                         Self::fill_popover(&relm, &popover, &btn.1);
                         popover.set_pointing_to(&btn.0.to_rect());
                         popover.popup();
+                    }
+                    if let Some((_, item)) = item_links.iter().find(|il| il.0.contains(x, y)) {
+                        relm.stream().emit(Msg::OpenItem(item.clone()));
                     }
                 } else if op_mode == OperationMode::SelectItem {
                     if let Some(btn) = action_areas.iter().find(|b| b.0.contains(x, y)) {
@@ -339,6 +346,7 @@ impl Widget for SearchView {
         context: &cairo::Context,
         links: &Rc<RefCell<Vec<(Area, String)>>>,
         action_areas: &Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
+        item_link_areas: &Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
         si: &Rc<RefCell<Vec<ProjectPadItem>>>,
         search_result_area: &gtk::DrawingArea,
         search_scroll: &gtk::Scrollbar,
@@ -350,6 +358,8 @@ impl Widget for SearchView {
         links.clear();
         let mut action_areas = action_areas.borrow_mut();
         action_areas.clear();
+        let mut item_link_areas = item_link_areas.borrow_mut();
+        item_link_areas.clear();
         let search_items = si.borrow();
         // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
         let y_to_display = search_scroll.get_value() as i32;
@@ -383,6 +393,7 @@ impl Widget for SearchView {
                 &search_result_area,
                 &mut links,
                 &mut action_areas,
+                &mut item_link_areas,
                 item_with_depressed_action,
                 sel_i.as_ref() == Some(item),
                 op_mode,
@@ -426,6 +437,7 @@ impl Widget for SearchView {
             search_items: Rc::new(RefCell::new(vec![])),
             links: Rc::new(RefCell::new(vec![])),
             action_areas: Rc::new(RefCell::new(vec![])),
+            item_link_areas: Rc::new(RefCell::new(vec![])),
             action_popover: None,
             item_with_depressed_action: Rc::new(RefCell::new(None)),
             project_item_add_edit_dialog: None,

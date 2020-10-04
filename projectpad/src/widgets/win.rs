@@ -486,6 +486,19 @@ impl Widget for Win {
     }
 
     fn handle_keypress(&self, e: gdk::EventKey) {
+        if e.get_keyval() == gdk::keys::constants::Escape {
+            self.project_poi_contents
+                .stream()
+                .emit(ProjectPoiContentsMsg::KeyboardEscape);
+            self.model
+                .relm
+                .stream()
+                .emit(Msg::SearchActiveChanged(false));
+            self.model
+                .titlebar
+                .stream()
+                .emit(WinTitleBarMsg::SearchActiveChanged(false));
+        }
         if self.is_search_mode() {
             self.search_view
                 .stream()
@@ -519,18 +532,6 @@ impl Widget for Win {
             self.project_poi_contents
                 .stream()
                 .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
-        } else if e.get_keyval() == gdk::keys::constants::Escape {
-            self.project_poi_contents
-                .stream()
-                .emit(ProjectPoiContentsMsg::KeyboardEscape);
-            self.model
-                .relm
-                .stream()
-                .emit(Msg::SearchActiveChanged(false));
-            self.model
-                .titlebar
-                .stream()
-                .emit(WinTitleBarMsg::SearchActiveChanged(false));
         } else if let Some(k) = e.get_keyval().to_unicode() {
             // do nothing if control and others were pressed
             // (then the state won't be empty)

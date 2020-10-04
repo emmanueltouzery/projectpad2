@@ -79,6 +79,7 @@ pub enum Msg {
     SearchTextChanged(String),
     DisplayItem(DisplayItemParams),
     KeyPress(gdk::EventKey),
+    KeyRelease(gdk::EventKey),
     ProjectItemUpdated(ProjectItem),
     ProjectItemDeleted(ProjectItem),
     RequestDisplayItem(ServerItem),
@@ -404,6 +405,14 @@ impl Widget for Win {
             Msg::KeyPress(e) => {
                 self.handle_keypress(e);
             }
+            Msg::KeyRelease(e) => {
+                if self.is_search_mode() {
+                    self.search_view
+                        .stream()
+                        .emit(SearchViewMsg::KeyRelease(e.clone()));
+                    return;
+                }
+            }
             Msg::ProjectItemUpdated(ref project_item) => {
                 self.project_items_list
                     .stream()
@@ -469,16 +478,19 @@ impl Widget for Win {
         Ok(())
     }
 
-    fn handle_keypress(&self, e: gdk::EventKey) {
-        let is_search_mode = self
-            .normal_or_search_stack
+    fn is_search_mode(&self) -> bool {
+        self.normal_or_search_stack
             .get_visible_child_name()
             .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
-            .is_some();
-        if !(e.get_state() & gdk::ModifierType::MOD2_MASK).is_empty()
-            && e.get_keyval().to_unicode() == None
-        {
-            println!("onctrl");
+            .is_some()
+    }
+
+    fn handle_keypress(&self, e: gdk::EventKey) {
+        if self.is_search_mode() {
+            self.search_view
+                .stream()
+                .emit(SearchViewMsg::KeyPress(e.clone()));
+            return;
         }
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
             match e.get_keyval().to_unicode() {
@@ -504,13 +516,9 @@ impl Widget for Win {
         } else if e.get_keyval() == gdk::keys::constants::Return
             || e.get_keyval() == gdk::keys::constants::KP_Enter
         {
-            if is_search_mode {
-                self.search_view.stream().emit(SearchViewMsg::KeyboardEnter);
-            } else {
-                self.project_poi_contents
-                    .stream()
-                    .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
-            }
+            self.project_poi_contents
+                .stream()
+                .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
         } else if e.get_keyval() == gdk::keys::constants::Escape {
             self.project_poi_contents
                 .stream()
@@ -529,27 +537,6 @@ impl Widget for Win {
             // could be ctrl-c on notes for instance
             // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
             if is_plaintext_key(&e) {
-                // we don't want to trigger the global search if the
-                // note search text entry is focused.
-                if self
-                    .window
-                    .get_focus()
-                    // is an entry focused?
-                    .and_then(|w| w.downcast::<gtk::Entry>().ok())
-                    // is it visible? (because when global search is off,
-                    // the global search entry can be focused but invisible)
-                    .filter(|w| w.get_visible())
-                    .is_some()
-                {
-                    // are we in search mode?
-                    if !is_search_mode {
-                        // the focused widget is a visible entry, and
-                        // we're not in search mode => don't grab this
-                        // key event, this is likely a note search
-                        return;
-                    }
-                }
-
                 self.model
                     .relm
                     .stream()
@@ -654,6 +641,7 @@ impl Widget for Win {
             },
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
             key_press_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
+            key_release_event(_, event) => (Msg::KeyRelease(event.clone()), Inhibit(false)),
         }
     }
 }

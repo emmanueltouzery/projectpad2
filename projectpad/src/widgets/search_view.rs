@@ -98,7 +98,8 @@ pub enum Msg {
     SearchResultsModified,
     RequestSelectedItem,
     SelectedItem((ProjectPadItem, i32, String)),
-    KeyboardEnter,
+    KeyPress(gdk::EventKey),
+    KeyRelease(gdk::EventKey),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -142,7 +143,7 @@ pub struct Model {
     relm: relm::Relm<SearchView>,
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
-    show_shortcuts: Cell<bool>,
+    show_shortcuts: Rc<Cell<bool>>,
     search_item_types: SearchItemsType,
     operation_mode: OperationMode,
     sender: relm::Sender<SearchResult>,
@@ -201,7 +202,7 @@ impl Widget for SearchView {
         let item_link_areas = self.model.item_link_areas.clone();
         let search_result_area = self.search_result_area.clone();
         let item_with_depressed = self.model.item_with_depressed_action.clone();
-        let show_shortcuts = self.model.show_shortcuts.get();
+        let show_shortcuts = self.model.show_shortcuts.clone();
         let op_mode = self.model.operation_mode;
         self.search_result_area.connect_draw(move |_, context| {
             Self::draw_search_view(
@@ -215,7 +216,7 @@ impl Widget for SearchView {
                 &item_with_depressed.borrow(),
                 &sel,
                 op_mode,
-                show_shortcuts,
+                show_shortcuts.get(),
             );
             Inhibit(false)
         });
@@ -443,8 +444,7 @@ impl Widget for SearchView {
             relm: relm.clone(),
             filter,
             search_item_types,
-            // show_shortcuts: Cell::new(false),
-            show_shortcuts: Cell::new(true),
+            show_shortcuts: Rc::new(Cell::new(false)),
             operation_mode,
             db_sender,
             sender,
@@ -533,27 +533,46 @@ impl Widget for SearchView {
                     _ => {}
                 }
             }
-            Msg::KeyboardEnter => {
-                let items = self.model.search_items.borrow();
-                let level1_items: Vec<_> = items
-                    .iter()
-                    .filter(|i| matches!(i, ProjectPadItem::Project(_)))
-                    .collect();
-                let level2_items: Vec<_> = items
-                    .iter()
-                    .filter(|i| i.to_project_item().is_some())
-                    .collect();
-                let level3_items: Vec<_> = items
-                    .iter()
-                    .filter(|i| i.to_server_item().is_some())
-                    .collect();
-                let open =
-                    |i: &ProjectPadItem| self.model.relm.stream().emit(Msg::OpenItem(i.clone()));
-                match (&level1_items[..], &level2_items[..], &level3_items[..]) {
-                    ([fst], [], []) => open(fst),
-                    ([fst], [snd], []) => open(snd),
-                    ([fst], [snd], [thrd]) => open(thrd),
-                    _ => {}
+            Msg::KeyPress(e) => {
+                if e.get_keyval() == gdk::keys::constants::Return
+                    || e.get_keyval() == gdk::keys::constants::KP_Enter
+                {
+                    let items = self.model.search_items.borrow();
+                    let level1_items: Vec<_> = items
+                        .iter()
+                        .filter(|i| matches!(i, ProjectPadItem::Project(_)))
+                        .collect();
+                    let level2_items: Vec<_> = items
+                        .iter()
+                        .filter(|i| i.to_project_item().is_some())
+                        .collect();
+                    let level3_items: Vec<_> = items
+                        .iter()
+                        .filter(|i| i.to_server_item().is_some())
+                        .collect();
+                    let open = |i: &ProjectPadItem| {
+                        self.model.relm.stream().emit(Msg::OpenItem(i.clone()))
+                    };
+                    match (&level1_items[..], &level2_items[..], &level3_items[..]) {
+                        ([fst], [], []) => open(fst),
+                        ([fst], [snd], []) => open(snd),
+                        ([fst], [snd], [thrd]) => open(thrd),
+                        _ => {}
+                    }
+                } else {
+                    let new_show_shortcuts = !(e.get_state() & gdk::ModifierType::MOD2_MASK)
+                        .is_empty()
+                        && e.get_keyval().to_unicode() == None;
+                    if new_show_shortcuts != self.model.show_shortcuts.get() {
+                        self.model.show_shortcuts.set(new_show_shortcuts);
+                        self.search_result_area.queue_draw();
+                    }
+                }
+            }
+            Msg::KeyRelease(_) => {
+                if self.model.show_shortcuts.get() {
+                    self.model.show_shortcuts.set(false);
+                    self.search_result_area.queue_draw();
                 }
             }
             // meant for my parent

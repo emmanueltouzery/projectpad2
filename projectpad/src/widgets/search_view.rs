@@ -32,7 +32,7 @@ use projectpadsql::models::{
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -142,6 +142,7 @@ pub struct Model {
     relm: relm::Relm<SearchView>,
     db_sender: mpsc::Sender<SqlFunc>,
     filter: Option<String>,
+    show_shortcuts: Cell<bool>,
     search_item_types: SearchItemsType,
     operation_mode: OperationMode,
     sender: relm::Sender<SearchResult>,
@@ -200,6 +201,7 @@ impl Widget for SearchView {
         let item_link_areas = self.model.item_link_areas.clone();
         let search_result_area = self.search_result_area.clone();
         let item_with_depressed = self.model.item_with_depressed_action.clone();
+        let show_shortcuts = self.model.show_shortcuts.get();
         let op_mode = self.model.operation_mode;
         self.search_result_area.connect_draw(move |_, context| {
             Self::draw_search_view(
@@ -213,6 +215,7 @@ impl Widget for SearchView {
                 &item_with_depressed.borrow(),
                 &sel,
                 op_mode,
+                show_shortcuts,
             );
             Inhibit(false)
         });
@@ -353,6 +356,7 @@ impl Widget for SearchView {
         item_with_depressed_action: &Option<ProjectPadItem>,
         sel_item: &Rc<RefCell<Option<ProjectPadItem>>>,
         op_mode: OperationMode,
+        show_shortcuts: bool,
     ) {
         let mut links = links.borrow_mut();
         links.clear();
@@ -398,6 +402,14 @@ impl Widget for SearchView {
                 sel_i.as_ref() == Some(item),
                 op_mode,
             );
+            if show_shortcuts && item_idx < 10 {
+                super::search_view_render::draw_shortcut(
+                    (item_idx + 1) % 10,
+                    context,
+                    search_result_area,
+                    y - y_to_display,
+                );
+            }
             y += SEARCH_RESULT_WIDGET_HEIGHT;
             item_idx += 1;
         }
@@ -431,6 +443,8 @@ impl Widget for SearchView {
             relm: relm.clone(),
             filter,
             search_item_types,
+            // show_shortcuts: Cell::new(false),
+            show_shortcuts: Cell::new(true),
             operation_mode,
             db_sender,
             sender,

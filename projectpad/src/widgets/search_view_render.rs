@@ -11,6 +11,7 @@ const LEFT_RIGHT_MARGIN: i32 = 150;
 const ACTION_ICON_SIZE: i32 = 16;
 const PROJECT_ICON_SIZE: i32 = 56;
 const ACTION_ICON_OFFSET_FROM_RIGHT: f64 = 50.0;
+const KEYBOARD_SHORTCUT_HINT_LEFT_MARGIN: i32 = 20;
 
 #[derive(PartialEq, Eq)]
 enum ItemType {
@@ -110,6 +111,58 @@ fn draw_box(
         ));
     }
     style_context.remove_class(&gtk::STYLE_CLASS_BUTTON);
+}
+
+pub fn draw_shortcut(
+    index: usize,
+    context: &cairo::Context,
+    search_result_area: &gtk::DrawingArea,
+    y: i32,
+) {
+    let pango_context = search_result_area.create_pango_context();
+    let layout = pango::Layout::new(&pango_context);
+    layout.set_text(&format!("{}", index));
+    let extents = layout.get_extents().1;
+    let topleft_x = (LEFT_RIGHT_MARGIN
+        - extents.width / pango::SCALE
+        - KEYBOARD_SHORTCUT_HINT_LEFT_MARGIN) as f64;
+    let topleft_y =
+        (y + SEARCH_RESULT_WIDGET_HEIGHT / 2 - extents.height / pango::SCALE / 2) as f64;
+    let circle_width = (extents.width / pango::SCALE) as f64;
+    let circle_height = (extents.height / pango::SCALE) as f64;
+
+    // this rectangle & clip is a workaround.
+    // without that, i get a connecting line between this
+    // circle and some items (for instance project titles or
+    // links for server website). there is a better way for sure...
+    context.rectangle(
+        topleft_x - circle_height,
+        topleft_y - circle_height,
+        circle_height * 3.0,
+        circle_height * 3.0,
+    );
+    context.clip();
+
+    context.arc(
+        topleft_x + circle_width / 2.0,
+        topleft_y + circle_height / 2.0,
+        f64::max(circle_width, circle_height) * 0.65,
+        0.0,
+        2.0 * std::f64::consts::PI,
+    );
+    context.close_path();
+    context.set_source_rgb(0.0, 0.0, 0.0);
+    context.stroke_preserve();
+    context.set_source_rgb(1.0, 1.0, 1.0);
+    context.fill();
+    context.reset_clip();
+    gtk::render_layout(
+        &search_result_area.get_style_context(),
+        context,
+        topleft_x,
+        topleft_y,
+        &layout,
+    );
 }
 
 pub fn draw_child(

@@ -475,6 +475,11 @@ impl Widget for Win {
             .get_visible_child_name()
             .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
             .is_some();
+        if !(e.get_state() & gdk::ModifierType::MOD2_MASK).is_empty()
+            && e.get_keyval().to_unicode() == None
+        {
+            println!("onctrl");
+        }
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
             match e.get_keyval().to_unicode() {
                 Some('f') => {

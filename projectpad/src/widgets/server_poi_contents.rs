@@ -208,6 +208,15 @@ impl Widget for ServerPoiContents {
             })));
         // need to keep the component alive else the event handling dies
         self.model._children_components = children_components;
+
+        for child in self.contents_list.get_children() {
+            // don't want the row background color to change when we hover
+            // it with the mouse (activatable), or the focus dotted lines
+            // around the rows to be drawn, for aesthetic reasons.
+            let row = child.dynamic_cast::<gtk::ListBoxRow>().unwrap();
+            row.set_activatable(false);
+            row.set_can_focus(false);
+        }
     }
 
     fn fetch_items(&mut self) {

@@ -4,6 +4,8 @@
 // https://discourse.gnome.org/t/lazy-scrollable-list/3774
 
 use super::dialogs::dialog_helpers;
+use super::dialogs::project_add_edit_dlg::Msg as MsgProjectAddEditDialog;
+use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
 use super::dialogs::project_note_add_edit_dlg;
 use super::dialogs::project_note_add_edit_dlg::Msg as MsgProjectNoteAddEditDialog;
 use super::dialogs::project_poi_add_edit_dlg;
@@ -155,6 +157,7 @@ pub struct Model {
     item_link_areas: Rc<RefCell<Vec<(Area, ProjectPadItem)>>>,
     item_with_depressed_action: Rc<RefCell<Option<ProjectPadItem>>>,
     action_popover: Option<gtk::Popover>,
+    project_add_edit_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
     project_item_add_edit_dialog: Option<(ProjectAddEditDialogComponent, gtk::Dialog)>,
     server_item_add_edit_dialog: Option<(ServerAddEditDialogComponent, gtk::Dialog)>,
     save_btn: Option<gtk::Button>,
@@ -454,6 +457,7 @@ impl Widget for SearchView {
             item_link_areas: Rc::new(RefCell::new(vec![])),
             action_popover: None,
             item_with_depressed_action: Rc::new(RefCell::new(None)),
+            project_add_edit_dialog: None,
             project_item_add_edit_dialog: None,
             server_item_add_edit_dialog: None,
             selected_item: Rc::new(RefCell::new(selected_item)),
@@ -503,6 +507,10 @@ impl Widget for SearchView {
             }
             Msg::EditItem(item) => self.edit_item(item),
             Msg::SearchResultsModified => {
+                if let Some((_, dialog)) = self.model.project_add_edit_dialog.as_ref() {
+                    dialog.close();
+                    self.model.project_add_edit_dialog = None;
+                }
                 if let Some((_, dialog)) = self.model.project_item_add_edit_dialog.as_ref() {
                     dialog.close();
                     self.model.project_item_add_edit_dialog = None;
@@ -791,6 +799,25 @@ impl Widget for SearchView {
                     ServerAddEditDialogComponent::Note(component),
                     dialog.clone(),
                 ));
+                dialog.show();
+            }
+            ProjectPadItem::Project(prj) => {
+                let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    (
+                        self.model.db_sender.clone(),
+                        Some(prj.clone()),
+                        gtk::AccelGroup::new(),
+                    ),
+                    MsgProjectAddEditDialog::OkPressed,
+                    "Project",
+                );
+                relm::connect!(
+                    component@MsgProjectAddEditDialog::ProjectUpdated(ref project),
+                    self.model.relm,
+                    Msg::SearchResultsModified
+                );
+                self.model.project_add_edit_dialog = Some((component, dialog.clone()));
                 dialog.show();
             }
             _ => {

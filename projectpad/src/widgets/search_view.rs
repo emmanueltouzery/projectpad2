@@ -569,10 +569,26 @@ impl Widget for SearchView {
                     }
                 }
             }
-            Msg::KeyRelease(_) => {
+            Msg::KeyRelease(e) => {
                 if self.model.show_shortcuts.get() {
                     self.model.show_shortcuts.set(false);
                     self.search_result_area.queue_draw();
+                }
+                if let Some(index) = e
+                    .get_keyval()
+                    .to_unicode()
+                    .and_then(|letter| letter.to_digit(10))
+                    .map(|i| if i == 0 { 10 as usize } else { i as usize - 1 })
+                {
+                    let items = self.model.search_items.borrow();
+                    if let Some(item) = items.get(index) {
+                        if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
+                            self.model.relm.stream().emit(Msg::OpenItem(item.clone()));
+                        }
+                        if !(e.get_state() & gdk::ModifierType::MOD1_MASK).is_empty() {
+                            self.model.relm.stream().emit(Msg::EditItem(item.clone()));
+                        }
+                    }
                 }
             }
             // meant for my parent

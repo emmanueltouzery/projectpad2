@@ -60,6 +60,17 @@
   border: 2px solid @theme_base_color;
 }
 
+.project_badge_active {
+  color: @theme_text_color;
+  background-color: @theme_base_color;
+  border-left: 3px solid @theme_text_color;
+}
+
+.project_badge {
+  color: @theme_text_color;
+  background-color: @theme_base_color;
+}
+
 .item_label {
   opacity: 0.6;
   font-weight: bold;

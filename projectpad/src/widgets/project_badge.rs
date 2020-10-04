@@ -77,22 +77,31 @@ impl Widget for ProjectBadge {
         }
         context.set_antialias(cairo::Antialias::Best);
 
-        context.set_source_rgb(1.0, 1.0, 1.0);
-        context.rectangle(0.0, 0.0, allocation_width.into(), allocation_height.into());
-        context.fill();
+        let style_context = self.drawing_area.get_style_context();
+        let badge_class = if self.model.is_active {
+            "project_badge_active"
+        } else {
+            "project_badge"
+        };
+        style_context.add_class(badge_class);
 
-        context.set_source_rgb(0.0, 0.0, 0.0);
-
-        if self.model.is_active {
-            // TODO maybe a rounded rect?  https://www.cairographics.org/samples/rounded_rectangle/
-            context.rectangle(
-                PADDING as f64 / 2.0,
-                PADDING as f64 / 2.0,
-                allocation_width as f64 - PADDING as f64 / 2.0,
-                allocation_height as f64 - PADDING as f64 / 2.0,
-            );
-            context.fill();
-        }
+        gtk::render_background(
+            &style_context,
+            &context,
+            0.0,
+            0.0,
+            allocation_width.into(),
+            allocation_height.into(),
+        );
+        gtk::render_frame(
+            &style_context,
+            &context,
+            0.0,
+            0.0,
+            allocation_width.into(),
+            allocation_height.into(),
+        );
+        style_context.remove_class(badge_class);
 
         context.arc(
             (allocation_width / 2).into(),

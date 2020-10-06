@@ -538,6 +538,24 @@ impl Widget for Win {
             // could be ctrl-c on notes for instance
             // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
             if is_plaintext_key(&e) {
+                // we don't want to trigger the global search if the
+                // note search text entry is focused.
+                if self
+                    .window
+                    .get_focus()
+                    // is an entry focused?
+                    .and_then(|w| w.downcast::<gtk::Entry>().ok())
+                    // is it visible? (because when global search is off,
+                    // the global search entry can be focused but invisible)
+                    .filter(|w| w.get_visible())
+                    .is_some()
+                {
+                    // the focused widget is a visible entry, and
+                    // we're not in search mode => don't grab this
+                    // key event, this is likely a note search
+                    return;
+                }
+
                 self.model
                     .relm
                     .stream()

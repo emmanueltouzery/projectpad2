@@ -586,7 +586,7 @@ impl Widget for SearchView {
                     .get_keyval()
                     .to_unicode()
                     .and_then(|letter| letter.to_digit(10))
-                    .map(|i| if i == 0 { 10 as usize } else { i as usize - 1 })
+                    .map(|i| if i == 0 { 9 as usize } else { i as usize - 1 })
                 {
                     let items = self.model.search_items.borrow();
                     if let Some(item) = items.get(index) {

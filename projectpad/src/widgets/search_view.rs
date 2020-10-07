@@ -86,6 +86,30 @@ impl Area {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
+struct SearchSpec {
+    search_pattern: String,
+    project_pattern: Option<String>,
+}
+
+fn search_parse(search: &str) -> SearchSpec {
+    let fmt = |t: &str| format!("%{}%", t.replace('%', "\\%"));
+    if search.starts_with("prj:") || search.contains(" prj:") {
+        let (prj, rest) = search
+            .split(" ")
+            .partition::<Vec<_>, _>(|i| i.starts_with("prj:"));
+        SearchSpec {
+            search_pattern: fmt(&rest.join(" ")),
+            project_pattern: prj.first().map(|s| s[4..].to_lowercase()),
+        }
+    } else {
+        SearchSpec {
+            search_pattern: fmt(search),
+            project_pattern: None,
+        }
+    }
+}
+
 #[derive(Msg)]
 pub enum Msg {
     FilterChanged(Option<String>),
@@ -1020,7 +1044,9 @@ impl Widget for SearchView {
                 .unwrap(),
             Some(filter) => {
                 let s = self.model.sender.clone();
-                let f = format!("%{}%", filter.replace('%', "\\%"));
+                let search_spec = search_parse(filter);
+                let f = search_spec.search_pattern;
+                let project_pattern = search_spec.project_pattern;
                 let search_item_types = self.model.search_item_types;
                 self.model
                     .db_sender
@@ -1097,8 +1123,15 @@ impl Widget for SearchView {
                         all_project_ids.extend(project_pois.iter().map(|ppoi| ppoi.project_id));
                         all_project_ids.extend(project_notes.iter().map(|pn| pn.project_id));
                         let all_projects = Self::load_projects_by_id(sql_conn, &all_project_ids);
+                        let filtered_projects = match &project_pattern {
+                            None => all_projects,
+                            Some(prj) => all_projects
+                                .into_iter()
+                                .filter(|p| p.name.to_lowercase().contains(prj))
+                                .collect(),
+                        };
                         s.send(SearchResult {
-                            projects: all_projects,
+                            projects: filtered_projects,
                             project_notes,
                             project_pois,
                             servers: all_servers,
@@ -1278,4 +1311,26 @@ impl Widget for SearchView {
             }
         },
     }
+}
+
+#[test]
+fn search_parse_no_project() {
+    assert_eq!(
+        SearchSpec {
+            search_pattern: "%test no project%".to_string(),
+            project_pattern: None
+        },
+        search_parse("test no project")
+    );
+}
+
+#[test]
+fn search_parse_with_project() {
+    assert_eq!(
+        SearchSpec {
+            search_pattern: "%item1 test item3%".to_string(),
+            project_pattern: Some("project".to_string())
+        },
+        search_parse("item1 test prj:prOject item3")
+    );
 }

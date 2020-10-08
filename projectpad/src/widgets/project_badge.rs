@@ -1,16 +1,16 @@
 use gtk::prelude::*;
-use gtk::DrawingArea;
 use projectpadsql::models::Project;
-use relm::{DrawHandler, Widget};
+use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::cell::{Cell, RefCell};
 use std::f64::consts::PI;
+use std::rc::Rc;
 
 pub const OUTER_SIZE: i32 = 60;
 const PADDING: i32 = 5;
 
-#[derive(Msg)]
+#[derive(Msg, Debug)]
 pub enum Msg {
-    UpdateDrawBuffer,
     Click,
     Activate(Project),
     ActiveProjectChanged(i32),
@@ -23,37 +23,69 @@ pub enum Msg {
 pub struct Model {
     relm: relm::Relm<ProjectBadge>,
     project: Project,
-    draw_handler: DrawHandler<DrawingArea>,
-    font_size_for_width: Option<(i32, f64)>, // cache the computed font size
-    backing_buffer: Option<cairo::ImageSurface>,
-    is_active: bool,
+    font_size_for_width: Rc<RefCell<Option<(i32, f64)>>>, // cache the computed font size
+    backing_buffer: Rc<RefCell<Option<cairo::ImageSurface>>>,
+    is_active: Rc<Cell<bool>>,
 }
 
 #[widget]
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
         self.drawing_area.set_size_request(OUTER_SIZE, OUTER_SIZE);
-        self.model.draw_handler.init(&self.drawing_area);
         self.drawing_area.add_events(
             gdk::EventMask::BUTTON_PRESS_MASK
                 | gdk::EventMask::ENTER_NOTIFY_MASK
                 | gdk::EventMask::LEAVE_NOTIFY_MASK,
         );
+        let buf = self.model.backing_buffer.clone();
+        let fsw = self.model.font_size_for_width.clone();
+        let is_a = self.model.is_active.clone();
+        let icon = self.model.project.icon.clone();
+        let name = self.model.project.name.clone();
+        self.drawing_area.connect_draw(move |da, context| {
+            let allocation = da.get_allocation();
+            let b0 = buf.borrow();
+            let is_buffer_good = Some((allocation.width, allocation.height))
+                == b0.as_ref().map(|b| (b.get_width(), b.get_height()));
+            let surface_ref = if is_buffer_good {
+                b0
+            } else {
+                drop(b0);
+                // need to set up the backing buffer
+                buf.replace(Some(Self::prepare_backing_buffer(
+                    da,
+                    &fsw,
+                    is_a.get(),
+                    &icon,
+                    &name,
+                    allocation.width,
+                    allocation.height,
+                )));
+                buf.borrow()
+            };
+            // paint the backing buffer
+            context.set_source_surface(surface_ref.as_ref().unwrap(), 0.0, 0.0);
+            context.paint();
+            Inhibit(false)
+        });
     }
 
     fn model(relm: &relm::Relm<Self>, project: Project) -> Model {
         Model {
             relm: relm.clone(),
             project,
-            draw_handler: DrawHandler::new().expect("draw handler"),
-            font_size_for_width: None,
-            backing_buffer: None,
-            is_active: false,
+            font_size_for_width: Rc::new(RefCell::new(None)),
+            backing_buffer: Rc::new(RefCell::new(None)),
+            is_active: Rc::new(Cell::new(false)),
         }
     }
 
     fn prepare_backing_buffer(
-        &mut self,
+        drawing_area: &gtk::DrawingArea,
+        font_size_for_width: &RefCell<Option<(i32, f64)>>,
+        is_active: bool,
+        icon: &Option<Vec<u8>>,
+        name: &str,
         allocation_width: i32,
         allocation_height: i32,
     ) -> cairo::ImageSurface {
@@ -63,22 +95,23 @@ impl Widget for ProjectBadge {
         let context = cairo::Context::new(&buf);
 
         // println!("drawing badge, allocation: {:?}", allocation);
-        match self.model.font_size_for_width {
-            Some((w, font_size)) if w == allocation_width => context.set_font_size(font_size),
-            _ => {
-                self.model.font_size_for_width = Some((
-                    allocation_width,
-                    Self::compute_font_size(
-                        &context,
-                        (allocation_width - PADDING * 2) as f64 * 0.75,
-                    ),
-                ));
+        let new_fsw = match *font_size_for_width.borrow() {
+            Some((w, font_size)) if w == allocation_width => {
+                context.set_font_size(font_size);
+                None
             }
+            _ => Some((
+                allocation_width,
+                Self::compute_font_size(&context, (allocation_width - PADDING * 2) as f64 * 0.75),
+            )),
+        };
+        if let Some(fsw) = new_fsw {
+            font_size_for_width.replace(Some(fsw));
         }
         context.set_antialias(cairo::Antialias::Best);
 
-        let style_context = self.drawing_area.get_style_context();
-        let badge_class = if self.model.is_active {
+        let style_context = drawing_area.get_style_context();
+        let badge_class = if is_active {
             "project_badge_active"
         } else {
             "project_badge"
@@ -115,10 +148,10 @@ impl Widget for ProjectBadge {
         context.fill();
         context.set_source_rgb(0.0, 0.0, 0.0);
 
-        match &self.model.project.icon {
+        match icon {
             // the 'if' works around an issue reading from SQL. should be None if it's empty!!
             Some(icon) if icon.len() > 0 => Self::draw_icon(&context, allocation_width, &icon),
-            _ => Self::draw_label(&context, allocation_width, &self.model.project.name[..2]),
+            _ => Self::draw_label(&context, allocation_width, &name[..2]),
         }
         buf
     }
@@ -171,29 +204,6 @@ impl Widget for ProjectBadge {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::UpdateDrawBuffer => {
-                let context = self.model.draw_handler.get_context();
-                let allocation = self.drawing_area.get_allocation();
-                if Some((allocation.width, allocation.height))
-                    == self
-                        .model
-                        .backing_buffer
-                        .as_ref()
-                        .map(|b| (b.get_width(), b.get_height()))
-                {
-                    // the backing buffer is good, just paint it
-                    context.set_source_surface(
-                        self.model.backing_buffer.as_ref().unwrap(),
-                        0.0,
-                        0.0,
-                    );
-                    context.paint();
-                } else {
-                    // need to set up the backing buffer
-                    self.model.backing_buffer =
-                        Some(self.prepare_backing_buffer(allocation.width, allocation.height));
-                }
-            }
             Msg::Click => {
                 self.model
                     .relm
@@ -205,10 +215,11 @@ impl Widget for ProjectBadge {
             }
             Msg::ActiveProjectChanged(pid) => {
                 let new_active = pid == self.model.project.id;
-                if new_active != self.model.is_active {
-                    self.model.is_active = new_active;
+                if new_active != self.model.is_active.get() {
+                    self.model.is_active.set(new_active);
                     // force a recompute of the display
-                    self.model.backing_buffer = None;
+                    self.model.backing_buffer.replace(None);
+                    self.drawing_area.queue_draw();
                 }
             }
             Msg::MouseEnter => {
@@ -231,7 +242,6 @@ impl Widget for ProjectBadge {
     view! {
         #[name="drawing_area"]
         gtk::DrawingArea {
-            draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
             button_press_event(_, _) => (Msg::Click, Inhibit(false)),
             enter_notify_event(_, _) => (Msg::MouseEnter, Inhibit(false)),
             leave_notify_event(_, _) => (Msg::MouseLeave, Inhibit(false)),

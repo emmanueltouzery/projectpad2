@@ -8,6 +8,7 @@ pub enum Msg {
     SearchActiveChanged(bool),
     SearchTextChanged(String),
     SearchTextChangedFromElsewhere((String, gdk::EventKey)),
+    EnterOrUpdateSearchProject,
 }
 
 pub struct Model {
@@ -67,7 +68,36 @@ impl Widget for WinTitleBar {
                     self.search_entry.set_position(1);
                 }
             }
+            Msg::EnterOrUpdateSearchProject => {
+                self.enter_or_update_search_project();
+            }
         }
+    }
+
+    fn enter_or_update_search_project(&self) {
+        let cur_text = self.search_entry.get_text().to_string();
+        if let Some(index) = cur_text.find("prj:") {
+            let start_idx = index + 4;
+            self.search_entry.set_position(start_idx as i32);
+            let end_idx = cur_text[start_idx..]
+                .find(" ")
+                .map(|i| (start_idx + i) as i32)
+                .unwrap_or(-1);
+            self.search_entry.select_region(start_idx as i32, end_idx);
+        } else if cur_text.is_empty() {
+            self.search_entry.set_text("prj:");
+            self.search_entry.set_position(4);
+        } else {
+            self.search_entry.set_text(&format!("{} prj:", cur_text));
+            self.search_entry.set_position(cur_text.len() as i32 + 5);
+        }
+        self.search_toggle
+            .block_signal(&self.model.search_toggle_signal.as_ref().unwrap());
+        self.search_toggle.set_active(true);
+        self.search_entry.set_visible(true);
+        self.search_entry.grab_focus_without_selecting();
+        self.search_toggle
+            .unblock_signal(&self.model.search_toggle_signal.as_ref().unwrap());
     }
 
     view! {

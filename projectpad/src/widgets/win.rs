@@ -522,6 +522,16 @@ impl Widget for Win {
                         .stream()
                         .emit(ProjectPoiContentsMsg::KeyboardCtrlP);
                 }
+                Some('k') => {
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::SearchActiveChanged(true));
+                    self.model
+                        .titlebar
+                        .stream()
+                        .emit(WinTitleBarMsg::EnterOrUpdateSearchProject);
+                }
                 _ => {}
             }
         } else if e.get_keyval() == gdk::keys::constants::Tab {

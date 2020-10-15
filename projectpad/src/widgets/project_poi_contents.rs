@@ -331,7 +331,7 @@ impl Widget for ProjectPoiContents {
         let display = gdk::Display::get_default().unwrap();
         let seat = display.get_default_seat().unwrap();
         let mouse_device = seat.get_pointer().unwrap();
-        let window = display.get_default_group();
+        let window = self.contents_stack.get_toplevel().unwrap().get_window().unwrap();
         let (_, dev_x, dev_y, _) = window.get_device_position(&mouse_device);
         let (_, o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
         popover.set_pointing_to(&gtk::Rectangle {

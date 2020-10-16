@@ -26,5 +26,6 @@
     <file alias="lock-symbolic.svg">fontawesome-5.13.0/svgs/solid/lock.svg</file>
     <file alias="code-symbolic.svg">fontawesome-5.13.0/svgs/solid/code.svg</file>
     <file alias="quote-symbolic.svg">fontawesome-5.13.0/svgs/solid/quote-left.svg</file>
+    <file>../com.github.emmanueltouzery.projectpad.svg</file>
   </gresource>
 </gresources>

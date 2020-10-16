@@ -31,4 +31,5 @@ impl Icon {
     pub const LOCK: Icon = Icon("lock");
     pub const CODE: Icon = Icon("code");
     pub const QUOTE: Icon = Icon("quote");
+    pub const APP_ICON: Icon = Icon("com.github.emmanueltouzery.projectpad");
 }

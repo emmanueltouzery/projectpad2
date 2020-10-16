@@ -1836,7 +1836,7 @@ dependencies = [
 
 [[package]]
 name = "projectpad"
-version = "0.1.0"
+version = "1.99.0"
 dependencies = [
  "cairo-rs",
  "chrono",

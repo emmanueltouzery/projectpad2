@@ -1,10 +1,12 @@
 use super::search_view::PROJECT_FILTER_PREFIX;
+use crate::icons::Icon;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
 #[derive(Msg)]
 pub enum Msg {
+    DisplayAbout,
     SearchClicked,
     SearchActiveChanged(bool),
     SearchTextChanged(String),
@@ -15,6 +17,7 @@ pub enum Msg {
 pub struct Model {
     relm: relm::Relm<WinTitleBar>,
     search_toggle_signal: Option<glib::SignalHandlerId>,
+    menu_popover: gtk::Popover,
 }
 
 #[widget]
@@ -24,17 +27,38 @@ impl Widget for WinTitleBar {
         self.model.search_toggle_signal = Some(self.search_toggle.connect_toggled(move |_| {
             relm.stream().emit(Msg::SearchClicked);
         }));
+        self.init_menu_popover();
+    }
+
+    fn init_menu_popover(&mut self) {
+        let vbox = gtk::BoxBuilder::new()
+            .margin(10)
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        let about_btn = gtk::ModelButtonBuilder::new().label("About").build();
+        relm::connect!(
+            self.model.relm,
+            &about_btn,
+            connect_clicked(_),
+            Msg::DisplayAbout
+        );
+        vbox.add(&about_btn);
+        vbox.show_all();
+        self.model.menu_popover.add(&vbox);
+        self.menu_button.set_popover(Some(&self.model.menu_popover));
     }
 
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         Model {
             relm: relm.clone(),
             search_toggle_signal: None,
+            menu_popover: gtk::Popover::new(None::<&gtk::MenuButton>),
         }
     }
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::DisplayAbout => Self::display_about(),
             Msg::SearchClicked => {
                 let new_visible = self.search_toggle.get_active();
                 self.search_entry.grab_focus();
@@ -75,6 +99,18 @@ impl Widget for WinTitleBar {
         }
     }
 
+    fn display_about() {
+        let dlg = gtk::AboutDialogBuilder::new()
+            .name("Projectpad")
+            .version(env!("CARGO_PKG_VERSION"))
+            .logo_icon_name(Icon::APP_ICON.name())
+            .website("https://github.com/emmanueltouzery/projectpad2/")
+            .comments("Manage secret credentials and server information that you need to handle as a software developer")
+            .build();
+        dlg.run();
+        dlg.close();
+    }
+
     fn enter_or_update_search_project(&self) {
         let cur_text = self.search_entry.get_text().to_string();
         if let Some(index) = cur_text.find(PROJECT_FILTER_PREFIX) {
@@ -109,6 +145,13 @@ impl Widget for WinTitleBar {
         gtk::HeaderBar {
             show_close_button: true,
             title: Some("Projectpad"),
+            #[name="menu_button"]
+            gtk::MenuButton {
+                image: Some(&gtk::Image::from_icon_name(Some("open-menu-symbolic"), gtk::IconSize::Menu)),
+                child: {
+                    pack_type: gtk::PackType::End
+                },
+            },
             #[name="search_toggle"]
             gtk::ToggleButton {
                 image: Some(&gtk::Image::from_icon_name(Some("edit-find-symbolic"), gtk::IconSize::Menu)),

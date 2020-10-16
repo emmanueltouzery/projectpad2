@@ -2,7 +2,7 @@ use super::dialog_helpers;
 use super::pick_projectpad_item_button;
 use super::pick_projectpad_item_button::Msg::ItemSelected as PickPpItemSelected;
 use super::pick_projectpad_item_button::Msg::RemoveItem as PickPpItemRemoved;
-use super::pick_projectpad_item_button::PickProjectpadItemButton;
+use super::pick_projectpad_item_button::{PickProjectpadItemButton, PickProjectpadItemParams};
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::password_field;
@@ -19,6 +19,7 @@ use std::sync::mpsc;
 #[derive(Msg, Clone)]
 pub enum Msg {
     GotGroups(Vec<String>),
+    GotProjectNameAndId((String, i32)),
     ServerDbSelected(i32),
     ServerDbRemoved,
     OkPressed,
@@ -33,6 +34,9 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     server_www_id: Option<i32>,
+
+    _projectname_id_channel: relm::Channel<(String, i32)>,
+    projectname_id_sender: relm::Sender<(String, i32)>,
 
     groups_store: gtk::ListStore,
     _groups_channel: relm::Channel<Vec<String>>,
@@ -55,6 +59,7 @@ impl Widget for ServerWebsiteAddEditDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
         self.init_group();
+        self.fetch_project_name_and_id();
     }
 
     fn init_group(&self) {
@@ -64,6 +69,25 @@ impl Widget for ServerWebsiteAddEditDialog {
             self.model.server_id,
             &self.model.db_sender,
         );
+    }
+
+    fn fetch_project_name_and_id(&self) {
+        let s = self.model.projectname_id_sender.clone();
+        let server_id = self.model.server_id;
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                use projectpadsql::schema::server::dsl as srv;
+                let data = srv::server
+                    .inner_join(prj::project)
+                    .select((prj::name, prj::id))
+                    .filter(srv::id.eq(server_id))
+                    .first::<(String, i32)>(sql_conn)
+                    .unwrap();
+                s.send(data).unwrap();
+            }))
+            .unwrap();
     }
 
     fn model(
@@ -87,10 +111,17 @@ impl Widget for ServerWebsiteAddEditDialog {
                 Ok(srv_www) => stream2.emit(Msg::ServerWwwUpdated(srv_www)),
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
+        let stream3 = relm.stream().clone();
+        let (projectname_id_channel, projectname_id_sender) =
+            relm::Channel::new(move |projectname_id: (String, i32)| {
+                stream3.emit(Msg::GotProjectNameAndId(projectname_id));
+            });
         Model {
             db_sender,
             server_id,
             server_www_id: sw.map(|d| d.id),
+            projectname_id_sender,
+            _projectname_id_channel: projectname_id_channel,
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
             _groups_channel: groups_channel,
             groups_sender,
@@ -118,6 +149,11 @@ impl Widget for ServerWebsiteAddEditDialog {
                     &self.group,
                     &groups,
                     &self.model.group_name,
+                );
+            }
+            Msg::GotProjectNameAndId((name, id)) => {
+                self.pick_db_button.stream().emit(
+                    pick_projectpad_item_button::Msg::SetProjectNameAndId(Some((name, id))),
                 );
             }
             Msg::ServerDbSelected(db_id) => {
@@ -292,9 +328,13 @@ impl Widget for ServerWebsiteAddEditDialog {
                     top_attach: 6,
                 },
             },
-            PickProjectpadItemButton((self.model.db_sender.clone(),
-                                      pick_projectpad_item_button::ItemType::ServerDatabase,
-                                      self.model.server_database_id)) {
+            #[name="pick_db_button"]
+            PickProjectpadItemButton(PickProjectpadItemParams {
+                db_sender: self.model.db_sender.clone(),
+                item_type: pick_projectpad_item_button::ItemType::ServerDatabase,
+                item_id: self.model.server_database_id,
+                project_name_id: None, // we get the project name later through a message
+            }) {
                 cell: {
                     left_attach: 1,
                     top_attach: 6,

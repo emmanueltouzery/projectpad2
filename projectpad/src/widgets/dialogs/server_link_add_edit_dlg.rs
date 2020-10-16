@@ -2,7 +2,7 @@ use super::dialog_helpers;
 use super::pick_projectpad_item_button;
 use super::pick_projectpad_item_button::Msg::ItemSelected as PickPpItemSelected;
 use super::pick_projectpad_item_button::Msg::RemoveItem as PickPpItemRemoved;
-use super::pick_projectpad_item_button::PickProjectpadItemButton;
+use super::pick_projectpad_item_button::{PickProjectpadItemButton, PickProjectpadItemParams};
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -16,6 +16,7 @@ use std::sync::mpsc;
 pub enum Msg {
     SetEnvironmentType(EnvironmentType),
     GotGroups(Vec<String>),
+    GotProjectNameAndId((String, i32)),
     ServerSelected(i32),
     ServerRemoved,
     OkPressed,
@@ -35,6 +36,9 @@ pub struct Model {
     _groups_channel: relm::Channel<Vec<String>>,
     groups_sender: relm::Sender<Vec<String>>,
 
+    _projectname_id_channel: relm::Channel<(String, i32)>,
+    projectname_id_sender: relm::Sender<(String, i32)>,
+
     _server_link_updated_channel: relm::Channel<SaveResult>,
     server_link_updated_sender: relm::Sender<SaveResult>,
 
@@ -48,6 +52,7 @@ impl Widget for ServerLinkAddEditDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
         self.init_group();
+        self.fetch_project_name_and_id();
 
         let must_pick_server_error_label = gtk::LabelBuilder::new()
             .label("You must select a server to link to")
@@ -71,6 +76,23 @@ impl Widget for ServerLinkAddEditDialog {
         dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
     }
 
+    fn fetch_project_name_and_id(&self) {
+        let s = self.model.projectname_id_sender.clone();
+        let project_id = self.model.project_id;
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                let data = prj::project
+                    .select((prj::name, prj::id))
+                    .find(project_id)
+                    .first::<(String, i32)>(sql_conn)
+                    .unwrap();
+                s.send(data).unwrap();
+            }))
+            .unwrap();
+    }
+
     fn model(
         relm: &relm::Relm<Self>,
         params: (
@@ -92,11 +114,18 @@ impl Widget for ServerLinkAddEditDialog {
                 Ok(srv_link) => stream2.emit(Msg::ServerLinkUpdated(srv_link)),
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
+        let stream3 = relm.stream().clone();
+        let (projectname_id_channel, projectname_id_sender) =
+            relm::Channel::new(move |projectname_id: (String, i32)| {
+                stream3.emit(Msg::GotProjectNameAndId(projectname_id));
+            });
         Model {
             db_sender,
             project_id,
             environment_type: sl.map(|s| s.environment),
             server_link_id: sl.map(|s| s.id),
+            projectname_id_sender,
+            _projectname_id_channel: projectname_id_channel,
             _groups_channel: groups_channel,
             groups_sender,
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
@@ -117,6 +146,11 @@ impl Widget for ServerLinkAddEditDialog {
                     &self.group,
                     &groups,
                     &self.model.group_name,
+                );
+            }
+            Msg::GotProjectNameAndId((name, id)) => {
+                self.pick_srv_button.stream().emit(
+                    pick_projectpad_item_button::Msg::SetProjectNameAndId(Some((name, id))),
                 );
             }
             Msg::ServerSelected(s_id) => {
@@ -227,9 +261,13 @@ impl Widget for ServerLinkAddEditDialog {
                     top_attach: 3,
                 },
             },
-            PickProjectpadItemButton((self.model.db_sender.clone(),
-                                      pick_projectpad_item_button::ItemType::Server,
-                                      self.model.linked_server_id)) {
+            #[name="pick_srv_button"]
+            PickProjectpadItemButton(PickProjectpadItemParams {
+                db_sender: self.model.db_sender.clone(),
+                item_type:pick_projectpad_item_button::ItemType::Server,
+                item_id: self.model.linked_server_id,
+                project_name_id: None, // we get the project name later through a message
+            }) {
                 cell: {
                     left_attach: 1,
                     top_attach: 3,

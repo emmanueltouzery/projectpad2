@@ -1,3 +1,4 @@
+use super::search_view::PROJECT_FILTER_PREFIX;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -76,8 +77,8 @@ impl Widget for WinTitleBar {
 
     fn enter_or_update_search_project(&self) {
         let cur_text = self.search_entry.get_text().to_string();
-        if let Some(index) = cur_text.find("prj:") {
-            let start_idx = index + 4;
+        if let Some(index) = cur_text.find(PROJECT_FILTER_PREFIX) {
+            let start_idx = index + PROJECT_FILTER_PREFIX.len();
             self.search_entry.set_position(start_idx as i32);
             let end_idx = cur_text[start_idx..]
                 .find(" ")
@@ -85,11 +86,14 @@ impl Widget for WinTitleBar {
                 .unwrap_or(-1);
             self.search_entry.select_region(start_idx as i32, end_idx);
         } else if cur_text.is_empty() {
-            self.search_entry.set_text("prj:");
-            self.search_entry.set_position(4);
+            self.search_entry.set_text(PROJECT_FILTER_PREFIX);
+            self.search_entry
+                .set_position(PROJECT_FILTER_PREFIX.len() as i32);
         } else {
-            self.search_entry.set_text(&format!("{} prj:", cur_text));
-            self.search_entry.set_position(cur_text.len() as i32 + 5);
+            self.search_entry
+                .set_text(&format!("{} {}", cur_text, PROJECT_FILTER_PREFIX));
+            self.search_entry
+                .set_position(cur_text.len() as i32 + PROJECT_FILTER_PREFIX.len() as i32 + 1);
         }
         self.search_toggle
             .block_signal(&self.model.search_toggle_signal.as_ref().unwrap());

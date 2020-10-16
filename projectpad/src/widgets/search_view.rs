@@ -42,6 +42,8 @@ use std::sync::mpsc;
 pub const SEARCH_RESULT_WIDGET_HEIGHT: i32 = 75;
 const SCROLLBAR_WHEEL_DY: f64 = 20.0;
 
+pub const PROJECT_FILTER_PREFIX: &str = "prj:";
+
 pub struct SearchResult {
     pub projects: Vec<Project>,
     pub project_notes: Vec<ProjectNote>,
@@ -94,10 +96,12 @@ struct SearchSpec {
 
 fn search_parse(search: &str) -> SearchSpec {
     let fmt = |t: &str| format!("%{}%", t.replace('%', "\\%"));
-    if search.starts_with("prj:") || search.contains(" prj:") {
+    if search.starts_with(PROJECT_FILTER_PREFIX)
+        || search.contains(&(" ".to_string() + PROJECT_FILTER_PREFIX))
+    {
         let (prj, rest) = search
             .split(" ")
-            .partition::<Vec<_>, _>(|i| i.starts_with("prj:"));
+            .partition::<Vec<_>, _>(|i| i.starts_with(PROJECT_FILTER_PREFIX));
         SearchSpec {
             search_pattern: fmt(&rest.join(" ")),
             project_pattern: prj.first().map(|s| s[4..].to_lowercase()),

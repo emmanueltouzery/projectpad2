@@ -160,6 +160,7 @@ impl Widget for FileContentsButton {
                 },
                 gtk::Label {
                     hexpand: true,
+                    ellipsize: pango::EllipsizeMode::End,
                     text: self.model.auth_key_filename.as_deref().unwrap_or_else(|| "")
                 },
                 gtk::Button {

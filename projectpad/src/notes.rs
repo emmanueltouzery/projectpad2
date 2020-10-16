@@ -217,6 +217,26 @@ pub struct NoteBufferInfo {
     pub passwords: Vec<ItemDataInfo>,
 }
 
+pub fn note_markdown_to_quick_preview(input: &str) -> String {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    let parser = Parser::new_ext(&input, options);
+    let events_with_passwords = get_events_with_passwords(parser);
+    let mut result = "".to_string();
+    for event in events_with_passwords {
+        match event {
+            EventExt::StandardEvent(Event::Text(t)) => result.push_str(&t),
+            EventExt::StandardEvent(Event::Code(t)) => result.push_str(&t),
+            EventExt::StandardEvent(Event::Start(Tag::Paragraph)) => result.push_str("\n"),
+            EventExt::StandardEvent(Event::End(Tag::Paragraph)) => result.push_str("\n"),
+            EventExt::StandardEvent(Event::End(Tag::Heading(_))) => result.push_str("\n"),
+            EventExt::Password(_) => result.push_str("[password]"),
+            _ => {}
+        }
+    }
+    result
+}
+
 // https://developer.gnome.org/pygtk/stable/pango-markup-language.html
 pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> NoteBufferInfo {
     let mut options = Options::empty();

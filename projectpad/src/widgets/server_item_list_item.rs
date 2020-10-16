@@ -10,6 +10,7 @@ use super::dialogs::ServerAddEditDialogComponent;
 use super::project_poi_header::{populate_grid, GridItem, LabelText};
 use super::server_poi_contents::ServerItem;
 use crate::icons::*;
+use crate::notes;
 use crate::sql_thread::SqlFunc;
 use diesel::helper_types::Find;
 use diesel::prelude::*;
@@ -389,8 +390,7 @@ impl Widget for ServerItemListItem {
         );
         // TODO i don't like that note is special-cased here.
         if let ServerItem::Note(ref srv_n) = self.model.server_item {
-            let truncated_contents = srv_n
-                .contents
+            let truncated_contents = notes::note_markdown_to_quick_preview(&srv_n.contents)
                 .lines()
                 .take(3)
                 .collect::<Vec<_>>()

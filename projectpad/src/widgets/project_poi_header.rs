@@ -255,6 +255,7 @@ impl Widget for ProjectPoiHeader {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.header_grid);
         self.load_project_item();
+
         self.items_frame
             .get_style_context()
             .add_class("items_frame");
@@ -730,6 +731,18 @@ impl Widget for ProjectPoiHeader {
             Some(ProjectItem::ServerLink(_)) => vec![edit_btn, goto_btn, delete_btn],
             Some(_) => vec![edit_btn, delete_btn],
             _ => vec![],
+        };
+        match &self.model.project_item {
+            Some(ProjectItem::Server(srv)) if srv.is_retired => {
+                self.titlebox
+                    .get_style_context()
+                    .add_class("project_poi_header_titlebox_retired");
+            }
+            _ => {
+                self.titlebox
+                    .get_style_context()
+                    .remove_class("project_poi_header_titlebox_retired");
+            }
         };
         populate_grid(
             self.header_grid.clone(),

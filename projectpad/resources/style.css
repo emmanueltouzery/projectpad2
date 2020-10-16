@@ -34,6 +34,16 @@
   padding: 7px;
 }
 
+.project_poi_header_titlebox_retired {
+  background: repeating-linear-gradient(
+    -45deg,
+    #eeeeee,
+    #eeeeee 15px,
+    white 15px,
+    white 30px
+  );
+}
+
 .items_frame_title {
   border-left: 5px solid black;
   font-size: 15px;

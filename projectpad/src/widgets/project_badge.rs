@@ -111,12 +111,6 @@ impl Widget for ProjectBadge {
         context.set_antialias(cairo::Antialias::Best);
 
         let style_context = drawing_area.get_style_context();
-        let badge_class = if is_active {
-            "project_badge_active"
-        } else {
-            "project_badge"
-        };
-        style_context.add_class(badge_class);
 
         gtk::render_background(
             &style_context,
@@ -134,7 +128,19 @@ impl Widget for ProjectBadge {
             allocation_width.into(),
             allocation_height.into(),
         );
-        style_context.remove_class(badge_class);
+
+        if is_active {
+            context.set_line_width(6.0);
+            context.set_line_cap(cairo::LineCap::Round);
+            context.move_to(10.0, allocation_height as f64 - 5.0);
+            context.line_to(
+                allocation_width as f64 - 10.0,
+                allocation_height as f64 - 5.0,
+            );
+            let fg_color = style_context.get_color(gtk::StateFlags::NORMAL);
+            context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
+            context.stroke();
+        }
 
         context.arc(
             (allocation_width / 2).into(),

@@ -507,6 +507,12 @@ impl Widget for Win {
         }
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
             match e.get_keyval().to_unicode() {
+                Some('s') => {
+                    self.model
+                        .titlebar
+                        .stream()
+                        .emit(WinTitleBarMsg::SearchEnable);
+                }
                 Some('f') => {
                     self.project_poi_contents
                         .stream()

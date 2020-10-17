@@ -15,6 +15,20 @@
             <child>
               <object class="GtkShortcutsShortcut">
                 <property name="direction">ltr</property>
+                <property name="accelerator">&lt;ctl&gt;s</property>
+                <property name="title" translatable="yes">Activate search mode</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;ctl&gt;s</property>
+                <property name="title" translatable="yes">Activate search mode</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
                 <property name="accelerator">&lt;ctl&gt;k</property>
                 <property name="title" translatable="yes">Filter by project</property>
               </object>
@@ -33,6 +47,20 @@
             <property name="visible">1</property>
             <property name="title" translatable="yes">Search view</property>
             <property name="view">events</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">Escape</property>
+                <property name="title" translatable="yes">Leave search mode</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">Escape</property>
+                <property name="title" translatable="yes">Leave search mode</property>
+              </object>
+            </child>
             <child>
               <object class="GtkShortcutsShortcut">
                 <property name="direction">ltr</property>

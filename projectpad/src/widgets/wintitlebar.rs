@@ -11,6 +11,7 @@ const SHORTCUTS_UI: &str = include_str!("shortcuts.ui");
 pub enum Msg {
     DisplayAbout,
     DisplayShortcuts,
+    SearchEnable,
     SearchClicked,
     SearchActiveChanged(bool),
     SearchTextChanged(String),
@@ -83,6 +84,10 @@ impl Widget for WinTitleBar {
                     .relm
                     .stream()
                     .emit(Msg::SearchActiveChanged(new_visible));
+            }
+            Msg::SearchEnable => {
+                self.search_toggle.set_active(true);
+                self.model.relm.stream().emit(Msg::SearchClicked);
             }
             Msg::SearchActiveChanged(is_active) => {
                 self.search_toggle.set_active(is_active);

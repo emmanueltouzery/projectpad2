@@ -1,12 +1,16 @@
+use super::dialogs::standard_dialogs;
 use super::search_view::PROJECT_FILTER_PREFIX;
 use crate::icons::Icon;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 
+const SHORTCUTS_UI: &str = include_str!("shortcuts.ui");
+
 #[derive(Msg)]
 pub enum Msg {
     DisplayAbout,
+    DisplayShortcuts,
     SearchClicked,
     SearchActiveChanged(bool),
     SearchTextChanged(String),
@@ -35,7 +39,19 @@ impl Widget for WinTitleBar {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let about_btn = gtk::ModelButtonBuilder::new().label("About").build();
+        let shortcuts_btn = gtk::ModelButtonBuilder::new()
+            .label("Keyboard Shortcuts")
+            .build();
+        relm::connect!(
+            self.model.relm,
+            &shortcuts_btn,
+            connect_clicked(_),
+            Msg::DisplayShortcuts
+        );
+        vbox.add(&shortcuts_btn);
+        let about_btn = gtk::ModelButtonBuilder::new()
+            .label("About Projectpad")
+            .build();
         relm::connect!(
             self.model.relm,
             &about_btn,
@@ -59,6 +75,7 @@ impl Widget for WinTitleBar {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::DisplayAbout => Self::display_about(),
+            Msg::DisplayShortcuts => self.display_shortcuts(),
             Msg::SearchClicked => {
                 let new_visible = self.search_toggle.get_active();
                 self.search_entry.grab_focus();
@@ -109,6 +126,17 @@ impl Widget for WinTitleBar {
             .build();
         dlg.run();
         dlg.close();
+    }
+
+    fn display_shortcuts(&self) {
+        let win = gtk::Builder::from_string(SHORTCUTS_UI)
+            .get_object::<gtk::Window>("shortcuts")
+            .unwrap();
+        win.set_title("Keyboard Shortcuts");
+        win.set_transient_for(Some(&standard_dialogs::get_main_window(
+            self.header_bar.clone().upcast::<gtk::Widget>(),
+        )));
+        win.show();
     }
 
     fn enter_or_update_search_project(&self) {

@@ -155,6 +155,20 @@
             <child>
               <object class="GtkShortcutsShortcut">
                 <property name="direction">ltr</property>
+                <property name="accelerator">Return</property>
+                <property name="title" translatable="yes">Next search match</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">Return</property>
+                <property name="title" translatable="yes">Next search match</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
                 <property name="accelerator">&lt;Ctl&gt;p</property>
                 <property name="title" translatable="yes">Previous search match</property>
               </object>

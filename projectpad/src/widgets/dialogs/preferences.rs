@@ -23,6 +23,7 @@ impl Widget for Header {
 #[derive(Msg)]
 pub enum Msg {
     DarkThemeToggled(bool),
+    KeyPress(gdk::EventKey),
     ConfigUpdated(Box<Config>),
 }
 
@@ -67,6 +68,11 @@ impl Widget for Preferences {
                 self.model.config.prefer_dark_theme = t;
                 self.update_config();
             }
+            Msg::KeyPress(key) => {
+                if key.get_keyval() == gdk::keys::constants::Escape {
+                    self.prefs_win.close();
+                }
+            }
             Msg::ConfigUpdated(_) => {
                 // meant for my parent, not for me
             }
@@ -92,7 +98,7 @@ impl Widget for Preferences {
                     toggled(t) => Msg::DarkThemeToggled(t.get_active())
                 },
             },
-            // key_press_event(_, key) => (Msg::KeyPress(key.clone()), Inhibit(false)), // just for the ESC key.. surely there's a better way..
+            key_press_event(_, key) => (Msg::KeyPress(key.clone()), Inhibit(false)), // just for the ESC key.. surely there's a better way..
         }
     }
 }

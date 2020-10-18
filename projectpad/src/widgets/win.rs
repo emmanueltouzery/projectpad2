@@ -35,6 +35,7 @@ use super::tooltips_overlay;
 use super::tooltips_overlay::TooltipsOverlay;
 use super::wintitlebar::Msg as WinTitleBarMsg;
 use super::wintitlebar::WinTitleBar;
+use crate::config::Config;
 use crate::sql_thread::migrate_db_if_needed;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
@@ -153,6 +154,10 @@ impl Widget for Win {
         gtk::IconTheme::get_default()
             .unwrap()
             .add_resource_path("/icons");
+        let config = Config::read_config();
+        gtk::Settings::get_default()
+            .unwrap()
+            .set_property_gtk_application_prefer_dark_theme(config.prefer_dark_theme);
         let titlebar = relm::init::<WinTitleBar>(()).expect("win title bar init");
         let tooltips_overlay = relm::init::<TooltipsOverlay>(()).expect("tooltips overlay init");
 

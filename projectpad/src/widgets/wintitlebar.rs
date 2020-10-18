@@ -1,16 +1,21 @@
+use super::dialogs::preferences::Msg as PreferencesMsg;
+use super::dialogs::preferences::Preferences;
 use super::dialogs::standard_dialogs;
 use super::search_view::PROJECT_FILTER_PREFIX;
+use crate::config::Config;
 use crate::icons::Icon;
 use gtk::prelude::*;
-use relm::Widget;
+use relm::{init, Component, Widget};
 use relm_derive::{widget, Msg};
 
 const SHORTCUTS_UI: &str = include_str!("shortcuts.ui");
 
 #[derive(Msg)]
 pub enum Msg {
-    DisplayAbout,
+    DisplayPreferences,
     DisplayShortcuts,
+    DisplayAbout,
+    ConfigUpdated(Box<Config>),
     SearchEnable,
     SearchClicked,
     SearchActiveChanged(bool),
@@ -23,6 +28,7 @@ pub struct Model {
     relm: relm::Relm<WinTitleBar>,
     search_toggle_signal: Option<glib::SignalHandlerId>,
     menu_popover: gtk::Popover,
+    prefs_win: Option<Component<Preferences>>,
 }
 
 #[widget]
@@ -40,6 +46,14 @@ impl Widget for WinTitleBar {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
+        let preferences_btn = gtk::ModelButtonBuilder::new().label("Preferences").build();
+        relm::connect!(
+            self.model.relm,
+            &preferences_btn,
+            connect_clicked(_),
+            Msg::DisplayPreferences
+        );
+        vbox.add(&preferences_btn);
         let shortcuts_btn = gtk::ModelButtonBuilder::new()
             .label("Keyboard Shortcuts")
             .build();
@@ -70,13 +84,15 @@ impl Widget for WinTitleBar {
             relm: relm.clone(),
             search_toggle_signal: None,
             menu_popover: gtk::Popover::new(None::<&gtk::MenuButton>),
+            prefs_win: None,
         }
     }
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::DisplayAbout => Self::display_about(),
+            Msg::DisplayPreferences => self.display_preferences(),
             Msg::DisplayShortcuts => self.display_shortcuts(),
+            Msg::DisplayAbout => Self::display_about(),
             Msg::SearchClicked => {
                 let new_visible = self.search_toggle.get_active();
                 self.search_entry.grab_focus();
@@ -118,7 +134,28 @@ impl Widget for WinTitleBar {
             Msg::EnterOrUpdateSearchProject => {
                 self.enter_or_update_search_project();
             }
+            Msg::ConfigUpdated(_) => {
+                // this is meant for win... we emit here, not interested by it ourselves
+            }
         }
+    }
+
+    fn display_preferences(&mut self) {
+        let main_win =
+            standard_dialogs::get_main_window(self.header_bar.clone().upcast::<gtk::Widget>());
+        self.model.prefs_win = Some(
+            init::<Preferences>(main_win.clone())
+                .expect("error initializing the preferences window"),
+        );
+        let prefs_win = self.model.prefs_win.as_ref().unwrap();
+        relm::connect!(prefs_win@PreferencesMsg::ConfigUpdated(ref cfg),
+                               self.model.relm, Msg::ConfigUpdated(cfg.clone()));
+        prefs_win.widget().set_transient_for(Some(&main_win));
+        prefs_win
+            .widget()
+            .set_position(gtk::WindowPosition::CenterOnParent);
+        prefs_win.widget().set_modal(true);
+        prefs_win.widget().show();
     }
 
     fn display_about() {

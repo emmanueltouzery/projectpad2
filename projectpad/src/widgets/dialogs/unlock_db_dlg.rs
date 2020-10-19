@@ -88,12 +88,13 @@ impl Widget for UnlockDbDialog {
                 } else {
                     let s = self.model.pass_valid_sender.clone();
                     let is_save_to_keyring = self.save_password_check.get_active();
+                    let p = self.model.password.as_ref().unwrap().clone();
                     self.model
                         .db_sender
                         .send(SqlFunc::new(move |db_conn| {
-                            let r = try_unlock_db(db_conn, &pass);
+                            let r = try_unlock_db(db_conn, &p);
                             if r.is_ok() && is_save_to_keyring {
-                                match projectpadsql::set_pass_in_keyring(&pass) {
+                                match projectpadsql::set_pass_in_keyring(&p) {
                                     Err(msg) => standard_dialogs::display_error_str(
                                         "Error saving the password to the keyring",
                                         Some(msg),

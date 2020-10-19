@@ -1,7 +1,9 @@
 use crate::config::Config;
+use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
+use std::sync::mpsc;
 
 #[derive(Msg)]
 pub enum HeaderMsg {}
@@ -23,32 +25,62 @@ impl Widget for Header {
 #[derive(Msg)]
 pub enum Msg {
     DarkThemeToggled(bool),
+    GotStorePassInKeyring(bool),
+    RemovePasswordFromKeyring,
     KeyPress(gdk::EventKey),
     ConfigUpdated(Box<Config>),
 }
 
 pub struct Model {
     relm: relm::Relm<Preferences>,
+    db_sender: mpsc::Sender<SqlFunc>,
     prefer_dark_theme: bool,
     header: Component<Header>,
     win: gtk::Window,
     config: Config,
+    pass_keyring_sender: relm::Sender<bool>,
+    _pass_keyring_channel: relm::Channel<bool>,
 }
 
 #[widget]
 impl Widget for Preferences {
-    fn init_view(&mut self) {}
+    fn init_view(&mut self) {
+        self.remove_from_keyring
+            .get_style_context()
+            .add_class("destructive-action");
+        self.load_keyring_pass_state();
+    }
 
-    fn model(relm: &relm::Relm<Self>, win: gtk::Window) -> Model {
+    fn model(relm: &relm::Relm<Self>, params: (gtk::Window, mpsc::Sender<SqlFunc>)) -> Model {
+        let (win, db_sender) = params;
         let config = Config::read_config();
         let header = relm::init(()).expect("header");
+        let stream = relm.stream().clone();
+        let (_pass_keyring_channel, pass_keyring_sender) =
+            relm::Channel::new(move |r: bool| stream.emit(Msg::GotStorePassInKeyring(r)));
         Model {
             relm: relm.clone(),
+            db_sender,
             prefer_dark_theme: config.prefer_dark_theme,
             header,
             config,
             win,
+            pass_keyring_sender,
+            _pass_keyring_channel,
         }
+    }
+
+    fn load_keyring_pass_state(&self) {
+        // abusing a little db_sender here. I need a thread to run blocking
+        // stuff, nothing to do with sql, but it serves my purpose.
+        let s = self.model.pass_keyring_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |_| {
+                s.send(projectpadsql::get_pass_from_keyring().is_some())
+                    .unwrap();
+            }))
+            .unwrap();
     }
 
     fn update_config(&self) {
@@ -61,12 +93,19 @@ impl Widget for Preferences {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::GotStorePassInKeyring(t) => {
+                self.remove_from_keyring.set_sensitive(t);
+            }
             Msg::DarkThemeToggled(t) => {
                 gtk::Settings::get_default()
                     .unwrap()
                     .set_property_gtk_application_prefer_dark_theme(t);
                 self.model.config.prefer_dark_theme = t;
                 self.update_config();
+            }
+            Msg::RemovePasswordFromKeyring => {
+                projectpadsql::clear_pass_from_keyring().unwrap();
+                self.load_keyring_pass_state();
             }
             Msg::KeyPress(key) => {
                 if key.get_keyval() == gdk::keys::constants::Escape {
@@ -96,6 +135,13 @@ impl Widget for Preferences {
                     label: "Prefer dark theme",
                     active: self.model.prefer_dark_theme,
                     toggled(t) => Msg::DarkThemeToggled(t.get_active())
+                },
+                #[name="remove_from_keyring"]
+                gtk::Button {
+                    label: "Remove password from keyring",
+                    halign: gtk::Align::Start,
+                    sensitive: false,
+                    clicked => Msg::RemovePasswordFromKeyring
                 },
             },
             key_press_event(_, key) => (Msg::KeyPress(key.clone()), Inhibit(false)), // just for the ESC key.. surely there's a better way..

@@ -30,3 +30,9 @@ pub fn set_pass_in_keyring(pass: &str) -> Result<(), String> {
     let kr = keyring::Keyring::new(&service, &service);
     kr.set_password(pass).map_err(|e| e.to_string())
 }
+
+pub fn clear_pass_from_keyring() -> Result<(), String> {
+    let service = "projectpad-cli";
+    let kr = keyring::Keyring::new(&service, &service);
+    kr.delete_password().map_err(|e| e.to_string())
+}

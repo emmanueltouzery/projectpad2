@@ -4,9 +4,11 @@ use super::dialogs::standard_dialogs;
 use super::search_view::PROJECT_FILTER_PREFIX;
 use crate::config::Config;
 use crate::icons::Icon;
+use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use relm::{init, Component, Widget};
 use relm_derive::{widget, Msg};
+use std::sync::mpsc;
 
 const SHORTCUTS_UI: &str = include_str!("shortcuts.ui");
 
@@ -26,6 +28,7 @@ pub enum Msg {
 
 pub struct Model {
     relm: relm::Relm<WinTitleBar>,
+    db_sender: mpsc::Sender<SqlFunc>,
     search_toggle_signal: Option<glib::SignalHandlerId>,
     menu_popover: gtk::Popover,
     prefs_win: Option<Component<Preferences>>,
@@ -79,9 +82,10 @@ impl Widget for WinTitleBar {
         self.menu_button.set_popover(Some(&self.model.menu_popover));
     }
 
-    fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
+    fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         Model {
             relm: relm.clone(),
+            db_sender,
             search_toggle_signal: None,
             menu_popover: gtk::Popover::new(None::<&gtk::MenuButton>),
             prefs_win: None,
@@ -144,7 +148,7 @@ impl Widget for WinTitleBar {
         let main_win =
             standard_dialogs::get_main_window(self.header_bar.clone().upcast::<gtk::Widget>());
         self.model.prefs_win = Some(
-            init::<Preferences>(main_win.clone())
+            init::<Preferences>((main_win.clone(), self.model.db_sender.clone()))
                 .expect("error initializing the preferences window"),
         );
         let prefs_win = self.model.prefs_win.as_ref().unwrap();

@@ -158,7 +158,7 @@ impl Widget for Win {
         gtk::Settings::get_default()
             .unwrap()
             .set_property_gtk_application_prefer_dark_theme(config.prefer_dark_theme);
-        let titlebar = relm::init::<WinTitleBar>(()).expect("win title bar init");
+        let titlebar = relm::init::<WinTitleBar>(db_sender.clone()).expect("win title bar init");
         let tooltips_overlay = relm::init::<TooltipsOverlay>(()).expect("tooltips overlay init");
 
         let stream = relm.stream().clone();

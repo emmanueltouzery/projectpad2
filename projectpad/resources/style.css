@@ -146,3 +146,8 @@
 .search_frame {
   background-color: @theme_base_color;
 }
+
+.section_title {
+  font-weight: bold;
+  padding-top: 10px;
+}

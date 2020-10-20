@@ -49,6 +49,12 @@ impl Widget for Preferences {
             .get_style_context()
             .add_class("destructive-action");
         self.load_keyring_pass_state();
+        self.section_title1
+            .get_style_context()
+            .add_class("section_title");
+        self.section_title2
+            .get_style_context()
+            .add_class("section_title");
     }
 
     fn model(relm: &relm::Relm<Self>, params: (gtk::Window, mpsc::Sender<SqlFunc>)) -> Model {
@@ -127,14 +133,24 @@ impl Widget for Preferences {
             gtk::Box {
                 orientation: gtk::Orientation::Vertical,
                 margin_top: 10,
-                margin_start: 6,
-                margin_end: 6,
+                margin_start: 30,
+                margin_end: 30,
                 margin_bottom: 6,
                 spacing: 6,
+                #[name="section_title1"]
+                gtk::Label {
+                    text: "User interface",
+                    xalign: 0.0
+                },
                 gtk::CheckButton {
                     label: "Prefer dark theme",
                     active: self.model.prefer_dark_theme,
                     toggled(t) => Msg::DarkThemeToggled(t.get_active())
+                },
+                #[name="section_title2"]
+                gtk::Label {
+                    text: "Database password",
+                    xalign: 0.0
                 },
                 #[name="remove_from_keyring"]
                 gtk::Button {

@@ -1,3 +1,7 @@
+use super::change_db_password_dlg;
+use super::change_db_password_dlg::ChangeDbPasswordDialog;
+use super::change_db_password_dlg::Msg as MsgChangeDbPassword;
+use super::standard_dialogs;
 use crate::config::Config;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
@@ -27,8 +31,10 @@ pub enum Msg {
     DarkThemeToggled(bool),
     GotStorePassInKeyring(bool),
     RemovePasswordFromKeyring,
+    ChangeDbPassword,
     KeyPress(gdk::EventKey),
     ConfigUpdated(Box<Config>),
+    ChangedPass(gtk::Dialog),
 }
 
 pub struct Model {
@@ -40,6 +46,7 @@ pub struct Model {
     config: Config,
     pass_keyring_sender: relm::Sender<bool>,
     _pass_keyring_channel: relm::Channel<bool>,
+    change_db_password_dlg: Option<Component<ChangeDbPasswordDialog>>,
 }
 
 #[widget]
@@ -73,6 +80,7 @@ impl Widget for Preferences {
             win,
             pass_keyring_sender,
             _pass_keyring_channel,
+            change_db_password_dlg: None,
         }
     }
 
@@ -113,10 +121,39 @@ impl Widget for Preferences {
                 projectpadsql::clear_pass_from_keyring().unwrap();
                 self.load_keyring_pass_state();
             }
+            Msg::ChangeDbPassword => {
+                let change_pwd_contents =
+                    relm::init::<ChangeDbPasswordDialog>(self.model.db_sender.clone())
+                        .expect("error initializing the change db password dialog");
+                let dialog = standard_dialogs::modal_dialog(
+                    self.prefs_win.clone().upcast::<gtk::Widget>(),
+                    600,
+                    200,
+                    "Change database password".to_string(),
+                );
+                let d_c = change_pwd_contents.clone();
+                let (dialog, component, btn) = standard_dialogs::prepare_custom_dialog(
+                    dialog,
+                    change_pwd_contents,
+                    move |_| {
+                        d_c.emit(change_db_password_dlg::Msg::OkPressed);
+                    },
+                );
+                btn.set_label("Apply");
+                let d = dialog.clone();
+                relm::connect!(component@MsgChangeDbPassword::SuccessfullyChangedPass,
+                               self.model.relm, Msg::ChangedPass(d.clone()));
+                self.model.change_db_password_dlg = Some(component);
+                dialog.show();
+            }
             Msg::KeyPress(key) => {
                 if key.get_keyval() == gdk::keys::constants::Escape {
                     self.prefs_win.close();
                 }
+            }
+            Msg::ChangedPass(dialog) => {
+                dialog.close();
+                self.model.change_db_password_dlg = None;
             }
             Msg::ConfigUpdated(_) => {
                 // meant for my parent, not for me
@@ -158,6 +195,12 @@ impl Widget for Preferences {
                     halign: gtk::Align::Start,
                     sensitive: false,
                     clicked => Msg::RemovePasswordFromKeyring
+                },
+                #[name="change_password"]
+                gtk::Button {
+                    label: "Change database password",
+                    halign: gtk::Align::Start,
+                    clicked => Msg::ChangeDbPassword
                 },
             },
             key_press_event(_, key) => (Msg::KeyPress(key.clone()), Inhibit(false)), // just for the ESC key.. surely there's a better way..

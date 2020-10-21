@@ -2,6 +2,7 @@
 pub mod dialog_helpers;
 #[macro_use]
 pub mod server_add_item_dlg;
+mod change_db_password_dlg;
 mod environments_picker;
 mod file_contents_button;
 mod note_edit;

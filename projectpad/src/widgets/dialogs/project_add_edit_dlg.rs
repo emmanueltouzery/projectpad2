@@ -18,12 +18,14 @@ pub enum Msg {
     IconChanged((Option<String>, Option<Vec<u8>>)),
     OkPressed,
     ProjectUpdated(Project),
+    HideInfobar,
 }
 
 // String for details, because I can't pass Error across threads
 type SaveResult = Result<Project, (String, Option<String>)>;
 
 pub struct Model {
+    relm: relm::Relm<ProjectAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     _project_updated_channel: relm::Channel<SaveResult>,
     project_updated_sender: relm::Sender<SaveResult>,
@@ -36,12 +38,22 @@ pub struct Model {
     has_stg: bool,
     has_uat: bool,
     has_prod: bool,
+
+    infobar: gtk::InfoBar,
+    infobar_label: gtk::Label,
 }
 
 #[widget]
 impl Widget for ProjectAddEditDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
+        self.init_infobar_overlay();
+    }
+
+    fn init_infobar_overlay(&self) {
+        self.infobar_overlay.add_overlay(&self.model.infobar);
+        self.infobar_overlay
+            .set_overlay_pass_through(&self.model.infobar, true);
     }
 
     fn model(
@@ -58,7 +70,18 @@ impl Widget for ProjectAddEditDialog {
             });
         let name = p.map(|p| p.name.clone()).unwrap_or("".to_string());
         let icon = p.and_then(|p| p.icon.clone()).filter(|i| !i.is_empty());
+        let infobar = gtk::InfoBarBuilder::new()
+            .revealed(false)
+            .message_type(gtk::MessageType::Info)
+            .valign(gtk::Align::Start)
+            .build();
+
+        let infobar_label = gtk::LabelBuilder::new().label("").build();
+        infobar_label.show();
+        infobar.get_content_area().add(&infobar_label);
+        infobar.show();
         Model {
+            relm: relm.clone(),
             db_sender,
             project_updated_sender,
             _project_updated_channel: project_updated_channel,
@@ -70,7 +93,15 @@ impl Widget for ProjectAddEditDialog {
             has_stg: p.map(|p| p.has_stage).unwrap_or(false),
             has_uat: p.map(|p| p.has_uat).unwrap_or(false),
             has_prod: p.map(|p| p.has_prod).unwrap_or(false),
+            infobar,
+            infobar_label,
         }
+    }
+
+    fn show_infobar(&self, msg: &str) {
+        self.model.infobar_label.set_text(msg);
+        self.model.infobar.set_revealed(true);
+        relm::timeout(self.model.relm.stream(), 1500, || Msg::HideInfobar);
     }
 
     fn update(&mut self, event: Msg) {
@@ -92,7 +123,18 @@ impl Widget for ProjectAddEditDialog {
                 self.model.icon_desc = Self::icon_desc(&self.model.name, &self.model.icon);
             }
             Msg::OkPressed => {
+                if !(self.model.has_dev
+                    || self.model.has_stg
+                    || self.model.has_uat
+                    || self.model.has_prod)
+                {
+                    self.show_infobar("Please pick at least one environment");
+                    return;
+                }
                 self.update_project();
+            }
+            Msg::HideInfobar => {
+                self.model.infobar.set_revealed(false);
             }
             // for my parent
             Msg::ProjectUpdated(_) => {}
@@ -141,56 +183,59 @@ impl Widget for ProjectAddEditDialog {
     }
 
     view! {
-        #[name="grid"]
-        gtk::Grid {
-            gtk::Label {
-                text: "Name",
-                halign: gtk::Align::End,
-                cell: {
-                    left_attach: 0,
-                    top_attach: 1,
+        #[name="infobar_overlay"]
+        gtk::Overlay {
+            #[name="grid"]
+            gtk::Grid {
+                gtk::Label {
+                    text: "Name",
+                    halign: gtk::Align::End,
+                    cell: {
+                        left_attach: 0,
+                        top_attach: 1,
+                    },
                 },
-            },
-            #[name="name_entry"]
-            gtk::Entry {
-                hexpand: true,
-                text: &self.model.name,
-                cell: {
-                    left_attach: 1,
-                    top_attach: 1,
+                #[name="name_entry"]
+                gtk::Entry {
+                    hexpand: true,
+                    text: &self.model.name,
+                    cell: {
+                        left_attach: 1,
+                        top_attach: 1,
+                    },
                 },
-            },
-            EnvironmentsPicker(SelectedEnvironments {
-                has_dev: self.model.has_dev,
-                has_stg: self.model.has_stg,
-                has_uat: self.model.has_uat,
-                has_prod: self.model.has_prod,
-            }) {
-                cell: {
-                    left_attach: 0,
-                    top_attach: 2,
-                    width: 2,
+                EnvironmentsPicker(SelectedEnvironments {
+                    has_dev: self.model.has_dev,
+                    has_stg: self.model.has_stg,
+                    has_uat: self.model.has_uat,
+                    has_prod: self.model.has_prod,
+                }) {
+                    cell: {
+                        left_attach: 0,
+                        top_attach: 2,
+                        width: 2,
+                    },
+                    EnvironmentsPickerMsgEnvToggled(env_type) => Msg::EnvironmentToggled(env_type)
                 },
-                EnvironmentsPickerMsgEnvToggled(env_type) => Msg::EnvironmentToggled(env_type)
-            },
-            gtk::Label {
-                text: "Icon",
-                halign: gtk::Align::End,
-                cell: {
-                    left_attach: 0,
-                    top_attach: 3,
+                gtk::Label {
+                    text: "Icon",
+                    halign: gtk::Align::End,
+                    cell: {
+                        left_attach: 0,
+                        top_attach: 3,
+                    },
                 },
-            },
-            FileContentsButton((
-                self.model.icon_desc.clone(),
-                self.model.icon.clone(),
-            )) {
-                FileContentsButtonFileChanged(ref val) => Msg::IconChanged(val.clone()),
-                cell: {
-                    left_attach: 1,
-                    top_attach: 3,
+                FileContentsButton((
+                    self.model.icon_desc.clone(),
+                    self.model.icon.clone(),
+                )) {
+                    FileContentsButtonFileChanged(ref val) => Msg::IconChanged(val.clone()),
+                    cell: {
+                        left_attach: 1,
+                        top_attach: 3,
+                    },
                 },
-            },
+            }
         }
     }
 }

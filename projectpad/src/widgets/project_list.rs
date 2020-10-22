@@ -123,7 +123,6 @@ impl Widget for ProjectList {
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
                 let prjs = Self::load_projects(sql_conn);
-                println!("loaded prjs: {}", prjs.len());
                 s.send(prjs).unwrap();
             }))
             .unwrap();
@@ -169,6 +168,9 @@ impl Widget for ProjectList {
             .relief(gtk::ReliefStyle::None)
             .build();
         add_btn.show();
+        if self.model.projects.is_empty() {
+            add_btn.get_style_context().add_class("suggested-action");
+        }
         relm::connect!(
             self.model.relm,
             add_btn,

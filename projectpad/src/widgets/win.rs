@@ -41,6 +41,7 @@ use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use diesel::prelude::*;
+use diesel::prelude::*;
 use gdk::ModifierType;
 use gdk::WindowExt;
 use gtk::prelude::*;
@@ -86,6 +87,7 @@ pub enum Msg {
     RequestDisplayItem(ServerItem),
     AddProject,
     ProjectListChanged,
+    ProjectCountChanged(usize),
     UpdateProjectTooltip(Option<(String, i32)>),
     ShowInfoBar(String),
     HideInfobar,
@@ -110,6 +112,8 @@ pub struct Model {
     db_unlock_attempted_sender: relm::Sender<bool>,
     _db_prepared_channel: relm::Channel<()>,
     db_prepared_sender: relm::Sender<()>,
+    _project_count_channel: relm::Channel<usize>,
+    project_count_sender: relm::Sender<usize>,
     unlock_db_component_dialog: Option<(gtk::Dialog, Component<UnlockDbDialog>)>,
     infobar: gtk::InfoBar,
     infobar_label: gtk::Label,
@@ -117,6 +121,7 @@ pub struct Model {
 
 const CHILD_NAME_NORMAL: &str = "normal";
 const CHILD_NAME_SEARCH: &str = "search";
+const CHILD_NAME_WELCOME: &str = "welcome";
 
 #[widget]
 impl Widget for Win {
@@ -141,6 +146,7 @@ impl Widget for Win {
         self.init_infobar_overlay();
 
         self.unlock_db();
+        self.request_update_welcome_status();
     }
 
     fn init_infobar_overlay(&self) {
@@ -175,6 +181,10 @@ impl Widget for Win {
         let (db_prepared_channel, db_prepared_sender) = relm::Channel::new(move |_| {
             stream3.emit(Msg::DbPrepared);
         });
+        let stream4 = relm.stream().clone();
+        let (project_count_channel, project_count_sender) = relm::Channel::new(move |count| {
+            stream4.emit(Msg::ProjectCountChanged(count));
+        });
         let infobar = gtk::InfoBarBuilder::new()
             .revealed(false)
             .message_type(gtk::MessageType::Info)
@@ -198,6 +208,8 @@ impl Widget for Win {
             _db_unlock_attempted_channel: db_unlock_attempted_channel,
             db_prepared_sender,
             _db_prepared_channel: db_prepared_channel,
+            project_count_sender,
+            _project_count_channel: project_count_channel,
             project_add_dialog: None,
             unlock_db_component_dialog: None,
             infobar,
@@ -281,6 +293,23 @@ impl Widget for Win {
                 migrate_db_if_needed(&db_conn).unwrap();
                 db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
                 s.send(()).unwrap();
+            }))
+            .unwrap();
+    }
+
+    fn request_update_welcome_status(&self) {
+        let s = self.model.project_count_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                s.send(
+                    prj::project
+                        .select(diesel::dsl::count(prj::id))
+                        .first::<i64>(sql_conn)
+                        .unwrap() as usize,
+                )
+                .unwrap()
             }))
             .unwrap();
     }
@@ -438,6 +467,15 @@ impl Widget for Win {
                 self.project_list
                     .stream()
                     .emit(ProjectListMsg::ProjectListChanged);
+                self.request_update_welcome_status();
+            }
+            Msg::ProjectCountChanged(count) => {
+                self.normal_or_welcome_stack
+                    .set_visible_child_name(if count > 0 {
+                        CHILD_NAME_NORMAL
+                    } else {
+                        CHILD_NAME_WELCOME
+                    });
             }
             Msg::AddProject => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
@@ -614,58 +652,84 @@ impl Widget for Win {
                             AddProject => Msg::AddProject,
                             UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
                         },
-                        // we use the overlay to display a tooltip with the name
-                        // of the project from the project_list that the mouse
-                        // currently hovers.
-                        #[name="tooltip_overlay"]
-                        gtk::Overlay {
+                        #[name="normal_or_welcome_stack"]
+                        gtk::Stack {
                             gtk::Box {
-                                orientation: gtk::Orientation::Vertical,
-                                #[name="project_summary"]
-                                ProjectSummary(self.model.db_sender.clone()) {
-                                    EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
-                                    ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                                    ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
-                                    ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
+                                child: {
+                                    name: Some(CHILD_NAME_NORMAL)
                                 },
-                                #[name="project_items_list"]
-                                ProjectItemsList(self.model.db_sender.clone()) {
-                                    property_width_request: 260,
+                                // we use the overlay to display a tooltip with the name
+                                // of the project from the project_list that the mouse
+                                // currently hovers.
+                                #[name="tooltip_overlay"]
+                                gtk::Overlay {
+                                    gtk::Box {
+                                        orientation: gtk::Orientation::Vertical,
+                                        #[name="project_summary"]
+                                        ProjectSummary(self.model.db_sender.clone()) {
+                                            EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
+                                            ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                            ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
+                                            ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
+                                        },
+                                        #[name="project_items_list"]
+                                        ProjectItemsList(self.model.db_sender.clone()) {
+                                            property_width_request: 260,
+                                            child: {
+                                                fill: true,
+                                                expand: true,
+                                            },
+                                            ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                                        },
+                                    },
+                                },
+                                gtk::Box {
+                                    orientation: gtk::Orientation::Vertical,
+                                    spacing: 10,
                                     child: {
                                         fill: true,
                                         expand: true,
                                     },
-                                    ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
-                                },
+                                    #[name="project_poi_header"]
+                                    ProjectPoiHeader((self.model.db_sender.clone(), None)) {
+                                        ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                        ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
+                                        ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
+                                        ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
+                                            (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
+                                        ProjectPoiHeaderShowInfoBar(ref msg) =>
+                                            Msg::ShowInfoBar(msg.clone()),
+                                    },
+                                    #[name="project_poi_contents"]
+                                    ProjectPoiContents(self.model.db_sender.clone()) {
+                                        child: {
+                                            fill: true,
+                                            expand: true,
+                                        },
+                                        ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
+                                            Msg::RequestDisplayItem(item_info.clone()),
+                                        ProjectPoiContentsMsgShowInfoBar(ref msg) =>
+                                            Msg::ShowInfoBar(msg.clone()),
+                                    }
+                                }
                             },
-                        },
-                        gtk::Box {
-                            orientation: gtk::Orientation::Vertical,
-                            spacing: 10,
-                            child: {
-                                fill: true,
-                                expand: true,
-                            },
-                            #[name="project_poi_header"]
-                            ProjectPoiHeader((self.model.db_sender.clone(), None)) {
-                                ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                                ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
-                                ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
-                                ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
-                                    (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
-                                ProjectPoiHeaderShowInfoBar(ref msg) =>
-                                    Msg::ShowInfoBar(msg.clone()),
-                            },
-                            #[name="project_poi_contents"]
-                            ProjectPoiContents(self.model.db_sender.clone()) {
+                            gtk::Box {
                                 child: {
-                                    fill: true,
-                                    expand: true,
+                                    name: Some(CHILD_NAME_WELCOME)
                                 },
-                                ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
-                                    Msg::RequestDisplayItem(item_info.clone()),
-                                ProjectPoiContentsMsgShowInfoBar(ref msg) =>
-                                    Msg::ShowInfoBar(msg.clone()),
+                                gtk::Label {
+                                    xalign: 0.1,
+                                    yalign: 0.1,
+                                    markup: "<big><b>Welcome to Projectpad!</b></big>\n\n\nTo get started, you must create your first project. Use the <tt>+</tt> button on the top-left.\n\n\
+                                             Projects get subdivided in environments, and specifically:\n\n\
+                                             • <u>Prod</u> - the production environment;\n\
+                                             • <u>Uat</u> - User Acceptance Testing, an environment used by the customer, which is not Prod;\n\
+                                             • <u>Stg</u> - Staging, the last testing environment before showing the product to the customer;\n\
+                                             • <u>Dev</u> - the development environment.\n\n\
+                                             A project should have at least one environment. If unsure, use Prod.\n\n\
+                                             Once you have a project and environments for it, you'll be able to manage notes, points of interests, servers, and so on, for that project,\n\
+                                             for each environment."
+                                }
                             }
                         }
                     },

@@ -41,7 +41,6 @@ use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use diesel::prelude::*;
-use diesel::prelude::*;
 use gdk::ModifierType;
 use gdk::WindowExt;
 use gtk::prelude::*;
@@ -146,7 +145,6 @@ impl Widget for Win {
         self.init_infobar_overlay();
 
         self.unlock_db();
-        self.request_update_welcome_status();
     }
 
     fn init_infobar_overlay(&self) {
@@ -336,6 +334,7 @@ impl Widget for Win {
                     self.model.unlock_db_component_dialog = None;
                 }
                 self.project_list.emit(ProjectListMsg::DbPrepared);
+                self.request_update_welcome_status();
             }
             Msg::CloseUnlockDb => {
                 if !self.model.is_db_unlocked {

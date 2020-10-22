@@ -352,6 +352,12 @@ impl Widget for Win {
                     .emit(ProjectItemsListMsg::ActiveEnvironmentChanged(env));
             }
             Msg::ProjectItemSelected(pi) => {
+                self.normal_or_project_welcome_stack
+                    .set_visible_child_name(if pi.is_some() {
+                        CHILD_NAME_NORMAL
+                    } else {
+                        CHILD_NAME_WELCOME
+                    });
                 self.project_poi_header
                     .emit(ProjectPoiHeaderMsg::ProjectItemSelected(pi.clone()));
                 self.project_poi_contents
@@ -484,7 +490,7 @@ impl Widget for Win {
                     "Project",
                 );
                 relm::connect!(
-                    component@MsgProjectAddEditDialog::ProjectUpdated(ref project),
+                    component@MsgProjectAddEditDialog::ProjectUpdated(ref _project),
                     self.model.relm,
                     Msg::ProjectListChanged
                 );
@@ -682,34 +688,78 @@ impl Widget for Win {
                                         },
                                     },
                                 },
-                                gtk::Box {
-                                    orientation: gtk::Orientation::Vertical,
-                                    spacing: 10,
+                                #[name="normal_or_project_welcome_stack"]
+                                gtk::Stack {
                                     child: {
                                         fill: true,
                                         expand: true,
                                     },
-                                    #[name="project_poi_header"]
-                                    ProjectPoiHeader((self.model.db_sender.clone(), None)) {
-                                        ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                                        ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
-                                        ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
-                                        ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
-                                            (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
-                                        ProjectPoiHeaderShowInfoBar(ref msg) =>
-                                            Msg::ShowInfoBar(msg.clone()),
-                                    },
-                                    #[name="project_poi_contents"]
-                                    ProjectPoiContents(self.model.db_sender.clone()) {
+                                    gtk::Box {
                                         child: {
-                                            fill: true,
-                                            expand: true,
+                                            name: Some(CHILD_NAME_WELCOME)
                                         },
-                                        ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
-                                            Msg::RequestDisplayItem(item_info.clone()),
-                                        ProjectPoiContentsMsgShowInfoBar(ref msg) =>
-                                            Msg::ShowInfoBar(msg.clone()),
-                                    }
+                                        gtk::ScrolledWindow {
+                                            gtk::Label {
+                                                hexpand: true,
+                                                margin_start: 10,
+                                                margin_end: 10,
+                                                margin_top: 10,
+                                                xalign: 0.1,
+                                                yalign: 0.1,
+                                                line_wrap: true,
+                                                markup: "<big><b>Empty project</b></big>\n\n\
+                                                         Let's add items to this project. For that use the 'gear' icon next to \
+                                                         the project name. The gear icon allows you to edit the project, but also \
+                                                         to add elements to it.\n\n\
+                                                         A project may contain:\n\n\
+                                                         • <u>Servers</u> - These are machines or virtual machines, with their own \
+                                                         IP. Projectpad knows several types of servers like Application servers, \
+                                                         Database, Reporting, Proxy... And a server may contain more elements, \
+                                                         such as point of interests (like folders on the filesystem), websites, \
+                                                         databases and so on - you'll be able to add these with the gear icon \
+                                                         that'll appear next to the server name on the right of the screen;\n\n\
+                                                         • <u>Point of interest</u> - These are commands to run or relevant files \
+                                                         or folders. Project point of interests have to be located on your computer. If you're \
+                                                         interested in point of interests on another machine then create a <tt>server</tt> for \
+                                                         that machine and add a Server point of interest on that server;\n\n\
+                                                         • <u>Project note</u> - Notes are markdown-formatted text containing \
+                                                         free-form text. Project notes are tied to the whole project, you can \
+                                                         also create server notes if they're tied to a specific server;\n\n\
+                                                         • <u>Server link</u> - Sometimes a specific server is shared between \
+                                                         different projects. Since we don't want to enter that server multiple \
+                                                         times in projectpad, we can enter it just once and 'link' to it from \
+                                                         the various projects making use of it."
+                                            }
+                                        }
+                                    },
+                                    gtk::Box {
+                                        child: {
+                                            name: Some(CHILD_NAME_NORMAL)
+                                        },
+                                        orientation: gtk::Orientation::Vertical,
+                                        spacing: 10,
+                                        #[name="project_poi_header"]
+                                        ProjectPoiHeader((self.model.db_sender.clone(), None)) {
+                                            ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                            ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
+                                            ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
+                                            ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
+                                                (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
+                                            ProjectPoiHeaderShowInfoBar(ref msg) =>
+                                                Msg::ShowInfoBar(msg.clone()),
+                                        },
+                                        #[name="project_poi_contents"]
+                                        ProjectPoiContents(self.model.db_sender.clone()) {
+                                            child: {
+                                                fill: true,
+                                                expand: true,
+                                            },
+                                            ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
+                                                Msg::RequestDisplayItem(item_info.clone()),
+                                            ProjectPoiContentsMsgShowInfoBar(ref msg) =>
+                                                Msg::ShowInfoBar(msg.clone()),
+                                        }
+                                    },
                                 }
                             },
                             gtk::Box {
@@ -719,6 +769,7 @@ impl Widget for Win {
                                 gtk::Label {
                                     xalign: 0.1,
                                     yalign: 0.1,
+                                    line_wrap: true,
                                     markup: "<big><b>Welcome to Projectpad!</b></big>\n\n\nTo get started, you must create your first project. Use the <tt>+</tt> button on the top-left.\n\n\
                                              Projects get subdivided in environments, and specifically:\n\n\
                                              • <u>Prod</u> - the production environment;\n\

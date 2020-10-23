@@ -459,7 +459,7 @@ impl Widget for Win {
                         project_item.clone(),
                     )));
             }
-            Msg::ProjectItemDeleted(ref srv) => {
+            Msg::ProjectItemDeleted(ref _srv) => {
                 self.project_items_list
                     .stream()
                     .emit(ProjectItemsListMsg::RefreshItemList(None));

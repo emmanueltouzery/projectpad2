@@ -25,7 +25,7 @@ use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-enum ActionTypes {
+pub enum ActionTypes {
     Edit,
     Copy,
     Delete,
@@ -321,7 +321,7 @@ impl Widget for ProjectPoiHeader {
                     .stream()
                     .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
             }
-            Msg::HeaderActionClicked((ActionTypes::GotoItem, val)) => {
+            Msg::HeaderActionClicked((ActionTypes::GotoItem, _val)) => {
                 match &self.model.project_item {
                     Some(ProjectItem::ServerLink(l)) => {
                         let s = self.model.goto_server_sender.clone();
@@ -433,9 +433,6 @@ impl Widget for ProjectPoiHeader {
                         ));
                         dialog.show();
                     }
-                    Some(_) => {
-                        eprintln!("TODO");
-                    }
                     None => {}
                 };
             }
@@ -469,9 +466,7 @@ impl Widget for ProjectPoiHeader {
                             Msg::DeleteCurrentServerLink(srv_link.clone()),
                         );
                     }
-                    _ => {
-                        eprintln!("TODO");
-                    }
+                    None => {}
                 }
             }
             Msg::HeaderActionClicked((ActionTypes::AddItem, _)) => {
@@ -558,7 +553,7 @@ impl Widget for ProjectPoiHeader {
             }
             // meant for my parent
             Msg::ShowInfoBar(_) => {}
-            Msg::ProjectItemUpdated(pi) => {}
+            Msg::ProjectItemUpdated(_pi) => {}
             Msg::GotoItem(_, _) => {}
         }
     }
@@ -606,7 +601,7 @@ impl Widget for ProjectPoiHeader {
         );
         ok_btn.set_label("Next");
         relm::connect!(
-            component@server_add_item_dlg::Msg::ActionCompleted(ref si),
+            component@server_add_item_dlg::Msg::ActionCompleted(ref _si),
             self.model.relm,
             Msg::ServerAddItemActionCompleted
         );

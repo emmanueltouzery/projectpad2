@@ -22,7 +22,6 @@ pub enum Msg {
 type SaveResult = Result<ProjectPointOfInterest, (String, Option<String>)>;
 
 pub struct Model {
-    relm: relm::Relm<ProjectPoiAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     _project_poi_updated_channel: relm::Channel<SaveResult>,
     project_poi_updated_sender: relm::Sender<SaveResult>,
@@ -93,7 +92,6 @@ impl Widget for ProjectPoiAddEditDialog {
             .unwrap_or(InterestType::PoiApplication);
         let poi = project_poi.as_ref();
         Model {
-            relm: relm.clone(),
             db_sender,
             project_id,
             _groups_channel: groups_channel,

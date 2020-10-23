@@ -28,13 +28,13 @@ impl Widget for EnvironmentsPicker {
             .add_class("linked");
     }
 
-    fn model(relm: &relm::Relm<Self>, selected_environments: SelectedEnvironments) -> Model {
+    fn model(_relm: &relm::Relm<Self>, selected_environments: SelectedEnvironments) -> Model {
         Model {
             selected_environments,
         }
     }
 
-    fn update(&mut self, event: Msg) {}
+    fn update(&mut self, _event: Msg) {}
 
     view! {
         #[name="environments_box"]

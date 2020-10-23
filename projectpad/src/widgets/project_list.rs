@@ -102,7 +102,7 @@ impl Widget for ProjectList {
                         ))));
                 }
             }
-            Msg::MouseLeaveProject(id) => {
+            Msg::MouseLeaveProject(_id) => {
                 self.model
                     .relm
                     .stream()

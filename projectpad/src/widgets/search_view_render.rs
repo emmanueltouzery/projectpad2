@@ -872,7 +872,7 @@ fn draw_title(
     height: Option<i32>,
     is_selected: bool,
 ) -> pango::Rectangle {
-    let mut scontext: gtk::StyleContext;
+    let scontext: gtk::StyleContext;
     let style_context = if is_selected {
         scontext = selected_label_style_context();
         &scontext

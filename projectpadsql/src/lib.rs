@@ -4,7 +4,6 @@ extern crate diesel;
 pub mod models;
 pub mod schema;
 
-use diesel::prelude::*;
 use std::path::PathBuf;
 
 pub fn config_path() -> PathBuf {

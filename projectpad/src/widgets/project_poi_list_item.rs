@@ -15,7 +15,7 @@ pub struct Model {
 
 #[widget]
 impl Widget for ProjectPoiListItem {
-    fn model(relm: &relm::Relm<Self>, model: Model) -> Model {
+    fn model(_relm: &relm::Relm<Self>, model: Model) -> Model {
         model
     }
 

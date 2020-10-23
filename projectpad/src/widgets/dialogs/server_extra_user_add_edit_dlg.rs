@@ -27,7 +27,6 @@ pub enum Msg {
 type SaveResult = Result<ServerExtraUserAccount, (String, Option<String>)>;
 
 pub struct Model {
-    relm: relm::Relm<ServerExtraUserAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     server_user_id: Option<i32>,
@@ -88,7 +87,6 @@ impl Widget for ServerExtraUserAddEditDialog {
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         Model {
-            relm: relm.clone(),
             db_sender,
             server_id,
             server_user_id: sd.map(|d| d.id),

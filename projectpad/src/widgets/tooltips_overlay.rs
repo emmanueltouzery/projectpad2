@@ -70,7 +70,7 @@ impl Widget for TooltipsOverlay {
         });
     }
 
-    fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
+    fn model(_relm: &relm::Relm<Self>, _: ()) -> Model {
         Model {
             tooltip: Rc::new(RefCell::new(None)),
         }

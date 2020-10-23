@@ -13,7 +13,7 @@ use relm_derive::{widget, Msg};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc;
 
-struct ChannelData {
+pub struct ChannelData {
     server_items: Vec<ServerItem>,
     group_start_indexes: HashMap<i32, String>,
     databases_for_websites: HashMap<i32, ServerDatabase>,

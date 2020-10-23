@@ -51,7 +51,6 @@ pub fn init_interest_type_combo(combo: &gtk::ComboBoxText, interest_type: &str) 
 }
 
 pub struct Model {
-    relm: relm::Relm<ServerPoiAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     groups_store: gtk::ListStore,
     _groups_channel: relm::Channel<Vec<String>>,
@@ -141,7 +140,6 @@ impl Widget for ServerPoiAddEditDialog {
             .unwrap_or(InterestType::PoiApplication);
         let poi = server_poi.as_ref();
         Model {
-            relm: relm.clone(),
             db_sender,
             server_id,
             server_poi_id: poi.map(|s| s.id),

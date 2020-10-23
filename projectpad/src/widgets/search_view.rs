@@ -279,9 +279,7 @@ impl Widget for SearchView {
         let search_result_area_btnclick = self.search_result_area.clone();
         let popover = self.model.action_popover.as_ref().unwrap().clone();
         let item_with_depressed_btnclick = self.model.item_with_depressed_action.clone();
-        let selected_item = self.model.selected_item.clone();
         let relm = self.model.relm.clone();
-        let search_result_area = self.search_result_area.clone();
         let search_item_types = self.model.search_item_types;
         self.search_result_area
             .connect_button_release_event(move |_, event_click| {
@@ -464,7 +462,7 @@ impl Widget for SearchView {
         let (db_sender, filter, search_item_types, operation_mode, save_btn, selected_item) =
             params;
         let stream = relm.stream().clone();
-        let (channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
+        let (_channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
             stream.emit(Msg::GotSearchResult(search_r));
         });
         match (&selected_item, &save_btn) {
@@ -509,7 +507,7 @@ impl Widget for SearchView {
             Msg::GotSearchResult(search_result) => {
                 self.refresh_display(Some(&search_result));
             }
-            Msg::MouseScroll(direction, (dx, dy)) => {
+            Msg::MouseScroll(direction, (_dx, dy)) => {
                 let old_val = self.search_scroll.get_value();
                 let new_val = old_val
                     + if direction == gdk::ScrollDirection::Up || dy < 0.0 {
@@ -530,7 +528,7 @@ impl Widget for SearchView {
             Msg::OpenItem(item) => {
                 self.emit_open_item_full(item);
             }
-            Msg::OpenItemFull(item) => {
+            Msg::OpenItemFull(_item) => {
                 // meant for my parent
             }
             Msg::EditItem(item) => self.edit_item(item),
@@ -591,8 +589,8 @@ impl Widget for SearchView {
                     };
                     match (&level1_items[..], &level2_items[..], &level3_items[..]) {
                         ([fst], [], []) => open(fst),
-                        ([fst], [snd], []) => open(snd),
-                        ([fst], [snd], [thrd]) => open(thrd),
+                        ([_], [snd], []) => open(snd),
+                        ([_], [_], [thrd]) => open(thrd),
                         _ => {}
                     }
                 } else {
@@ -847,9 +845,6 @@ impl Widget for SearchView {
                 );
                 self.model.project_add_edit_dialog = Some((component, dialog.clone()));
                 dialog.show();
-            }
-            _ => {
-                eprintln!("edit not implemented yet for that item type");
             }
         }
     }

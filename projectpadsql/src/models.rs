@@ -1,8 +1,9 @@
 use chrono::naive::NaiveDateTime;
 use diesel::backend::Backend;
-use diesel::prelude::*;
+use diesel::deserialize::*;
 use diesel::serialize::Output;
-use diesel::types::*;
+use diesel::serialize::*;
+use diesel::sql_types::*;
 use std::io::Write;
 use std::str::FromStr;
 use std::string::ToString;

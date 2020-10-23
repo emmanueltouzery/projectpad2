@@ -24,7 +24,6 @@ pub enum Msg {
 type SaveResult = Result<ServerDatabase, (String, Option<String>)>;
 
 pub struct Model {
-    relm: relm::Relm<ServerDatabaseAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     server_db_id: Option<i32>,
@@ -43,9 +42,6 @@ pub struct Model {
     username: String,
     password: String,
 }
-
-pub const SERVER_DATABASE_ADD_EDIT_WIDTH: i32 = 600;
-pub const SERVER_DATABASE_ADD_EDIT_HEIGHT: i32 = 200;
 
 #[widget]
 impl Widget for ServerDatabaseAddEditDialog {
@@ -85,7 +81,6 @@ impl Widget for ServerDatabaseAddEditDialog {
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         Model {
-            relm: relm.clone(),
             db_sender,
             server_id,
             server_db_id: sd.map(|d| d.id),

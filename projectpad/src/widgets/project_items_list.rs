@@ -28,17 +28,6 @@ pub enum ProjectItem {
     ProjectPointOfInterest(ProjectPointOfInterest),
 }
 
-impl ProjectItem {
-    pub fn project_id(&self) -> i32 {
-        match self {
-            ProjectItem::Server(s) => s.project_id,
-            ProjectItem::ServerLink(s) => s.project_id,
-            ProjectItem::ProjectNote(n) => n.project_id,
-            ProjectItem::ProjectPointOfInterest(p) => p.project_id,
-        }
-    }
-}
-
 #[derive(Msg)]
 pub enum Msg {
     ActiveProjectChanged(Project),
@@ -236,7 +225,7 @@ impl Widget for ProjectItemsList {
                 self.model.project = Some(project);
                 self.fetch_project_items(None, None);
             }
-            Msg::GotProjectItems((items, env, project_item)) => {
+            Msg::GotProjectItems((items, _env, project_item)) => {
                 if let Some(vadj) = self.scroll.get_vadjustment() {
                     vadj.set_value(0.0);
                 }

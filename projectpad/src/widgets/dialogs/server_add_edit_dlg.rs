@@ -30,7 +30,6 @@ pub enum Msg {
 type SaveResult = Result<Server, (String, Option<String>)>;
 
 pub struct Model {
-    relm: relm::Relm<ServerAddEditDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
     _server_updated_channel: relm::Channel<SaveResult>,
     server_updated_sender: relm::Sender<SaveResult>,
@@ -144,7 +143,6 @@ impl Widget for ServerAddEditDialog {
             });
         let srv = server.as_ref();
         Model {
-            relm: relm.clone(),
             environment_type: srv.map(|s| s.environment),
             db_sender,
             _groups_channel: groups_channel,

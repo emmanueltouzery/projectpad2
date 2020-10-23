@@ -373,7 +373,6 @@ impl Widget for ServerItemListItem {
             }
             _ => vec![],
         };
-        let server_item = self.model.server_item.clone();
         populate_grid(
             self.items_grid.clone(),
             self.model.header_popover.clone(),

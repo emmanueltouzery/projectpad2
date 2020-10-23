@@ -7,7 +7,7 @@ use sourceview::prelude::*;
 #[cfg(test)]
 use std::sync::Once;
 
-const HEADER_CYCLE: &[&'static str] = &[" # ", " ## ", " ### ", " - "];
+const HEADER_CYCLE: &[&str] = &[" # ", " ## ", " ### ", " - "];
 
 #[derive(Msg)]
 pub enum Msg {

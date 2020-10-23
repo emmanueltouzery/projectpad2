@@ -78,7 +78,7 @@ impl Widget for PasswordField {
         Model {
             relm: relm.clone(),
             text,
-            activates_default: activates_default,
+            activates_default,
             popover: None,
         }
     }

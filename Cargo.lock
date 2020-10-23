@@ -2180,8 +2180,7 @@ dependencies = [
 [[package]]
 name = "relm-derive"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd3820afe557690469806fa09d5bca7cc13db66358eea330fa7db9bc8baf5827"
+source = "git+https://github.com/antoyo/relm?rev=297c7844ca20031880ac60789dee7295c52f6e7c#297c7844ca20031880ac60789dee7295c52f6e7c"
 dependencies = [
  "lazy_static",
  "proc-macro2 0.4.30",

@@ -159,12 +159,11 @@ impl Widget for PickProjectpadItemButton {
             400,
             "Pick item".to_string(),
         );
-        let save = dialog
+        let save_btn = dialog
             .add_button("Save", gtk::ResponseType::Ok)
             .downcast::<gtk::Button>()
             .expect("error reading the dialog save button");
-        save.get_style_context().add_class("suggested-action");
-        let save_btn = save.clone();
+        save_btn.get_style_context().add_class("suggested-action");
         let dialog_contents = relm::init::<search_view::SearchView>((
             self.model.db_sender.clone(),
             Some("".to_string()),

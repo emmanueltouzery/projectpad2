@@ -68,7 +68,7 @@ impl Widget for ProjectAddEditDialog {
                 Ok(prj) => stream.emit(Msg::ProjectUpdated(prj)),
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
-        let name = p.map(|p| p.name.clone()).unwrap_or("".to_string());
+        let name = p.map(|p| p.name.clone()).unwrap_or_else(|| "".to_string());
         let icon = p.and_then(|p| p.icon.clone()).filter(|i| !i.is_empty());
         let infobar = gtk::InfoBarBuilder::new()
             .revealed(false)
@@ -161,7 +161,7 @@ impl Widget for ProjectAddEditDialog {
                     prj::has_uat.eq(new_has_uat),
                     prj::has_prod.eq(new_has_prod),
                     // TODO the icon is actually not-null in SQL...
-                    prj::icon.eq(Some(new_icon.clone().unwrap_or(vec![]))),
+                    prj::icon.eq(Some(new_icon.clone().unwrap_or_default())),
                 );
                 let project_after_result = perform_insert_or_update!(
                     sql_conn,

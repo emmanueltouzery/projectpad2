@@ -323,7 +323,7 @@ where
     .to_string()
         + item_desc;
     let accel_group = widget_param.get_accel_group();
-    let dialog = standard_dialogs::modal_dialog(widget_for_window.clone(), 600, 200, title);
+    let dialog = standard_dialogs::modal_dialog(widget_for_window, 600, 200, title);
     dialog.add_accel_group(accel_group);
     let dialog_contents =
         relm::init::<Dlg>(widget_param).expect("error initializing the server item add edit modal");

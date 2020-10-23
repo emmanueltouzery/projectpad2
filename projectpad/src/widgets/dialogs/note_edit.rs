@@ -138,7 +138,7 @@ impl Widget for NoteEdit {
         while selected_text.contains(&separator) {
             separator.push('`');
         }
-        let extra_space = if selected_text.starts_with("`") || selected_text.ends_with("`") {
+        let extra_space = if selected_text.starts_with('`') || selected_text.ends_with('`') {
             " "
         } else {
             ""
@@ -161,7 +161,7 @@ impl Widget for NoteEdit {
             .get_text(&start_iter, &end_iter, false)
             .unwrap()
             .to_string();
-        if selected_text.contains("\n") {
+        if selected_text.contains('\n') {
             // multiline
             Self::toggle_snippet(note_textview, "\n```\n", "\n```\n");
         } else {
@@ -290,7 +290,7 @@ impl Widget for NoteEdit {
             } else {
                 let iter1 = buf.get_iter_at_offset(start_offset);
                 iter2.set_offset(start_offset - before_len);
-                buf.get_text(&iter1, &iter2, false).unwrap().to_string() == before
+                buf.get_text(&iter1, &iter2, false).unwrap() == before
             }
         };
 

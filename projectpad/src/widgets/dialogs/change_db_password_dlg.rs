@@ -150,15 +150,14 @@ impl Widget for ChangeDbPasswordDialog {
                     self.show_error("New and confirm new passwords don't match");
                 } else {
                     self.clear_error();
-                    let p = pass.clone();
                     let s = self.model.changed_pass_sender.clone();
                     self.model
                         .db_sender
                         .send(SqlFunc::new(move |db_conn| {
-                            let r = set_db_password(db_conn, &p);
+                            let r = set_db_password(db_conn, &pass);
                             let r1 =
                                 if r.is_ok() && projectpadsql::get_pass_from_keyring().is_some() {
-                                    projectpadsql::set_pass_in_keyring(&p)
+                                    projectpadsql::set_pass_in_keyring(&pass)
                                 } else {
                                     r
                                 };

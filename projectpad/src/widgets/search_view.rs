@@ -100,7 +100,7 @@ fn search_parse(search: &str) -> SearchSpec {
         || search.contains(&(" ".to_string() + PROJECT_FILTER_PREFIX))
     {
         let (prj, rest) = search
-            .split(" ")
+            .split(' ')
             .partition::<Vec<_>, _>(|i| i.starts_with(PROJECT_FILTER_PREFIX));
         SearchSpec {
             search_pattern: fmt(&rest.join(" ")),

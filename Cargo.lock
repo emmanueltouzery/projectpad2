@@ -2164,8 +2164,7 @@ checksum = "7fe5bd57d1d7414c6b5ed48563a2c855d995ff777729dcd91c369ec7fea395ae"
 [[package]]
 name = "relm"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6814cb3502d3edb83435a777c27bee4fcce4613a36884a2a1b7ee36df9f1978a"
+source = "git+https://github.com/antoyo/relm?rev=297c7844ca20031880ac60789dee7295c52f6e7c#297c7844ca20031880ac60789dee7295c52f6e7c"
 dependencies = [
  "cairo-rs",
  "glib",

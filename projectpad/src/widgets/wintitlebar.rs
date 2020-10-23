@@ -191,7 +191,7 @@ impl Widget for WinTitleBar {
             let start_idx = index + PROJECT_FILTER_PREFIX.len();
             self.search_entry.set_position(start_idx as i32);
             let end_idx = cur_text[start_idx..]
-                .find(" ")
+                .find(' ')
                 .map(|i| (start_idx + i) as i32)
                 .unwrap_or(-1);
             self.search_entry.select_region(start_idx as i32, end_idx);

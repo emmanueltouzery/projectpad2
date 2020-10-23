@@ -168,7 +168,7 @@ impl Widget for ProjectSummary {
                 .project
                 .as_ref()
                 .map(|p| format!("<b>{}</b>", &p.name))
-                .unwrap_or("".to_string()),
+                .unwrap_or_else(|| "".to_string()),
         );
     }
 
@@ -278,7 +278,7 @@ impl Widget for ProjectSummary {
                 self.model
                     .relm
                     .stream()
-                    .emit(Msg::ProjectItemAdded(project_item.clone()));
+                    .emit(Msg::ProjectItemAdded(project_item));
             }
             Msg::ProjectAddItemChangeTitleTitle(title) => {
                 self.model

@@ -161,7 +161,7 @@ impl Widget for ServerPoiContents {
                 .websites_for_databases
                 .get(&db.id)
                 .map(|v| v.clone())
-                .unwrap_or_else(|| vec![]),
+                .unwrap_or_else(Vec::new),
             _ => vec![],
         }
     }
@@ -326,7 +326,7 @@ impl Widget for ServerPoiContents {
                 }
 
                 s.send(ChannelData {
-                    server_items: grouped_items.into_iter().map(|i| i.clone()).collect(),
+                    server_items: grouped_items.into_iter().cloned().collect(),
                     group_start_indexes,
                     databases_for_websites,
                     websites_for_databases,

@@ -75,7 +75,7 @@ pub fn prepare_custom_dialog<T: Widget>(
             d.close();
         }
     });
-    (dialog, dialog_contents, save.clone())
+    (dialog, dialog_contents, save)
 }
 
 pub fn modal_dialog(

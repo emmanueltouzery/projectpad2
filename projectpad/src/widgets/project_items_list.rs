@@ -280,7 +280,7 @@ impl Widget for ProjectItemsList {
                 if let Some(e) = env {
                     self.model.environment = e;
                 }
-                self.fetch_project_items(env, pi.clone());
+                self.fetch_project_items(env, pi);
             }
             Msg::FocusRow(r) => {
                 r.grab_focus();

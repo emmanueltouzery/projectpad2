@@ -361,7 +361,7 @@ fn draw_project(
     );
 
     if let Some(icon) = &project.icon {
-        if icon.len() > 0 {
+        if !icon.is_empty() {
             let translate_x = x + (title_extents.width / pango::SCALE) as f64 + padding.left as f64;
             let translate_y = y + padding.top as f64 + SEARCH_RESULT_WIDGET_HEIGHT as f64
                 - PROJECT_ICON_SIZE as f64;

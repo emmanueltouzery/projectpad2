@@ -114,11 +114,8 @@ impl Widget for ProjectPoiContents {
                         _ => ServerPoiContentsMsg::ServerSelected(None),
                     });
                 if let Some(pi) = self.model.cur_project_item.clone() {
-                    match pi {
-                        ProjectItem::ProjectNote(ref note) => {
-                            self.display_note(&note.contents);
-                        }
-                        _ => {}
+                    if let ProjectItem::ProjectNote(ref note) = pi {
+                        self.display_note(&note.contents);
                     }
                 }
                 self.contents_stack
@@ -288,23 +285,20 @@ impl Widget for ProjectPoiContents {
     }
 
     fn iter_is_link_or_password(iter: &gtk::TextIter) -> bool {
-        iter.get_tags()
-            .iter()
-            .find(|t| {
-                if let Some(prop_name) = t.get_property_name() {
-                    let prop_name_str = prop_name.as_str();
-                    prop_name_str == crate::notes::TAG_LINK
-                        || prop_name_str == crate::notes::TAG_PASSWORD
-                } else {
-                    false
-                }
-            })
-            .is_some()
+        iter.get_tags().iter().any(|t| {
+            if let Some(prop_name) = t.get_property_name() {
+                let prop_name_str = prop_name.as_str();
+                prop_name_str == crate::notes::TAG_LINK
+                    || prop_name_str == crate::notes::TAG_PASSWORD
+            } else {
+                false
+            }
+        })
     }
 
     fn display_note(&mut self, note_contents: &str) {
         let note_buffer_info = crate::notes::note_markdown_to_text_buffer(
-            note_contents.as_ref(),
+            note_contents,
             &crate::notes::build_tag_table(),
         );
         self.model.note_links = note_buffer_info.links;
@@ -331,7 +325,12 @@ impl Widget for ProjectPoiContents {
         let display = gdk::Display::get_default().unwrap();
         let seat = display.get_default_seat().unwrap();
         let mouse_device = seat.get_pointer().unwrap();
-        let window = self.contents_stack.get_toplevel().unwrap().get_window().unwrap();
+        let window = self
+            .contents_stack
+            .get_toplevel()
+            .unwrap()
+            .get_window()
+            .unwrap();
         let (_, dev_x, dev_y, _) = window.get_device_position(&mouse_device);
         let (_, o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
         popover.set_pointing_to(&gtk::Rectangle {

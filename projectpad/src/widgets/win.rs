@@ -446,9 +446,7 @@ impl Widget for Win {
             }
             Msg::KeyRelease(e) => {
                 if self.is_search_mode() {
-                    self.search_view
-                        .stream()
-                        .emit(SearchViewMsg::KeyRelease(e.clone()));
+                    self.search_view.stream().emit(SearchViewMsg::KeyRelease(e));
                     return;
                 }
             }
@@ -501,7 +499,7 @@ impl Widget for Win {
                 self.model
                     .tooltips_overlay
                     .stream()
-                    .emit(tooltips_overlay::Msg::UpdateProjectTooltip(params.clone()));
+                    .emit(tooltips_overlay::Msg::UpdateProjectTooltip(params));
             }
             Msg::ShowInfoBar(msg) => {
                 self.model.infobar_label.set_text(&msg);
@@ -548,9 +546,7 @@ impl Widget for Win {
                 .emit(WinTitleBarMsg::SearchActiveChanged(false));
         }
         if self.is_search_mode() {
-            self.search_view
-                .stream()
-                .emit(SearchViewMsg::KeyPress(e.clone()));
+            self.search_view.stream().emit(SearchViewMsg::KeyPress(e));
             return;
         }
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {

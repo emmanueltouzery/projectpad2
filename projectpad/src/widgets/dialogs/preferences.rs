@@ -47,6 +47,7 @@ pub struct Model {
     pass_keyring_sender: relm::Sender<bool>,
     _pass_keyring_channel: relm::Channel<bool>,
     change_db_password_dlg: Option<Component<ChangeDbPasswordDialog>>,
+    remove_pass_from_keyring_spinner: gtk::Spinner,
 }
 
 #[widget]
@@ -62,6 +63,16 @@ impl Widget for Preferences {
         self.section_title2
             .get_style_context()
             .add_class("section_title");
+        let remove_pass_btn_contents = gtk::BoxBuilder::new().build();
+        self.model.remove_pass_from_keyring_spinner.start();
+        remove_pass_btn_contents.add(&self.model.remove_pass_from_keyring_spinner);
+        remove_pass_btn_contents.add(
+            &gtk::LabelBuilder::new()
+                .label("Remove password from keyring")
+                .build(),
+        );
+        remove_pass_btn_contents.show_all();
+        self.remove_from_keyring.add(&remove_pass_btn_contents);
     }
 
     fn model(relm: &relm::Relm<Self>, params: (gtk::Window, mpsc::Sender<SqlFunc>)) -> Model {
@@ -81,6 +92,7 @@ impl Widget for Preferences {
             pass_keyring_sender,
             _pass_keyring_channel,
             change_db_password_dlg: None,
+            remove_pass_from_keyring_spinner: gtk::SpinnerBuilder::new().build(),
         }
     }
 
@@ -108,6 +120,10 @@ impl Widget for Preferences {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::GotStorePassInKeyring(t) => {
+                self.model.remove_pass_from_keyring_spinner.stop();
+                self.model
+                    .remove_pass_from_keyring_spinner
+                    .set_visible(false);
                 self.remove_from_keyring.set_sensitive(t);
             }
             Msg::DarkThemeToggled(t) => {
@@ -191,7 +207,6 @@ impl Widget for Preferences {
                 },
                 #[name="remove_from_keyring"]
                 gtk::Button {
-                    label: "Remove password from keyring",
                     halign: gtk::Align::Start,
                     sensitive: false,
                     clicked => Msg::RemovePasswordFromKeyring

@@ -839,7 +839,7 @@ impl Widget for SearchView {
                     "Project",
                 );
                 relm::connect!(
-                    component@MsgProjectAddEditDialog::ProjectUpdated(ref project),
+                    component@MsgProjectAddEditDialog::ProjectUpdated(ref _project),
                     self.model.relm,
                     Msg::SearchResultsModified
                 );

@@ -285,7 +285,7 @@ impl Widget for NoteEdit {
         // un-toggle, meaning change the contents to [test]?
         let is_untoggle = start_offset >= before_len && {
             let mut iter2 = buf.get_iter_at_offset(end_offset + after_len);
-            if buf.get_text(&iter2, &iter, false).unwrap().to_string() != after {
+            if buf.get_text(&iter2, &iter, false).unwrap() != after {
                 false
             } else {
                 let iter1 = buf.get_iter_at_offset(start_offset);

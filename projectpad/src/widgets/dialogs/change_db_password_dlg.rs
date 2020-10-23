@@ -122,11 +122,10 @@ impl Widget for ChangeDbPasswordDialog {
             Msg::HideInfobar => self.clear_error(),
             Msg::GotCurrentPassword(pass) => {
                 let s = self.model.pass_valid_sender.clone();
-                let p = pass.clone();
                 self.model
                     .db_sender
                     .send(SqlFunc::new(move |_| {
-                        s.send(check_db_password(&p)).unwrap();
+                        s.send(check_db_password(&pass)).unwrap();
                     }))
                     .unwrap();
             }

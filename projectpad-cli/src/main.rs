@@ -83,7 +83,7 @@ pub fn main() {
         .map(|out| (out.selected_items, out.query, out.accept_key))
         .unwrap_or_else(|| (Vec::new(), "".to_string(), Some("other".to_string())));
 
-    if let Some(item) = selected_items.iter().next() {
+    if let Some(item) = selected_items.get(0) {
         // this pattern from the skim apidocs for SkimItem, and also
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();

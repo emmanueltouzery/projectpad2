@@ -160,7 +160,7 @@ impl Widget for ServerPoiContents {
                 .model
                 .websites_for_databases
                 .get(&db.id)
-                .map(|v| v.clone())
+                .cloned()
                 .unwrap_or_else(Vec::new),
             _ => vec![],
         }

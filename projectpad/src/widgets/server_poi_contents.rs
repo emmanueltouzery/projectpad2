@@ -209,6 +209,56 @@ impl Widget for ServerPoiContents {
         // need to keep the component alive else the event handling dies
         self.model._children_components = children_components;
 
+        if self.model.server_items.is_empty() {
+            // show a little intro text
+            let vbox = gtk::BoxBuilder::new()
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+            let intro_label = gtk::LabelBuilder::new()
+                .label("<big>This server doesn't have any items</big>")
+                .xalign(0.0)
+                .margin(10)
+                .use_markup(true)
+                .build();
+            vbox.add(&intro_label);
+            let details = gtk::ExpanderBuilder::new()
+                .label("Server item types")
+                .build();
+            details.add(
+                &gtk::LabelBuilder::new()
+                    .label("You can add multiple item types to a server. To do that, use the gear icon \
+                            next to the server name. Let's review all the available item types:\n\n\
+                            • <u>Point of interest</u> - a command to run or a relevant file or folder \
+                            located on that server;\n\n\
+                            • <u>Website</u> - a service that's reachable over the network that lives \
+                            on that server. Doesn't have to be specifically a website, but often is. \
+                            A rabbitmq server, for instance, could possibly fit that description too. \
+                            A 'website' has a an address, a port, possibly a username and password, and can be \
+                            tied to a database;\n\n\
+                            • <u>Database</u> - a database that lives on that server. It can have \
+                            a default username/password tied to it, and websites can be tied to it;\n\n\
+                            • <u>Extra user</u> - a pair of username and password, or username and \
+                            authentication key, somehow tied to this server. It could be a user \
+                            allowing to access the server itself, or it could be tied to a website \
+                            on this server, or a database on that server... You should make it clear \
+                            through the 'text' field and possibly by grouping together related \
+                            server items through the 'group' field. We say 'extra' user because the \
+                            basic user is the one that is directly tied to the server itself;\n\n\
+                            • <u>Server note</u> - Notes are markdown-formatted text containing \
+                            free-form text. Server notes are tied to a specific server. You can \
+                            tie them to a more specific category within the server by using the \
+                            'group' field.")
+                    .xalign(0.0)
+                    .margin(10)
+                    .use_markup(true)
+                    .wrap(true)
+                    .build(),
+            );
+            vbox.add(&details);
+            vbox.show_all();
+            self.contents_list.add(&vbox);
+        }
+
         for child in self.contents_list.get_children() {
             // don't want the row background color to change when we hover
             // it with the mouse (activatable), or the focus dotted lines

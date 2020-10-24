@@ -16,6 +16,7 @@ const SHORTCUTS_UI: &str = include_str!("shortcuts.ui");
 pub enum Msg {
     DisplayPreferences,
     DisplayShortcuts,
+    DisplayHelp,
     DisplayAbout,
     ConfigUpdated(Box<Config>),
     SearchEnable,
@@ -49,7 +50,16 @@ impl Widget for WinTitleBar {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
+
+        let left_align_menu = |menu: &gtk::ModelButton| {
+            menu.get_child()
+                .and_then(|c| c.dynamic_cast::<gtk::Label>().ok())
+                .unwrap()
+                .set_xalign(0.0)
+        };
+
         let preferences_btn = gtk::ModelButtonBuilder::new().label("Preferences").build();
+        left_align_menu(&preferences_btn);
         relm::connect!(
             self.model.relm,
             &preferences_btn,
@@ -57,9 +67,11 @@ impl Widget for WinTitleBar {
             Msg::DisplayPreferences
         );
         vbox.add(&preferences_btn);
+
         let shortcuts_btn = gtk::ModelButtonBuilder::new()
             .label("Keyboard Shortcuts")
             .build();
+        left_align_menu(&shortcuts_btn);
         relm::connect!(
             self.model.relm,
             &shortcuts_btn,
@@ -67,9 +79,25 @@ impl Widget for WinTitleBar {
             Msg::DisplayShortcuts
         );
         vbox.add(&shortcuts_btn);
+
+        let help_btn = gtk::ModelButtonBuilder::new()
+            .label("Help")
+            .hexpand(true)
+            .build();
+        left_align_menu(&help_btn);
+        relm::connect!(
+            self.model.relm,
+            &help_btn,
+            connect_clicked(_),
+            Msg::DisplayHelp
+        );
+        vbox.add(&help_btn);
+
         let about_btn = gtk::ModelButtonBuilder::new()
             .label("About Projectpad")
+            .hexpand(true)
             .build();
+        left_align_menu(&about_btn);
         relm::connect!(
             self.model.relm,
             &about_btn,
@@ -137,6 +165,17 @@ impl Widget for WinTitleBar {
             }
             Msg::EnterOrUpdateSearchProject => {
                 self.enter_or_update_search_project();
+            }
+            Msg::DisplayHelp => {
+                if let Err(e) = gtk::show_uri_on_window(
+                    Some(&standard_dialogs::get_main_window(
+                        self.header_bar.clone().upcast::<gtk::Widget>(),
+                    )),
+                    "https://github.com/emmanueltouzery/projectpad2/wiki/Help",
+                    0,
+                ) {
+                    eprintln!("Error showing help: {:?}", e);
+                }
             }
             Msg::ConfigUpdated(_) => {
                 // this is meant for win... we emit here, not interested by it ourselves

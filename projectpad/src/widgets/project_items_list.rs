@@ -295,7 +295,6 @@ impl Widget for ProjectItemsList {
         match project_item {
             ProjectItem::Server(srv) => PrjPoiItemModel {
                 text: srv.desc.clone(),
-                secondary_desc: None,
                 group_name: srv.group_name.as_ref().cloned(),
                 icon: match (srv.server_type, srv.access_type) {
                     (ServerType::SrvDatabase, _) => Icon::DATABASE,
@@ -308,19 +307,16 @@ impl Widget for ProjectItemsList {
             },
             ProjectItem::ServerLink(link) => PrjPoiItemModel {
                 text: link.desc.clone(),
-                secondary_desc: None,
                 group_name: link.group_name.as_ref().cloned(),
                 icon: Icon::SERVER_LINK,
             },
             ProjectItem::ProjectNote(note) => PrjPoiItemModel {
                 text: note.title.clone(),
-                secondary_desc: None,
                 group_name: note.group_name.as_ref().cloned(),
                 icon: Icon::NOTE,
             },
             ProjectItem::ProjectPointOfInterest(poi) => PrjPoiItemModel {
                 text: poi.desc.clone(),
-                secondary_desc: Some(poi.text.clone()),
                 group_name: poi.group_name.as_ref().cloned(),
                 icon: match poi.interest_type {
                     InterestType::PoiLogFile => Icon::LOG_FILE,

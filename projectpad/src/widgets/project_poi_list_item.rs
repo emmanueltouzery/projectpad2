@@ -9,7 +9,6 @@ pub enum Msg {}
 pub struct Model {
     pub icon: Icon,
     pub text: String,
-    pub secondary_desc: Option<String>,
     pub group_name: Option<String>,
 }
 
@@ -26,7 +25,7 @@ impl Widget for ProjectPoiListItem {
             // not sure why the -5 is needed. some padding on the parent ListBoxRow or something?
             property_width_request: 260-5,
             spacing: 10,
-            border_width: 5,
+            border_width: 10,
             orientation: gtk::Orientation::Vertical,
             gtk::Box {
                     child: {
@@ -38,20 +37,17 @@ impl Widget for ProjectPoiListItem {
                 gtk::Image {
                     property_icon_name: Some(self.model.icon.name()),
                     // https://github.com/gtk-rs/gtk/issues/837
-                    property_icon_size: 5, // gtk::IconSize::Dnd
+                    // property_icon_size: 4, // gtk::IconSize::Dnd
+                    pixel_size: 24,
                 },
                 gtk::Box {
                     orientation: gtk::Orientation::Vertical,
                     gtk::Label {
                         text: &self.model.text,
                         ellipsize: pango::EllipsizeMode::End,
-                        xalign: 0.0
+                        xalign: 0.0,
+                        vexpand: true,
                     },
-                    gtk::Label {
-                        text: self.model.secondary_desc.as_deref().unwrap_or(""),
-                        ellipsize: pango::EllipsizeMode::End,
-                        xalign: 0.0
-                    }
                 }
             },
         }

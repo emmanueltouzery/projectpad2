@@ -585,7 +585,6 @@ impl Widget for Win {
                 _ => {}
             }
         } else if e.get_keyval() == gdk::keys::constants::Tab {
-            return;
         } else if e.get_keyval() == gdk::keys::constants::Return
             || e.get_keyval() == gdk::keys::constants::KP_Enter
         {

@@ -465,10 +465,9 @@ impl Widget for SearchView {
         let (_channel, sender) = relm::Channel::new(move |search_r: SearchResult| {
             stream.emit(Msg::GotSearchResult(search_r));
         });
-        match (&selected_item, &save_btn) {
-            (None, Some(btn)) => btn.set_sensitive(false),
-            _ => {}
-        };
+        if let (None, Some(btn)) = (&selected_item, &save_btn) {
+            btn.set_sensitive(false);
+        }
         Model {
             relm: relm.clone(),
             filter,

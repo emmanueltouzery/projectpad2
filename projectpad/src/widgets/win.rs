@@ -551,6 +551,11 @@ impl Widget for Win {
         }
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
             match e.get_keyval().to_unicode() {
+                Some('e') => {
+                    self.project_poi_header
+                        .stream()
+                        .emit(ProjectPoiHeaderMsg::CopyPassword);
+                }
                 Some('s') => {
                     self.model
                         .titlebar

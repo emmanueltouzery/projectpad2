@@ -48,6 +48,7 @@ pub enum Msg {
     ProjectItemUpdated(Option<ProjectItem>),
     GotoItem(Project, Server),
     ShowInfoBar(String),
+    CopyPassword,
 }
 
 // String for details, because I can't pass Error across threads
@@ -306,6 +307,16 @@ impl Widget for ProjectPoiHeader {
         }
     }
 
+    fn copy_to_clipboard(&self, val: &str) {
+        if let Some(clip) = gtk::Clipboard::get_default(&self.header_grid.get_display()) {
+            clip.set_text(&val);
+        }
+        self.model
+            .relm
+            .stream()
+            .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
+    }
+
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ProjectItemSelected(pi) => {
@@ -313,13 +324,7 @@ impl Widget for ProjectPoiHeader {
                 self.load_project_item();
             }
             Msg::HeaderActionClicked((ActionTypes::Copy, val)) => {
-                if let Some(clip) = gtk::Clipboard::get_default(&self.header_grid.get_display()) {
-                    clip.set_text(&val);
-                }
-                self.model
-                    .relm
-                    .stream()
-                    .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
+                self.copy_to_clipboard(&val);
             }
             Msg::HeaderActionClicked((ActionTypes::GotoItem, _val)) => {
                 match &self.model.project_item {
@@ -550,6 +555,13 @@ impl Widget for ProjectPoiHeader {
                     .as_ref()
                     .unwrap()
                     .set_title(title);
+            }
+            Msg::CopyPassword => {
+                if let Some(ProjectItem::Server(srv)) = self.model.project_item.as_ref() {
+                    if !srv.password.is_empty() {
+                        self.copy_to_clipboard(&srv.password);
+                    }
+                }
             }
             // meant for my parent
             Msg::ShowInfoBar(_) => {}

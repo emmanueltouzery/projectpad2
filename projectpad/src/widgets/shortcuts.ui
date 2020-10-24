@@ -182,6 +182,125 @@
             </child>
           </object>
         </child>
+        <child>
+          <object class="GtkShortcutsGroup">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes">Note editing</property>
+            <property name="view">events</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;b</property>
+                <property name="title" translatable="yes">Bold</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;b</property>
+                <property name="title" translatable="yes">Bold</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;i</property>
+                <property name="title" translatable="yes">Italics</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;i</property>
+                <property name="title" translatable="yes">Italics</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;s</property>
+                <property name="title" translatable="yes">Strikethrough</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;s</property>
+                <property name="title" translatable="yes">Strikethrough</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;h</property>
+                <property name="title" translatable="yes">Heading</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;h</property>
+                <property name="title" translatable="yes">Heading</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;l</property>
+                <property name="title" translatable="yes">Link</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;l</property>
+                <property name="title" translatable="yes">Link</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;p</property>
+                <property name="title" translatable="yes">Password</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;p</property>
+                <property name="title" translatable="yes">Password</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;f</property>
+                <property name="title" translatable="yes">Preformat</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;f</property>
+                <property name="title" translatable="yes">Preformat</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;Ctl&gt;q</property>
+                <property name="title" translatable="yes">Blockquote</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;Ctl&gt;q</property>
+                <property name="title" translatable="yes">Blockquote</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </object>

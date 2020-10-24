@@ -343,9 +343,18 @@ impl Widget for ProjectItemsList {
         self.project_items_list
             .set_header_func(Some(Box::new(move |row, _h| {
                 if let Some(group_name) = indexes.get(&row.get_index()) {
-                    let label = gtk::Label::new(Some(group_name));
+                    let vbox = gtk::BoxBuilder::new()
+                        .orientation(gtk::Orientation::Vertical)
+                        .build();
+                    vbox.add(&gtk::SeparatorBuilder::new().build());
+                    let label = gtk::LabelBuilder::new()
+                        .label(group_name)
+                        .xalign(0.0)
+                        .build();
                     label.get_style_context().add_class("project_item_header");
-                    row.set_header(Some(&label));
+                    vbox.add(&label);
+                    vbox.show_all();
+                    row.set_header(Some(&vbox));
                 } else {
                     row.set_header::<gtk::ListBoxRow>(None)
                 }

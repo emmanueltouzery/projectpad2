@@ -11,6 +11,8 @@ const HEADER_CYCLE: &[&str] = &[" # ", " ## ", " ### ", " - "];
 
 #[derive(Msg)]
 pub enum Msg {
+    ListUl,
+    ListOl,
     TextBold,
     TextItalic,
     TextStrikethrough,
@@ -50,6 +52,8 @@ impl Widget for NoteEdit {
         //         .get_language_ids()
         // );
         // buf.set_language(Some("markdown"));
+        self.add_tool_accelerator(&self.list_ul, 'u');
+        self.add_tool_accelerator(&self.list_ol, 'n');
         self.add_tool_accelerator(&self.bold_btn, 'b');
         self.add_tool_accelerator(&self.italic_btn, 'i');
         self.add_tool_accelerator(&self.strikethrough_btn, 's');
@@ -81,6 +85,12 @@ impl Widget for NoteEdit {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::ListUl => {
+                Self::toggle_ul(&self.note_textview);
+            }
+            Msg::ListOl => {
+                Self::toggle_ol(&self.note_textview);
+            }
             Msg::TextBold => {
                 Self::toggle_snippet(&self.note_textview, "**", "**");
             }
@@ -230,13 +240,25 @@ impl Widget for NoteEdit {
 
     // Toggle between '#', '##', '###', "-" and no header
     fn toggle_heading(note_textview: &sourceview::View) {
+        Self::toggle_line_start(note_textview, HEADER_CYCLE);
+    }
+
+    fn toggle_ul(note_textview: &sourceview::View) {
+        Self::toggle_line_start(note_textview, &[" * "]);
+    }
+
+    fn toggle_ol(note_textview: &sourceview::View) {
+        Self::toggle_line_start(note_textview, &["1. "]);
+    }
+
+    fn toggle_line_start(note_textview: &sourceview::View, starts: &[&str]) {
         let buf = note_textview.get_buffer().unwrap();
-        let mut to_insert = " # ";
+        let mut to_insert: &str = starts.get(0).unwrap();
         let mut clear_chars = 0;
         let mut iter = buf.get_iter_at_offset(buf.get_property_cursor_position());
         iter.backward_chars(iter.get_line_offset());
         let mut iter2 = buf.get_start_iter();
-        for (i, header) in HEADER_CYCLE.iter().enumerate() {
+        for (i, header) in starts.iter().enumerate() {
             iter2.set_offset(iter.get_offset() + header.len() as i32);
             if buf
                 .get_text(&iter, &iter2, false)
@@ -247,10 +269,10 @@ impl Widget for NoteEdit {
             {
                 // this pattern is in use, next time
                 // we want to move to the next pattern
-                to_insert = if i + 1 >= HEADER_CYCLE.len() {
+                to_insert = if i + 1 >= starts.len() {
                     ""
                 } else {
-                    HEADER_CYCLE[i + 1]
+                    starts[i + 1]
                 };
                 clear_chars = header.len() as i32;
                 break;
@@ -328,6 +350,21 @@ impl Widget for NoteEdit {
             orientation: gtk::Orientation::Vertical,
             gtk::Toolbar {
                 margin_top: 10,
+                #[name="heading_btn"]
+                gtk::ToolButton {
+                    icon_name: Some(Icon::HEADING.name()),
+                    clicked => Msg::TextHeading
+                },
+                #[name="list_ul"]
+                gtk::ToolButton {
+                    icon_name: Some(Icon::LIST_UL.name()),
+                    clicked => Msg::ListUl
+                },
+                #[name="list_ol"]
+                gtk::ToolButton {
+                    icon_name: Some(Icon::LIST_OL.name()),
+                    clicked => Msg::ListOl
+                },
                 #[name="bold_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::BOLD.name()),
@@ -342,11 +379,6 @@ impl Widget for NoteEdit {
                 gtk::ToolButton {
                     icon_name: Some(Icon::STRIKETHROUGH.name()),
                     clicked => Msg::TextStrikethrough
-                },
-                #[name="heading_btn"]
-                gtk::ToolButton {
-                    icon_name: Some(Icon::HEADING.name()),
-                    clicked => Msg::TextHeading
                 },
                 #[name="link_btn"]
                 gtk::ToolButton {

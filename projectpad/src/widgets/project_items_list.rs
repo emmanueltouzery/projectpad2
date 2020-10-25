@@ -292,7 +292,7 @@ impl Widget for ProjectItemsList {
         }
     }
 
-    fn to_item_model(project_item: &ProjectItem) -> PrjPoiItemModel {
+    fn get_item_model(project_item: &ProjectItem) -> PrjPoiItemModel {
         match project_item {
             ProjectItem::Server(srv) => PrjPoiItemModel {
                 text: srv.desc.clone(),
@@ -338,7 +338,7 @@ impl Widget for ProjectItemsList {
         for project_item in &self.model.project_items {
             let _child = self
                 .project_items_list
-                .add_widget::<ProjectPoiListItem>(Self::to_item_model(project_item));
+                .add_widget::<ProjectPoiListItem>(Self::get_item_model(project_item));
         }
         let indexes = self.model.project_item_groups_start_indexes.clone();
         self.project_items_list

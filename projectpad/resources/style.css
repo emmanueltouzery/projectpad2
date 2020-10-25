@@ -78,6 +78,7 @@
 .project_item_header {
   padding: 10px;
   font-weight: bold;
+  font-variant: small-caps;
 }
 
 .server_item_header {

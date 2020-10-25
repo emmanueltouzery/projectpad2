@@ -544,6 +544,7 @@ impl Widget for Win {
                 .titlebar
                 .stream()
                 .emit(WinTitleBarMsg::SearchActiveChanged(false));
+            return;
         }
         if self.is_search_mode() {
             self.search_view.stream().emit(SearchViewMsg::KeyPress(e));

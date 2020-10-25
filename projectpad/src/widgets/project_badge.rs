@@ -4,6 +4,7 @@ use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::cell::{Cell, RefCell};
 use std::f64::consts::PI;
+use std::io::Cursor;
 use std::rc::Rc;
 
 pub const OUTER_SIZE: i32 = 60;
@@ -174,7 +175,7 @@ impl Widget for ProjectBadge {
 
     pub fn draw_icon(context: &cairo::Context, allocation_width: i32, icon: &[u8]) {
         context.save();
-        match cairo::ImageSurface::create_from_png(&mut icon.clone()).ok() {
+        match cairo::ImageSurface::create_from_png(&mut Cursor::new(icon)).ok() {
             Some(surface) => {
                 let p = PADDING as f64;
                 let aw = (allocation_width - PADDING * 2) as f64;

@@ -25,6 +25,17 @@ pub struct DrawingContext {
     pub search_result_area: gtk::DrawingArea,
 }
 
+pub struct ItemContext<'a> {
+    pub is_selected: bool,
+    pub padding: gtk::Border,
+    pub y: f64,
+    pub item_link_areas: &'a mut Vec<(Area, ProjectPadItem)>,
+    pub links: &'a mut Vec<(Area, String)>,
+    pub action_areas: &'a mut Vec<(Area, ProjectPadItem)>,
+    pub item_with_depressed_action: Option<ProjectPadItem>,
+    pub operation_mode: OperationMode,
+}
+
 fn draw_button(
     context: &cairo::Context,
     item_type: ItemType,
@@ -73,26 +84,27 @@ fn selected_label_style_context() -> gtk::StyleContext {
 
 fn draw_box(
     drawing_context: &DrawingContext,
-    hierarchy_offset: f64,
-    y: f64,
-    is_selected: bool,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    operation_mode: OperationMode,
+    hierarchy_offset: f64,
 ) {
-    let style_context = &drawing_context.style_context;
-    let context = &drawing_context.context;
+    let DrawingContext {
+        style_context,
+        context,
+        ..
+    } = drawing_context;
+    let ItemContext { action_areas, .. } = item_context;
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
 
     let scontext: gtk::StyleContext;
-    let bg_context = if is_selected {
+    let bg_context = if item_context.is_selected {
         scontext = selected_label_style_context();
         &scontext
     } else {
         style_context
     };
     let box_x = margin.left as f64 + hierarchy_offset;
-    let box_y = y + margin.top as f64;
+    let box_y = item_context.y + margin.top as f64;
     let box_width = drawing_context.search_result_area.get_allocation().width as f64
         - margin.left as f64
         - margin.right as f64
@@ -105,7 +117,7 @@ fn draw_box(
     style_context.add_class(&gtk::STYLE_CLASS_FRAME);
     gtk::render_frame(style_context, context, box_x, box_y, box_width, box_height);
 
-    if operation_mode == OperationMode::SelectItem {
+    if item_context.operation_mode == OperationMode::SelectItem {
         action_areas.push((
             Area::new(
                 box_x as i32,
@@ -173,16 +185,10 @@ pub fn draw_shortcut(
 
 pub fn draw_child(
     drawing_context: &DrawingContext,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    y: i32,
-    links: &mut Vec<(Area, String)>,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_with_depressed_icon: &Option<ProjectPadItem>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
-    let extra_css_class = match item {
+    let extra_css_class = match &item {
         ProjectPadItem::Server(_)
         | ProjectPadItem::ProjectNote(_)
         | ProjectPadItem::ProjectPoi(_) => "search_view_parent",
@@ -190,163 +196,71 @@ pub fn draw_child(
     };
     let style_context = &drawing_context.style_context;
     style_context.add_class(extra_css_class);
-    let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-    match item {
-        ProjectPadItem::Project(p) => draw_project(
-            drawing_context,
-            item_link_areas,
-            item,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            &p,
-        ),
+    let x = item_context.padding.left as f64 + LEFT_RIGHT_MARGIN as f64;
+    match &item {
+        ProjectPadItem::Project(p) => draw_project(drawing_context, item_context, item, &p),
         ProjectPadItem::Server(s) => draw_server(
             drawing_context,
-            &padding,
+            item_context,
+            item,
             LEFT_RIGHT_MARGIN as f64,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
             &s,
-            item,
-            item_with_depressed_icon,
-            links,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
         ),
-        ProjectPadItem::ServerNote(n) => draw_server_note(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &n,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
-        ),
-        ProjectPadItem::ProjectNote(n) => draw_project_note(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &n,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
-        ),
-        ProjectPadItem::ServerWebsite(w) => draw_server_website(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &w,
-            action_areas,
-            item_link_areas,
-            links,
-            is_selected,
-            operation_mode,
-        ),
-        ProjectPadItem::ServerExtraUserAccount(u) => draw_server_extra_user(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &u,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
-        ),
-        ProjectPadItem::ServerPoi(p) => draw_server_poi(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &p,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
-        ),
-        ProjectPadItem::ProjectPoi(p) => draw_project_poi(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &p,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
-        ),
-        ProjectPadItem::ServerDatabase(d) => draw_server_database(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &d,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
-        ),
-        ProjectPadItem::ServerLink(s) => draw_linked_server(
-            drawing_context,
-            padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
-            y as f64,
-            item,
-            item_with_depressed_icon,
-            &s,
-            action_areas,
-            item_link_areas,
-            is_selected,
-            operation_mode,
-        ),
+        ProjectPadItem::ServerNote(n) => {
+            draw_server_note(drawing_context, item_context, item, x, &n)
+        }
+        ProjectPadItem::ProjectNote(n) => {
+            draw_project_note(drawing_context, item_context, item, x, &n)
+        }
+        ProjectPadItem::ServerWebsite(w) => {
+            draw_server_website(drawing_context, item_context, item, x, &w)
+        }
+        ProjectPadItem::ServerExtraUserAccount(u) => {
+            draw_server_extra_user(drawing_context, item_context, item, x, &u)
+        }
+        ProjectPadItem::ServerPoi(p) => draw_server_poi(drawing_context, item_context, item, x, &p),
+        ProjectPadItem::ProjectPoi(p) => {
+            draw_project_poi(drawing_context, item_context, item, x, &p)
+        }
+        ProjectPadItem::ServerDatabase(d) => {
+            draw_server_database(drawing_context, item_context, item, x, &d)
+        }
+        ProjectPadItem::ServerLink(s) => {
+            draw_linked_server(drawing_context, item_context, item, x, &s)
+        }
     }
     style_context.remove_class(extra_css_class);
 }
 
 fn draw_project(
     drawing_context: &DrawingContext,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    x: f64,
-    y: f64,
     project: &Project,
 ) {
+    let x = item_context.padding.left as f64 + LEFT_RIGHT_MARGIN as f64;
     // since the servers have 10px padding on top of them,
     // let's draw the projects at the bottom of their area
     // so, y+height-icon_size
-    let padding = drawing_context
-        .style_context
-        .get_padding(gtk::StateFlags::NORMAL);
     let title_extents = draw_title(
         drawing_context,
-        &padding,
-        item_link_areas,
+        item_context,
         item,
         &project.name,
         Some("search_result_project_title".to_string()),
         x,
-        y + SEARCH_RESULT_WIDGET_HEIGHT as f64 - PROJECT_ICON_SIZE as f64,
+        item_context.y + SEARCH_RESULT_WIDGET_HEIGHT as f64 - PROJECT_ICON_SIZE as f64,
         Some(PROJECT_ICON_SIZE),
-        false,
+        // TODO used to have have false for is_selected for projects...
     );
 
     if let Some(icon) = &project.icon {
         if !icon.is_empty() {
-            let translate_x = x + (title_extents.width / pango::SCALE) as f64 + padding.left as f64;
-            let translate_y = y + padding.top as f64 + SEARCH_RESULT_WIDGET_HEIGHT as f64
+            let translate_x =
+                x + (title_extents.width / pango::SCALE) as f64 + item_context.padding.left as f64;
+            let translate_y = item_context.y
+                + item_context.padding.top as f64
+                + SEARCH_RESULT_WIDGET_HEIGHT as f64
                 - PROJECT_ICON_SIZE as f64;
             drawing_context.context.translate(translate_x, translate_y);
             super::project_badge::ProjectBadge::draw_icon(
@@ -363,28 +277,21 @@ fn draw_project(
 
 fn draw_server_item_common(
     drawing_context: &DrawingContext,
+    item_context: &mut ItemContext,
+    item: &ProjectPadItem,
     x: f64,
-    y: f64,
     title: &str,
     icon: &Icon,
-    item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) -> (gtk::Border, gtk::Border, pango::Rectangle) {
+    let y = item_context.y;
     let style_context = &drawing_context.style_context;
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
     draw_box(
         drawing_context,
-        LEFT_RIGHT_MARGIN as f64,
-        y,
-        is_selected,
+        item_context,
         item,
-        action_areas,
-        operation_mode,
+        LEFT_RIGHT_MARGIN as f64,
     );
     draw_icon(
         &drawing_context.style_context,
@@ -395,22 +302,19 @@ fn draw_server_item_common(
     );
     let title_rect = draw_title(
         drawing_context,
-        &padding,
-        item_link_areas,
+        item_context,
         item,
         title,
         None,
         x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
         y + margin.top as f64,
         Some(ACTION_ICON_SIZE),
-        is_selected,
     );
-    if operation_mode == OperationMode::ItemActions {
+    if item_context.operation_mode == OperationMode::ItemActions {
         draw_action(
             drawing_context,
-            action_areas,
+            item_context,
             item,
-            item_with_depressed_action,
             &Icon::COG,
             y + padding.top as f64 + margin.top as f64,
         );
@@ -420,325 +324,245 @@ fn draw_server_item_common(
 
 fn draw_server_website(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     website: &ServerWebsite,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    links: &mut Vec<(Area, String)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &website.desc,
         &Icon::HTTP,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
     draw_link(
         drawing_context,
         &website.url,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
-        links,
+        item_context.y
+            + margin.top as f64
+            + (title_rect.height / pango::SCALE) as f64
+            + padding.top as f64,
+        item_context.links,
     );
 }
 
 fn draw_server_extra_user(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     user: &ServerExtraUserAccount,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &user.username,
         &Icon::USER,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
 
     draw_subtext(
         drawing_context,
         &user.desc,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
+        item_context.y
+            + margin.top as f64
+            + (title_rect.height / pango::SCALE) as f64
+            + padding.top as f64,
     );
 }
 
 fn draw_server_poi(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     poi: &ServerPointOfInterest,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &poi.desc,
         &Icon::POINT_OF_INTEREST,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
 
     draw_subtext(
         drawing_context,
         &poi.text,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
+        item_context.y
+            + margin.top as f64
+            + (title_rect.height / pango::SCALE) as f64
+            + padding.top as f64,
     );
 }
 
 fn draw_project_poi(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     poi: &ProjectPointOfInterest,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &poi.desc,
         &Icon::POINT_OF_INTEREST,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
 
     draw_subtext(
         drawing_context,
         &poi.text,
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
+        item_context.y
+            + margin.top as f64
+            + (title_rect.height / pango::SCALE) as f64
+            + padding.top as f64,
     );
 }
 
 fn draw_server_database(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     db: &ServerDatabase,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &db.desc,
         &Icon::DATABASE,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
 
     draw_subtext(
         drawing_context,
         &format!("{} {}", db.text, db.username),
         x + padding.left as f64,
-        y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
+        item_context.y
+            + margin.top as f64
+            + (title_rect.height / pango::SCALE) as f64
+            + padding.top as f64,
     );
 }
 
 fn draw_linked_server(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     srv: &ServerLink,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &srv.desc,
         &Icon::SERVER_LINK,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
 }
 
 fn draw_project_note(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     note: &ProjectNote,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &note.title,
         &Icon::NOTE,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
 }
 
 fn draw_server_note(
     drawing_context: &DrawingContext,
-    x: f64,
-    y: f64,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
+    x: f64,
     note: &ServerNote,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         drawing_context,
+        item_context,
+        item,
         x,
-        y,
         &note.title,
         &Icon::NOTE,
-        item,
-        item_with_depressed_action,
-        action_areas,
-        item_link_areas,
-        is_selected,
-        operation_mode,
     );
 }
 
 fn draw_server(
     drawing_context: &DrawingContext,
-    padding: &gtk::Border,
-    hierarchy_offset: f64,
-    x: f64,
-    y: f64,
-    server: &Server,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_action: &Option<ProjectPadItem>,
-    links: &mut Vec<(Area, String)>,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
-    is_selected: bool,
-    operation_mode: OperationMode,
+    hierarchy_offset: f64,
+    server: &Server,
 ) {
+    let y = item_context.y;
+    let x = item_context.padding.left as f64 + LEFT_RIGHT_MARGIN as f64;
     let margin = drawing_context
         .style_context
         .get_margin(gtk::StateFlags::NORMAL);
-    draw_box(
-        drawing_context,
-        hierarchy_offset,
-        y,
-        is_selected,
-        item,
-        action_areas,
-        operation_mode,
-    );
+    draw_box(drawing_context, item_context, item, hierarchy_offset);
     drawing_context.style_context.add_class("title");
     let title_rect = draw_title(
         drawing_context,
-        &padding,
-        item_link_areas,
+        item_context,
         item,
         &server.desc,
         None,
         x,
-        y + margin.top as f64,
+        item_context.y + margin.top as f64,
         None,
-        is_selected,
     );
-    drawing_context.style_context.remove_class("title");
-    let env_rect = draw_environment(
-        drawing_context,
-        x + padding.left as f64,
-        y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64 + margin.top as f64,
-        &match server.environment {
-            EnvironmentType::EnvUat => "uat",
-            EnvironmentType::EnvProd => "prod",
-            EnvironmentType::EnvStage => "stg",
-            EnvironmentType::EnvDevelopment => "dev",
-        },
-    );
-    if server.access_type == ServerAccessType::SrvAccessWww && !server.ip.is_empty() {
-        draw_link(
+    {
+        let padding = &item_context.padding;
+        drawing_context.style_context.remove_class("title");
+        let env_rect = draw_environment(
             drawing_context,
-            &server.ip,
-            (env_rect.x + env_rect.width) as f64,
-            y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
-            links,
+            x + padding.left as f64,
+            y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64 + margin.top as f64,
+            &match server.environment {
+                EnvironmentType::EnvUat => "uat",
+                EnvironmentType::EnvProd => "prod",
+                EnvironmentType::EnvStage => "stg",
+                EnvironmentType::EnvDevelopment => "dev",
+            },
         );
+        if server.access_type == ServerAccessType::SrvAccessWww && !server.ip.is_empty() {
+            draw_link(
+                drawing_context,
+                &server.ip,
+                (env_rect.x + env_rect.width) as f64,
+                y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
+                item_context.links,
+            );
+        }
     }
-    if operation_mode == OperationMode::ItemActions {
+    if item_context.operation_mode == OperationMode::ItemActions {
         draw_action(
             drawing_context,
-            action_areas,
+            item_context,
             item,
-            item_with_depressed_action,
             &Icon::COG,
-            y + padding.top as f64 + margin.top as f64,
+            y + item_context.padding.top as f64 + margin.top as f64,
         );
     }
 }
@@ -786,18 +610,21 @@ fn draw_environment(
 
 fn draw_title(
     drawing_context: &DrawingContext,
-    padding: &gtk::Border,
-    item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
     text: &str,
     custom_class: Option<String>,
     x: f64,
     y: f64,
     height: Option<i32>,
-    is_selected: bool,
 ) -> pango::Rectangle {
+    let ItemContext {
+        item_link_areas,
+        padding,
+        ..
+    } = item_context;
     let scontext: gtk::StyleContext;
-    let style_context = if is_selected {
+    let style_context = if item_context.is_selected {
         scontext = selected_label_style_context();
         &scontext
     } else {
@@ -897,14 +724,21 @@ fn draw_subtext(drawing_context: &DrawingContext, text: &str, x: f64, y: f64) ->
 
 fn draw_action(
     drawing_context: &DrawingContext,
-    action_areas: &mut Vec<(Area, ProjectPadItem)>,
+    item_context: &mut ItemContext,
     item: &ProjectPadItem,
-    item_with_depressed_icon: &Option<ProjectPadItem>,
     icon: &Icon,
     y: f64,
 ) {
-    let context = &drawing_context.context;
-    let style_context = &drawing_context.style_context;
+    let DrawingContext {
+        context,
+        style_context,
+        ..
+    } = drawing_context;
+    let ItemContext {
+        item_with_depressed_action,
+        action_areas,
+        ..
+    } = item_context;
     let x = drawing_context.search_result_area.get_allocation().width as f64
         - ACTION_ICON_OFFSET_FROM_RIGHT
         - LEFT_RIGHT_MARGIN as f64;
@@ -916,7 +750,7 @@ fn draw_action(
         .get_padding(gtk::StateFlags::NORMAL);
     let w = ACTION_ICON_SIZE as f64 + (padding.left + padding.right) as f64;
     let h = ACTION_ICON_SIZE as f64 + (padding.top + padding.bottom) as f64;
-    let flags = if Some(item) == item_with_depressed_icon.as_ref() {
+    let flags = if Some(&*item) == item_with_depressed_action.as_ref() {
         gtk::StateFlags::CHECKED
     } else {
         gtk::StateFlags::NORMAL

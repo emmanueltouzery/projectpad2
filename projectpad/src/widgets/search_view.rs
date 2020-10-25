@@ -425,17 +425,20 @@ impl Widget for SearchView {
                 style_context: search_result_area.get_style_context().clone(),
                 context: context.clone(),
             };
-            search_view_render::draw_child(
-                &drawing_context,
-                item,
-                y - y_to_display,
-                &mut links,
-                &mut action_areas,
-                &mut item_link_areas,
-                item_with_depressed_action,
-                sel_i.as_ref() == Some(item),
-                op_mode,
-            );
+            let padding = drawing_context
+                .style_context
+                .get_padding(gtk::StateFlags::NORMAL);
+            let mut item_context = search_view_render::ItemContext {
+                is_selected: sel_i.as_ref() == Some(item),
+                padding,
+                y: (y - y_to_display) as f64,
+                item_link_areas: &mut item_link_areas,
+                links: &mut links,
+                action_areas: &mut action_areas,
+                item_with_depressed_action: item_with_depressed_action.clone(),
+                operation_mode: op_mode,
+            };
+            search_view_render::draw_child(&drawing_context, &mut item_context, item);
             if show_shortcuts && item_idx < 10 {
                 super::search_view_render::draw_shortcut(
                     (item_idx + 1) % 10,

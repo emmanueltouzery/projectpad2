@@ -791,7 +791,7 @@ impl Widget for Win {
                         child: {
                             name: Some(CHILD_NAME_SEARCH)
                         },
-                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new(item.clone()))
+                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new((**item).clone()))
                     }
                 },
             },

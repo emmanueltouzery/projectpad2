@@ -124,7 +124,7 @@ pub enum Msg {
     CopyClicked(String),
     OpenItem(ProjectPadItem),
     EditItem(ProjectPadItem),
-    OpenItemFull((Project, Option<ProjectItem>, Option<ServerItem>)),
+    OpenItemFull(Box<(Project, Option<ProjectItem>, Option<ServerItem>)>), // large variant size hence boxed
     SearchResultsModified,
     RequestSelectedItem,
     SelectedItem((ProjectPadItem, i32, String)),
@@ -934,7 +934,10 @@ impl Widget for SearchView {
                 )
             }
         };
-        self.model.relm.stream().emit(Msg::OpenItemFull(data));
+        self.model
+            .relm
+            .stream()
+            .emit(Msg::OpenItemFull(Box::new(data)));
     }
 
     fn refresh_display(&mut self, search_result: Option<&SearchResult>) {

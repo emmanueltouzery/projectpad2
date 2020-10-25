@@ -177,7 +177,7 @@ impl Widget for ProjectAddEditDialog {
     }
 
     fn icon_desc(name: &str, icon: &Option<Vec<u8>>) -> Option<String> {
-        Some(name.clone())
+        Some(name)
             .filter(|_| icon.is_some())
             .map(|n| format!("<{} picture>", &n))
     }

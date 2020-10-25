@@ -679,7 +679,7 @@ impl Widget for ProjectPoiHeader {
 
     fn load_project_item(&self) {
         self.populate_header();
-        self.model.title.set_markup(
+        self.model.title.set_text(
             self.model
                 .project_item
                 .as_ref()

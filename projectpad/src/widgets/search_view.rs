@@ -22,6 +22,7 @@ use super::dialogs::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditD
 use super::dialogs::{ProjectAddEditDialogComponent, ServerAddEditDialogComponent};
 use super::project_items_list::ProjectItem;
 use super::project_poi_header;
+use super::search_view_render;
 use super::server_item_list_item;
 use super::server_poi_contents::ServerItem;
 use crate::sql_thread::SqlFunc;
@@ -419,12 +420,15 @@ impl Widget for SearchView {
             && y < y_to_display + search_result_area.get_allocation().height
         {
             let item = &search_items[item_idx];
-            super::search_view_render::draw_child(
-                &search_result_area.get_style_context(),
+            let drawing_context = search_view_render::DrawingContext {
+                search_result_area: search_result_area.clone(),
+                style_context: search_result_area.get_style_context().clone(),
+                context: context.clone(),
+            };
+            search_view_render::draw_child(
+                &drawing_context,
                 item,
                 y - y_to_display,
-                context,
-                &search_result_area,
                 &mut links,
                 &mut action_areas,
                 &mut item_link_areas,

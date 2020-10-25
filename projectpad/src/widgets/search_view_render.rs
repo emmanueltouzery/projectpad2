@@ -19,6 +19,12 @@ enum ItemType {
     Child,
 }
 
+pub struct DrawingContext {
+    pub style_context: gtk::StyleContext,
+    pub context: cairo::Context,
+    pub search_result_area: gtk::DrawingArea,
+}
+
 fn draw_button(
     context: &cairo::Context,
     item_type: ItemType,
@@ -66,16 +72,16 @@ fn selected_label_style_context() -> gtk::StyleContext {
 }
 
 fn draw_box(
+    drawing_context: &DrawingContext,
     hierarchy_offset: f64,
-    style_context: &gtk::StyleContext,
     y: f64,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
     is_selected: bool,
     item: &ProjectPadItem,
     action_areas: &mut Vec<(Area, ProjectPadItem)>,
     operation_mode: OperationMode,
 ) {
+    let style_context = &drawing_context.style_context;
+    let context = &drawing_context.context;
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
 
     let scontext: gtk::StyleContext;
@@ -87,7 +93,7 @@ fn draw_box(
     };
     let box_x = margin.left as f64 + hierarchy_offset;
     let box_y = y + margin.top as f64;
-    let box_width = search_result_area.get_allocation().width as f64
+    let box_width = drawing_context.search_result_area.get_allocation().width as f64
         - margin.left as f64
         - margin.right as f64
         - hierarchy_offset * 2.0;
@@ -166,11 +172,9 @@ pub fn draw_shortcut(
 }
 
 pub fn draw_child(
-    style_context: &gtk::StyleContext,
+    drawing_context: &DrawingContext,
     item: &ProjectPadItem,
     y: i32,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
     links: &mut Vec<(Area, String)>,
     action_areas: &mut Vec<(Area, ProjectPadItem)>,
     item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
@@ -184,13 +188,12 @@ pub fn draw_child(
         | ProjectPadItem::ProjectPoi(_) => "search_view_parent",
         _ => "search_view_child",
     };
+    let style_context = &drawing_context.style_context;
     style_context.add_class(extra_css_class);
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     match item {
         ProjectPadItem::Project(p) => draw_project(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             item_link_areas,
             item,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
@@ -198,11 +201,9 @@ pub fn draw_child(
             &p,
         ),
         ProjectPadItem::Server(s) => draw_server(
-            style_context,
-            context,
+            drawing_context,
             &padding,
             LEFT_RIGHT_MARGIN as f64,
-            search_result_area,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             &s,
@@ -215,9 +216,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ServerNote(n) => draw_server_note(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -229,9 +228,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ProjectNote(n) => draw_project_note(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -243,9 +240,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ServerWebsite(w) => draw_server_website(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -258,9 +253,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ServerExtraUserAccount(u) => draw_server_extra_user(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -272,9 +265,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ServerPoi(p) => draw_server_poi(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -286,9 +277,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ProjectPoi(p) => draw_project_poi(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -300,9 +289,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ServerDatabase(d) => draw_server_database(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -314,9 +301,7 @@ pub fn draw_child(
             operation_mode,
         ),
         ProjectPadItem::ServerLink(s) => draw_linked_server(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             padding.left as f64 + LEFT_RIGHT_MARGIN as f64,
             y as f64,
             item,
@@ -332,9 +317,7 @@ pub fn draw_child(
 }
 
 fn draw_project(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
     item: &ProjectPadItem,
     x: f64,
@@ -344,12 +327,12 @@ fn draw_project(
     // since the servers have 10px padding on top of them,
     // let's draw the projects at the bottom of their area
     // so, y+height-icon_size
-    let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+    let padding = drawing_context
+        .style_context
+        .get_padding(gtk::StateFlags::NORMAL);
     let title_extents = draw_title(
-        style_context,
-        context,
+        drawing_context,
         &padding,
-        search_result_area,
         item_link_areas,
         item,
         &project.name,
@@ -365,17 +348,21 @@ fn draw_project(
             let translate_x = x + (title_extents.width / pango::SCALE) as f64 + padding.left as f64;
             let translate_y = y + padding.top as f64 + SEARCH_RESULT_WIDGET_HEIGHT as f64
                 - PROJECT_ICON_SIZE as f64;
-            context.translate(translate_x, translate_y);
-            super::project_badge::ProjectBadge::draw_icon(context, PROJECT_ICON_SIZE, &icon);
-            context.translate(-translate_x, -translate_y);
+            drawing_context.context.translate(translate_x, translate_y);
+            super::project_badge::ProjectBadge::draw_icon(
+                &drawing_context.context,
+                PROJECT_ICON_SIZE,
+                &icon,
+            );
+            drawing_context
+                .context
+                .translate(-translate_x, -translate_y);
         }
     }
 }
 
 fn draw_server_item_common(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     title: &str,
@@ -387,31 +374,28 @@ fn draw_server_item_common(
     is_selected: bool,
     operation_mode: OperationMode,
 ) -> (gtk::Border, gtk::Border, pango::Rectangle) {
+    let style_context = &drawing_context.style_context;
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
     draw_box(
+        drawing_context,
         LEFT_RIGHT_MARGIN as f64,
-        style_context,
         y,
-        context,
-        search_result_area,
         is_selected,
         item,
         action_areas,
         operation_mode,
     );
     draw_icon(
-        style_context,
-        context,
+        &drawing_context.style_context,
+        &drawing_context.context,
         icon,
         x + padding.left as f64,
         y + margin.top as f64 + padding.top as f64,
     );
     let title_rect = draw_title(
-        style_context,
-        context,
+        drawing_context,
         &padding,
-        search_result_area,
         item_link_areas,
         item,
         title,
@@ -423,15 +407,11 @@ fn draw_server_item_common(
     );
     if operation_mode == OperationMode::ItemActions {
         draw_action(
-            style_context,
-            context,
+            drawing_context,
             action_areas,
             item,
             item_with_depressed_action,
             &Icon::COG,
-            search_result_area.get_allocation().width as f64
-                - ACTION_ICON_OFFSET_FROM_RIGHT
-                - LEFT_RIGHT_MARGIN as f64,
             y + padding.top as f64 + margin.top as f64,
         );
     }
@@ -439,9 +419,7 @@ fn draw_server_item_common(
 }
 
 fn draw_server_website(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -454,9 +432,7 @@ fn draw_server_website(
     operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &website.desc,
@@ -469,9 +445,7 @@ fn draw_server_website(
         operation_mode,
     );
     draw_link(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         &website.url,
         x + padding.left as f64,
         y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
@@ -480,9 +454,7 @@ fn draw_server_website(
 }
 
 fn draw_server_extra_user(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -494,9 +466,7 @@ fn draw_server_extra_user(
     operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &user.username,
@@ -510,9 +480,7 @@ fn draw_server_extra_user(
     );
 
     draw_subtext(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         &user.desc,
         x + padding.left as f64,
         y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
@@ -520,9 +488,7 @@ fn draw_server_extra_user(
 }
 
 fn draw_server_poi(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -534,9 +500,7 @@ fn draw_server_poi(
     operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &poi.desc,
@@ -550,9 +514,7 @@ fn draw_server_poi(
     );
 
     draw_subtext(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         &poi.text,
         x + padding.left as f64,
         y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
@@ -560,9 +522,7 @@ fn draw_server_poi(
 }
 
 fn draw_project_poi(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -574,9 +534,7 @@ fn draw_project_poi(
     operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &poi.desc,
@@ -590,9 +548,7 @@ fn draw_project_poi(
     );
 
     draw_subtext(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         &poi.text,
         x + padding.left as f64,
         y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
@@ -600,9 +556,7 @@ fn draw_project_poi(
 }
 
 fn draw_server_database(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -614,9 +568,7 @@ fn draw_server_database(
     operation_mode: OperationMode,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &db.desc,
@@ -630,9 +582,7 @@ fn draw_server_database(
     );
 
     draw_subtext(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         &format!("{} {}", db.text, db.username),
         x + padding.left as f64,
         y + margin.top as f64 + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
@@ -640,9 +590,7 @@ fn draw_server_database(
 }
 
 fn draw_linked_server(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -654,9 +602,7 @@ fn draw_linked_server(
     operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &srv.desc,
@@ -671,9 +617,7 @@ fn draw_linked_server(
 }
 
 fn draw_project_note(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -685,9 +629,7 @@ fn draw_project_note(
     operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &note.title,
@@ -702,9 +644,7 @@ fn draw_project_note(
 }
 
 fn draw_server_note(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     item: &ProjectPadItem,
@@ -716,9 +656,7 @@ fn draw_server_note(
     operation_mode: OperationMode,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x,
         y,
         &note.title,
@@ -733,11 +671,9 @@ fn draw_server_note(
 }
 
 fn draw_server(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
+    drawing_context: &DrawingContext,
     padding: &gtk::Border,
     hierarchy_offset: f64,
-    search_result_area: &gtk::DrawingArea,
     x: f64,
     y: f64,
     server: &Server,
@@ -749,24 +685,22 @@ fn draw_server(
     is_selected: bool,
     operation_mode: OperationMode,
 ) {
-    let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+    let margin = drawing_context
+        .style_context
+        .get_margin(gtk::StateFlags::NORMAL);
     draw_box(
+        drawing_context,
         hierarchy_offset,
-        style_context,
         y,
-        context,
-        search_result_area,
         is_selected,
         item,
         action_areas,
         operation_mode,
     );
-    style_context.add_class("title");
+    drawing_context.style_context.add_class("title");
     let title_rect = draw_title(
-        style_context,
-        context,
+        drawing_context,
         &padding,
-        search_result_area,
         item_link_areas,
         item,
         &server.desc,
@@ -776,11 +710,9 @@ fn draw_server(
         None,
         is_selected,
     );
-    style_context.remove_class("title");
+    drawing_context.style_context.remove_class("title");
     let env_rect = draw_environment(
-        style_context,
-        context,
-        search_result_area,
+        drawing_context,
         x + padding.left as f64,
         y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64 + margin.top as f64,
         &match server.environment {
@@ -792,9 +724,7 @@ fn draw_server(
     );
     if server.access_type == ServerAccessType::SrvAccessWww && !server.ip.is_empty() {
         draw_link(
-            style_context,
-            context,
-            search_result_area,
+            drawing_context,
             &server.ip,
             (env_rect.x + env_rect.width) as f64,
             y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
@@ -803,32 +733,28 @@ fn draw_server(
     }
     if operation_mode == OperationMode::ItemActions {
         draw_action(
-            style_context,
-            context,
+            drawing_context,
             action_areas,
             item,
             item_with_depressed_action,
             &Icon::COG,
-            search_result_area.get_allocation().width as f64
-                - ACTION_ICON_OFFSET_FROM_RIGHT
-                - LEFT_RIGHT_MARGIN as f64,
             y + padding.top as f64 + margin.top as f64,
         );
     }
 }
 
 fn draw_environment(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     x: f64,
     y: f64,
     env_name: &str,
 ) -> gtk::Rectangle {
+    let context = &drawing_context.context;
+    let style_context = &drawing_context.style_context;
     let label_classname = format!("environment_label_{}", env_name);
     style_context.add_class(&label_classname);
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-    let pango_context = search_result_area.create_pango_context();
+    let pango_context = drawing_context.search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(&env_name.to_uppercase());
     let rect = layout.get_extents().1;
@@ -859,10 +785,8 @@ fn draw_environment(
 }
 
 fn draw_title(
-    style_context_orig: &gtk::StyleContext,
-    context: &cairo::Context,
+    drawing_context: &DrawingContext,
     padding: &gtk::Border,
-    search_result_area: &gtk::DrawingArea,
     item_link_areas: &mut Vec<(Area, ProjectPadItem)>,
     item: &ProjectPadItem,
     text: &str,
@@ -877,13 +801,13 @@ fn draw_title(
         scontext = selected_label_style_context();
         &scontext
     } else {
-        style_context_orig
+        &drawing_context.style_context
     };
     let clazz = custom_class
         .as_deref()
         .unwrap_or("search_result_item_title");
     style_context.add_class(clazz);
-    let pango_context = search_result_area.create_pango_context();
+    let pango_context = drawing_context.search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(text);
     layout.set_ellipsize(pango::EllipsizeMode::End);
@@ -896,7 +820,7 @@ fn draw_title(
     };
     let left = x + padding.left as f64;
     let top = y + padding.top as f64 + extra_y;
-    gtk::render_layout(style_context, context, left, top, &layout);
+    gtk::render_layout(style_context, &drawing_context.context, left, top, &layout);
     style_context.remove_class(clazz);
 
     let extents = layout.get_extents().1;
@@ -915,15 +839,15 @@ fn draw_title(
 }
 
 fn draw_basic_layout(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     text: &str,
     x: f64,
     y: f64,
 ) -> (pango::Rectangle, f64, f64) {
+    let context = &drawing_context.context;
+    let style_context = &drawing_context.style_context;
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-    let pango_context = search_result_area.create_pango_context();
+    let pango_context = drawing_context.search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(text);
     layout.set_ellipsize(pango::EllipsizeMode::End);
@@ -936,17 +860,16 @@ fn draw_basic_layout(
 }
 
 fn draw_link(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
+    drawing_context: &DrawingContext,
     text: &str,
     x: f64,
     y: f64,
     links: &mut Vec<(Area, String)>,
 ) -> pango::Rectangle {
-    style_context.add_class("search_result_item_link");
-    let (extents, left, top) =
-        draw_basic_layout(style_context, context, search_result_area, text, x, y);
+    drawing_context
+        .style_context
+        .add_class("search_result_item_link");
+    let (extents, left, top) = draw_basic_layout(drawing_context, text, x, y);
 
     links.push((
         Area::new(
@@ -958,37 +881,39 @@ fn draw_link(
         text.to_string(),
     ));
 
-    style_context.remove_class("search_result_item_link");
+    drawing_context
+        .style_context
+        .remove_class("search_result_item_link");
     extents
 }
 
-fn draw_subtext(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
-    search_result_area: &gtk::DrawingArea,
-    text: &str,
-    x: f64,
-    y: f64,
-) -> pango::Rectangle {
+fn draw_subtext(drawing_context: &DrawingContext, text: &str, x: f64, y: f64) -> pango::Rectangle {
+    let style_context = &drawing_context.style_context;
     style_context.add_class("search_result_item_subtext");
-    let (extents, _left, _top) =
-        draw_basic_layout(style_context, context, search_result_area, text, x, y);
+    let (extents, _left, _top) = draw_basic_layout(drawing_context, text, x, y);
     style_context.remove_class("search_result_item_subtext");
     extents
 }
 
 fn draw_action(
-    style_context: &gtk::StyleContext,
-    context: &cairo::Context,
+    drawing_context: &DrawingContext,
     action_areas: &mut Vec<(Area, ProjectPadItem)>,
     item: &ProjectPadItem,
     item_with_depressed_icon: &Option<ProjectPadItem>,
     icon: &Icon,
-    x: f64,
     y: f64,
 ) {
-    style_context.add_class("search_result_action_btn");
-    let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+    let context = &drawing_context.context;
+    let style_context = &drawing_context.style_context;
+    let x = drawing_context.search_result_area.get_allocation().width as f64
+        - ACTION_ICON_OFFSET_FROM_RIGHT
+        - LEFT_RIGHT_MARGIN as f64;
+    drawing_context
+        .style_context
+        .add_class("search_result_action_btn");
+    let padding = drawing_context
+        .style_context
+        .get_padding(gtk::StateFlags::NORMAL);
     let w = ACTION_ICON_SIZE as f64 + (padding.left + padding.right) as f64;
     let h = ACTION_ICON_SIZE as f64 + (padding.top + padding.bottom) as f64;
     let flags = if Some(item) == item_with_depressed_icon.as_ref() {

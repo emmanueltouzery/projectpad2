@@ -248,8 +248,10 @@ fn draw_project(
         item,
         &project.name,
         Some("search_result_project_title".to_string()),
-        x,
-        item_context.y + SEARCH_RESULT_WIDGET_HEIGHT as f64 - PROJECT_ICON_SIZE as f64,
+        (
+            x,
+            item_context.y + SEARCH_RESULT_WIDGET_HEIGHT as f64 - PROJECT_ICON_SIZE as f64,
+        ),
         Some(PROJECT_ICON_SIZE),
         // TODO used to have have false for is_selected for projects...
     );
@@ -306,8 +308,10 @@ fn draw_server_item_common(
         item,
         title,
         None,
-        x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
-        y + margin.top as f64,
+        (
+            x + ACTION_ICON_SIZE as f64 + (padding.left / 2) as f64,
+            y + margin.top as f64,
+        ),
         Some(ACTION_ICON_SIZE),
     );
     if item_context.operation_mode == OperationMode::ItemActions {
@@ -528,8 +532,7 @@ fn draw_server(
         item,
         &server.desc,
         None,
-        x,
-        item_context.y + margin.top as f64,
+        (x, item_context.y + margin.top as f64),
         None,
     );
     {
@@ -614,8 +617,7 @@ fn draw_title(
     item: &ProjectPadItem,
     text: &str,
     custom_class: Option<String>,
-    x: f64,
-    y: f64,
+    (x, y): (f64, f64), // only 7 parameters, clippy is happier
     height: Option<i32>,
 ) -> pango::Rectangle {
     let ItemContext {

@@ -336,25 +336,22 @@ impl Widget for ProjectPoiHeader {
                 self.copy_to_clipboard(&val);
             }
             Msg::HeaderActionClicked((ActionTypes::GotoItem, _val)) => {
-                match &self.model.project_item {
-                    Some(ProjectItem::ServerLink(l)) => {
-                        let s = self.model.goto_server_sender.clone();
-                        let linked_server_id = l.linked_server_id;
-                        self.model
-                            .db_sender
-                            .send(SqlFunc::new(move |sql_conn| {
-                                use projectpadsql::schema::project::dsl as prj;
-                                use projectpadsql::schema::server::dsl as srv;
-                                let (srv, prj) = srv::server
-                                    .inner_join(prj::project)
-                                    .filter(srv::id.eq(linked_server_id))
-                                    .first::<(Server, Project)>(sql_conn)
-                                    .unwrap();
-                                s.send((prj, srv)).unwrap();
-                            }))
-                            .unwrap();
-                    }
-                    _ => {}
+                if let Some(ProjectItem::ServerLink(l)) = &self.model.project_item {
+                    let s = self.model.goto_server_sender.clone();
+                    let linked_server_id = l.linked_server_id;
+                    self.model
+                        .db_sender
+                        .send(SqlFunc::new(move |sql_conn| {
+                            use projectpadsql::schema::project::dsl as prj;
+                            use projectpadsql::schema::server::dsl as srv;
+                            let (srv, prj) = srv::server
+                                .inner_join(prj::project)
+                                .filter(srv::id.eq(linked_server_id))
+                                .first::<(Server, Project)>(sql_conn)
+                                .unwrap();
+                            s.send((prj, srv)).unwrap();
+                        }))
+                        .unwrap();
                 }
             }
             Msg::HeaderActionClicked((ActionTypes::Edit, _)) => {

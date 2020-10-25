@@ -712,7 +712,7 @@ impl Widget for Win {
                                                          the project name. The gear icon allows you to edit the project, but also \
                                                          to add elements to it.\n\n\
                                                          A project may contain:\n\n\
-                                                         • <u>Servers</u> - These are machines or virtual machines, with their own \
+                                                         • <u>Server</u> - These are machines or virtual machines, with their own \
                                                          IP. Projectpad knows several types of servers like Application servers, \
                                                          Database, Reporting, Proxy... And a server may contain more elements, \
                                                          such as point of interests (like folders on the filesystem), websites, \

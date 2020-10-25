@@ -32,7 +32,7 @@ pub enum ProjectItem {
 pub enum Msg {
     ActiveProjectChanged(Project),
     ActiveEnvironmentChanged(EnvironmentType),
-    GotProjectItems(ChannelData),
+    GotProjectItems(Box<ChannelData>), // large variant size hence boxed
     ProjectItemIndexSelected(Option<usize>),
     ProjectItemSelected(Option<ProjectItem>),
     ProjectItemSelectedFromElsewhere((Project, Option<EnvironmentType>, Option<ProjectItem>)),
@@ -62,7 +62,7 @@ impl Widget for ProjectItemsList {
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let stream = relm.stream().clone();
         let (channel, sender) = relm::Channel::new(move |ch_data: ChannelData| {
-            stream.emit(Msg::GotProjectItems(ch_data));
+            stream.emit(Msg::GotProjectItems(Box::new(ch_data)));
         });
         Model {
             relm: relm.clone(),
@@ -225,7 +225,8 @@ impl Widget for ProjectItemsList {
                 self.model.project = Some(project);
                 self.fetch_project_items(None, None);
             }
-            Msg::GotProjectItems((items, _env, project_item)) => {
+            Msg::GotProjectItems(items) => {
+                let (items, _env, project_item) = *items;
                 if let Some(vadj) = self.scroll.get_vadjustment() {
                     vadj.set_value(0.0);
                 }

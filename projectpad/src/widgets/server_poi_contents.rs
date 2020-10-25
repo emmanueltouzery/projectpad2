@@ -209,7 +209,7 @@ impl Widget for ServerPoiContents {
         // need to keep the component alive else the event handling dies
         self.model._children_components = children_components;
 
-        if self.model.server_items.is_empty() {
+        if self.model.cur_server_id.is_some() && self.model.server_items.is_empty() {
             // show a little intro text
             let vbox = gtk::BoxBuilder::new()
                 .orientation(gtk::Orientation::Vertical)

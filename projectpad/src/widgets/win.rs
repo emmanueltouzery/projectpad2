@@ -78,7 +78,7 @@ pub enum Msg {
     ProjectItemSelected(Option<ProjectItem>),
     SearchActiveChanged(bool),
     SearchTextChanged(String),
-    DisplayItem(DisplayItemParams),
+    DisplayItem(Box<DisplayItemParams>), // large enum variant, hence boxed
     KeyPress(gdk::EventKey),
     KeyRelease(gdk::EventKey),
     ProjectItemUpdated(ProjectItem),
@@ -168,7 +168,7 @@ impl Widget for Win {
         let stream = relm.stream().clone();
         let (display_item_channel, display_item_sender) =
             relm::Channel::new(move |ch_data: DisplayItemParams| {
-                stream.emit(Msg::DisplayItem(ch_data));
+                stream.emit(Msg::DisplayItem(Box::new(ch_data)));
             });
         let stream2 = relm.stream().clone();
         let (db_unlock_attempted_channel, db_unlock_attempted_sender) =
@@ -375,7 +375,8 @@ impl Widget for Win {
                 self.search_view
                     .emit(SearchViewMsg::FilterChanged(Some(search_text)));
             }
-            Msg::DisplayItem((project, project_item, _server_item)) => {
+            Msg::DisplayItem(di) => {
+                let (project, project_item, _server_item) = *di;
                 self.project_list
                     .emit(ProjectListMsg::ProjectSelectedFromElsewhere(project.id));
                 let env = match &project_item {
@@ -744,8 +745,8 @@ impl Widget for Win {
                                             ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
                                             ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
                                             ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
-                                            ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(
-                                                (project.clone(), Some(ProjectItem::Server(srv.clone())), None)),
+                                            ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(Box::new(
+                                                (project.clone(), Some(ProjectItem::Server(srv.clone())), None))),
                                             ProjectPoiHeaderShowInfoBar(ref msg) =>
                                                 Msg::ShowInfoBar(msg.clone()),
                                         },
@@ -790,7 +791,7 @@ impl Widget for Win {
                         child: {
                             name: Some(CHILD_NAME_SEARCH)
                         },
-                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(item.clone())
+                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new(item.clone()))
                     }
                 },
             },

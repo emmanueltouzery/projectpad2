@@ -28,7 +28,7 @@ pub fn poi_get_text_label(interest_type: InterestType) -> &'static str {
     }
 }
 
-fn interest_type_desc(interest_type: InterestType) -> &'static str {
+pub fn interest_type_desc(interest_type: InterestType) -> &'static str {
     match interest_type {
         InterestType::PoiLogFile => "Log file",
         InterestType::PoiConfigFile => "Config file",

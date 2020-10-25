@@ -10,6 +10,7 @@ use super::dialogs::server_add_item_dlg;
 use super::dialogs::server_add_item_dlg::ServerAddItemDialog;
 use super::dialogs::server_link_add_edit_dlg;
 use super::dialogs::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
+use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use crate::icons::Icon;
@@ -214,13 +215,21 @@ pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
         ],
         ProjectItem::ProjectPointOfInterest(poi) => vec![
             GridItem::new(
+                "Interest Type",
+                None,
+                LabelText::PlainText(
+                    server_poi_add_edit_dlg::interest_type_desc(poi.interest_type).to_string(),
+                ),
+                poi.path.clone(),
+            ),
+            GridItem::new(
                 "Path",
                 None,
                 LabelText::PlainText(poi.path.clone()),
                 poi.path.clone(),
             ),
             GridItem::new(
-                "Text",
+                server_poi_add_edit_dlg::poi_get_text_label(poi.interest_type),
                 None,
                 LabelText::PlainText(poi.text.clone()),
                 poi.path.clone(),

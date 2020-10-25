@@ -28,7 +28,7 @@ pub enum Msg {
     AskDeleteProject,
     DeleteProject,
     ProjectDeleted(Project),
-    ProjectAddItemActionCompleted(ProjectItem),
+    ProjectAddItemActionCompleted(Box<ProjectItem>),
     ProjectAddItemChangeTitleTitle(&'static str),
     ProjectItemAdded(ProjectItem),
 }
@@ -278,7 +278,7 @@ impl Widget for ProjectSummary {
                 self.model
                     .relm
                     .stream()
-                    .emit(Msg::ProjectItemAdded(project_item));
+                    .emit(Msg::ProjectItemAdded(*project_item));
             }
             Msg::ProjectAddItemChangeTitleTitle(title) => {
                 self.model

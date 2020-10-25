@@ -25,7 +25,7 @@ pub enum Msg {
     ShowSecondTab(gtk::Dialog),
     ChangeDialogTitle(&'static str),
     OkPressed,
-    ActionCompleted(ProjectItem),
+    ActionCompleted(Box<ProjectItem>), // large enum variant => box it
 }
 
 pub struct Model {
@@ -70,7 +70,7 @@ impl Widget for ProjectAddItemDialog {
                             ServerAddEditDialog,
                             MsgServerAddEditDialog::ServerUpdated,
                             ProjectAddEditDialogComponent::Server,
-                            ProjectItem::Server,
+                            |s| Box::new(ProjectItem::Server(s)),
                         ),
                         "Add Server",
                     )
@@ -83,7 +83,7 @@ impl Widget for ProjectAddItemDialog {
                             ProjectPoiAddEditDialog,
                             MsgProjectPoiAddEditDialog::PoiUpdated,
                             ProjectAddEditDialogComponent::ProjectPoi,
-                            ProjectItem::ProjectPointOfInterest,
+                            |p| Box::new(ProjectItem::ProjectPointOfInterest(p)),
                         ),
                         "Add Project POI",
                     )
@@ -96,7 +96,7 @@ impl Widget for ProjectAddItemDialog {
                             ProjectNoteAddEditDialog,
                             MsgProjectNoteAddEditDialog::ProjectNoteUpdated,
                             ProjectAddEditDialogComponent::ProjectNote,
-                            ProjectItem::ProjectNote,
+                            |n| Box::new(ProjectItem::ProjectNote(n)),
                         ),
                         "Add Project note",
                     )
@@ -109,7 +109,7 @@ impl Widget for ProjectAddItemDialog {
                             ServerLinkAddEditDialog,
                             MsgServerLinkAddEditDialog::ServerLinkUpdated,
                             ProjectAddEditDialogComponent::ServerLink,
-                            ProjectItem::ServerLink,
+                            |l| Box::new(ProjectItem::ServerLink(l)),
                         ),
                         "Add server link",
                     )

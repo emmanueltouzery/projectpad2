@@ -41,7 +41,7 @@ pub struct Model {
 // because of the relm::connect! i don't see many other options...
 macro_rules! plug_second_tab {
     ($self: ident, $dialog: ident, $parent: expr, $dialog_type:tt,
-     $event: path, $component_ctor: path, $to_server_item: path,) => {{
+     $event: path, $component_ctor: path, $to_server_item: expr,) => {{
         let dialog_params = dialog_helpers::prepare_dialog_param(
                 $self.model.db_sender.clone(),
                 $parent,

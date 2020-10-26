@@ -36,7 +36,6 @@ pub enum Msg {
     ProjectItemIndexSelected(Option<usize>),
     ProjectItemSelected(Option<ProjectItem>),
     ProjectItemSelectedFromElsewhere((Project, Option<EnvironmentType>, Option<ProjectItem>)),
-    FocusRow(gtk::ListBoxRow),
     RefreshItemList(Option<ProjectItem>),
 }
 
@@ -249,19 +248,26 @@ impl Widget for ProjectItemsList {
                     });
                 let row = row_idx.and_then(|i| self.project_items_list.get_row_at_index(i as i32));
                 self.project_items_list.select_row(row.as_ref());
-                if let Some(r) = row {
-                    // row_idx != 0 => workaround for Gtk-CRITICAL warnings at startup
-                    // I think the GUI is not ready yet. If we're interested in the first
-                    // row, nothing to do anyway
-                    if row_idx != Some(0) {
-                        // we need the timeout. We've just added the rows to the listbox,
-                        // they are not realized yet. The scrolling doesn't work unless
-                        // we allow the gtk thread to realize the list items
-                        // https://discourse.gnome.org/t/listbox-programmatically-scroll-to-row/3844
-                        relm::timeout(self.model.relm.stream(), 100, move || {
-                            Msg::FocusRow(r.clone())
-                        });
-                    }
+                // row_idx != 0 => workaround for Gtk-CRITICAL warnings at startup
+                // I think the GUI is not ready yet. If we're interested in the first
+                // row, nothing to do anyway
+                if row.is_some() && row_idx != Some(0) {
+                    // we need the idle_add. We've just added the rows to the listbox,
+                    // they are not realized yet. The scrolling doesn't work unless
+                    // we allow the gtk thread to realize the list items
+                    // https://discourse.gnome.org/t/listbox-programmatically-scroll-to-row/3844
+                    let l = self.project_items_list.clone();
+                    gtk::idle_add(move || {
+                        // need to fetch the row in the callback, if fetching
+                        // it before i had issues with project POI items (somehow
+                        // the parent of the GtkListViewItem was not populated)
+                        if let Some(focus_row) = row_idx.and_then(|i| l.get_row_at_index(i as i32))
+                        {
+                            l.select_row(Some(&focus_row));
+                            focus_row.grab_focus();
+                        }
+                        glib::Continue(false)
+                    });
                 }
             }
             Msg::ActiveEnvironmentChanged(env) => {
@@ -282,9 +288,6 @@ impl Widget for ProjectItemsList {
                     self.model.environment = e;
                 }
                 self.fetch_project_items(env, pi);
-            }
-            Msg::FocusRow(r) => {
-                r.grab_focus();
             }
             Msg::RefreshItemList(selected_pi) => {
                 self.fetch_project_items(Some(self.model.environment), selected_pi);

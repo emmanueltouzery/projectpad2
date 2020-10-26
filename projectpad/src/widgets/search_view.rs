@@ -376,6 +376,7 @@ impl Widget for SearchView {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_search_view(
         context: &cairo::Context,
         links: &Rc<RefCell<Vec<(Area, String)>>>,

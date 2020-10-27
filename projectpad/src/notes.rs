@@ -215,6 +215,7 @@ pub struct NoteBufferInfo {
     pub buffer: gtk::TextBuffer,
     pub links: Vec<ItemDataInfo>,
     pub passwords: Vec<ItemDataInfo>,
+    pub separator_anchors: Vec<gtk::TextChildAnchor>,
 }
 
 pub fn note_markdown_to_quick_preview(input: &str) -> String {
@@ -245,6 +246,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
     let mut list_cur_idx = None;
     let mut in_item = false; // paragraphs inside bullets don't look nice
     let mut active_tags = HashMap::new();
+    let mut separator_anchors = Vec::new();
 
     let buffer = gtk::TextBuffer::new(Some(table));
     let mut end_iter = buffer.get_end_iter();
@@ -406,7 +408,8 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     buffer.insert(&mut end_iter, &t);
                 }
                 Event::Rule => {
-                    buffer.insert(&mut end_iter, "---"); // TODO surely can do way better than that
+                    let anchor = buffer.create_child_anchor(&mut end_iter).unwrap();
+                    separator_anchors.push(anchor);
                 }
                 Event::HardBreak | Event::SoftBreak => {
                     buffer.insert(&mut end_iter, "\n");
@@ -433,6 +436,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
         buffer,
         links,
         passwords,
+        separator_anchors,
     }
 }
 

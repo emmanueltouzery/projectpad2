@@ -305,6 +305,14 @@ impl Widget for ProjectPoiContents {
         self.model.note_passwords = note_buffer_info.passwords;
         self.note_textview
             .set_buffer(Some(&note_buffer_info.buffer));
+        for anchor in &note_buffer_info.separator_anchors {
+            let sep = gtk::SeparatorBuilder::new()
+                .margin(25)
+                .width_request(350)
+                .build();
+            sep.show();
+            self.note_textview.add_child_at_anchor(&sep, anchor);
+        }
     }
 
     fn password_popover(&mut self, password: &str) {

@@ -13,9 +13,11 @@ use super::dialogs::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
 use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
+use super::wintitlebar::left_align_menu;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
+use gdk::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase,
@@ -78,6 +80,7 @@ pub struct GridItem {
     pub icon: Option<Icon>,
     pub markup: String,
     pub raw_value: String,
+    pub shortcut: Option<(gdk::keys::Key, gdk::ModifierType)>,
 }
 
 pub enum LabelText {
@@ -91,6 +94,7 @@ impl GridItem {
         icon: Option<Icon>,
         label_text: LabelText,
         raw_value: String,
+        shortcut: Option<(gdk::keys::Key, gdk::ModifierType)>,
     ) -> GridItem {
         GridItem {
             label_name,
@@ -100,6 +104,7 @@ impl GridItem {
                 LabelText::Markup(m) => m,
             },
             raw_value,
+            shortcut,
         }
     }
 }
@@ -115,18 +120,37 @@ pub fn populate_popover(
     }
     let popover_vbox = gtk::BoxBuilder::new()
         .margin(10)
+        .width_request(180) // without that the "copy password" accelerator isn't shown!
         .orientation(gtk::Orientation::Vertical)
         .build();
     for extra_btn in extra_btns {
         popover_vbox.add(extra_btn);
+        left_align_menu(&extra_btn);
     }
+    popover_vbox.add(&gtk::SeparatorBuilder::new().build());
     for item in fields
         .iter()
         .filter(|cur_item| !cur_item.raw_value.is_empty())
     {
-        let popover_btn = gtk::ModelButtonBuilder::new()
-            .label(&format!("Copy {}", item.label_name))
-            .build();
+        let label = &format!("Copy {}", item.label_name);
+        let popover_btn = match &item.shortcut {
+            None => gtk::ModelButtonBuilder::new().label(&label).build(),
+            Some((key, modifiers)) => {
+                let accel_lbl = gtk::AccelLabelBuilder::new().label(label).build();
+                accel_lbl.set_accel(**key, *modifiers);
+                let lbl = gtk::ModelButtonBuilder::new().build();
+                accel_lbl.set_hexpand(true);
+                accel_lbl.set_xalign(0.0);
+                accel_lbl.show_all();
+                lbl.get_child()
+                    .unwrap()
+                    .downcast::<gtk::Box>()
+                    .unwrap()
+                    .add(&accel_lbl);
+                lbl
+            }
+        };
+        left_align_menu(&popover_btn);
         register_copy_btn(&popover_btn, item.raw_value.clone());
         popover_vbox.add(&popover_btn);
     }
@@ -195,12 +219,14 @@ pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
                 Some(server_access_icon(&srv)),
                 server_ip_display(&srv),
                 srv.ip.clone(),
+                None,
             ),
             GridItem::new(
                 "Username",
                 None,
                 LabelText::PlainText(srv.username.clone()),
                 srv.username.clone(),
+                None,
             ),
             GridItem::new(
                 "Password",
@@ -211,6 +237,7 @@ pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
                     "●●●●●".to_string()
                 }),
                 srv.password.clone(),
+                Some((gdk::keys::constants::E, gdk::ModifierType::CONTROL_MASK)),
             ),
         ],
         ProjectItem::ProjectPointOfInterest(poi) => vec![
@@ -221,18 +248,21 @@ pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
                     server_poi_add_edit_dlg::interest_type_desc(poi.interest_type).to_string(),
                 ),
                 poi.path.clone(),
+                None,
             ),
             GridItem::new(
                 "Path",
                 None,
                 LabelText::PlainText(poi.path.clone()),
                 poi.path.clone(),
+                None,
             ),
             GridItem::new(
                 server_poi_add_edit_dlg::poi_get_text_label(poi.interest_type),
                 None,
                 LabelText::PlainText(poi.text.clone()),
                 poi.path.clone(),
+                None,
             ),
         ],
         _ => vec![],
@@ -718,7 +748,9 @@ impl Widget for ProjectPoiHeader {
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::Edit, "".to_string()))
         );
-        let add_btn = gtk::ModelButtonBuilder::new().label("Add...").build();
+        let add_btn = gtk::ModelButtonBuilder::new()
+            .label("Add server item...")
+            .build();
         relm::connect!(
             self.model.relm,
             &add_btn,
@@ -740,7 +772,7 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::Delete, "".to_string()))
         );
         let extra_btns = match &self.model.project_item {
-            Some(ProjectItem::Server(_)) => vec![edit_btn, add_btn, delete_btn],
+            Some(ProjectItem::Server(_)) => vec![add_btn, edit_btn, delete_btn],
             Some(ProjectItem::ServerLink(_)) => vec![edit_btn, goto_btn, delete_btn],
             Some(_) => vec![edit_btn, delete_btn],
             _ => vec![],

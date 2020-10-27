@@ -35,6 +35,16 @@ pub struct Model {
     prefs_win: Option<Component<Preferences>>,
 }
 
+pub fn left_align_menu(menu: &gtk::ModelButton) {
+    if let Some(label) = menu
+        .get_child()
+        .and_then(|c| c.dynamic_cast::<gtk::Label>().ok())
+    {
+        label.set_xalign(0.0);
+        label.set_hexpand(true);
+    }
+}
+
 #[widget]
 impl Widget for WinTitleBar {
     fn init_view(&mut self) {
@@ -50,13 +60,6 @@ impl Widget for WinTitleBar {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-
-        let left_align_menu = |menu: &gtk::ModelButton| {
-            menu.get_child()
-                .and_then(|c| c.dynamic_cast::<gtk::Label>().ok())
-                .unwrap()
-                .set_xalign(0.0)
-        };
 
         let preferences_btn = gtk::ModelButtonBuilder::new().label("Preferences").build();
         left_align_menu(&preferences_btn);

@@ -8,6 +8,7 @@ use super::server_poi_contents::Msg::ShowInfoBar as ServerPoiContentsShowInfoBar
 use super::server_poi_contents::Msg::ViewNote as ServerPoiContentsMsgViewNote;
 use super::server_poi_contents::ServerItem;
 use super::server_poi_contents::ServerPoiContents;
+use super::wintitlebar::left_align_menu;
 use crate::notes::ItemDataInfo;
 use crate::sql_thread::SqlFunc;
 use gdk::prelude::*;
@@ -346,9 +347,14 @@ impl Widget for ProjectPoiContents {
             .get_window()
             .unwrap();
         let (_, dev_x, dev_y, _) = window.get_device_position(&mouse_device);
-        let (_, o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
+        let (_, _o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
         popover.set_pointing_to(&gtk::Rectangle {
-            x: dev_x - o_x,
+            // x: dev_x - o_x,
+            // the - o_x from the previous line used to be necessary, now it
+            // isn't anymore.. this more or less matches with me adding a frame
+            // for the textview+some padding... not sure. right now i'm happy
+            // with it just working, even if i don't fully understand what's going on.
+            x: dev_x - 40,
             y: dev_y - o_y,
             width: 50,
             height: 15,
@@ -370,6 +376,7 @@ impl Widget for ProjectPoiContents {
                     .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
             }
         });
+        left_align_menu(&popover_copy_btn);
         popover_vbox.add(&popover_copy_btn);
         let popover_reveal_btn = gtk::ModelButtonBuilder::new()
             .label("Reveal password")
@@ -380,6 +387,7 @@ impl Widget for ProjectPoiContents {
             r2.stream()
                 .emit(Msg::ShowInfoBar(format!("The password is: {}", p2.clone())));
         });
+        left_align_menu(&popover_reveal_btn);
         popover_vbox.add(&popover_reveal_btn);
         popover_vbox.show_all();
         popover.add(&popover_vbox);

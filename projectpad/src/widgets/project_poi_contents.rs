@@ -411,16 +411,22 @@ impl Widget for ProjectPoiContents {
                     },
                     #[name="note_scroll"]
                     gtk::ScrolledWindow {
-                        #[name="note_textview"]
-                        gtk::TextView {
+                        gtk::Frame {
                             margin_top: 10,
                             margin_start: 10,
                             margin_end: 10,
                             margin_bottom: 10,
-                            editable: false,
-                            cursor_visible: false,
-                            motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
-                            event_after(_, event) => Msg::TextViewEventAfter(event.clone())
+                            #[name="note_textview"]
+                            gtk::TextView {
+                                editable: false,
+                                cursor_visible: false,
+                                top_margin: 10,
+                                bottom_margin: 10,
+                                left_margin: 10,
+                                right_margin: 10,
+                                motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
+                                event_after(_, event) => Msg::TextViewEventAfter(event.clone())
+                            }
                         }
                     },
                 }

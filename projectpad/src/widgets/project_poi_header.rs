@@ -127,7 +127,9 @@ pub fn populate_popover(
         popover_vbox.add(extra_btn);
         left_align_menu(&extra_btn);
     }
-    popover_vbox.add(&gtk::SeparatorBuilder::new().build());
+    if !fields.is_empty() {
+        popover_vbox.add(&gtk::SeparatorBuilder::new().build());
+    }
     for item in fields
         .iter()
         .filter(|cur_item| !cur_item.raw_value.is_empty())

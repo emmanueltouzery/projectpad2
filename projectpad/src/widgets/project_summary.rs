@@ -5,6 +5,7 @@ use super::dialogs::project_add_item_dlg;
 use super::dialogs::project_add_item_dlg::ProjectAddItemDialog;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
+use super::wintitlebar::left_align_menu;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use diesel::prelude::*;
@@ -104,15 +105,10 @@ impl Widget for ProjectSummary {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
-        relm::connect!(
-            self.model.relm,
-            popover_edit_btn,
-            connect_clicked(_),
-            Msg::EditProject
-        );
-        popover_vbox.add(&popover_edit_btn);
-        let popover_btn = gtk::ModelButtonBuilder::new().label("Add...").build();
+        let popover_btn = gtk::ModelButtonBuilder::new()
+            .label("Add project item...")
+            .build();
+        left_align_menu(&popover_btn);
         relm::connect!(
             self.model.relm,
             popover_btn,
@@ -120,7 +116,17 @@ impl Widget for ProjectSummary {
             Msg::AddProjectItem
         );
         popover_vbox.add(&popover_btn);
+        let popover_edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+        left_align_menu(&popover_edit_btn);
+        relm::connect!(
+            self.model.relm,
+            popover_edit_btn,
+            connect_clicked(_),
+            Msg::EditProject
+        );
+        popover_vbox.add(&popover_edit_btn);
         let popover_delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+        left_align_menu(&popover_delete_btn);
         relm::connect!(
             self.model.relm,
             popover_delete_btn,

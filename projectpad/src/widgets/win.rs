@@ -376,7 +376,7 @@ impl Widget for Win {
                     .emit(SearchViewMsg::FilterChanged(Some(search_text)));
             }
             Msg::DisplayItem(di) => {
-                let (project, project_item, _server_item) = *di;
+                let (project, project_item, server_item) = *di;
                 self.project_list
                     .emit(ProjectListMsg::ProjectSelectedFromElsewhere(project.id));
                 let env = match &project_item {
@@ -412,6 +412,11 @@ impl Widget for Win {
                         project_item,
                     )),
                 );
+                if let Some(sitem) = server_item {
+                    self.project_poi_contents
+                        .stream()
+                        .emit(ProjectPoiContentsMsg::ScrollToServerItem(sitem));
+                }
                 self.model
                     .relm
                     .stream()

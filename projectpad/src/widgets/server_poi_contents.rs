@@ -29,6 +29,7 @@ pub enum Msg {
     RefreshItems,
     RequestDisplayServerItem(ServerItem),
     ShowInfoBar(String),
+    ScrollToServerItem(ServerItem),
 }
 
 #[derive(Clone, Debug)]
@@ -83,6 +84,7 @@ pub struct Model {
     databases_for_websites: HashMap<i32, ServerDatabase>,
     websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
     _children_components: Vec<Component<ServerItemListItem>>,
+    scroll_to_item_request: Option<ServerItem>,
 }
 
 #[widget]
@@ -95,6 +97,8 @@ impl Widget for ServerPoiContents {
             .get_style_context()
             .add_class("scrollgradient");
         self.update_contents_list();
+        self.contents_list
+            .set_focus_vadjustment(&self.contents_scroll.get_vadjustment().unwrap());
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -113,6 +117,62 @@ impl Widget for ServerPoiContents {
             databases_for_websites: HashMap::new(),
             websites_for_databases: HashMap::new(),
             _children_components: vec![],
+            scroll_to_item_request: None,
+        }
+    }
+
+    fn get_find_serveritem_cb(si: &ServerItem) -> Box<dyn Fn(&ServerItem) -> bool> {
+        match si {
+            ServerItem::Database(db) => {
+                let id = db.id;
+                Box::new(move |item2| match item2 {
+                    ServerItem::Database(db2) if db2.id == id => true,
+                    _ => false,
+                })
+            }
+            ServerItem::ExtraUserAccount(us) => {
+                let id = us.id;
+                Box::new(move |item2| match item2 {
+                    ServerItem::ExtraUserAccount(us2) if us2.id == id => true,
+                    _ => false,
+                })
+            }
+            ServerItem::Note(n) => {
+                let id = n.id;
+                Box::new(move |item2| match item2 {
+                    ServerItem::Note(n2) if n2.id == id => true,
+                    _ => false,
+                })
+            }
+            ServerItem::PointOfInterest(p) => {
+                let id = p.id;
+                Box::new(move |item2| match item2 {
+                    ServerItem::PointOfInterest(p2) if p2.id == id => true,
+                    _ => false,
+                })
+            }
+            ServerItem::Website(w) => {
+                let id = w.id;
+                Box::new(move |item2| match item2 {
+                    ServerItem::Website(w2) if w2.id == id => true,
+                    _ => false,
+                })
+            }
+        }
+    }
+
+    fn scroll_to_server_item(&mut self, si: ServerItem) {
+        let find_cb = Self::get_find_serveritem_cb(&si);
+        let midx = self.model.server_items.iter().position(find_cb);
+        if let Some(idx) = midx {
+            if let Some(row) = self.contents_list.get_row_at_index(idx as i32) {
+                self.contents_list.select_row(Some(&row));
+                row.grab_focus();
+            }
+        } else {
+            // didn't find the item, maybe we didn't load that list
+            // yet, save the request and we'll check next time we'll load
+            self.model.scroll_to_item_request = Some(si);
         }
     }
 
@@ -132,15 +192,29 @@ impl Widget for ServerPoiContents {
                 self.model.databases_for_websites = items.databases_for_websites;
                 self.model.websites_for_databases = items.websites_for_databases;
                 self.update_contents_list();
+                // do we have a pending request to scroll to a certain item?
+                if let Some(si) = self.model.scroll_to_item_request.take() {
+                    let relm = self.model.relm.clone();
+                    // must request the scroll through a gtk idle callback,
+                    // because the list was just populated and row items are
+                    // not ready to be interacted with
+                    gtk::idle_add(move || {
+                        relm.stream().emit(Msg::ScrollToServerItem(si.clone()));
+                        glib::Continue(false)
+                    });
+                }
             }
-            // ViewNote is meant for my parent
-            Msg::ViewNote(_) => {}
+            Msg::RequestDisplayServerItem(_) => {}
             Msg::RefreshItems => {
                 self.fetch_items();
             }
+            Msg::ScrollToServerItem(si) => {
+                self.scroll_to_server_item(si);
+            }
+            // ViewNote is meant for my parent
+            Msg::ViewNote(_) => {}
             // meant for my parent
             Msg::ShowInfoBar(_) => {}
-            Msg::RequestDisplayServerItem(_) => {}
         }
     }
 

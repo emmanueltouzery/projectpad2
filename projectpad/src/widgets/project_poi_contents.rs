@@ -33,6 +33,7 @@ pub enum Msg {
     KeyboardCtrlP,
     KeyboardEscape,
     ShowInfoBar(String),
+    ScrollToServerItem(ServerItem),
 }
 
 pub struct Model {
@@ -181,6 +182,11 @@ impl Widget for ProjectPoiContents {
                         }
                     }
                 }
+            }
+            Msg::ScrollToServerItem(si) => {
+                self.server_contents
+                    .stream()
+                    .emit(ServerPoiContentsMsg::ScrollToServerItem(si));
             }
             Msg::KeyboardCtrlF => {
                 if self.is_displaying_note() {

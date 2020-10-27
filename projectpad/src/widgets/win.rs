@@ -579,6 +579,24 @@ impl Widget for Win {
                         .stream()
                         .emit(ProjectPoiContentsMsg::KeyboardCtrlP);
                 }
+                Some('K') => {
+                    self.search_view
+                        .emit(SearchViewMsg::FilterChanged(Some("".to_string())));
+                    self.model
+                        .titlebar
+                        .emit(WinTitleBarMsg::SearchTextChangedFromElsewhere((
+                            "".to_string(),
+                            e,
+                        )));
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::SearchActiveChanged(true));
+                    self.model
+                        .titlebar
+                        .stream()
+                        .emit(WinTitleBarMsg::EnterOrUpdateSearchProject);
+                }
                 Some('k') => {
                     self.model
                         .relm

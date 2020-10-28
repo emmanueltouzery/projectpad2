@@ -314,7 +314,7 @@ impl Widget for ProjectPoiContents {
             .set_buffer(Some(&note_buffer_info.buffer));
         for anchor in &note_buffer_info.separator_anchors {
             let sep = gtk::SeparatorBuilder::new()
-                .margin(25)
+                .margin(15)
                 .width_request(350)
                 .build();
             sep.show();

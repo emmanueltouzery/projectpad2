@@ -305,6 +305,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 }
                 Event::End(Tag::List(_)) => {
                     list_cur_idx = None;
+                    buffer.insert(&mut end_iter, "\n");
                 }
                 Event::Start(Tag::Item) => {
                     active_tags.insert(TAG_LIST_ITEM, end_iter.get_offset());
@@ -324,7 +325,14 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 }
                 Event::Start(Tag::Paragraph) => {
                     if !in_item {
-                        buffer.insert(&mut end_iter, "\n");
+                        // i wanted to use gtktextview's pixels-above-lines and things
+                        // like that, instead of inserting \n for vertical spacing,
+                        // but i think gtktextview doesn't support soft carriage returns,
+                        // meaning that any \n starts a new paragraph as far as textview
+                        // is concerned, so you get lots of extra in-paragraph spacing.
+                        if buffer.get_char_count() != 0 {
+                            buffer.insert(&mut end_iter, "\n");
+                        }
                         active_tags.insert(TAG_PARAGRAPH, end_iter.get_offset());
                     }
                 }
@@ -391,6 +399,9 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     buffer.insert(&mut end_iter, "\n");
                 }
                 Event::Start(Tag::CodeBlock(_)) => {
+                    if buffer.get_char_count() != 0 {
+                        buffer.insert(&mut end_iter, "\n");
+                    }
                     active_tags.insert(TAG_CODE, end_iter.get_offset());
                 }
                 Event::End(Tag::CodeBlock(_)) => {

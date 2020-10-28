@@ -64,7 +64,7 @@ impl Widget for NoteEdit {
         self.add_tool_accelerator(&self.blockquote_btn, 'q');
     }
 
-    fn add_tool_accelerator(&self, btn: &gtk::ToolButton, key: char) {
+    fn add_tool_accelerator<T: IsA<gtk::Widget>>(&self, btn: &T, key: char) {
         btn.add_accelerator(
             "clicked",
             &self.model.accel_group,
@@ -349,7 +349,8 @@ impl Widget for NoteEdit {
         gtk::Box {
             orientation: gtk::Orientation::Vertical,
             gtk::Toolbar {
-                margin_top: 10,
+                icon_size: gtk::IconSize::SmallToolbar,
+                margin_top: 5,
                 #[name="heading_btn"]
                 gtk::ToolButton {
                     icon_name: Some(Icon::HEADING.name()),

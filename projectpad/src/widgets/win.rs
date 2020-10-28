@@ -682,6 +682,9 @@ impl Widget for Win {
                             AddProject => Msg::AddProject,
                             UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
                         },
+                        gtk::Separator {
+                            orientation: gtk::Orientation::Vertical,
+                        },
                         #[name="normal_or_welcome_stack"]
                         gtk::Stack {
                             gtk::Box {

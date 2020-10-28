@@ -37,6 +37,7 @@ pub enum Msg {
     EditUser(ServerExtraUserAccount),
     EditWebsite(ServerWebsite),
     ServerItemUpdated(ServerItem),
+    ServerWwwUpdated((ServerWebsite, Option<ServerDatabase>)),
     DeleteServerPoi(ServerPointOfInterest),
     DeleteServerDb(ServerDatabase),
     AskDeleteServerItem((String, &'static str, Box<Msg>)),
@@ -585,9 +586,9 @@ impl Widget for ServerItemListItem {
                     "Server Website",
                 );
                 relm::connect!(
-                    component@MsgServerWebsiteAddEditDialog::ServerWwwUpdated(ref srv),
+                    component@MsgServerWebsiteAddEditDialog::ServerWwwUpdated(ref www_db),
                     self.model.relm,
-                    Msg::ServerItemUpdated(ServerItem::Website(srv.clone()))
+                    Msg::ServerWwwUpdated(www_db.clone())
                 );
                 self.model.server_add_edit_dialog = Some((
                     ServerAddEditDialogComponent::Website(component),
@@ -616,6 +617,13 @@ impl Widget for ServerItemListItem {
                     dialog.clone(),
                 ));
                 dialog.show();
+            }
+            Msg::ServerWwwUpdated((www, db)) => {
+                self.model.database_for_item = db;
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ServerItemUpdated(ServerItem::Website(www)));
             }
             Msg::ServerItemUpdated(server_item) => {
                 self.model

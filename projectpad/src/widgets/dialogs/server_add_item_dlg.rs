@@ -134,7 +134,7 @@ impl Widget for ServerAddItemDialog {
                             ServerWebsiteAddEditDialog,
                             MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
                             ServerAddEditDialogComponent::Website,
-                            ServerItem::Website,
+                            |(w, _db)| ServerItem::Website(w),
                         ),
                         "Add server website",
                     )

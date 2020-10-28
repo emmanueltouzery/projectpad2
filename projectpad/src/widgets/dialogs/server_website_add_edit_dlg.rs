@@ -11,7 +11,7 @@ use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPubl
 use crate::widgets::password_field::PasswordField;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql::models::ServerWebsite;
+use projectpadsql::models::{ServerDatabase, ServerWebsite};
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -24,11 +24,11 @@ pub enum Msg {
     ServerDbRemoved,
     OkPressed,
     GotPassword(String),
-    ServerWwwUpdated(ServerWebsite),
+    ServerWwwUpdated((ServerWebsite, Option<ServerDatabase>)),
 }
 
 // String for details, because I can't pass Error across threads
-type SaveResult = Result<ServerWebsite, (String, Option<String>)>;
+type SaveResult = Result<(ServerWebsite, Option<ServerDatabase>), (String, Option<String>)>;
 
 pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
@@ -188,6 +188,7 @@ impl Widget for ServerWebsiteAddEditDialog {
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::server_database::dsl as srv_db;
                 use projectpadsql::schema::server_website::dsl as srv_www;
                 let changeset = (
                     srv_www::desc.eq(new_desc.as_str()),
@@ -211,7 +212,13 @@ impl Widget for ServerWebsiteAddEditDialog {
                     changeset,
                     ServerWebsite,
                 );
-                s.send(server_www_after_result).unwrap();
+                let server_db = server_www_after_result
+                    .as_ref()
+                    .ok()
+                    .and_then(|www| www.server_database_id)
+                    .and_then(|db_id| srv_db::server_database.find(db_id).first(sql_conn).ok());
+                s.send(server_www_after_result.map(|s| (s, server_db)))
+                    .unwrap();
             }))
             .unwrap();
     }

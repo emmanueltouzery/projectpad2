@@ -62,7 +62,7 @@ impl Widget for EnvironmentsPicker {
             },
             #[name="radio_prd"]
             gtk::ToggleButton {
-                label: "Prd",
+                label: "Prod",
                 hexpand: true,
                 active: self.model.selected_environments.has_prod,
                 toggled => Msg::EnvironmentToggled(EnvironmentType::EnvProd),

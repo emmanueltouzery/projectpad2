@@ -211,7 +211,7 @@ fn display_env(env: &EnvironmentType) -> &'static str {
         EnvironmentType::EnvDevelopment => "Dev",
         EnvironmentType::EnvUat => "Uat",
         EnvironmentType::EnvStage => "Stg",
-        EnvironmentType::EnvProd => "Prd",
+        EnvironmentType::EnvProd => "Prod",
     }
 }
 

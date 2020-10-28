@@ -529,7 +529,7 @@ impl Widget for ProjectSummary {
                 },
                 #[name="radio_prd"]
                 gtk::RadioButton {
-                    label: "Prd",
+                    label: "Prod",
                     mode: false,
                     sensitive: false,
                 },

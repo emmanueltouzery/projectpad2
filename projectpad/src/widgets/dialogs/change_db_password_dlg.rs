@@ -45,9 +45,11 @@ fn check_db_password(pass: &str) -> OpResult {
 }
 
 fn set_db_password(db_conn: &SqliteConnection, pass: &str) -> Result<(), String> {
-    // TODO escape the quotes...
     db_conn
-        .execute(&format!("PRAGMA rekey='{}';", pass))
+        .execute(&format!(
+            "PRAGMA rekey='{}';",
+            unlock_db_dlg::key_escape_param_value(pass)
+        ))
         .map(|_| ())
         .map_err(|x| x.to_string())
 }

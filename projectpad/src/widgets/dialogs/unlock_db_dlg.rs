@@ -11,13 +11,18 @@ use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-/// TODO quotes in passwords
+// escape quote by doubling it
+// https://github.com/rusqlite/rusqlite/blob/997e6d3cc37fa96f8edc3db9839c7e84246ee315/src/pragma.rs#L138
+pub fn key_escape_param_value(key: &str) -> String {
+    key.replace('\'', "''")
+}
+
 pub fn try_unlock_db(db_conn: &SqliteConnection, pass: &str) -> Result<(), String> {
     // https://www.zetetic.net/sqlcipher/sqlcipher-api/#PRAGMA_key
     db_conn
         .execute(&format!(
             "PRAGMA key='{}'; SELECT count(*) FROM sqlite_master;",
-            pass
+            &key_escape_param_value(pass)
         ))
         .map(|_| ())
         .map_err(|x| x.to_string())

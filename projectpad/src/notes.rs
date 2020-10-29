@@ -66,11 +66,6 @@ fn get_events_with_passwords(parser: Parser) -> Vec<EventExt> {
     })
 }
 
-// https://github.com/gtk-rs/pango/issues/193
-const PANGO_SCALE_LARGE: f64 = 1.2;
-const PANGO_SCALE_X_LARGE: f64 = 1.44;
-const PANGO_SCALE_XX_LARGE: f64 = 1.728;
-
 const TAG_BOLD: &str = "bold";
 const TAG_ITALICS: &str = "italics";
 const TAG_STRIKETHROUGH: &str = "strikethrough";
@@ -115,7 +110,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .name(TAG_HEADER1)
             .weight(pango::Weight::Bold.to_glib())
             .wrap_mode(gtk::WrapMode::Word)
-            .scale(PANGO_SCALE_XX_LARGE)
+            .scale(pango::SCALE_XX_LARGE)
             .build(),
     );
     tag_table.add(
@@ -123,7 +118,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .name(TAG_HEADER2)
             .weight(pango::Weight::Bold.to_glib())
             .wrap_mode(gtk::WrapMode::Word)
-            .scale(PANGO_SCALE_X_LARGE)
+            .scale(pango::SCALE_X_LARGE)
             .build(),
     );
     tag_table.add(
@@ -131,7 +126,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .name(TAG_HEADER3)
             .weight(pango::Weight::Bold.to_glib())
             .wrap_mode(gtk::WrapMode::Word)
-            .scale(PANGO_SCALE_LARGE)
+            .scale(pango::SCALE_LARGE)
             .build(),
     );
     tag_table.add(

@@ -268,8 +268,8 @@ impl Widget for ProjectPoiContents {
         &self,
         evt: &gdk::Event,
     ) -> Option<gtk::TextIter> {
-        let is_click =
-            evt.get_event_type() == gdk::EventType::ButtonRelease && evt.get_button() == Some(1); // GDK_BUTTON_PRIMARY; https://github.com/gtk-rs/gtk/issues/1044
+        let is_click = evt.get_event_type() == gdk::EventType::ButtonRelease
+            && evt.get_button() == Some(gdk::BUTTON_PRIMARY);
         let is_tap = evt.get_event_type() == gdk::EventType::TouchEnd;
         if is_click || is_tap {
             evt.get_coords().and_then(|(x, y)| {

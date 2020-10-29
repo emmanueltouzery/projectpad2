@@ -95,6 +95,11 @@ impl Widget for ProjectBadge {
                 .expect("cairo backing buffer");
         let context = cairo::Context::new(&buf);
 
+        // code to make the badge text bold, but i feel it doesn't work out
+        // if let Some(family) = context.get_font_face().toy_get_family() {
+        //     context.select_font_face(&family, cairo::FontSlant::Normal, cairo::FontWeight::Bold);
+        // }
+
         // println!("drawing badge, allocation: {:?}", allocation);
         let new_fsw = match *font_size_for_width.borrow() {
             Some((w, font_size)) if w == allocation_width => {

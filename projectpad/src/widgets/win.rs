@@ -682,9 +682,6 @@ impl Widget for Win {
                             AddProject => Msg::AddProject,
                             UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
                         },
-                        gtk::Separator {
-                            orientation: gtk::Orientation::Vertical,
-                        },
                         #[name="normal_or_welcome_stack"]
                         gtk::Stack {
                             gtk::Box {
@@ -705,15 +702,25 @@ impl Widget for Win {
                                             ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
                                             ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
                                         },
-                                        #[name="project_items_list"]
-                                        ProjectItemsList(self.model.db_sender.clone()) {
-                                            property_width_request: 260,
+                                        gtk::Separator {},
+                                        gtk::Box {
                                             child: {
                                                 fill: true,
                                                 expand: true,
                                             },
-                                            ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
-                                        },
+                                            gtk::Separator {
+                                                orientation: gtk::Orientation::Vertical,
+                                            },
+                                            #[name="project_items_list"]
+                                            ProjectItemsList(self.model.db_sender.clone()) {
+                                                property_width_request: 260,
+                                                child: {
+                                                    fill: true,
+                                                    expand: true,
+                                                },
+                                                ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                                            },
+                                        }
                                     },
                                 },
                                 #[name="normal_or_project_welcome_stack"]

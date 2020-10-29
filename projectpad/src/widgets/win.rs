@@ -584,7 +584,7 @@ impl Widget for Win {
                         .stream()
                         .emit(ProjectPoiContentsMsg::KeyboardCtrlP);
                 }
-                Some('K') => {
+                Some('k') => {
                     self.search_view
                         .emit(SearchViewMsg::FilterChanged(Some("".to_string())));
                     self.model
@@ -602,7 +602,7 @@ impl Widget for Win {
                         .stream()
                         .emit(WinTitleBarMsg::EnterOrUpdateSearchProject);
                 }
-                Some('k') => {
+                Some('K') => {
                     self.model
                         .relm
                         .stream()

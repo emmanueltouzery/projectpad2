@@ -413,7 +413,11 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     buffer.insert(&mut end_iter, &t);
                 }
                 Event::Code(t) => {
+                    active_tags.insert(TAG_CODE, end_iter.get_offset());
                     buffer.insert(&mut end_iter, &t);
+                    let start_iter =
+                        buffer.get_iter_at_offset(active_tags.remove(TAG_CODE).unwrap());
+                    buffer.apply_tag_by_name(TAG_CODE, &start_iter, &end_iter);
                 }
                 Event::Html(t) => {
                     buffer.insert(&mut end_iter, &t);

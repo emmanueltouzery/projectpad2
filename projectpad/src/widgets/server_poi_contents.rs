@@ -198,7 +198,7 @@ impl Widget for ServerPoiContents {
                     // must request the scroll through a gtk idle callback,
                     // because the list was just populated and row items are
                     // not ready to be interacted with
-                    gtk::idle_add(move || {
+                    glib::idle_add_local(move || {
                         relm.stream().emit(Msg::ScrollToServerItem(si.clone()));
                         glib::Continue(false)
                     });

@@ -257,7 +257,7 @@ impl Widget for ProjectItemsList {
                     // we allow the gtk thread to realize the list items
                     // https://discourse.gnome.org/t/listbox-programmatically-scroll-to-row/3844
                     let l = self.project_items_list.clone();
-                    gtk::idle_add(move || {
+                    glib::idle_add_local(move || {
                         // need to fetch the row in the callback, if fetching
                         // it before i had issues with project POI items (somehow
                         // the parent of the GtkListViewItem was not populated)

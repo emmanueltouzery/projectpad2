@@ -5,9 +5,9 @@ authors = ["Emmanuel Touzery <etouzery@gmail.com>"]
 edition = "2018"
 
 [build-dependencies]
-reqwest = { version = "0.10.6", features = ["blocking"] }
-flate2 = "1.0.16"
-tar = "0.4.29"
+reqwest = { version = "0.10.8", features = ["blocking"] }
+flate2 = "1.0.18"
+tar = "0.4.30"
 includedir_codegen = "0.6.0"
 
 [dependencies]
@@ -16,25 +16,25 @@ includedir_codegen = "0.6.0"
 # relm: take in a clippy fix merged after 0.20.0
 relm = { git = "https://github.com/antoyo/relm", rev = "297c7844ca20031880ac60789dee7295c52f6e7c" }
 relm-derive = { git = "https://github.com/antoyo/relm", rev = "297c7844ca20031880ac60789dee7295c52f6e7c" }
-glib = "0.10.1"
-gio = "0.9.0"
+glib = "0.10.3"
+gio = "0.9.1"
 cairo-rs = { version = "0.9.1", features = ["png"] }
-gdk = "0.13.0"
+gdk = "0.13.2"
 projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "1.4.5", features = ["sqlite"] }
-pango = "0.9.0"
-pulldown-cmark = {version = "0.7.2", default-features=false }
+pango = "0.9.1"
+pulldown-cmark = { version = "0.8.0", default-features = false }
 itertools = "0.9.0"
-strum = "0.19.2"
-chrono = "0.4.15"
+strum = "0.19.5"
+chrono = "0.4.19"
 includedir = "0.6.0"
 phf = "0.8.0"
 sourceview = "0.9.0"
-serde = "1.0.116"
-serde_derive = "1.0.116"
-toml = "0.5.6"
+serde = "1.0.117"
+serde_derive = "1.0.117"
+toml = "0.5.7"
 dirs = "3.0.1"
 
 [dependencies.gtk]
-version = "0.9.1"
+version = "0.9.2"
 features = ["v3_22_29"]

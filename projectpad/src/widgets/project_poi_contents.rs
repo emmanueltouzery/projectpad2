@@ -304,6 +304,12 @@ impl Widget for ProjectPoiContents {
     }
 
     fn display_note(&mut self, note_contents: &str) {
+        if let Some(hadj) = self.note_scroll.get_hadjustment() {
+            hadj.set_value(0.0);
+        }
+        if let Some(vadj) = self.note_scroll.get_vadjustment() {
+            vadj.set_value(0.0);
+        }
         let note_buffer_info = crate::notes::note_markdown_to_text_buffer(
             note_contents,
             &crate::notes::build_tag_table(),

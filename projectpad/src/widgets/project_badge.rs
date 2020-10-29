@@ -171,7 +171,7 @@ impl Widget for ProjectBadge {
     fn compute_font_size(context: &cairo::Context, width: f64) -> f64 {
         let mut size = 5.0;
         context.set_font_size(size);
-        while context.text_extents("HU").width < width {
+        while context.text_extents("HU").width < width * 0.8 {
             context.set_font_size(size);
             size += 1.0;
         }

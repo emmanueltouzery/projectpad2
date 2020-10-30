@@ -119,27 +119,39 @@
 
 /* https://developer.gnome.org/hig-book/unstable/design-color.html.en */
 .environment_label_dev {
-  background: #46a046; /* greenish */
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  padding: 3px;
+  border-left: 5px solid #46a046; /* greenish */
+  padding-left: 6px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-right: 1px;
+  font-weight: bold;
   font-size: 11px;
 }
 .environment_label_uat {
-  background: #eed680; /* yellowish */
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  padding: 3px;
+  border-left: 5px solid #eed680; /* yellowish */
+  padding-left: 6px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-right: 1px;
+  font-weight: bold;
   font-size: 11px;
 }
 .environment_label_stg {
-  background: #7590ae; /* blueish  */
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  padding: 3px;
+  border-left: 5px solid #7590ae; /* blueish  */
+  padding-left: 6px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-right: 1px;
+  font-weight: bold;
   font-size: 11px;
 }
 .environment_label_prod {
-  background-color: #df421e; /* reddish */
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  padding: 3px;
+  border-left: 5px solid #df421e; /* reddish */
+  padding-left: 6px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-right: 1px;
+  font-weight: bold;
   font-size: 11px;
 }
 

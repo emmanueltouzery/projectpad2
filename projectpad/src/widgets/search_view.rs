@@ -56,6 +56,7 @@ pub struct SearchResult {
     pub server_notes: Vec<ServerNote>,
     pub server_pois: Vec<ServerPointOfInterest>,
     pub server_websites: Vec<ServerWebsite>,
+    pub reset_scroll: bool,
 }
 
 pub struct Area {
@@ -328,7 +329,7 @@ impl Widget for SearchView {
                 }
                 Inhibit(false)
             });
-        self.fetch_search_results();
+        self.fetch_search_results(true);
     }
 
     fn fill_popover(
@@ -502,7 +503,7 @@ impl Widget for SearchView {
         match event {
             Msg::FilterChanged(filter) => {
                 self.model.filter = filter;
-                self.fetch_search_results();
+                self.fetch_search_results(true);
             }
             Msg::SelectItem(item) => {
                 if let Some(btn) = self.model.save_btn.as_ref() {
@@ -552,7 +553,7 @@ impl Widget for SearchView {
                     dialog.close();
                     self.model.server_item_add_edit_dialog = None;
                 }
-                self.fetch_search_results();
+                self.fetch_search_results(false);
             }
             Msg::RequestSelectedItem => {
                 let item = self.model.selected_item.borrow().clone();
@@ -1022,18 +1023,20 @@ impl Widget for SearchView {
             }
         }
         let upper = search_items.len() as i32 * SEARCH_RESULT_WIDGET_HEIGHT;
-        self.search_scroll.set_adjustment(&gtk::Adjustment::new(
-            0.0,
-            0.0,
-            upper as f64,
-            10.0,
-            60.0,
-            self.search_result_area.get_allocation().height as f64,
-        ));
+        if search_result.map(|r| r.reset_scroll).unwrap_or(false) {
+            self.search_scroll.set_adjustment(&gtk::Adjustment::new(
+                0.0,
+                0.0,
+                upper as f64,
+                10.0,
+                60.0,
+                self.search_result_area.get_allocation().height as f64,
+            ));
+        }
         self.search_result_area.queue_draw();
     }
 
-    fn fetch_search_results(&self) {
+    fn fetch_search_results(&self, reset_scroll: bool) {
         match &self.model.filter {
             None => self
                 .model
@@ -1049,6 +1052,7 @@ impl Widget for SearchView {
                     server_notes: vec![],
                     server_pois: vec![],
                     server_websites: vec![],
+                    reset_scroll: true,
                 })
                 .unwrap(),
             Some(filter) => {
@@ -1151,6 +1155,7 @@ impl Widget for SearchView {
                             server_databases,
                             server_extra_users,
                             server_websites,
+                            reset_scroll,
                         })
                         .unwrap();
                     }))

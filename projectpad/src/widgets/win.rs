@@ -29,6 +29,7 @@ use super::project_summary::Msg::ProjectUpdated as ProjectSummaryProjectUpdated;
 use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
+use super::search_view::Msg::SearchResultsModified as SearchViewSearchResultsModified;
 use super::search_view::{OperationMode, SearchItemsType, SearchView};
 use super::server_poi_contents::ServerItem;
 use super::tooltips_overlay;
@@ -91,6 +92,7 @@ pub enum Msg {
     UpdateProjectTooltip(Option<(String, i32)>),
     ShowInfoBar(String),
     HideInfobar,
+    SearchResultsModified,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -523,6 +525,12 @@ impl Widget for Win {
                     .stream()
                     .emit(ProjectListMsg::DarkThemeToggled);
             }
+            Msg::SearchResultsModified => {
+                // the user modified search results
+                // we should refresh the main view else it
+                // could show outdated contents
+                self.project_list.stream().emit(ProjectListMsg::ForceReload);
+            }
         }
     }
 
@@ -832,7 +840,8 @@ impl Widget for Win {
                         child: {
                             name: Some(CHILD_NAME_SEARCH)
                         },
-                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new((**item).clone()))
+                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new((**item).clone())),
+                        SearchViewSearchResultsModified => Msg::SearchResultsModified,
                     }
                 },
             },

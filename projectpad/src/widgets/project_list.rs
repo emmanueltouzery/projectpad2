@@ -21,6 +21,7 @@ pub enum Msg {
     ProjectActivated((Project, UpdateParents)),
     GotProjects(Vec<Project>),
     ProjectSelectedFromElsewhere(i32),
+    ForceReload,
     ProjectListChanged,
     AddProject,
     MouseEnterProject(i32),
@@ -82,6 +83,16 @@ impl Widget for ProjectList {
                 }
             }
             Msg::ProjectListChanged => {
+                self.fetch_projects();
+            }
+            Msg::ForceReload => {
+                // by resetting the active project id, we'll
+                // notify our parent that the project changed,
+                // forcing a complete reload, even if the project
+                // is the same as before -- useful if we think
+                // a lower level (project item or server item)
+                // changed
+                self.model.active_project_id = None;
                 self.fetch_projects();
             }
             // for my parent

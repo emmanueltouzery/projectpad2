@@ -158,7 +158,11 @@ impl Widget for ProjectBadge {
         );
         context.stroke_preserve();
         let bg_color = style_context.lookup_color("theme_bg_color").unwrap();
-        context.set_source_rgb(bg_color.red, bg_color.green, bg_color.blue);
+        // so the goal here is to push the contrast. if the background color
+        // is darker (<0.5) we go for pure black; if it's brighter, we go
+        // for pure white.
+        let bg_base = if bg_color.red < 0.5 { 0.0 } else { 1.0 };
+        context.set_source_rgb(bg_base, bg_base, bg_base);
         context.fill();
         context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
 

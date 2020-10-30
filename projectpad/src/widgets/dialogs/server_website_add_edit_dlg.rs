@@ -24,7 +24,7 @@ pub enum Msg {
     ServerDbRemoved,
     OkPressed,
     GotPassword(String),
-    ServerWwwUpdated((ServerWebsite, Option<ServerDatabase>)),
+    ServerWwwUpdated(Box<(ServerWebsite, Option<ServerDatabase>)>),
 }
 
 // String for details, because I can't pass Error across threads
@@ -108,7 +108,7 @@ impl Widget for ServerWebsiteAddEditDialog {
         let stream2 = relm.stream().clone();
         let (server_www_updated_channel, server_www_updated_sender) =
             relm::Channel::new(move |r: SaveResult| match r {
-                Ok(srv_www) => stream2.emit(Msg::ServerWwwUpdated(srv_www)),
+                Ok(srv_www) => stream2.emit(Msg::ServerWwwUpdated(Box::new(srv_www))),
                 Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
             });
         let stream3 = relm.stream().clone();

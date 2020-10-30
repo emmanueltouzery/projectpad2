@@ -125,37 +125,42 @@ impl Widget for ServerPoiContents {
         match si {
             ServerItem::Database(db) => {
                 let id = db.id;
-                Box::new(move |item2| match item2 {
-                    ServerItem::Database(db2) if db2.id == id => true,
-                    _ => false,
+                Box::new(move |item2| {
+                    matches!(item2,
+                        ServerItem::Database(db2) if db2.id == id
+                    )
                 })
             }
             ServerItem::ExtraUserAccount(us) => {
                 let id = us.id;
-                Box::new(move |item2| match item2 {
-                    ServerItem::ExtraUserAccount(us2) if us2.id == id => true,
-                    _ => false,
+                Box::new(move |item2| {
+                    matches!(item2,
+                        ServerItem::ExtraUserAccount(us2) if us2.id == id
+                    )
                 })
             }
             ServerItem::Note(n) => {
                 let id = n.id;
-                Box::new(move |item2| match item2 {
-                    ServerItem::Note(n2) if n2.id == id => true,
-                    _ => false,
+                Box::new(move |item2| {
+                    matches!(item2,
+                        ServerItem::Note(n2) if n2.id == id
+                    )
                 })
             }
             ServerItem::PointOfInterest(p) => {
                 let id = p.id;
-                Box::new(move |item2| match item2 {
-                    ServerItem::PointOfInterest(p2) if p2.id == id => true,
-                    _ => false,
+                Box::new(move |item2| {
+                    matches!(item2,
+                        ServerItem::PointOfInterest(p2) if p2.id == id
+                    )
                 })
             }
             ServerItem::Website(w) => {
                 let id = w.id;
-                Box::new(move |item2| match item2 {
-                    ServerItem::Website(w2) if w2.id == id => true,
-                    _ => false,
+                Box::new(move |item2| {
+                    matches!(item2,
+                        ServerItem::Website(w2) if w2.id == id
+                    )
                 })
             }
         }

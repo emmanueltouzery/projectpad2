@@ -588,7 +588,7 @@ impl Widget for ServerItemListItem {
                 relm::connect!(
                     component@MsgServerWebsiteAddEditDialog::ServerWwwUpdated(ref www_db),
                     self.model.relm,
-                    Msg::ServerWwwUpdated(www_db.clone())
+                    Msg::ServerWwwUpdated(*www_db.clone())
                 );
                 self.model.server_add_edit_dialog = Some((
                     ServerAddEditDialogComponent::Website(component),

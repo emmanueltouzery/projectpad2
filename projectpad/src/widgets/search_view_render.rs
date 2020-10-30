@@ -191,6 +191,7 @@ pub fn draw_child(
     let extra_css_class = match &item {
         ProjectPadItem::Server(_)
         | ProjectPadItem::ProjectNote(_)
+        | ProjectPadItem::ServerLink(_)
         | ProjectPadItem::ProjectPoi(_) => "search_view_parent",
         _ => "search_view_child",
     };

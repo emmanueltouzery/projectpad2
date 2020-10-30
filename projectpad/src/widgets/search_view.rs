@@ -1131,6 +1131,7 @@ impl Widget for SearchView {
                         all_project_ids.extend(prjs.iter().map(|p| p.id));
                         all_project_ids.extend(project_pois.iter().map(|ppoi| ppoi.project_id));
                         all_project_ids.extend(project_notes.iter().map(|pn| pn.project_id));
+                        all_project_ids.extend(server_links.iter().map(|pn| pn.project_id));
                         let all_projects = Self::load_projects_by_id(sql_conn, &all_project_ids);
                         let filtered_projects = match &project_pattern {
                             None => all_projects,

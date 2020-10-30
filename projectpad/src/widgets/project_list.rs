@@ -26,6 +26,7 @@ pub enum Msg {
     MouseEnterProject(i32),
     MouseLeaveProject(i32),
     UpdateProjectTooltip(Option<(String, i32)>),
+    DarkThemeToggled,
 }
 
 pub struct Model {
@@ -109,6 +110,11 @@ impl Widget for ProjectList {
                     .emit(Msg::UpdateProjectTooltip(None));
             }
             Msg::UpdateProjectTooltip(_) => {}
+            Msg::DarkThemeToggled => {
+                for child in &self.model.children_widgets {
+                    child.stream().emit(ProjectBadgeMsg::DarkThemeToggled);
+                }
+            }
         }
     }
 

@@ -73,6 +73,7 @@ pub enum Msg {
     DbUnlockAttempted(bool),
     DbUnlocked,
     DbPrepared,
+    DarkThemeToggled,
     ProjectActivated(Project),
     EnvironmentChanged(EnvironmentType),
     ProjectItemSelected(Option<ProjectItem>),
@@ -142,6 +143,8 @@ impl Widget for Win {
                                self.model.relm, Msg::SearchActiveChanged(is_active));
         relm::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
                                self.model.relm, Msg::SearchTextChanged(search_text.clone()));
+        relm::connect!(titlebar@WinTitleBarMsg::DarkThemeToggled,
+                               self.model.relm, Msg::DarkThemeToggled);
         self.init_infobar_overlay();
 
         self.unlock_db();
@@ -514,6 +517,11 @@ impl Widget for Win {
             }
             Msg::HideInfobar => {
                 self.model.infobar.set_revealed(false);
+            }
+            Msg::DarkThemeToggled => {
+                self.project_list
+                    .stream()
+                    .emit(ProjectListMsg::DarkThemeToggled);
             }
         }
     }

@@ -21,6 +21,7 @@ pub enum Msg {
     ConfigUpdated(Box<Config>),
     SearchEnable,
     SearchClicked,
+    DarkThemeToggled,
     SearchActiveChanged(bool),
     SearchTextChanged(String),
     SearchTextChangedFromElsewhere((String, gdk::EventKey)),
@@ -180,9 +181,9 @@ impl Widget for WinTitleBar {
                     eprintln!("Error showing help: {:?}", e);
                 }
             }
-            Msg::ConfigUpdated(_) => {
-                // this is meant for win... we emit here, not interested by it ourselves
-            }
+            // these are meant for win... we emit here, not interested by it ourselves
+            Msg::ConfigUpdated(_) => {}
+            Msg::DarkThemeToggled => {}
         }
     }
 
@@ -196,6 +197,8 @@ impl Widget for WinTitleBar {
         let prefs_win = self.model.prefs_win.as_ref().unwrap();
         relm::connect!(prefs_win@PreferencesMsg::ConfigUpdated(ref cfg),
                                self.model.relm, Msg::ConfigUpdated(cfg.clone()));
+        relm::connect!(prefs_win@PreferencesMsg::DarkThemeToggled(_),
+                               self.model.relm, Msg::DarkThemeToggled);
         prefs_win.widget().set_transient_for(Some(&main_win));
         prefs_win
             .widget()

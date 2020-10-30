@@ -19,6 +19,7 @@ pub enum Msg {
     MouseLeave,
     MouseEnterProject(i32),
     MouseLeaveProject(i32),
+    DarkThemeToggled,
 }
 
 pub struct Model {
@@ -135,6 +136,8 @@ impl Widget for ProjectBadge {
             allocation_height.into(),
         );
 
+        let fg_color = style_context.lookup_color("theme_fg_color").unwrap();
+        context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
         if is_active {
             context.set_line_width(6.0);
             context.set_line_cap(cairo::LineCap::Round);
@@ -143,8 +146,6 @@ impl Widget for ProjectBadge {
                 allocation_width as f64 - 10.0,
                 allocation_height as f64 - 5.0,
             );
-            let fg_color = style_context.get_color(gtk::StateFlags::NORMAL);
-            context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
             context.stroke();
         }
 
@@ -156,9 +157,10 @@ impl Widget for ProjectBadge {
             2.0 * PI,
         );
         context.stroke_preserve();
-        context.set_source_rgb(1.0, 1.0, 1.0);
+        let bg_color = style_context.lookup_color("theme_bg_color").unwrap();
+        context.set_source_rgb(bg_color.red, bg_color.green, bg_color.blue);
         context.fill();
-        context.set_source_rgb(0.0, 0.0, 0.0);
+        context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
 
         match icon {
             // the 'if' works around an issue reading from SQL. should be None if it's empty!!
@@ -245,6 +247,11 @@ impl Widget for ProjectBadge {
                     .relm
                     .stream()
                     .emit(Msg::MouseLeaveProject(self.model.project.id));
+            }
+            Msg::DarkThemeToggled => {
+                // force a recompute of the display
+                self.model.backing_buffer.replace(None);
+                self.drawing_area.queue_draw();
             }
             Msg::MouseEnterProject(_) => {}
             Msg::MouseLeaveProject(_) => {}

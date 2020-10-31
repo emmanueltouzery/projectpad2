@@ -38,7 +38,7 @@ pub struct Model {
     infobar_label: gtk::Label,
 }
 
-fn check_db_password(pass: &str) -> OpResult {
+pub fn check_db_password(pass: &str) -> OpResult {
     let db_conn =
         SqliteConnection::establish(&projectpadsql::database_path().to_string_lossy()).unwrap();
     unlock_db_dlg::try_unlock_db(&db_conn, pass)

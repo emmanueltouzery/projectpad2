@@ -9,6 +9,7 @@ pub enum Msg {
     CopyPassword,
     RequestPassword,
     PublishPassword(String),
+    PasswordChanged(String),
 }
 
 #[derive(PartialEq, Eq)]
@@ -36,6 +37,11 @@ impl Widget for PasswordField {
             popover
                 .set_pointing_to(&password_entry.get_icon_area(gtk::EntryIconPosition::Secondary));
             popover.popup();
+        });
+        let r = self.model.relm.clone();
+        self.password_entry.connect_changed(move |p| {
+            r.stream()
+                .emit(Msg::PasswordChanged(p.get_text().to_string()))
         });
     }
 
@@ -102,6 +108,7 @@ impl Widget for PasswordField {
                 ));
             }
             Msg::PublishPassword(_) => {}
+            Msg::PasswordChanged(_) => {}
         }
     }
 

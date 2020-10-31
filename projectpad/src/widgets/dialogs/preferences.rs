@@ -1,3 +1,5 @@
+use super::super::password_field;
+use super::super::password_field::Msg as PasswordFieldMsg;
 use super::change_db_password_dlg;
 use super::change_db_password_dlg::ChangeDbPasswordDialog;
 use super::change_db_password_dlg::Msg as MsgChangeDbPassword;
@@ -31,6 +33,8 @@ pub enum Msg {
     DarkThemeToggled(bool),
     GotStorePassInKeyring(bool),
     RemovePasswordFromKeyring,
+    RemovePasswordFromKeyringConfigCheckPass(String),
+    RemovePasswordFromKeyringUserResponse(gtk::ResponseType),
     ChangeDbPassword,
     KeyPress(gdk::EventKey),
     ConfigUpdated(Box<Config>),
@@ -44,6 +48,8 @@ pub struct Model {
     header: Component<Header>,
     win: gtk::Window,
     config: Config,
+    confirm_dialog: Option<gtk::MessageDialog>,
+    confirm_ok_btn: Option<gtk::Widget>,
     pass_keyring_sender: relm::Sender<bool>,
     _pass_keyring_channel: relm::Channel<bool>,
     change_db_password_dlg: Option<Component<ChangeDbPasswordDialog>>,
@@ -93,6 +99,8 @@ impl Widget for Preferences {
             _pass_keyring_channel,
             change_db_password_dlg: None,
             remove_pass_from_keyring_spinner: gtk::SpinnerBuilder::new().build(),
+            confirm_dialog: None,
+            confirm_ok_btn: None,
         }
     }
 
@@ -134,8 +142,25 @@ impl Widget for Preferences {
                 self.update_config();
             }
             Msg::RemovePasswordFromKeyring => {
-                projectpadsql::clear_pass_from_keyring().unwrap();
-                self.load_keyring_pass_state();
+                self.remove_pass_from_keyring();
+            }
+            Msg::RemovePasswordFromKeyringConfigCheckPass(entered_pass) => {
+                if let Some(ok_btn) = &self.model.confirm_ok_btn {
+                    ok_btn.set_sensitive(
+                        change_db_password_dlg::check_db_password(&entered_pass).is_ok(),
+                    );
+                }
+            }
+            Msg::RemovePasswordFromKeyringUserResponse(resp) => {
+                if let Some(dlg) = &self.model.confirm_dialog {
+                    if resp == gtk::ResponseType::Yes {
+                        projectpadsql::clear_pass_from_keyring().unwrap();
+                        self.load_keyring_pass_state();
+                    }
+                    dlg.close();
+                    self.model.confirm_dialog = None;
+                    self.model.confirm_ok_btn = None;
+                }
             }
             Msg::ChangeDbPassword => {
                 let change_pwd_contents =
@@ -175,6 +200,47 @@ impl Widget for Preferences {
                 // meant for my parent, not for me
             }
         }
+    }
+
+    fn remove_pass_from_keyring(&mut self) {
+        let dialog = gtk::MessageDialog::new(
+            Some(&self.prefs_win),
+            gtk::DialogFlags::all(),
+            gtk::MessageType::Warning,
+            gtk::ButtonsType::None,
+            "Are you sure to remove the keyring password?",
+        );
+        let entry = relm::init::<password_field::PasswordField>((
+            "".to_string(),
+            password_field::ActivatesDefault::Yes,
+        ))
+        .expect("prefs password field");
+
+        dialog.add_button("No", gtk::ResponseType::No);
+        let yes_btn = dialog.add_button("Yes", gtk::ResponseType::Yes);
+        yes_btn.set_sensitive(false);
+
+        let entry_w = entry.widget();
+        entry_w.set_margin_start(25);
+        entry_w.set_margin_end(25);
+        dialog.get_content_area().add(entry_w);
+        dialog.set_property_secondary_text(Some("Please enter the current password to confirm"));
+
+        relm::connect!(
+                entry@PasswordFieldMsg::PasswordChanged(ref p),
+                self.model.relm,
+                Msg::RemovePasswordFromKeyringConfigCheckPass(p.clone()));
+        relm::connect!(
+            self.model.relm,
+            dialog,
+            connect_response(_, r_id),
+            Msg::RemovePasswordFromKeyringUserResponse(r_id)
+        );
+
+        self.model.confirm_dialog = Some(dialog.clone());
+        self.model.confirm_ok_btn = Some(yes_btn);
+
+        dialog.show();
     }
 
     view! {

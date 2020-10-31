@@ -251,7 +251,7 @@ pub fn style_grid(grid: &gtk::Grid) {
     grid.set_margin_start(30);
     grid.set_margin_end(30);
     grid.set_margin_top(10);
-    grid.set_margin_bottom(5);
+    grid.set_margin_bottom(10);
     grid.set_row_spacing(5);
     grid.set_column_spacing(10);
 }
@@ -323,7 +323,7 @@ where
     .to_string()
         + item_desc;
     let accel_group = widget_param.get_accel_group();
-    let dialog = standard_dialogs::modal_dialog(widget_for_window, 600, 200, title);
+    let dialog = standard_dialogs::modal_dialog(widget_for_window, 600, 150, title);
     dialog.add_accel_group(accel_group);
     let dialog_contents =
         relm::init::<Dlg>(widget_param).expect("error initializing the server item add edit modal");

@@ -204,6 +204,14 @@ impl Widget for ProjectAddEditDialog {
                         top_attach: 1,
                     },
                 },
+                gtk::Label {
+                    text: "Environments",
+                    halign: gtk::Align::End,
+                    cell: {
+                        left_attach: 0,
+                        top_attach: 2,
+                    },
+                },
                 EnvironmentsPicker(SelectedEnvironments {
                     has_dev: self.model.has_dev,
                     has_stg: self.model.has_stg,
@@ -211,9 +219,8 @@ impl Widget for ProjectAddEditDialog {
                     has_prod: self.model.has_prod,
                 }) {
                     cell: {
-                        left_attach: 0,
+                        left_attach: 1,
                         top_attach: 2,
-                        width: 2,
                     },
                     EnvironmentsPickerMsgEnvToggled(env_type) => Msg::EnvironmentToggled(env_type)
                 },

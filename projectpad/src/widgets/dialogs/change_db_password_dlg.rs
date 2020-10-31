@@ -4,6 +4,7 @@ use super::unlock_db_dlg;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::password_field;
 use crate::widgets::password_field::Msg as PasswordFieldMsg;
+use crate::widgets::password_field::Msg::PasswordChanged as PasswordFieldMsgPasswordChanged;
 use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
 use crate::widgets::password_field::PasswordField;
 use diesel::prelude::*;
@@ -18,6 +19,9 @@ type OpResult = Result<(), String>;
 pub enum Msg {
     OkPressed,
     HideInfobar,
+    GotApplyButton(gtk::Button),
+    CurrentPasswordChange(String),
+    CurrentPasswordValid(bool),
     GotCurrentPassword(String),
     GotNewPassword(String),
     GotConfirmNewPassword(String),
@@ -29,10 +33,13 @@ pub enum Msg {
 pub struct Model {
     relm: relm::Relm<ChangeDbPasswordDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
+    _current_pass_valid_channel: relm::Channel<OpResult>,
+    current_pass_valid_sender: relm::Sender<OpResult>,
     _pass_valid_channel: relm::Channel<OpResult>,
     pass_valid_sender: relm::Sender<OpResult>,
     _changed_pass_channel: relm::Channel<OpResult>,
     changed_pass_sender: relm::Sender<OpResult>,
+    apply_button: Option<gtk::Button>,
     new_password: Option<String>,
     infobar: gtk::InfoBar,
     infobar_label: gtk::Label,
@@ -91,6 +98,11 @@ impl Widget for ChangeDbPasswordDialog {
         let stream2 = relm.stream().clone();
         let (changed_pass_channel, changed_pass_sender) =
             relm::Channel::new(move |r: OpResult| stream2.emit(Msg::ChangedPass(r)));
+        let stream3 = relm.stream().clone();
+        let (current_pass_valid_channel, current_pass_valid_sender) =
+            relm::Channel::new(move |r: OpResult| {
+                stream3.emit(Msg::CurrentPasswordValid(r.is_ok()))
+            });
         let infobar = gtk::InfoBarBuilder::new()
             .revealed(false)
             .message_type(gtk::MessageType::Info)
@@ -104,6 +116,8 @@ impl Widget for ChangeDbPasswordDialog {
         Model {
             relm: relm.clone(),
             db_sender,
+            current_pass_valid_sender,
+            _current_pass_valid_channel: current_pass_valid_channel,
             pass_valid_sender,
             _pass_valid_channel: pass_valid_channel,
             changed_pass_sender,
@@ -111,6 +125,7 @@ impl Widget for ChangeDbPasswordDialog {
             new_password: None,
             infobar,
             infobar_label,
+            apply_button: None,
         }
     }
 
@@ -122,6 +137,15 @@ impl Widget for ChangeDbPasswordDialog {
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::HideInfobar => self.clear_error(),
+            Msg::CurrentPasswordChange(pass) => {
+                let s = self.model.current_pass_valid_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |_| {
+                        s.send(check_db_password(&pass)).unwrap();
+                    }))
+                    .unwrap();
+            }
             Msg::GotCurrentPassword(pass) => {
                 let s = self.model.pass_valid_sender.clone();
                 self.model
@@ -133,6 +157,16 @@ impl Widget for ChangeDbPasswordDialog {
             }
             Msg::CheckedOldPassword(false) => {
                 self.show_error("Wrong current database password");
+            }
+            Msg::GotApplyButton(btn) => {
+                btn.set_label("Apply");
+                btn.set_sensitive(false);
+                self.model.apply_button = Some(btn);
+            }
+            Msg::CurrentPasswordValid(valid) => {
+                if let Some(btn) = &self.model.apply_button {
+                    btn.set_sensitive(valid);
+                }
             }
             Msg::CheckedOldPassword(true) => {
                 self.clear_error();
@@ -150,6 +184,9 @@ impl Widget for ChangeDbPasswordDialog {
                 if Some(&pass) != self.model.new_password.as_ref() {
                     self.show_error("New and confirm new passwords don't match");
                 } else {
+                    if let Some(btn) = &self.model.apply_button {
+                        btn.set_sensitive(false);
+                    }
                     self.clear_error();
                     let s = self.model.changed_pass_sender.clone();
                     self.model
@@ -168,6 +205,9 @@ impl Widget for ChangeDbPasswordDialog {
                 }
             }
             Msg::ChangedPass(Err(msg)) => {
+                if let Some(btn) = &self.model.apply_button {
+                    btn.set_sensitive(true);
+                }
                 standard_dialogs::display_error_str(
                     "Error changing the database password",
                     Some(msg),
@@ -214,6 +254,7 @@ impl Widget for ChangeDbPasswordDialog {
                         top_attach: 2,
                     },
                     PasswordFieldMsgPublishPassword(ref pass) => Msg::GotCurrentPassword(pass.clone()),
+                    PasswordFieldMsgPasswordChanged(ref pass) => Msg::CurrentPasswordChange(pass.clone()),
                 },
                 #[name="new_pwd_header"]
                 gtk::Label {

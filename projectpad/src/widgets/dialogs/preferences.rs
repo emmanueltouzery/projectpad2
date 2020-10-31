@@ -180,10 +180,12 @@ impl Widget for Preferences {
                         d_c.emit(change_db_password_dlg::Msg::OkPressed);
                     },
                 );
-                btn.set_label("Apply");
                 let d = dialog.clone();
                 relm::connect!(component@MsgChangeDbPassword::SuccessfullyChangedPass,
                                self.model.relm, Msg::ChangedPass(d.clone()));
+                component
+                    .stream()
+                    .emit(MsgChangeDbPassword::GotApplyButton(btn));
                 self.model.change_db_password_dlg = Some(component);
                 dialog.show();
             }

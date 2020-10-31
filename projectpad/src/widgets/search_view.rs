@@ -1245,7 +1245,11 @@ impl Widget for SearchView {
     ) -> Vec<ServerExtraUserAccount> {
         use projectpadsql::schema::server_extra_user_account::dsl::*;
         server_extra_user_account
-            .filter(desc.like(filter).escape('\\'))
+            .filter(
+                desc.like(filter)
+                    .escape('\\')
+                    .or(username.like(filter).escape('\\')),
+            )
             .load::<ServerExtraUserAccount>(db_conn)
             .unwrap()
     }

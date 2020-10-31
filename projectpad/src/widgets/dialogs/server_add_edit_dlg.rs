@@ -282,6 +282,7 @@ impl Widget for ServerAddEditDialog {
             gtk::Entry {
                 hexpand: true,
                 text: &self.model.description,
+                activates_default: true,
                 cell: {
                     left_attach: 1,
                     top_attach: 0,
@@ -316,6 +317,7 @@ impl Widget for ServerAddEditDialog {
             gtk::Entry {
                 hexpand: true,
                 text: &self.model.address,
+                activates_default: true,
                 cell: {
                     left_attach: 1,
                     top_attach: 2,
@@ -333,6 +335,7 @@ impl Widget for ServerAddEditDialog {
             gtk::Entry {
                 hexpand: true,
                 text: &self.model.text,
+                activates_default: true,
                 cell: {
                     left_attach: 1,
                     top_attach: 3,
@@ -365,6 +368,7 @@ impl Widget for ServerAddEditDialog {
             #[name="username_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.username,
                 cell: {
                     left_attach: 1,
@@ -380,7 +384,7 @@ impl Widget for ServerAddEditDialog {
                 },
             },
             #[name="password_entry"]
-            PasswordField((self.model.password.clone(), password_field::ActivatesDefault::No)) {
+            PasswordField((self.model.password.clone(), password_field::ActivatesDefault::Yes)) {
                 hexpand: true,
                 cell: {
                     left_attach: 1,

@@ -65,6 +65,7 @@ pub fn prepare_custom_dialog<T: Widget>(
         .add_button("Save", gtk::ResponseType::Ok)
         .downcast::<gtk::Button>()
         .expect("error reading the dialog save button");
+    save.set_property_has_default(true);
     save.get_style_context().add_class("suggested-action");
     prepare_custom_dialog_component_ref(&dialog, &dialog_contents);
     let save_btn = save.clone();

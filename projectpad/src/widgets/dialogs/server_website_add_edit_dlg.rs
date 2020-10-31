@@ -237,6 +237,7 @@ impl Widget for ServerWebsiteAddEditDialog {
             #[name="desc_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.description,
                 cell: {
                     left_attach: 1,
@@ -254,6 +255,7 @@ impl Widget for ServerWebsiteAddEditDialog {
             #[name="url_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.url,
                 cell: {
                     left_attach: 1,
@@ -271,6 +273,7 @@ impl Widget for ServerWebsiteAddEditDialog {
             #[name="text_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.text,
                 cell: {
                     left_attach: 1,
@@ -304,6 +307,7 @@ impl Widget for ServerWebsiteAddEditDialog {
             #[name="username_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.username,
                 cell: {
                     left_attach: 1,
@@ -319,7 +323,7 @@ impl Widget for ServerWebsiteAddEditDialog {
                 },
             },
             #[name="password_entry"]
-            PasswordField((self.model.password.clone(), password_field::ActivatesDefault::No)) {
+            PasswordField((self.model.password.clone(), password_field::ActivatesDefault::Yes)) {
                 hexpand: true,
                 cell: {
                     left_attach: 1,

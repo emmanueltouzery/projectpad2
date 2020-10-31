@@ -258,6 +258,7 @@ impl Widget for ServerPoiAddEditDialog {
             #[name="desc_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.description,
                 cell: {
                     left_attach: 1,
@@ -275,6 +276,7 @@ impl Widget for ServerPoiAddEditDialog {
             #[name="path_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.path,
                 cell: {
                     left_attach: 1,
@@ -293,6 +295,7 @@ impl Widget for ServerPoiAddEditDialog {
             #[name="text_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.text,
                 cell: {
                     left_attach: 1,

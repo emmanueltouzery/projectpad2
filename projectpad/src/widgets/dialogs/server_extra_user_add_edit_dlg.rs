@@ -188,6 +188,7 @@ impl Widget for ServerExtraUserAddEditDialog {
             #[name="desc_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.description,
                 cell: {
                     left_attach: 1,
@@ -221,6 +222,7 @@ impl Widget for ServerExtraUserAddEditDialog {
             #[name="username_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.username,
                 cell: {
                     left_attach: 1,
@@ -236,7 +238,7 @@ impl Widget for ServerExtraUserAddEditDialog {
                 },
             },
             #[name="password_entry"]
-            PasswordField((self.model.password.clone(), password_field::ActivatesDefault::No)) {
+            PasswordField((self.model.password.clone(), password_field::ActivatesDefault::Yes)) {
                 hexpand: true,
                 cell: {
                     left_attach: 1,

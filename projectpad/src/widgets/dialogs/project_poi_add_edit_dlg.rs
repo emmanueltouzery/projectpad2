@@ -194,6 +194,7 @@ impl Widget for ProjectPoiAddEditDialog {
             #[name="desc_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.description,
                 cell: {
                     left_attach: 1,
@@ -211,6 +212,7 @@ impl Widget for ProjectPoiAddEditDialog {
             #[name="path_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.path,
                 cell: {
                     left_attach: 1,
@@ -229,6 +231,7 @@ impl Widget for ProjectPoiAddEditDialog {
             #[name="text_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.text,
                 cell: {
                     left_attach: 1,

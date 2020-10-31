@@ -15,6 +15,7 @@ pub enum Msg {
 #[derive(PartialEq, Eq)]
 pub enum ActivatesDefault {
     Yes,
+    #[allow(dead_code)]
     No,
 }
 

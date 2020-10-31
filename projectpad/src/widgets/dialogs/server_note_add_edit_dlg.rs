@@ -169,6 +169,7 @@ impl Widget for ServerNoteAddEditDialog {
             #[name="title_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.title,
                 cell: {
                     left_attach: 1,

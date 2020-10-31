@@ -231,6 +231,7 @@ impl Widget for ServerLinkAddEditDialog {
             #[name="desc_entry"]
             gtk::Entry {
                 hexpand: true,
+                activates_default: true,
                 text: &self.model.description,
                 cell: {
                     left_attach: 1,

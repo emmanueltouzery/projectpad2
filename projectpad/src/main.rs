@@ -24,7 +24,6 @@ fn main() {
 
     let db_preexisted = projectpadsql::database_path().is_file();
 
-    // TODO gui error if we fail connecting
     let sql_channel = sql_thread::start_sql_thread();
 
     let res_bytes = include_bytes!("icons.bin");

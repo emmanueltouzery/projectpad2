@@ -318,6 +318,7 @@ impl Widget for ServerAddEditDialog {
                 hexpand: true,
                 text: &self.model.address,
                 activates_default: true,
+                placeholder_text: Some("Address or address:port"),
                 cell: {
                     left_attach: 1,
                     top_attach: 2,

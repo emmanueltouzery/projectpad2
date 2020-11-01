@@ -52,6 +52,8 @@ pub enum Msg {
     GotoItem(Project, Server),
     ShowInfoBar(String),
     CopyPassword,
+    OpenLink,
+    OpenSingleWebsiteLink,
 }
 
 // String for details, because I can't pass Error across threads
@@ -601,7 +603,23 @@ impl Widget for ProjectPoiHeader {
                     }
                 }
             }
+            Msg::OpenLink => {
+                if let Some(ProjectItem::Server(srv)) = self.model.project_item.as_ref() {
+                    if srv.access_type == ServerAccessType::SrvAccessWww && !srv.ip.is_empty() {
+                        if let Result::Err(e) =
+                            gtk::show_uri_on_window(None::<&gtk::Window>, &srv.ip, 0)
+                        {
+                            eprintln!("Error opening link: {}", e);
+                        }
+                    } else {
+                        // ok, the server has no link. we could still open it, if
+                        // there's a single website with an address under that server
+                        self.model.relm.stream().emit(Msg::OpenSingleWebsiteLink);
+                    }
+                }
+            }
             // meant for my parent
+            Msg::OpenSingleWebsiteLink => {}
             Msg::ShowInfoBar(_) => {}
             Msg::ProjectItemUpdated(_pi) => {}
             Msg::GotoItem(_, _) => {}

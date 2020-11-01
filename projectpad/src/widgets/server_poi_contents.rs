@@ -30,6 +30,7 @@ pub enum Msg {
     RequestDisplayServerItem(ServerItem),
     ShowInfoBar(String),
     ScrollToServerItem(ServerItem),
+    OpenSingleWebsiteLink,
 }
 
 #[derive(Clone, Debug)]
@@ -215,6 +216,27 @@ impl Widget for ServerPoiContents {
             }
             Msg::ScrollToServerItem(si) => {
                 self.scroll_to_server_item(si);
+            }
+            Msg::OpenSingleWebsiteLink => {
+                let websites_with_urls: Vec<_> = self
+                    .model
+                    .server_items
+                    .iter()
+                    .filter_map(|si| match si {
+                        ServerItem::Website(w) if !w.url.is_empty() => Some(w),
+                        _ => None,
+                    })
+                    .take(2)
+                    .collect();
+                if websites_with_urls.len() == 1 {
+                    if let Result::Err(e) = gtk::show_uri_on_window(
+                        None::<&gtk::Window>,
+                        &websites_with_urls.get(0).unwrap().url,
+                        0,
+                    ) {
+                        eprintln!("Error opening link: {}", e);
+                    }
+                }
             }
             // ViewNote is meant for my parent
             Msg::ViewNote(_) => {}

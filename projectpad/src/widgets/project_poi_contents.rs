@@ -35,6 +35,7 @@ pub enum Msg {
     KeyboardEscape,
     ShowInfoBar(String),
     ScrollToServerItem(ServerItem),
+    OpenSingleWebsiteLink,
 }
 
 pub struct Model {
@@ -224,6 +225,13 @@ impl Widget for ProjectPoiContents {
             }
             Msg::NoteSearchPrevious => {
                 self.note_search_previous();
+            }
+            Msg::OpenSingleWebsiteLink => {
+                if matches!(&self.model.cur_project_item, Some(ProjectItem::Server(_))) {
+                    self.server_contents
+                        .stream()
+                        .emit(ServerPoiContentsMsg::OpenSingleWebsiteLink);
+                }
             }
             // meant for my parent
             Msg::ShowInfoBar(_) => {}

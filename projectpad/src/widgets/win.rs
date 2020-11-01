@@ -17,6 +17,7 @@ use super::project_poi_contents::Msg::ShowInfoBar as ProjectPoiContentsMsgShowIn
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
 use super::project_poi_header::Msg::GotoItem as ProjectPoiHeaderGotoItemMsg;
+use super::project_poi_header::Msg::OpenSingleWebsiteLink as ProjectPoiHeaderOpenSingleWebsiteLink;
 use super::project_poi_header::Msg::ProjectItemDeleted as ProjectPoiHeaderProjectItemDeletedMsg;
 use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjectItemRefreshMsg;
 use super::project_poi_header::Msg::ProjectItemUpdated as ProjectPoiHeaderProjectItemUpdatedMsg;
@@ -93,6 +94,7 @@ pub enum Msg {
     ShowInfoBar(String),
     HideInfobar,
     SearchResultsModified,
+    OpenSingleWebsiteLink,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -531,6 +533,11 @@ impl Widget for Win {
                 // could show outdated contents
                 self.project_list.stream().emit(ProjectListMsg::ForceReload);
             }
+            Msg::OpenSingleWebsiteLink => {
+                self.project_poi_contents
+                    .stream()
+                    .emit(ProjectPoiContentsMsg::OpenSingleWebsiteLink);
+            }
         }
     }
 
@@ -574,10 +581,15 @@ impl Widget for Win {
         }
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
             match e.get_keyval().to_unicode() {
-                Some('e') => {
+                Some('y') => {
                     self.project_poi_header
                         .stream()
                         .emit(ProjectPoiHeaderMsg::CopyPassword);
+                }
+                Some('e') => {
+                    self.project_poi_header
+                        .stream()
+                        .emit(ProjectPoiHeaderMsg::OpenLink);
                 }
                 Some('s') => {
                     self.model
@@ -798,6 +810,7 @@ impl Widget for Win {
                                                 (project.clone(), Some(ProjectItem::Server(srv.clone())), None))),
                                             ProjectPoiHeaderShowInfoBar(ref msg) =>
                                                 Msg::ShowInfoBar(msg.clone()),
+                                            ProjectPoiHeaderOpenSingleWebsiteLink => Msg::OpenSingleWebsiteLink
                                         },
                                         #[name="project_poi_contents"]
                                         ProjectPoiContents(self.model.db_sender.clone()) {

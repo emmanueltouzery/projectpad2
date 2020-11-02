@@ -14,9 +14,7 @@ strum = "0.19.5"
 strum_macros = "0.19.4"
 projectpadsql = { path = "../projectpadsql" }
 
-# need a newer version of skim than the latest published
-# on crates.io as of now, to get command history support.
-skim = { git = "https://github.com/lotabout/skim", rev = "a13bd4b1bff401b520c8566f5feffbf50c801169" }
+skim = "0.9.2"
 
 # the clipboard situation on rust is a little messy..
 # there is clipboard, with no wayland support and no

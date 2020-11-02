@@ -153,6 +153,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
+name = "beef"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "474a626a67200bd107d44179bb3d4fc61891172d11696609264589be6a0e6a43"
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -565,6 +571,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4a0c10ea61042b7555729ab0608727bbbb06ce709c11e6047cfa4e10f6d052d"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "defer-drop"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18ae055245e14ed411f56dddf2a78caae87c25d9d6a18fb61f398a596cad77b4"
+dependencies = [
+ "crossbeam-channel 0.4.4",
+ "once_cell",
 ]
 
 [[package]]
@@ -2496,13 +2512,16 @@ checksum = "fa8f3741c7372e75519bd9346068370c9cdaabcc1f9599cbcf2a2719352286b7"
 
 [[package]]
 name = "skim"
-version = "0.8.0"
-source = "git+https://github.com/lotabout/skim?rev=a13bd4b1bff401b520c8566f5feffbf50c801169#a13bd4b1bff401b520c8566f5feffbf50c801169"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7bafdd926cc7718a511c995e37026aa5c25826fe90ab2bb4c72eff948b43811"
 dependencies = [
+ "beef",
  "bitflags",
  "chrono",
  "clap",
  "crossbeam",
+ "defer-drop",
  "derive_builder",
  "env_logger",
  "fuzzy-matcher",
@@ -2863,9 +2882,9 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "tuikit"
-version = "0.3.4"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9509dfdaface97cb0eec57c36649ca66c3399081790eaef6f22c0567e7d5f689"
+checksum = "dffdaf0475a16285148e3206b4e7bb3017ade03022efbfec1c774c82424fa907"
 dependencies = [
  "bitflags",
  "lazy_static",

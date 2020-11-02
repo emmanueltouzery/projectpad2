@@ -1,3 +1,4 @@
+use super::actions;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::{params, Connection};
 use skim::prelude::*;
@@ -5,7 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use strum_macros::{Display, EnumString};
 
-#[derive(Debug, EnumString, Display, PartialEq)]
+#[derive(Debug, EnumString, Display, PartialEq, Clone)]
 pub enum SrvAccessType {
     SrvAccessSsh,
     SrvAccessRdp,
@@ -13,7 +14,7 @@ pub enum SrvAccessType {
     SrvAccessSshTunnel,
 }
 
-#[derive(Debug, EnumString, Display, PartialEq)]
+#[derive(Debug, EnumString, Display, PartialEq, Clone)]
 pub enum ItemType {
     PoiApplication,
     PoiLogFile,
@@ -28,7 +29,7 @@ pub enum ItemType {
     SrvReporting,
 }
 
-#[derive(Debug, EnumString, Display, PartialEq)]
+#[derive(Debug, EnumString, Display, PartialEq, Clone)]
 pub enum EnvironmentType {
     EnvDevelopment,
     EnvUat,
@@ -55,7 +56,7 @@ from_sql_from_str!(ItemType);
 from_sql_from_str!(SrvAccessType);
 from_sql_from_str!(EnvironmentType);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ServerInfo {
     pub server_desc: String,
     pub server_username: String,
@@ -63,12 +64,12 @@ pub struct ServerInfo {
     pub server_access_type: SrvAccessType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PoiInfo {
     pub path: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ItemOfInterest {
     pub id: i32,
     pub sql_table: String,
@@ -147,17 +148,17 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
             })
         })
         .unwrap();
-    let cols_spec = vec![7, 3, 12, 40, 10, 50];
-    for server_poi in server_poi_iter {
-        let poi = server_poi.unwrap();
+    let cols_spec = vec![7, 3, 12, 40, 10, 30, 20];
+    for action in server_poi_iter.flat_map(|item| actions::get_value(item.unwrap())) {
         let _ = item_sender.send(Arc::new(crate::MyItem {
-            display: render_row(&cols_spec, &poi),
-            inner: poi,
+            display: render_row(&cols_spec, &action),
+            inner: action,
         }));
     }
 }
 
-fn render_row(cols_spec: &[usize], item: &ItemOfInterest) -> String {
+fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
+    let item = &action.item;
     let mut col1 = item.project_name.clone();
     col1.truncate(cols_spec[0]);
     let mut col2 = item
@@ -189,20 +190,24 @@ fn render_row(cols_spec: &[usize], item: &ItemOfInterest) -> String {
         .cloned()
         .unwrap_or_else(|| "".to_string());
     col6.truncate(cols_spec[5]);
+    let mut col7 = action.desc.clone();
+    col7.truncate(cols_spec[6]);
     format!(
-        "{:<w1$} {:<w2$} {:<w3$} {:<w4$} {:<w5$} {:<w6$}",
+        "{:<w1$} {:<w2$} {:<w3$} {:<w4$} {:<w5$} {:<w6$} {:<w7$}",
         col1,
         col2,
         col3,
         col4,
         col5,
         col6,
+        col7,
         w1 = cols_spec[0],
         w2 = cols_spec[1],
         w3 = cols_spec[2],
         w4 = cols_spec[3],
         w5 = cols_spec[4],
         w6 = cols_spec[5],
+        w7 = cols_spec[6],
     )
 }
 
@@ -211,7 +216,7 @@ fn display_env(env: &EnvironmentType) -> &'static str {
         EnvironmentType::EnvDevelopment => "Dev",
         EnvironmentType::EnvUat => "Uat",
         EnvironmentType::EnvStage => "Stg",
-        EnvironmentType::EnvProd => "Prod",
+        EnvironmentType::EnvProd => "Prd",
     }
 }
 
@@ -242,16 +247,16 @@ fn render_item_type(item_type: &ItemType) -> &'static str {
 
 fn render_type_emoji(item_type: &ItemType) -> &'static str {
     match item_type {
-        ItemType::PoiCommandToRun => "🚀",    // ⚙ 🖥
-        ItemType::PoiCommandTerminal => "🚀", // ⚙ 🖥
-        ItemType::PoiConfigFile => "🔧",      // 🗄
-        ItemType::PoiLogFile => "📼",
-        ItemType::PoiApplication => "📂",
-        ItemType::PoiBackupArchive => "💾", // 📦
-        ItemType::SrvApplication => "🏭",
-        ItemType::SrvDatabase => "💽",
-        ItemType::SrvHttpOrProxy => "🌐",
-        ItemType::SrvReporting => "📰",
-        ItemType::SrvMonitoring => "📈", //🌡
+        ItemType::PoiCommandToRun => "CMD",    // ⚙ 🖥
+        ItemType::PoiCommandTerminal => "CMD", // ⚙ 🖥
+        ItemType::PoiConfigFile => "CFG",      // 🗄
+        ItemType::PoiLogFile => "LOG",
+        ItemType::PoiApplication => "APP",
+        ItemType::PoiBackupArchive => "BKP", // 📦
+        ItemType::SrvApplication => "SRA",
+        ItemType::SrvDatabase => "DAT",
+        ItemType::SrvHttpOrProxy => "HTT",
+        ItemType::SrvReporting => "REP",
+        ItemType::SrvMonitoring => "MON", //🌡
     }
 }

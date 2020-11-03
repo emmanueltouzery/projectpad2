@@ -1,7 +1,6 @@
-use clipboard_ext::prelude::*;
-use clipboard_ext::x11_fork::ClipboardContext;
 use skim::prelude::*;
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
 pub mod config;
 use std::path::PathBuf;
 mod actions;
@@ -105,8 +104,56 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
 }
 
 fn copy_command_to_clipboard(command_line: &str) {
-    let mut ctx = ClipboardContext::new().unwrap();
-    ctx.set_contents(command_line.into()).unwrap();
+    // there are libraries for that in rust, earlier i was using
+    // clibpoard-ext, but:
+    // - there are issues with keeping the contents of the clipboard
+    //   after the app exits (need to fork, stay alive..)
+    // - must link to a series of X11 or wayland-related libraries,
+    //   on linux. But I want a static build so that i can distribute
+    //   a cross-distro binary.
+    // due to that, rather leverage wl-copy and xsel
+    // it seems xsel is a better choice than xclip:
+    // https://askubuntu.com/questions/705620/xclip-vs-xsel/898094#898094
+
+    // detect wayland or X11 https://unix.stackexchange.com/a/559950/36566
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        match Command::new("wl-copy")
+            .arg(command_line)
+            .spawn()
+            .and_then(|mut p| p.wait())
+        {
+            Result::Err(e) => eprintln!("Failed to invoke wl-copy: {}", e),
+            Result::Ok(s) if !s.success() => eprintln!("Got error status from wl-copy: {}", s),
+            _ => {}
+        }
+    } else if std::env::var("DISPLAY").is_ok() {
+        // https://stackoverflow.com/a/49597789/516188
+        if let Result::Err(e) = Command::new("xsel")
+            .arg("--clipboard")
+            .stdin(Stdio::piped())
+            .spawn()
+            .and_then(|mut child| {
+                let child_stdin = child.stdin.as_mut().unwrap();
+                let write_res = child_stdin.write_all(command_line.as_bytes());
+                if write_res.is_err() {
+                    write_res
+                } else {
+                    let wait_res = child.wait();
+                    match wait_res {
+                        Result::Ok(s) if !s.success() => Result::Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("error status: {}", s),
+                        )),
+                        _ => wait_res.map(|_| ()),
+                    }
+                }
+            })
+        {
+            eprintln!("Error in xsel: {:?}", e);
+        }
+    } else {
+        eprintln!("The system seems to be neither wayland nor X11, don't know how to copy to the clipboard");
+    }
 }
 
 fn write_command_line_to_terminal(command_line: &str) {

@@ -14,13 +14,3 @@ projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "1.4.5", features = ["sqlite"] }
 
 skim = "0.9.2"
-
-# the clipboard situation on rust is a little messy..
-# there is clipboard, with no wayland support and no
-# support for keeping the clipboard contents after the
-# process exits. https://github.com/aweinstock314/rust-clipboard/issues/61
-# there is copypasta, with wayland support but also
-# the same issue of clearing after exit.
-# clipboard-ext has no wayland support but at least
-# doesn't clear the clipboard after exit on x11..
-clipboard-ext = "0.2.0"

@@ -1,4 +1,5 @@
-use crate::database::{ItemOfInterest, ItemType, SrvAccessType};
+use crate::database::{ItemOfInterest, ItemType};
+use projectpadsql::models::{InterestType, ServerAccessType};
 use std::borrow::Cow;
 
 enum SshCommandType {
@@ -52,7 +53,7 @@ fn get_value_server_ssh(item: &ItemOfInterest) -> std::borrow::Cow<str> {
 
 fn is_ssh_access(item: &ItemOfInterest) -> bool {
     match &item.server_info {
-        Some(srv) => srv.server_access_type == SrvAccessType::SrvAccessSsh,
+        Some(srv) => srv.server_access_type == ServerAccessType::SrvAccessSsh,
         None => false,
     }
 }
@@ -177,42 +178,62 @@ impl Action {
 
 pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
     match &item {
-        i if i.item_type == ItemType::PoiLogFile && is_ssh_access(i) => vec![
-            Action::new(
-                "tail log file".to_string(),
-                get_value_tail_file,
-                item.clone(),
-            ),
-            Action::new(
-                "less log file".to_string(),
-                get_value_less_file,
-                item.clone(),
-            ),
-            Action::new("fetch log file".to_string(), get_value_fetch_file, item),
-        ],
-        i if i.item_type == ItemType::PoiApplication && is_ssh_access(i) => vec![Action::new(
-            "ssh in that folder".to_string(),
-            get_value_ssh_cd_in_folder,
-            item,
-        )],
-        i if i.item_type == ItemType::PoiApplication && i.server_info.is_none() => vec![Action {
-            desc: "cd in that folder".to_string(),
-            get_string: get_value_cd_in_folder,
-            // cannot change the folder of the parent shell
-            allowed_actions: vec![AllowedAction::CopyToClipboard, AllowedAction::CopyToPrompt],
-            item,
-        }],
+        i if i.item_type == ItemType::InterestItemType(InterestType::PoiLogFile)
+            && is_ssh_access(i) =>
+        {
+            vec![
+                Action::new(
+                    "tail log file".to_string(),
+                    get_value_tail_file,
+                    item.clone(),
+                ),
+                Action::new(
+                    "less log file".to_string(),
+                    get_value_less_file,
+                    item.clone(),
+                ),
+                Action::new("fetch log file".to_string(), get_value_fetch_file, item),
+            ]
+        }
+        i if i.item_type == ItemType::InterestItemType(InterestType::PoiApplication)
+            && is_ssh_access(i) =>
+        {
+            vec![Action::new(
+                "ssh in that folder".to_string(),
+                get_value_ssh_cd_in_folder,
+                item,
+            )]
+        }
+        i if i.item_type == ItemType::InterestItemType(InterestType::PoiApplication)
+            && i.server_info.is_none() =>
+        {
+            vec![Action {
+                desc: "cd in that folder".to_string(),
+                get_string: get_value_cd_in_folder,
+                // cannot change the folder of the parent shell
+                allowed_actions: vec![AllowedAction::CopyToClipboard, AllowedAction::CopyToPrompt],
+                item,
+            }]
+        }
         i if i.sql_table.as_str() == "server" && is_ssh_access(i) => vec![Action::new(
             "ssh on the server".to_string(),
             get_value_server_ssh,
             item,
         )],
-        i if [ItemType::PoiCommandToRun, ItemType::PoiCommandTerminal].contains(&i.item_type)
+        i if [
+            ItemType::InterestItemType(InterestType::PoiCommandToRun),
+            ItemType::InterestItemType(InterestType::PoiCommandTerminal),
+        ]
+        .contains(&i.item_type)
             && !is_ssh_access(i) =>
         {
             vec![Action::new("run command".to_string(), get_value_text, item)]
         }
-        i if [ItemType::PoiCommandToRun, ItemType::PoiCommandTerminal].contains(&i.item_type)
+        i if [
+            ItemType::InterestItemType(InterestType::PoiCommandToRun),
+            ItemType::InterestItemType(InterestType::PoiCommandTerminal),
+        ]
+        .contains(&i.item_type)
             && is_ssh_access(i) =>
         {
             vec![Action::new(
@@ -221,19 +242,23 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
                 item,
             )]
         }
-        i if i.item_type == ItemType::PoiConfigFile && is_ssh_access(i) => vec![
-            Action::new(
-                "edit config file".to_string(),
-                get_value_edit_file,
-                item.clone(),
-            ),
-            Action::new(
-                "less config file".to_string(),
-                get_value_less_file,
-                item.clone(),
-            ),
-            Action::new("fetch config file".to_string(), get_value_fetch_file, item),
-        ],
+        i if i.item_type == ItemType::InterestItemType(InterestType::PoiConfigFile)
+            && is_ssh_access(i) =>
+        {
+            vec![
+                Action::new(
+                    "edit config file".to_string(),
+                    get_value_edit_file,
+                    item.clone(),
+                ),
+                Action::new(
+                    "less config file".to_string(),
+                    get_value_less_file,
+                    item.clone(),
+                ),
+                Action::new("fetch config file".to_string(), get_value_fetch_file, item),
+            ]
+        }
         _ => Vec::new(),
     }
 }

@@ -150,5 +150,9 @@ allow_tables_to_appear_in_same_query!(server_link, server);
 
 joinable!(server_database -> server (server_id));
 
+joinable!(project_point_of_interest -> project (project_id));
+allow_tables_to_appear_in_same_query!(project, project_point_of_interest);
+
 joinable!(server -> project (project_id));
-allow_tables_to_appear_in_same_query!(project, server);
+joinable!(server_point_of_interest -> server (server_id));
+allow_tables_to_appear_in_same_query!(project, server_point_of_interest, server);

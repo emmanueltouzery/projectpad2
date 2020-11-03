@@ -5,28 +5,11 @@ use crate::widgets::password_field;
 use crate::widgets::password_field::Msg as PasswordFieldMsg;
 use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
 use crate::widgets::password_field::PasswordField;
-use diesel::prelude::*;
 use gtk::prelude::*;
+use projectpadsql;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
-
-// escape quote by doubling it
-// https://github.com/rusqlite/rusqlite/blob/997e6d3cc37fa96f8edc3db9839c7e84246ee315/src/pragma.rs#L138
-pub fn key_escape_param_value(key: &str) -> String {
-    key.replace('\'', "''")
-}
-
-pub fn try_unlock_db(db_conn: &SqliteConnection, pass: &str) -> Result<(), String> {
-    // https://www.zetetic.net/sqlcipher/sqlcipher-api/#PRAGMA_key
-    db_conn
-        .execute(&format!(
-            "PRAGMA key='{}'; SELECT count(*) FROM sqlite_master;",
-            &key_escape_param_value(pass)
-        ))
-        .map(|_| ())
-        .map_err(|x| x.to_string())
-}
 
 type CheckPassResult = Result<(), String>;
 
@@ -97,7 +80,7 @@ impl Widget for UnlockDbDialog {
                     self.model
                         .db_sender
                         .send(SqlFunc::new(move |db_conn| {
-                            let r = try_unlock_db(db_conn, &p);
+                            let r = projectpadsql::try_unlock_db(db_conn, &p);
                             if r.is_ok() && is_save_to_keyring {
                                 if let Err(msg) = projectpadsql::set_pass_in_keyring(&p) {
                                     standard_dialogs::display_error_str(

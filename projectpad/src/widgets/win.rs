@@ -46,6 +46,7 @@ use diesel::prelude::*;
 use gdk::ModifierType;
 use gdk::WindowExt;
 use gtk::prelude::*;
+use projectpadsql;
 use projectpadsql::models::{EnvironmentType, Project, Server};
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
@@ -228,7 +229,7 @@ impl Widget for Win {
             self.model
                 .db_sender
                 .send(SqlFunc::new(move |sql_conn| {
-                    let unlock_success = unlock_db_dlg::try_unlock_db(sql_conn, &pass).is_ok();
+                    let unlock_success = projectpadsql::try_unlock_db(sql_conn, &pass).is_ok();
                     s.send(unlock_success).unwrap();
                 }))
                 .unwrap();

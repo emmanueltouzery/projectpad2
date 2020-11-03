@@ -1,6 +1,5 @@
 use super::dialog_helpers;
 use super::standard_dialogs;
-use super::unlock_db_dlg;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::password_field;
 use crate::widgets::password_field::Msg as PasswordFieldMsg;
@@ -9,6 +8,7 @@ use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPubl
 use crate::widgets::password_field::PasswordField;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use projectpadsql;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -48,14 +48,14 @@ pub struct Model {
 pub fn check_db_password(pass: &str) -> OpResult {
     let db_conn =
         SqliteConnection::establish(&projectpadsql::database_path().to_string_lossy()).unwrap();
-    unlock_db_dlg::try_unlock_db(&db_conn, pass)
+    projectpadsql::try_unlock_db(&db_conn, pass)
 }
 
 fn set_db_password(db_conn: &SqliteConnection, pass: &str) -> Result<(), String> {
     db_conn
         .execute(&format!(
             "PRAGMA rekey='{}';",
-            unlock_db_dlg::key_escape_param_value(pass)
+            projectpadsql::key_escape_param_value(pass)
         ))
         .map(|_| ())
         .map_err(|x| x.to_string())

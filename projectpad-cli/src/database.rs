@@ -199,7 +199,7 @@ pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
     items.extend(filter_servers(&conn));
     items.sort_by(|a, b| a.project_name.partial_cmp(&b.project_name).unwrap());
     let cols_spec = vec![7, 3, 12, 40, 10, 30, 20];
-    for action in items.into_iter().flat_map(|item| actions::get_value(item)) {
+    for action in items.into_iter().flat_map(actions::get_value) {
         let _ = item_sender.send(Arc::new(crate::MyItem {
             display: render_row(&cols_spec, &action),
             inner: action,

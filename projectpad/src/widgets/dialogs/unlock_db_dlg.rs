@@ -6,7 +6,6 @@ use crate::widgets::password_field::Msg as PasswordFieldMsg;
 use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
 use crate::widgets::password_field::PasswordField;
 use gtk::prelude::*;
-use projectpadsql;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;

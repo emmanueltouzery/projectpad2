@@ -46,7 +46,6 @@ use diesel::prelude::*;
 use gdk::ModifierType;
 use gdk::WindowExt;
 use gtk::prelude::*;
-use projectpadsql;
 use projectpadsql::models::{EnvironmentType, Project, Server};
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};

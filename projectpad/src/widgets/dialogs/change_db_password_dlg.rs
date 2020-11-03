@@ -8,7 +8,6 @@ use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPubl
 use crate::widgets::password_field::PasswordField;
 use diesel::prelude::*;
 use gtk::prelude::*;
-use projectpadsql;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;

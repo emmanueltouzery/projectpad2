@@ -66,7 +66,7 @@ pub fn main() {
             {
                 write_command_line_to_terminal(action_str)
             }
-            _ => run_command(
+            Key::Enter => run_command(
                 action_str,
                 &Some(&action.item)
                     .filter(|p| p.server_info.is_none()) // remote paths are not relevant!
@@ -74,6 +74,7 @@ pub fn main() {
                     .map(|p| p.path.clone())
                     .unwrap_or_else(|| dirs::home_dir().unwrap()),
             ),
+            _ => {}
         }
         if !query.is_empty() {
             config::write_history(&history, &query, 100).unwrap();

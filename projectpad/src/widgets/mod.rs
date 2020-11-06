@@ -1,4 +1,5 @@
 mod dialogs;
+mod keyring_helpers;
 pub mod password_field;
 mod project_badge;
 mod project_items_list;

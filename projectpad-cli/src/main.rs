@@ -2,6 +2,9 @@ use skim::prelude::*;
 use std::io::Write;
 use std::process::{Command, Stdio};
 pub mod config;
+#[cfg_attr(target_os = "linux", path = "secretservice_linux.rs")]
+#[cfg_attr(not(target_os = "linux"), path = "secretservice_generic.rs")]
+mod secretservice;
 use std::path::PathBuf;
 mod actions;
 mod database;
@@ -176,7 +179,7 @@ fn write_command_line_to_terminal(command_line: &str) {
 
 fn load_items(item_sender: Sender<Arc<dyn SkimItem>>) {
     database::load_items(
-        &projectpadsql::get_pass_from_keyring().unwrap(),
+        &secretservice::get_keyring_pass().unwrap().unwrap(),
         &item_sender,
     );
 }

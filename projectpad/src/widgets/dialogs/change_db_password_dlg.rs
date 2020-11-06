@@ -1,3 +1,4 @@
+use super::super::keyring_helpers;
 use super::dialog_helpers;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
@@ -192,12 +193,13 @@ impl Widget for ChangeDbPasswordDialog {
                         .db_sender
                         .send(SqlFunc::new(move |db_conn| {
                             let r = set_db_password(db_conn, &pass);
-                            let r1 =
-                                if r.is_ok() && projectpadsql::get_pass_from_keyring().is_some() {
-                                    projectpadsql::set_pass_in_keyring(&pass)
-                                } else {
-                                    r
-                                };
+                            let r1 = if r.is_ok()
+                                && keyring_helpers::get_pass_from_keyring().is_some()
+                            {
+                                keyring_helpers::set_pass_in_keyring(&pass)
+                            } else {
+                                r
+                            };
                             s.send(r1).unwrap();
                         }))
                         .unwrap();

@@ -5,6 +5,7 @@ use super::dialogs::standard_dialogs;
 use super::dialogs::unlock_db_dlg;
 use super::dialogs::unlock_db_dlg::Msg as MsgUnlockDbDlg;
 use super::dialogs::unlock_db_dlg::UnlockDbDialog;
+use super::keyring_helpers;
 use super::project_items_list::Msg as ProjectItemsListMsg;
 use super::project_items_list::{ProjectItem, ProjectItemsList};
 use super::project_list::Msg as ProjectListMsg;
@@ -223,7 +224,7 @@ impl Widget for Win {
     }
 
     fn unlock_db(&mut self) {
-        if let Some(pass) = projectpadsql::get_pass_from_keyring() {
+        if let Some(pass) = keyring_helpers::get_pass_from_keyring() {
             let s = self.model.db_unlock_attempted_sender.clone();
             self.model
                 .db_sender

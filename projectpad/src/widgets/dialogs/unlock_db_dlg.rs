@@ -1,3 +1,4 @@
+use super::super::keyring_helpers;
 use super::dialog_helpers;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
@@ -81,7 +82,7 @@ impl Widget for UnlockDbDialog {
                         .send(SqlFunc::new(move |db_conn| {
                             let r = projectpadsql::try_unlock_db(db_conn, &p);
                             if r.is_ok() && is_save_to_keyring {
-                                if let Err(msg) = projectpadsql::set_pass_in_keyring(&p) {
+                                if let Err(msg) = keyring_helpers::set_pass_in_keyring(&p) {
                                     standard_dialogs::display_error_str(
                                         "Error saving the password to the keyring",
                                         Some(msg),

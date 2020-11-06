@@ -1,3 +1,4 @@
+use super::super::keyring_helpers;
 use super::super::password_field;
 use super::super::password_field::Msg as PasswordFieldMsg;
 use super::change_db_password_dlg;
@@ -111,7 +112,7 @@ impl Widget for Preferences {
         self.model
             .db_sender
             .send(SqlFunc::new(move |_| {
-                s.send(projectpadsql::get_pass_from_keyring().is_some())
+                s.send(keyring_helpers::get_pass_from_keyring().is_some())
                     .unwrap();
             }))
             .unwrap();
@@ -154,7 +155,7 @@ impl Widget for Preferences {
             Msg::RemovePasswordFromKeyringUserResponse(resp) => {
                 if let Some(dlg) = &self.model.confirm_dialog {
                     if resp == gtk::ResponseType::Yes {
-                        projectpadsql::clear_pass_from_keyring().unwrap();
+                        keyring_helpers::clear_pass_from_keyring().unwrap();
                         self.load_keyring_pass_state();
                     }
                     dlg.close();

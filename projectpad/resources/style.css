@@ -11,6 +11,10 @@
   padding: 10px;
 }
 
+.note_frame {
+  padding: 10px;
+}
+
 .search_result_project_title {
   font-size: 15px;
   font-weight: bold;

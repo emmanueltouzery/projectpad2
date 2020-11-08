@@ -63,6 +63,7 @@ impl Widget for ProjectPoiContents {
         self.server_note_title
             .get_style_context()
             .add_class("server_note_title");
+        self.note_frame.get_style_context().add_class("note_frame");
         let search_bar = &self.model.search_bar;
         relm::connect!(
             search_bar@SearchBarMsg::SearchChanged(ref s),
@@ -445,21 +446,18 @@ impl Widget for ProjectPoiContents {
                     child: {
                         expand: true,
                     },
-                    #[name="note_scroll"]
-                    gtk::ScrolledWindow {
-                        gtk::Frame {
-                            margin_top: 10,
-                            margin_start: 10,
-                            margin_end: 10,
-                            margin_bottom: 10,
+                    #[name="note_frame"]
+                    gtk::Frame {
+                        #[name="note_scroll"]
+                        gtk::ScrolledWindow {
                             #[name="note_textview"]
                             gtk::TextView {
                                 editable: false,
                                 cursor_visible: false,
-                                top_margin: 10,
-                                bottom_margin: 10,
-                                left_margin: 10,
-                                right_margin: 10,
+                                top_margin: 5,
+                                bottom_margin: 5,
+                                left_margin: 5,
+                                right_margin: 5,
                                 motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
                                 event_after(_, event) => Msg::TextViewEventAfter(event.clone())
                             }

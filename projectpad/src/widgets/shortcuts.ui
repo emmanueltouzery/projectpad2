@@ -159,6 +159,20 @@
                 <property name="title" translatable="yes">Edit search result</property>
               </object>
             </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">ltr</property>
+                <property name="accelerator">&lt;ctl&gt;e</property>
+                <property name="title" translatable="yes">Open single website</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="direction">rtl</property>
+                <property name="accelerator">&lt;ctl&gt;e</property>
+                <property name="title" translatable="yes">Open single website</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>

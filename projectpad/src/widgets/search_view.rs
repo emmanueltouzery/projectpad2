@@ -30,8 +30,8 @@ use diesel::prelude::*;
 use gdk::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
-    Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
-    ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
+    Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerDatabase,
+    ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -600,6 +600,32 @@ impl Widget for SearchView {
                         ([_], [snd], []) => open(snd),
                         ([_], [_], [thrd]) => open(thrd),
                         _ => {}
+                    }
+                } else if e.get_keyval().to_unicode() == Some('e') {
+                    let items = self.model.search_items.borrow();
+                    let urls = items
+                        .iter()
+                        .filter_map(|i| match i {
+                            ProjectPadItem::Server(srv)
+                                if srv.access_type == ServerAccessType::SrvAccessWww
+                                    && !srv.ip.is_empty() =>
+                            {
+                                Some(srv.ip.clone())
+                            }
+                            ProjectPadItem::ServerWebsite(www) if !www.url.is_empty() => {
+                                Some(www.url.clone())
+                            }
+                            _ => None,
+                        })
+                        .take(2)
+                        .collect::<Vec<_>>();
+                    // is there only one match...
+                    if let [url] = &urls[..] {
+                        if let Result::Err(e) =
+                            gtk::show_uri_on_window(None::<&gtk::Window>, &url, 0)
+                        {
+                            eprintln!("Error opening link: {}", e);
+                        }
                     }
                 } else {
                     let new_show_shortcuts = !(e.get_state() & gdk::ModifierType::MOD2_MASK)

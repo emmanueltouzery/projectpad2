@@ -1,4 +1,5 @@
 use skim::prelude::*;
+use std::env;
 use std::io::Write;
 use std::process::{Command, Stdio};
 pub mod config;
@@ -31,6 +32,10 @@ impl SkimItem for MyItem {
 }
 
 pub fn main() {
+    if env::args().skip(1).any(|p| p == "--version") {
+        println!("version {}", env!("CARGO_PKG_VERSION"));
+        std::process::exit(0);
+    }
     let history = config::read_history().unwrap_or_else(|_| vec![]);
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])

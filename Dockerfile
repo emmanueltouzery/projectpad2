@@ -32,8 +32,4 @@ ADD --chown=rust:rust ./ .
 # https://github.com/rust-lang/rust/issues/54243
 
 ENV RUSTFLAGS='-L/usr/local/musl/lib  -L/usr/lib/x86_64-linux-musl  -L/lib/x86_64-linux-musl -C linker=musl-gcc -Clink-arg=/usr/local/musl/lib/libcrypto.a -Clink-arg=/usr/local/musl/lib/libsqlcipher.a -Clink-arg=/usr/lib/x86_64-linux-musl/libc.a'
-ENV PKG_CONFIG_ALLOW_CROSS=1
-ENV PKG_CONFIG_ALL_STATIC=true
-ENV OPENSSL_STATIC=true
-ENV LIBZ_SYS_STATIC=1
 CMD cargo build --target x86_64-unknown-linux-musl --release --bin projectpad-cli && cp /home/rust/src/target/x86_64-unknown-linux-musl/release/projectpad-cli /host

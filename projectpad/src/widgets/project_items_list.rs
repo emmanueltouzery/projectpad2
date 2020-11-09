@@ -298,7 +298,11 @@ impl Widget for ProjectItemsList {
     fn get_item_model(project_item: &ProjectItem) -> PrjPoiItemModel {
         match project_item {
             ProjectItem::Server(srv) => PrjPoiItemModel {
-                text: srv.desc.clone(),
+                markup: if srv.is_retired {
+                    format!("<i>{}</i>", glib::markup_escape_text(&srv.desc))
+                } else {
+                    glib::markup_escape_text(&srv.desc).to_string()
+                },
                 group_name: srv.group_name.as_ref().cloned(),
                 icon: match (srv.server_type, srv.access_type) {
                     (ServerType::SrvDatabase, _) => Icon::DATABASE,
@@ -310,17 +314,17 @@ impl Widget for ProjectItemsList {
                 },
             },
             ProjectItem::ServerLink(link) => PrjPoiItemModel {
-                text: link.desc.clone(),
+                markup: glib::markup_escape_text(&link.desc).to_string(),
                 group_name: link.group_name.as_ref().cloned(),
                 icon: Icon::SERVER_LINK,
             },
             ProjectItem::ProjectNote(note) => PrjPoiItemModel {
-                text: note.title.clone(),
+                markup: glib::markup_escape_text(&note.title).to_string(),
                 group_name: note.group_name.as_ref().cloned(),
                 icon: Icon::NOTE,
             },
             ProjectItem::ProjectPointOfInterest(poi) => PrjPoiItemModel {
-                text: poi.desc.clone(),
+                markup: glib::markup_escape_text(&poi.desc).to_string(),
                 group_name: poi.group_name.as_ref().cloned(),
                 icon: match poi.interest_type {
                     InterestType::PoiLogFile => Icon::LOG_FILE,

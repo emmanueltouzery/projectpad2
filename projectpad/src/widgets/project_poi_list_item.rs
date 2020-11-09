@@ -8,7 +8,7 @@ pub enum Msg {}
 
 pub struct Model {
     pub icon: Icon,
-    pub text: String,
+    pub markup: String,
     pub group_name: Option<String>,
 }
 
@@ -43,7 +43,7 @@ impl Widget for ProjectPoiListItem {
                 gtk::Box {
                     orientation: gtk::Orientation::Vertical,
                     gtk::Label {
-                        text: &self.model.text,
+                        markup: &self.model.markup,
                         ellipsize: pango::EllipsizeMode::End,
                         xalign: 0.0,
                         vexpand: true,

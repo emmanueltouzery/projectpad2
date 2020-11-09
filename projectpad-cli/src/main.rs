@@ -64,7 +64,7 @@ pub fn main() {
     }
     let db_pass = some_or_exit!(
         secretservice::get_keyring_pass().ok().and_then(|r| r),
-        "Cannot find the database password in the OS keyring, aborting",
+        "Cannot find the database password in the OS keyring, aborting: did you run the projectpad GUI app to create a database first?",
         1
     );
 

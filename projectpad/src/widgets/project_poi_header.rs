@@ -213,6 +213,7 @@ pub fn populate_grid(
     }
     header_grid.show_all();
     populate_popover(&actions_popover, extra_btns, fields, register_copy_btn);
+    header_grid.set_visible(!fields.is_empty());
 }
 
 pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {

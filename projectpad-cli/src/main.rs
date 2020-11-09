@@ -1,3 +1,4 @@
+use diesel::prelude::*;
 use skim::prelude::*;
 use std::env;
 use std::io::Write;
@@ -9,6 +10,9 @@ mod secretservice;
 use std::path::PathBuf;
 mod actions;
 mod database;
+
+const MIN_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
+const MAX_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
 
 pub struct MyItem {
     display: String,
@@ -31,11 +35,64 @@ impl SkimItem for MyItem {
     }
 }
 
+macro_rules! some_or_exit {
+    ($op:expr, $msg: expr, $code: expr) => {{
+        let val_r = $op;
+        if val_r.is_none() {
+            eprintln!($msg);
+            std::process::exit($code);
+        }
+        val_r.unwrap()
+    }};
+}
+
+macro_rules! ok_or_exit {
+    ($op:expr, $msg: expr, $code: expr) => {{
+        let val_r = $op;
+        if let Result::Err(e) = val_r {
+            eprintln!($msg, e);
+            std::process::exit($code);
+        }
+        val_r.unwrap()
+    }};
+}
+
 pub fn main() {
     if env::args().skip(1).any(|p| p == "--version") {
         println!("version {}", env!("CARGO_PKG_VERSION"));
         std::process::exit(0);
     }
+    let db_pass = some_or_exit!(
+        secretservice::get_keyring_pass().ok().and_then(|r| r),
+        "Cannot find the database password in the OS keyring, aborting",
+        1
+    );
+
+    let db_path_raw = projectpadsql::database_path();
+    let db_path = some_or_exit!(
+        db_path_raw.to_str(),
+        "Cannot find the database path on disk, aborting",
+        2
+    );
+
+    let conn = ok_or_exit!(
+        SqliteConnection::establish(db_path),
+        "Cannot open the database, aborting. {}",
+        3
+    );
+
+    ok_or_exit!(
+        projectpadsql::try_unlock_db(&conn, &db_pass),
+        "Failed unlocking the database with the password, aborting. {}",
+        4
+    );
+
+    ok_or_exit!(
+        check_db_version(&conn),
+        "{} https://github.com/emmanueltouzery/projectpad2",
+        5
+    );
+
     let history = config::read_history().unwrap_or_else(|_| vec![]);
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
@@ -52,7 +109,7 @@ pub fn main() {
 
     let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
 
-    std::thread::spawn(move || load_items(tx_item));
+    std::thread::spawn(move || database::load_items(&conn, &tx_item));
 
     let (selected_items, query, accept_key) = Skim::run_with(&options, Some(rx_item))
         .map(|out| (out.selected_items, out.query, out.final_key))
@@ -87,6 +144,17 @@ pub fn main() {
             config::write_history(&history, &query, 100).unwrap();
         }
     }
+}
+
+fn check_db_version(conn: &SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
+    let version = projectpadsql::get_db_version(conn)?;
+    if version < MIN_SUPPORTED_DB_SCHEMA_VERSION {
+        return Err(format!("The database version ({}), is older than the oldest version supported by this application. Please upgrade the main projectpad application.", version).into());
+    }
+    if version > MAX_SUPPORTED_DB_SCHEMA_VERSION {
+        return Err(format!("The database version ({}), is newer than the newest version supported by this application. Please upgrade this CLI application.", version).into());
+    }
+    Ok(())
 }
 
 fn run_command(command_line: &str, cur_dir: &PathBuf) {
@@ -180,11 +248,4 @@ fn write_command_line_to_terminal(command_line: &str) {
     //     .arg(&myitem.command)
     //     .status()
     //     .unwrap();
-}
-
-fn load_items(item_sender: Sender<Arc<dyn SkimItem>>) {
-    database::load_items(
-        &secretservice::get_keyring_pass().unwrap().unwrap(),
-        &item_sender,
-    );
 }

@@ -38,3 +38,11 @@ pub fn try_unlock_db(db_conn: &SqliteConnection, pass: &str) -> Result<(), Strin
         .map(|_| ())
         .map_err(|x| x.to_string())
 }
+
+pub fn get_db_version(db_conn: &SqliteConnection) -> QueryResult<i32> {
+    use schema::db_version::dsl as ver;
+    ver::db_version
+        .order(ver::code.desc())
+        .select(ver::code)
+        .first::<i32>(db_conn)
+}

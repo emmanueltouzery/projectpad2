@@ -190,10 +190,7 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
         .collect()
 }
 
-pub fn load_items(db_pass: &str, item_sender: &Sender<Arc<dyn SkimItem>>) {
-    let conn =
-        SqliteConnection::establish(projectpadsql::database_path().to_str().unwrap()).unwrap(); // TODO react better if no DB
-    projectpadsql::try_unlock_db(&conn, db_pass).unwrap(); // TODO react better if no pass in keyring or conn fails
+pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem>>) {
     let mut items = filter_server_pois(&conn);
     items.extend(filter_project_pois(&conn));
     items.extend(filter_servers(&conn));

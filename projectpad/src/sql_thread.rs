@@ -41,12 +41,7 @@ pub fn start_sql_thread() -> mpsc::Sender<SqlFunc> {
 
 pub fn migrate_db_if_needed(db_conn: &SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
     use projectpadsql::schema::db_version::dsl as ver;
-    let mut version = ver::db_version
-        .order(ver::code.desc())
-        .select(ver::code)
-        .first::<i32>(db_conn)
-        .unwrap_or(0)
-        + 1;
+    let mut version = projectpadsql::get_db_version(db_conn).unwrap_or(0) + 1;
     let get_migration_name = |version| format!("resources/migrations/{:03}.sql", version);
     loop {
         let migration_name = get_migration_name(version);

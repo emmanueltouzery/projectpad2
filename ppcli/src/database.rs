@@ -194,7 +194,7 @@ pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem
     let mut items = filter_server_pois(&conn);
     items.extend(filter_project_pois(&conn));
     items.extend(filter_servers(&conn));
-    items.sort_by(|a, b| a.project_name.partial_cmp(&b.project_name).unwrap());
+    items.sort_by(|a, b| b.project_name.partial_cmp(&a.project_name).unwrap());
     let cols_spec = vec![7, 3, 12, 40, 10, 30, 20];
     for action in items.into_iter().flat_map(actions::get_value) {
         let _ = item_sender.send(Arc::new(crate::MyItem {

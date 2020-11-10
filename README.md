@@ -22,14 +22,26 @@ The application allows you to manage your database of projects info. It is organ
 
 At the top of the second pane we can see the project environments (development, staging, uat and prod).
 
+![Main view screenshot](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/gui1.png)
+
 Notes are especially interesting, you author them in markdown syntax.
 
 And full-text search is supported.
 
+![search screenshot](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/gui2.png)
+
 The application also supports operation in dark mode.
+
+![dark theme screenshot](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/gui_dark1.png)
+
+There was some effort made to make the GUI application as keyboard-friendly as possible.
 
 ## Command-line application
 
 The command-line application loads all commands, servers, and files of interest, and displays them in a flat list, that you filter by typing and navigate using arrow keys. The application can execute commands, log you on ssh servers, edit configuration files, tail log files or fetch them, and so on.
+
+![CLI1](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli1.svg)
+
+![CLI2](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli2.svg)
 
 [sqlcipher]: https://www.zetetic.net/sqlcipher/

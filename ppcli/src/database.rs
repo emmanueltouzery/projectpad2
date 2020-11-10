@@ -203,7 +203,7 @@ pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem
             .then(b.item_type.cmp(&a.item_type))
             .then(b.item_text.cmp(&a.item_text))
     });
-    let cols_spec = vec![7, 3, 12, 40, 10, 30, 20];
+    let cols_spec = vec![7, 3, 4, 40, 10, 30, 20];
     for action in items.into_iter().flat_map(actions::get_value) {
         let _ = item_sender.send(Arc::new(crate::MyItem {
             display: render_row(&cols_spec, &action),
@@ -223,8 +223,7 @@ fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
         .unwrap_or("-")
         .to_string();
     col2.truncate(cols_spec[1]);
-    let mut col3 =
-        render_type_emoji(&item.item_type).to_string() + " " + render_item_type(&item.item_type);
+    let mut col3 = render_type(&item.item_type).to_string();
     col3.truncate(cols_spec[2]);
     let mut col4 = item
         .server_info
@@ -284,23 +283,7 @@ fn render_access_type(access: &ServerAccessType) -> &'static str {
     }
 }
 
-fn render_item_type(item_type: &ItemType) -> &'static str {
-    match item_type {
-        ItemType::InterestItemType(InterestType::PoiCommandToRun) => "Command",
-        ItemType::InterestItemType(InterestType::PoiCommandTerminal) => "Command",
-        ItemType::InterestItemType(InterestType::PoiConfigFile) => "Config",
-        ItemType::InterestItemType(InterestType::PoiLogFile) => "Log",
-        ItemType::InterestItemType(InterestType::PoiApplication) => "App",
-        ItemType::InterestItemType(InterestType::PoiBackupArchive) => "Backup",
-        ItemType::ServerItemType(ServerType::SrvApplication) => "App",
-        ItemType::ServerItemType(ServerType::SrvDatabase) => "DB",
-        ItemType::ServerItemType(ServerType::SrvHttpOrProxy) => "HttpOrProxy",
-        ItemType::ServerItemType(ServerType::SrvReporting) => "Reporting",
-        ItemType::ServerItemType(ServerType::SrvMonitoring) => "Monitoring",
-    }
-}
-
-fn render_type_emoji(item_type: &ItemType) -> &'static str {
+fn render_type(item_type: &ItemType) -> &'static str {
     match item_type {
         ItemType::InterestItemType(InterestType::PoiCommandToRun) => "CMD",
         ItemType::InterestItemType(InterestType::PoiCommandTerminal) => "CMD",

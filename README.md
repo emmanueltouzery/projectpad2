@@ -10,6 +10,8 @@ Projectpad consists of two applications:
 1. the GUI `projectpad` application, which allows you to enter/edit data, search it, open websites and so on;
 2. the command-line `ppcli` application, which allows you to run commands, connect to servers, open files of interest and so on.
 
+See [the help](https://github.com/emmanueltouzery/projectpad2/wiki/Help) for more details about the structure of the data that you can manage in projectpad.
+
 ## GUI application
 
 The application allows you to manage your database of projects info. It is organized in three panes:
@@ -25,8 +27,6 @@ Notes are especially interesting, you author them in markdown syntax.
 And full-text search is supported.
 
 The application also supports operation in dark mode.
-
-See [the help](https://github.com/emmanueltouzery/projectpad2/wiki/Help) for more details about the structure of the data that you can manage in projectpad.
 
 ## Command-line application
 

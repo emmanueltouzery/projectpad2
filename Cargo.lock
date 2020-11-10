@@ -1790,6 +1790,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
+name = "ppcli"
+version = "0.1.0"
+dependencies = [
+ "diesel",
+ "dirs 3.0.1",
+ "keyring",
+ "libc",
+ "projectpadsql",
+ "serde",
+ "shell-words",
+ "skim",
+ "zbus",
+ "zvariant",
+ "zvariant_derive",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1888,23 +1905,6 @@ dependencies = [
  "strum 0.19.5",
  "tar",
  "toml",
-]
-
-[[package]]
-name = "projectpad-cli"
-version = "0.1.0"
-dependencies = [
- "diesel",
- "dirs 3.0.1",
- "keyring",
- "libc",
- "projectpadsql",
- "serde",
- "shell-words",
- "skim",
- "zbus",
- "zvariant",
- "zvariant_derive",
 ]
 
 [[package]]

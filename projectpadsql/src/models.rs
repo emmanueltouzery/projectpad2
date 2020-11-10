@@ -21,7 +21,18 @@ pub struct Project {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display, EnumIter,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    EnumString,
+    AsExpression,
+    FromSqlRow,
+    Display,
+    EnumIter,
+    PartialOrd,
+    Ord,
 )]
 #[sql_type = "Varchar"]
 pub enum ServerType {
@@ -33,7 +44,18 @@ pub enum ServerType {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display, EnumIter,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    EnumString,
+    AsExpression,
+    FromSqlRow,
+    Display,
+    EnumIter,
+    PartialOrd,
+    Ord,
 )]
 #[sql_type = "Varchar"]
 pub enum ServerAccessType {
@@ -43,7 +65,19 @@ pub enum ServerAccessType {
     SrvAccessSshTunnel,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    EnumString,
+    AsExpression,
+    FromSqlRow,
+    Display,
+    PartialOrd,
+    Ord,
+)]
 #[sql_type = "Varchar"]
 pub enum EnvironmentType {
     EnvDevelopment,
@@ -53,7 +87,18 @@ pub enum EnvironmentType {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, EnumString, AsExpression, FromSqlRow, Display, EnumIter,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    EnumString,
+    AsExpression,
+    FromSqlRow,
+    Display,
+    EnumIter,
+    PartialOrd,
+    Ord,
 )]
 #[sql_type = "Varchar"]
 pub enum InterestType {

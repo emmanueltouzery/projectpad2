@@ -5,13 +5,15 @@ use projectpadsql::models::*;
 use skim::prelude::*;
 use std::path::PathBuf;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
 pub enum ItemType {
+    // ppcli depends on the fact that servers are the first item
+    // type for sorting of the display
     ServerItemType(ServerType),
     InterestItemType(InterestType),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ServerInfo {
     pub server_desc: String,
     pub server_username: String,
@@ -194,7 +196,13 @@ pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem
     let mut items = filter_server_pois(&conn);
     items.extend(filter_project_pois(&conn));
     items.extend(filter_servers(&conn));
-    items.sort_by(|a, b| b.project_name.partial_cmp(&a.project_name).unwrap());
+    items.sort_by(|a, b| {
+        b.project_name
+            .cmp(&a.project_name)
+            .then(b.server_info.cmp(&a.server_info))
+            .then(b.item_type.cmp(&a.item_type))
+            .then(b.item_text.cmp(&a.item_text))
+    });
     let cols_spec = vec![7, 3, 12, 40, 10, 30, 20];
     for action in items.into_iter().flat_map(actions::get_value) {
         let _ = item_sender.send(Arc::new(crate::MyItem {

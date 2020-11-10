@@ -51,6 +51,10 @@ pub fn get_keyring_pass() -> Result<Option<String>, Box<dyn Error>> {
     let (unlocked, _locked) =
         proxy.search_items([("service", "projectpad-cli")].iter().cloned().collect())?;
 
+    if unlocked.is_empty() {
+        return Ok(None);
+    }
+
     let p: &zvariant::ObjectPath = &unlocked[0];
     let SecretsResponse(secrets) = proxy.get_secrets(&[p.clone()][..], &session_path)?;
     Ok(secrets.first()

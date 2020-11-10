@@ -48,6 +48,20 @@
   );
 }
 
+/* not full width, just 30px */
+.server_item_header_titlebox_retired {
+  background: repeating-linear-gradient(
+      -45deg,
+      #eeeeee,
+      #eeeeee 15px,
+      white 15px,
+      white 30px
+    ),
+    @theme_base_color;
+  background-size: 15px 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
+
 .items_frame_title {
   border-left: 2px solid black;
   font-size: 15px;

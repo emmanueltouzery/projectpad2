@@ -410,9 +410,14 @@ impl Widget for SearchView {
         );
         let mut y = 0;
         let mut item_idx = 0;
+        let mut cur_server = None;
         while y + SEARCH_RESULT_WIDGET_HEIGHT < y_to_display {
             y += SEARCH_RESULT_WIDGET_HEIGHT;
             item_idx += 1;
+            let item = &search_items[item_idx];
+            if let ProjectPadItem::Server(srv) = item {
+                cur_server = Some(srv);
+            }
         }
         search_result_area
             .get_style_context()
@@ -422,6 +427,9 @@ impl Widget for SearchView {
             && y < y_to_display + search_result_area.get_allocation().height
         {
             let item = &search_items[item_idx];
+            if let ProjectPadItem::Server(srv) = item {
+                cur_server = Some(srv);
+            }
             let drawing_context = search_view_render::DrawingContext {
                 search_result_area: search_result_area.clone(),
                 style_context: search_result_area.get_style_context().clone(),
@@ -440,7 +448,7 @@ impl Widget for SearchView {
                 item_with_depressed_action: item_with_depressed_action.clone(),
                 operation_mode: op_mode,
             };
-            search_view_render::draw_child(&drawing_context, &mut item_context, item);
+            search_view_render::draw_child(&drawing_context, &mut item_context, item, cur_server);
             if show_shortcuts && item_idx < 10 {
                 super::search_view_render::draw_shortcut(
                     (item_idx + 1) % 10,

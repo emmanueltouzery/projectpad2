@@ -187,6 +187,7 @@ pub fn draw_child(
     drawing_context: &DrawingContext,
     item_context: &mut ItemContext,
     item: &ProjectPadItem,
+    cur_server: Option<&Server>,
 ) {
     let extra_css_class = match &item {
         ProjectPadItem::Server(_)
@@ -208,23 +209,25 @@ pub fn draw_child(
             &s,
         ),
         ProjectPadItem::ServerNote(n) => {
-            draw_server_note(drawing_context, item_context, item, x, &n)
+            draw_server_note(drawing_context, item_context, item, x, &n, cur_server)
         }
         ProjectPadItem::ProjectNote(n) => {
             draw_project_note(drawing_context, item_context, item, x, &n)
         }
         ProjectPadItem::ServerWebsite(w) => {
-            draw_server_website(drawing_context, item_context, item, x, &w)
+            draw_server_website(drawing_context, item_context, item, x, &w, cur_server)
         }
         ProjectPadItem::ServerExtraUserAccount(u) => {
-            draw_server_extra_user(drawing_context, item_context, item, x, &u)
+            draw_server_extra_user(drawing_context, item_context, item, x, &u, cur_server)
         }
-        ProjectPadItem::ServerPoi(p) => draw_server_poi(drawing_context, item_context, item, x, &p),
+        ProjectPadItem::ServerPoi(p) => {
+            draw_server_poi(drawing_context, item_context, item, x, &p, cur_server)
+        }
         ProjectPadItem::ProjectPoi(p) => {
             draw_project_poi(drawing_context, item_context, item, x, &p)
         }
         ProjectPadItem::ServerDatabase(d) => {
-            draw_server_database(drawing_context, item_context, item, x, &d)
+            draw_server_database(drawing_context, item_context, item, x, &d, cur_server)
         }
         ProjectPadItem::ServerLink(s) => {
             draw_linked_server(drawing_context, item_context, item, x, &s)
@@ -285,17 +288,29 @@ fn draw_server_item_common(
     x: f64,
     title: &str,
     icon: &Icon,
+    server: Option<&Server>,
 ) -> (gtk::Border, gtk::Border, pango::Rectangle) {
     let y = item_context.y;
     let style_context = &drawing_context.style_context;
     let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
     let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+    let is_retired = server.map(|s| s.is_retired).unwrap_or(false);
+    if is_retired {
+        drawing_context
+            .style_context
+            .add_class("server_item_header_titlebox_retired");
+    }
     draw_box(
         drawing_context,
         item_context,
         item,
         LEFT_RIGHT_MARGIN as f64,
     );
+    if is_retired {
+        drawing_context
+            .style_context
+            .remove_class("server_item_header_titlebox_retired");
+    }
     draw_icon(
         &drawing_context.style_context,
         &drawing_context.context,
@@ -333,6 +348,7 @@ fn draw_server_website(
     item: &ProjectPadItem,
     x: f64,
     website: &ServerWebsite,
+    server: Option<&Server>,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
@@ -341,6 +357,7 @@ fn draw_server_website(
         x,
         &website.desc,
         &Icon::HTTP,
+        server,
     );
     draw_link(
         drawing_context,
@@ -360,6 +377,7 @@ fn draw_server_extra_user(
     item: &ProjectPadItem,
     x: f64,
     user: &ServerExtraUserAccount,
+    server: Option<&Server>,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
@@ -368,6 +386,7 @@ fn draw_server_extra_user(
         x,
         &user.username,
         &Icon::USER,
+        server,
     );
 
     draw_subtext(
@@ -387,6 +406,7 @@ fn draw_server_poi(
     item: &ProjectPadItem,
     x: f64,
     poi: &ServerPointOfInterest,
+    server: Option<&Server>,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
@@ -395,6 +415,7 @@ fn draw_server_poi(
         x,
         &poi.desc,
         &Icon::POINT_OF_INTEREST,
+        server,
     );
 
     draw_subtext(
@@ -422,6 +443,7 @@ fn draw_project_poi(
         x,
         &poi.desc,
         &Icon::POINT_OF_INTEREST,
+        None,
     );
 
     draw_subtext(
@@ -441,6 +463,7 @@ fn draw_server_database(
     item: &ProjectPadItem,
     x: f64,
     db: &ServerDatabase,
+    server: Option<&Server>,
 ) {
     let (padding, margin, title_rect) = draw_server_item_common(
         drawing_context,
@@ -449,6 +472,7 @@ fn draw_server_database(
         x,
         &db.desc,
         &Icon::DATABASE,
+        server,
     );
 
     draw_subtext(
@@ -476,6 +500,7 @@ fn draw_linked_server(
         x,
         &srv.desc,
         &Icon::SERVER_LINK,
+        None,
     );
 }
 
@@ -493,6 +518,7 @@ fn draw_project_note(
         x,
         &note.title,
         &Icon::NOTE,
+        None,
     );
 }
 
@@ -502,6 +528,7 @@ fn draw_server_note(
     item: &ProjectPadItem,
     x: f64,
     note: &ServerNote,
+    server: Option<&Server>,
 ) {
     let (_padding, _margin, _title_rect) = draw_server_item_common(
         drawing_context,
@@ -510,6 +537,7 @@ fn draw_server_note(
         x,
         &note.title,
         &Icon::NOTE,
+        server,
     );
 }
 
@@ -525,7 +553,17 @@ fn draw_server(
     let margin = drawing_context
         .style_context
         .get_margin(gtk::StateFlags::NORMAL);
+    if server.is_retired {
+        drawing_context
+            .style_context
+            .add_class("project_poi_header_titlebox_retired");
+    }
     draw_box(drawing_context, item_context, item, hierarchy_offset);
+    if server.is_retired {
+        drawing_context
+            .style_context
+            .remove_class("project_poi_header_titlebox_retired");
+    }
     drawing_context.style_context.add_class("title");
     let title_rect = draw_title(
         drawing_context,

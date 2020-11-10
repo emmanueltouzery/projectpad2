@@ -24,7 +24,9 @@ Notes are especially interesting, you author them in markdown syntax.
 
 And full-text search is supported.
 
-See [the help](https://github.com/emmanueltouzery/projectpad2/wiki/Help) for more details.
+The application also supports operation in dark mode.
+
+See [the help](https://github.com/emmanueltouzery/projectpad2/wiki/Help) for more details about the structure of the data that you can manage in projectpad.
 
 ## Command-line application
 

@@ -30,7 +30,7 @@ impl SkimItem for MyItem {
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
         ItemPreview::Text(
-            "[enter]: run, [alt-enter]: paste to prompt, [ctrl-y]: copy to clipboard, [ctrl-n/p] next/previous".to_string(),
+            "[enter] run, [alt-enter] paste to prompt, [ctl-y] copy to clipboard, [ctl-n/p] next/previous".to_string(),
         )
     }
 }

@@ -203,7 +203,7 @@ pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem
             .then(b.item_type.cmp(&a.item_type))
             .then(b.item_text.cmp(&a.item_text))
     });
-    let cols_spec = vec![7, 3, 4, 40, 10, 30, 20];
+    let cols_spec = vec![7, 3, 4, 30, 25, 10];
     for action in items.into_iter().flat_map(actions::get_value) {
         let _ = item_sender.send(Arc::new(crate::MyItem {
             display: render_row(&cols_spec, &action),
@@ -232,36 +232,27 @@ fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
         .unwrap_or_else(|| "-".to_string());
     col4.truncate(cols_spec[3]);
     let mut col5 = item
-        .server_info
-        .as_ref()
-        .map(|si| render_access_type(&si.server_access_type))
-        .unwrap_or_else(|| "-")
-        .to_string();
-    col5.truncate(cols_spec[4]);
-    let mut col6 = item
         .poi_desc
         .as_ref()
         .cloned()
         .unwrap_or_else(|| "".to_string());
+    col5.truncate(cols_spec[4]);
+    let mut col6 = action.desc.clone();
     col6.truncate(cols_spec[5]);
-    let mut col7 = action.desc.clone();
-    col7.truncate(cols_spec[6]);
     format!(
-        "{:<w1$} {:<w2$} {:<w3$} {:<w4$} {:<w5$} {:<w6$} {:<w7$}",
+        "{:<w1$} {:<w2$} {:<w3$} {:<w4$} {:<w5$}  {:<w6$}",
         col1,
         col2,
         col3,
         col4,
         col5,
         col6,
-        col7,
         w1 = cols_spec[0],
         w2 = cols_spec[1],
         w3 = cols_spec[2],
         w4 = cols_spec[3],
         w5 = cols_spec[4],
         w6 = cols_spec[5],
-        w7 = cols_spec[6],
     )
 }
 
@@ -271,15 +262,6 @@ fn display_env(env: &EnvironmentType) -> &'static str {
         EnvironmentType::EnvUat => "Uat",
         EnvironmentType::EnvStage => "Stg",
         EnvironmentType::EnvProd => "Prd",
-    }
-}
-
-fn render_access_type(access: &ServerAccessType) -> &'static str {
-    match access {
-        ServerAccessType::SrvAccessSsh => "ssh",
-        ServerAccessType::SrvAccessRdp => "RDP",
-        ServerAccessType::SrvAccessWww => "www",
-        ServerAccessType::SrvAccessSshTunnel => "ssh tunnel",
     }
 }
 

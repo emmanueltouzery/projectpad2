@@ -182,24 +182,16 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
             && is_ssh_access(i) =>
         {
             vec![
-                Action::new(
-                    "tail log file".to_string(),
-                    get_value_tail_file,
-                    item.clone(),
-                ),
-                Action::new(
-                    "less log file".to_string(),
-                    get_value_less_file,
-                    item.clone(),
-                ),
-                Action::new("fetch log file".to_string(), get_value_fetch_file, item),
+                Action::new("tail log".to_string(), get_value_tail_file, item.clone()),
+                Action::new("less log".to_string(), get_value_less_file, item.clone()),
+                Action::new("fetch log".to_string(), get_value_fetch_file, item),
             ]
         }
         i if i.item_type == ItemType::InterestItemType(InterestType::PoiApplication)
             && is_ssh_access(i) =>
         {
             vec![Action::new(
-                "ssh in that folder".to_string(),
+                "ssh folder".to_string(),
                 get_value_ssh_cd_in_folder,
                 item,
             )]
@@ -208,7 +200,7 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
             && i.server_info.is_none() =>
         {
             vec![Action {
-                desc: "cd in that folder".to_string(),
+                desc: "go folder".to_string(),
                 get_string: get_value_cd_in_folder,
                 // cannot change the folder of the parent shell
                 allowed_actions: vec![AllowedAction::CopyToClipboard, AllowedAction::CopyToPrompt],
@@ -216,7 +208,7 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
             }]
         }
         i if i.sql_table.as_str() == "server" && is_ssh_access(i) => vec![Action::new(
-            "ssh on the server".to_string(),
+            "ssh shell".to_string(),
             get_value_server_ssh,
             item,
         )],
@@ -227,7 +219,7 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
         .contains(&i.item_type)
             && !is_ssh_access(i) =>
         {
-            vec![Action::new("run command".to_string(), get_value_text, item)]
+            vec![Action::new("run cmd".to_string(), get_value_text, item)]
         }
         i if [
             ItemType::InterestItemType(InterestType::PoiCommandToRun),
@@ -237,7 +229,7 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
             && is_ssh_access(i) =>
         {
             vec![Action::new(
-                "run command on server".to_string(),
+                "run cmd".to_string(),
                 get_value_ssh_run_on_ssh,
                 item,
             )]
@@ -246,17 +238,9 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
             && is_ssh_access(i) =>
         {
             vec![
-                Action::new(
-                    "edit config file".to_string(),
-                    get_value_edit_file,
-                    item.clone(),
-                ),
-                Action::new(
-                    "less config file".to_string(),
-                    get_value_less_file,
-                    item.clone(),
-                ),
-                Action::new("fetch config file".to_string(), get_value_fetch_file, item),
+                Action::new("edit cfg".to_string(), get_value_edit_file, item.clone()),
+                Action::new("less cfg".to_string(), get_value_less_file, item.clone()),
+                Action::new("fetch cfg".to_string(), get_value_fetch_file, item),
             ]
         }
         _ => Vec::new(),

@@ -236,6 +236,7 @@ impl Widget for ProjectAddEditDialog {
                 FileContentsButton((
                     self.model.icon_desc.clone(),
                     self.model.icon.clone(),
+                    Some("*.png".to_string()),
                 )) {
                     FileContentsButtonFileChanged(ref val) => Msg::IconChanged(val.clone()),
                     cell: {

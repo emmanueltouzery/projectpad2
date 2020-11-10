@@ -257,6 +257,7 @@ impl Widget for ServerExtraUserAddEditDialog {
             FileContentsButton((
                 self.model.auth_key_filename.clone(),
                 self.model.auth_key.clone(),
+                None,
             )) {
                 FileContentsButtonFileChanged(ref val) => Msg::AuthFileChanged(val.clone()),
                 cell: {

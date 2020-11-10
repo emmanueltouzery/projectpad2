@@ -17,11 +17,12 @@ pub enum Msg {
 
 pub struct Model {
     relm: relm::Relm<FileContentsButton>,
-    auth_key_filename: Option<String>,
-    // store the auth key & not the Path, because it's what I have
+    filename: Option<String>,
+    // store the contents & not the Path, because it's what I have
     // when reading from SQL. So by storing it also when adding a new
     // server, I have the same data for add & edit.
-    auth_key: Option<Vec<u8>>,
+    file_contents: Option<Vec<u8>>,
+    file_extension: Option<String>,
 }
 
 #[widget]
@@ -29,30 +30,41 @@ impl Widget for FileContentsButton {
     fn init_view(&mut self) {
         self.btn_box.get_style_context().add_class("linked");
         self.update_auth_file();
+        let filter = gtk::FileFilter::new();
+        if let Some(ext) = self.model.file_extension.as_ref() {
+            filter.add_pattern(&ext);
+        } else {
+            filter.add_pattern("*.*");
+        }
+        self.picker_btn.set_filter(&filter);
     }
 
     fn update_auth_file(&self) {
         self.auth_key_stack
-            .set_visible_child_name(if self.model.auth_key_filename.is_some() {
+            .set_visible_child_name(if self.model.filename.is_some() {
                 "file"
             } else {
                 "no_file"
             });
     }
 
-    fn model(relm: &relm::Relm<Self>, params: (Option<String>, Option<Vec<u8>>)) -> Model {
-        let (auth_key_filename, auth_key) = params;
+    fn model(
+        relm: &relm::Relm<Self>,
+        params: (Option<String>, Option<Vec<u8>>, Option<String>),
+    ) -> Model {
+        let (filename, file_contents, file_extension) = params;
         Model {
             relm: relm.clone(),
-            auth_key_filename,
-            auth_key,
+            filename,
+            file_contents,
+            file_extension,
         }
     }
 
     fn update(&mut self, event: Msg) {
         match event {
             Msg::RemoveAuthFile => {
-                self.model.auth_key_filename = None;
+                self.model.filename = None;
                 self.update_auth_file();
                 self.model
                     .relm
@@ -60,7 +72,7 @@ impl Widget for FileContentsButton {
                     .emit(Msg::FileChanged((None, None)));
             }
             Msg::FilePicked => {
-                match self.auth_key.get_filename().and_then(|f| {
+                match self.picker_btn.get_filename().and_then(|f| {
                     let path = Path::new(&f);
                     let fname = path
                         .file_name()
@@ -73,12 +85,12 @@ impl Widget for FileContentsButton {
                     }
                 }) {
                     Some((f, c)) => {
-                        self.model.auth_key_filename = Some(f);
-                        self.model.auth_key = Some(c);
+                        self.model.filename = Some(f);
+                        self.model.file_contents = Some(c);
                         self.update_auth_file();
                         self.model.relm.stream().emit(Msg::FileChanged((
-                            self.model.auth_key_filename.clone(),
-                            self.model.auth_key.clone(),
+                            self.model.filename.clone(),
+                            self.model.file_contents.clone(),
                         )));
                     }
                     None => {
@@ -99,8 +111,8 @@ impl Widget for FileContentsButton {
                     .use_header_bar(1)
                     .modal(true)
                     .build();
-                let auth_key = self.model.auth_key.clone();
-                let auth_key_filename = self.model.auth_key_filename.clone();
+                let file_contents = self.model.file_contents.clone();
+                let filename = self.model.filename.clone();
                 dialog.add_button("Cancel", gtk::ResponseType::Cancel);
                 dialog.add_button("Save", gtk::ResponseType::Ok);
                 dialog.connect_response(move |d, r| {
@@ -112,7 +124,7 @@ impl Widget for FileContentsButton {
                         }
                     }
                     if let Some(fname) = fname {
-                        if let Err(e) = Self::write_auth_key(&auth_key, &auth_key_filename, fname) {
+                        if let Err(e) = Self::write_auth_key(&file_contents, &filename, fname) {
                             standard_dialogs::display_error(
                                 "Error writing the file",
                                 Some(Box::new(e)),
@@ -142,7 +154,7 @@ impl Widget for FileContentsButton {
         #[name="auth_key_stack"]
         gtk::Stack {
             // if there is no file, a file picker...
-            #[name="auth_key"]
+            #[name="picker_btn"]
             gtk::FileChooserButton({action: gtk::FileChooserAction::Open}) {
                 child: {
                     name: Some("no_file")
@@ -161,7 +173,7 @@ impl Widget for FileContentsButton {
                 gtk::Label {
                     hexpand: true,
                     ellipsize: pango::EllipsizeMode::End,
-                    text: self.model.auth_key_filename.as_deref().unwrap_or_else(|| "")
+                    text: self.model.filename.as_deref().unwrap_or_else(|| "")
                 },
                 gtk::Button {
                     always_show_image: true,

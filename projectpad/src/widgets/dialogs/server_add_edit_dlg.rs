@@ -404,6 +404,7 @@ impl Widget for ServerAddEditDialog {
             FileContentsButton((
                 self.model.auth_key_filename.clone(),
                 self.model.auth_key.clone(),
+                None,
             )) {
                 AuthFileChanged(ref val) => Msg::AuthFileChanged(val.clone()),
                 cell: {

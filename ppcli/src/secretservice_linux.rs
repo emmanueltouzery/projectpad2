@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::error::Error;
 use zvariant_derive::Type;
 
@@ -36,10 +37,10 @@ trait Service {
 
 #[derive(Debug, Serialize, Deserialize, Type)]
 pub struct SecretsResponse(
-    Vec<(
+    HashMap<
         zvariant::OwnedObjectPath,
         (zvariant::OwnedObjectPath, Vec<u8>, Vec<u8>, String),
-    )>,
+    >,
 );
 
 pub fn get_keyring_pass() -> Result<Option<String>, Box<dyn Error>> {
@@ -57,7 +58,7 @@ pub fn get_keyring_pass() -> Result<Option<String>, Box<dyn Error>> {
 
     let p: &zvariant::ObjectPath = &unlocked[0];
     let SecretsResponse(secrets) = proxy.get_secrets(&[p.clone()][..], &session_path)?;
-    Ok(secrets.first()
+    Ok(secrets.iter().next()
        .and_then(|s| std::str::from_utf8(&s.1.2).ok())
        .map(|s| s.to_string()))
 }

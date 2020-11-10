@@ -62,9 +62,9 @@ pub fn main() {
         println!("version {}", env!("CARGO_PKG_VERSION"));
         std::process::exit(0);
     }
-    let db_pass = some_or_exit!(
-        secretservice::get_keyring_pass().ok().and_then(|r| r),
-        "Cannot find the database password in the OS keyring, aborting: did you run the projectpad GUI app to create a database first?",
+    let db_pass = ok_or_exit!(
+        secretservice::get_keyring_pass().and_then(|r| r.ok_or_else(|| "no matching credentials".into())),
+        "Cannot find the database password in the OS keyring, aborting: did you run the projectpad GUI app to create a database first? {}",
         1
     );
 

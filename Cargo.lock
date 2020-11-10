@@ -3099,8 +3099,9 @@ dependencies = [
 
 [[package]]
 name = "zbus"
-version = "1.2.1"
-source = "git+https://github.com/emmanueltouzery/zbus.git?rev=fb1825f7#fb1825f7bea6f05a107e36a4aab80e69ff69d517"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2f1803d7af14e3cddc5c1511b05af4bda27f89d8387e5e1aa3a7b918639cb18"
 dependencies = [
  "byteorder",
  "derivative",
@@ -3117,8 +3118,9 @@ dependencies = [
 
 [[package]]
 name = "zbus_macros"
-version = "1.2.1"
-source = "git+https://github.com/emmanueltouzery/zbus.git?rev=fb1825f7#fb1825f7bea6f05a107e36a4aab80e69ff69d517"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03273fa8aec65ed1be7026f58f92b90ecea09e622103718e9300591e21e24711"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2 1.0.24",
@@ -3129,7 +3131,8 @@ dependencies = [
 [[package]]
 name = "zvariant"
 version = "2.3.0"
-source = "git+https://github.com/emmanueltouzery/zbus.git?rev=fb1825f7#fb1825f7bea6f05a107e36a4aab80e69ff69d517"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc8bb578d9efd69a950d6061d12a9359ea5b2e961ad4dee10f25ccd4bc2201a4"
 dependencies = [
  "byteorder",
  "enumflags2",
@@ -3139,8 +3142,9 @@ dependencies = [
 
 [[package]]
 name = "zvariant_derive"
-version = "2.2.0"
-source = "git+https://github.com/emmanueltouzery/zbus.git?rev=fb1825f7#fb1825f7bea6f05a107e36a4aab80e69ff69d517"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f327c66f7a22695719b1cf26ae671081a9c47f1c7fa6d79209039f6ad0f6acd"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2 1.0.24",

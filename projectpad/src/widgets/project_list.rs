@@ -216,6 +216,9 @@ impl Widget for ProjectList {
     view! {
         #[name="scroll"]
         gtk::ScrolledWindow {
+            margin_top: 5,
+            margin_start: 2,
+            margin_end: 2,
             #[name="project_list"]
             gtk::Box {
                 orientation: gtk::Orientation::Vertical

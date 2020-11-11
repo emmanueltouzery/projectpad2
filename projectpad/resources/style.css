@@ -41,10 +41,10 @@
 .project_poi_header_titlebox_retired {
   background: repeating-linear-gradient(
     -45deg,
-    #eeeeee,
-    #eeeeee 15px,
-    white 15px,
-    white 30px
+    mix(@theme_base_color, @theme_text_color, 0.1),
+    mix(@theme_base_color, @theme_text_color, 0.1) 15px,
+    @theme_base_color 15px,
+    @theme_base_color 30px
   );
 }
 
@@ -52,10 +52,10 @@
 .server_item_header_titlebox_retired {
   background: repeating-linear-gradient(
       -45deg,
-      #eeeeee,
-      #eeeeee 15px,
-      white 15px,
-      white 30px
+      mix(@theme_base_color, @theme_text_color, 0.1),
+      mix(@theme_base_color, @theme_text_color, 0.1) 15px,
+      @theme_base_color 15px,
+      @theme_base_color 30px
     ),
     @theme_base_color;
   background-size: 15px 100%, 100% 100%;
@@ -63,7 +63,7 @@
 }
 
 .items_frame_title {
-  border-left: 2px solid black;
+  border-left: 2px solid @theme_text_color;
   font-size: 15px;
   font-weight: bold;
   padding: 5px 5px 5px 10px;

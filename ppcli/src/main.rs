@@ -58,11 +58,34 @@ macro_rules! ok_or_exit {
     }};
 }
 
-pub fn main() {
+fn handle_params() {
     if env::args().skip(1).any(|p| p == "--version") {
         println!("version {}", env!("CARGO_PKG_VERSION"));
         std::process::exit(0);
     }
+    if env::args().skip(1).any(|p| p == "--help") {
+        println!(
+            "{}",
+            vec![
+                " --version   Print version",
+                " --help      This documentation",
+                " --upgrade   Upgrade ppcli"
+            ]
+            .join("\n")
+        );
+        std::process::exit(0);
+    }
+    if env::args().skip(1).any(|p| p == "--upgrade") {
+        if let Err(e) = autoupgrade::try_upgrade() {
+            eprintln!("Error in auto-upgrade: {}", e);
+            std::process::exit(1);
+        }
+        std::process::exit(0);
+    }
+}
+
+pub fn main() {
+    handle_params();
     let db_pass = ok_or_exit!(
         secretservice::get_keyring_pass().and_then(|r| r.ok_or_else(|| "no matching credentials".into())),
         "Cannot find the database password in the OS keyring, aborting: did you run the projectpad GUI app to create a database first? {}",

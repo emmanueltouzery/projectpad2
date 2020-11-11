@@ -1,9 +1,9 @@
 # Projectpad
 
-## Purpose
-
 Projectpad allows to manage secret credentials and server information that you need to handle as a software developer. List of servers, list of point of interests on those servers (applications, log files, databases, servers). It will securely store passwords and keys. It will also allow you to run commands (locally or on SSH servers), open terminals on remote SSH servers, and so on.
 The data is securely stored on-disk using [SQLcipher][], which uses 256-bit AES. The database is password-protected, but you can store the password in your OS keyring. Since the database is encrypted, you can put it in your dropbox (or similar account), to share it between computers.
+
+Projectpad's target audience are people who today have to use several tools to do their work effectively: a keepass-like application, a series of text files with notes, and a few shell scripts. Instead of that, projectpad offers a streamlined, all-in-one solution.
 
 Projectpad consists of two applications:
 
@@ -41,6 +41,9 @@ There was some effort made to make the GUI application as keyboard-friendly as p
 The command-line application loads all commands, servers, and files of interest, and displays them in a flat list, that you filter by typing and navigate using arrow keys. The application can execute commands, log you on ssh servers, edit configuration files, tail log files or fetch them, and so on.
 
 ![CLI1](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli1.svg)
+
+In this second screenshot, the user typed 'sra fail' and therefore filtered the rows to display only only application servers (SRA) and matched 'fail' on the line, which matched the failover server.
+Normally you would type keywords (part of the customer name, of the environment, of the item type), until the list is filtered to contain a few or a single element, at which you point you can just press enter to run the command.
 
 ![CLI2](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli2.svg)
 

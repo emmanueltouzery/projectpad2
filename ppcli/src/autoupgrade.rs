@@ -41,8 +41,9 @@ pub fn try_upgrade() -> Result<(), Box<dyn std::error::Error>> {
         return Err("can't find a URL of a newer version of ppcli".into());
     }
     println!(
-        "ppcli has detected a new version at {} Upgrade? y/n",
-        download_url
+        "ppcli has detected a ppcli version at:\n   {}\n   current version: {}\nUpgrade? y/n",
+        download_url,
+        env!("CARGO_PKG_VERSION")
     );
     let mut input = String::new();
     std::io::stdin().read_line(&mut input)?;

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Comment=
+Terminal=false
+Name=Projectpad
+Exec=projectpad
+Type=Application
+Icon=com.github.emmanueltouzery.projectpad

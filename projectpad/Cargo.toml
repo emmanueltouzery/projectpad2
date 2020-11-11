@@ -11,11 +11,11 @@ tar = "0.4.30"
 includedir_codegen = "0.6.0"
 
 [dependencies]
-# relm = "0.20.0"
-# relm-derive = "0.20.0"
+relm = "0.20.0"
+relm-derive = "0.20.0"
 # relm: take in a clippy fix merged after 0.20.0
-relm = { git = "https://github.com/antoyo/relm", rev = "297c7844ca20031880ac60789dee7295c52f6e7c" }
-relm-derive = { git = "https://github.com/antoyo/relm", rev = "297c7844ca20031880ac60789dee7295c52f6e7c" }
+# relm = { git = "https://github.com/antoyo/relm", rev = "297c7844ca20031880ac60789dee7295c52f6e7c" }
+# relm-derive = { git = "https://github.com/antoyo/relm", rev = "297c7844ca20031880ac60789dee7295c52f6e7c" }
 glib = "0.10.3"
 gio = "0.9.1"
 cairo-rs = { version = "0.9.1", features = ["png"] }

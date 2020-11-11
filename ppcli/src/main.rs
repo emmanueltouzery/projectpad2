@@ -3,6 +3,7 @@ use skim::prelude::*;
 use std::env;
 use std::io::Write;
 use std::process::{Command, Stdio};
+mod autoupgrade;
 pub mod config;
 #[cfg_attr(target_os = "linux", path = "secretservice_linux.rs")]
 #[cfg_attr(not(target_os = "linux"), path = "secretservice_generic.rs")]
@@ -152,7 +153,11 @@ fn check_db_version(conn: &SqliteConnection) -> Result<(), Box<dyn std::error::E
         return Err(format!("The database version ({}), is older than the oldest version supported by this application. Please upgrade the main projectpad application.", version).into());
     }
     if version > MAX_SUPPORTED_DB_SCHEMA_VERSION {
-        return Err(format!("The database version ({}), is newer than the newest version supported by this application. Please upgrade this CLI application.", version).into());
+        println!("The database version ({}), is newer than the newest version supported by this application. Please upgrade this CLI application.", version);
+        if let Err(e) = autoupgrade::try_upgrade() {
+            eprintln!("Error in auto-upgrade: {}", e);
+        }
+        std::process::exit(1);
     }
     Ok(())
 }

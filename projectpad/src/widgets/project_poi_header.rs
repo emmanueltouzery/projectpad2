@@ -242,7 +242,7 @@ pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
                     "●●●●●".to_string()
                 }),
                 srv.password.clone(),
-                Some((gdk::keys::constants::E, gdk::ModifierType::CONTROL_MASK)),
+                Some((gdk::keys::constants::Y, gdk::ModifierType::CONTROL_MASK)),
             ),
         ],
         ProjectItem::ProjectPointOfInterest(poi) => vec![

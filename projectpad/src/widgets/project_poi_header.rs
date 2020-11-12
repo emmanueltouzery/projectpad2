@@ -216,7 +216,8 @@ pub fn populate_grid(
     header_grid.set_visible(!fields.is_empty());
 }
 
-pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
+// i don't like bool parameters... well, just this once.
+pub fn get_project_item_fields(project_item: &ProjectItem, is_search_view: bool) -> Vec<GridItem> {
     match project_item {
         ProjectItem::Server(srv) => vec![
             GridItem::new(
@@ -242,7 +243,11 @@ pub fn get_project_item_fields(project_item: &ProjectItem) -> Vec<GridItem> {
                     "●●●●●".to_string()
                 }),
                 srv.password.clone(),
-                Some((gdk::keys::constants::Y, gdk::ModifierType::CONTROL_MASK)),
+                // don't display the shortcut info in search mode, because in search mode
+                // we may display several server headers, so the shortcut wouldn't know
+                // which one to pick.
+                Some((gdk::keys::constants::Y, gdk::ModifierType::CONTROL_MASK))
+                    .filter(|_| !is_search_view),
             ),
         ],
         ProjectItem::ProjectPointOfInterest(poi) => vec![
@@ -760,7 +765,7 @@ impl Widget for ProjectPoiHeader {
             .model
             .project_item
             .as_ref()
-            .map(get_project_item_fields)
+            .map(|pi| get_project_item_fields(pi, false))
             .unwrap_or_else(|| vec![]);
         let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
         relm::connect!(

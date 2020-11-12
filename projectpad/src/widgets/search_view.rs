@@ -341,7 +341,7 @@ impl Widget for SearchView {
             // TODO could pass in db & stuff
             server_item_list_item::get_server_item_grid_items(&server_item, &None)
         } else if let Some(project_item) = projectpad_item.to_project_item() {
-            project_poi_header::get_project_item_fields(&project_item)
+            project_poi_header::get_project_item_fields(&project_item, true)
         } else {
             vec![]
         };

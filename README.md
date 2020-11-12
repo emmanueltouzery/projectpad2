@@ -43,7 +43,7 @@ The command-line application loads all commands, servers, and files of interest,
 ![CLI1](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli1.svg)
 
 In this second screenshot, the user typed 'sra fail' and therefore filtered the rows to display only only application servers (SRA) and matched 'fail' on the line, which matched the failover server.
-Normally you would type keywords (part of the customer name, of the environment, of the item type), until the list is filtered to contain a few or a single element, at which you point you can just press enter to run the command.
+Normally you would type keywords (part of the project name, of the environment, of the item type), until the list is filtered to contain a few or a single element, at which you point you can just press enter to run the command.
 
 ![CLI2](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli2.svg)
 

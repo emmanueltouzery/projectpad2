@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 pub fn config_path() -> PathBuf {
     let mut path = dirs::data_local_dir().expect("Failed to get the data local folder");
-    path.push(".projectpad");
+    path.push("projectpad");
     path
 }
 

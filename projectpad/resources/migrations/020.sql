@@ -1,3 +1,5 @@
+PRAGMA legacy_alter_table = true;
+
 alter table project_note rename to temp_project_note;
 
 CREATE TABLE project_note (
@@ -19,3 +21,5 @@ select id, title, contents,
 from temp_project_note;
 
 drop table temp_project_note;
+
+PRAGMA legacy_alter_table = false;

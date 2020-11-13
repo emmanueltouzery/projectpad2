@@ -1,3 +1,5 @@
+PRAGMA legacy_alter_table = true;
+
 alter table project rename to temp_project;
 
 CREATE TABLE project (
@@ -18,3 +20,5 @@ insert into project
 from temp_project;
 
 drop table temp_project;
+
+PRAGMA legacy_alter_table = false;

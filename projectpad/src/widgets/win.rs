@@ -153,6 +153,23 @@ impl Widget for Win {
         self.init_infobar_overlay();
 
         self.unlock_db();
+
+        self.project_poi_contents
+            .stream()
+            .emit(ProjectPoiContentsMsg::GotHeaderBarHeight(
+                self.infobar_overlay
+                    .translate_coordinates(
+                        &self
+                            .infobar_overlay
+                            .get_toplevel()
+                            .unwrap()
+                            .upcast::<gtk::Widget>(),
+                        0,
+                        0,
+                    )
+                    .unwrap()
+                    .1,
+            ));
     }
 
     fn init_infobar_overlay(&self) {

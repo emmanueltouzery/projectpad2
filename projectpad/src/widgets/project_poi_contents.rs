@@ -20,6 +20,7 @@ use std::sync::mpsc;
 
 #[derive(Msg)]
 pub enum Msg {
+    GotHeaderBarHeight(i32),
     ProjectItemSelected(Option<ProjectItem>),
     ViewServerNote(ServerNote),
     ServerNoteBack,
@@ -41,6 +42,7 @@ pub enum Msg {
 pub struct Model {
     relm: relm::Relm<ProjectPoiContents>,
     db_sender: mpsc::Sender<SqlFunc>,
+    headerbar_height: Option<i32>,
     cur_project_item: Option<ProjectItem>,
     pass_popover: Option<gtk::Popover>,
     note_links: Vec<ItemDataInfo>,
@@ -85,6 +87,7 @@ impl Widget for ProjectPoiContents {
         Model {
             relm: relm.clone(),
             db_sender,
+            headerbar_height: None,
             cur_project_item: None,
             pass_popover: None,
             note_links: vec![],
@@ -105,6 +108,9 @@ impl Widget for ProjectPoiContents {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::GotHeaderBarHeight(h) => {
+                self.model.headerbar_height = Some(h);
+            }
             Msg::ProjectItemSelected(pi) => {
                 self.model.cur_project_item = pi;
                 self.server_contents
@@ -362,15 +368,9 @@ impl Widget for ProjectPoiContents {
             .get_window()
             .unwrap();
         let (_, dev_x, dev_y, _) = window.get_device_position(&mouse_device);
-        let (_, _o_x, o_y) = self.contents_stack.get_window().unwrap().get_origin();
         popover.set_pointing_to(&gtk::Rectangle {
-            // x: dev_x - o_x,
-            // the - o_x from the previous line used to be necessary, now it
-            // isn't anymore.. this more or less matches with me adding a frame
-            // for the textview+some padding... not sure. right now i'm happy
-            // with it just working, even if i don't fully understand what's going on.
             x: dev_x - 40,
-            y: dev_y - o_y,
+            y: dev_y - self.model.headerbar_height.unwrap_or(0),
             width: 50,
             height: 15,
         });

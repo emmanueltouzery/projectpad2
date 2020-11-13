@@ -301,9 +301,11 @@ impl Widget for ProjectPoiContents {
     }
 
     fn text_note_set_cursor(&self, cursor: &Option<gdk::Cursor>) {
-        gtk::TextViewExt::get_window(&self.note_textview, gtk::TextWindowType::Text)
-            .unwrap()
-            .set_cursor(cursor.as_ref());
+        if let Some(w) =
+            gtk::TextViewExt::get_window(&self.note_textview, gtk::TextWindowType::Text)
+        {
+            w.set_cursor(cursor.as_ref());
+        }
     }
 
     fn iter_is_link_or_password(iter: &gtk::TextIter) -> bool {

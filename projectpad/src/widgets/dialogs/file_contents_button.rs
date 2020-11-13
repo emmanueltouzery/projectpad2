@@ -104,35 +104,30 @@ impl Widget for FileContentsButton {
             // meant for my parent
             Msg::FileChanged(_) => {}
             Msg::SaveAuthFile => {
-                // https://stackoverflow.com/questions/54487052/how-do-i-add-a-save-button-to-the-gtk-filechooser-dialog
-                let dialog = gtk::FileChooserDialogBuilder::new()
+                // native file picker to save files, so it works also within flatpak
+                let dialog = gtk::FileChooserNativeBuilder::new()
                     .title("Select destination folder")
                     .action(gtk::FileChooserAction::SelectFolder)
-                    .use_header_bar(1)
                     .modal(true)
                     .build();
                 let file_contents = self.model.file_contents.clone();
                 let filename = self.model.filename.clone();
-                dialog.add_button("Cancel", gtk::ResponseType::Cancel);
-                dialog.add_button("Save", gtk::ResponseType::Ok);
-                dialog.connect_response(move |d, r| {
-                    d.close();
-                    let mut fname = None;
-                    if r == gtk::ResponseType::Ok {
-                        if let Some(filename) = d.get_filename() {
-                            fname = Some(filename);
+
+                if dialog.run() == gtk::ResponseType::Accept {
+                    match dialog.get_filename() {
+                        Some(f) => {
+                            if let Err(e) = Self::write_auth_key(&file_contents, &filename, f) {
+                                standard_dialogs::display_error(
+                                    "Error writing the file",
+                                    Some(Box::new(e)),
+                                );
+                            }
+                        }
+                        None => {
+                            standard_dialogs::display_error("Invalid filename selected", None);
                         }
                     }
-                    if let Some(fname) = fname {
-                        if let Err(e) = Self::write_auth_key(&file_contents, &filename, fname) {
-                            standard_dialogs::display_error(
-                                "Error writing the file",
-                                Some(Box::new(e)),
-                            );
-                        }
-                    }
-                });
-                dialog.show();
+                }
             }
         }
     }

@@ -8,6 +8,32 @@ use diesel::prelude::*;
 use std::path::PathBuf;
 
 pub fn config_path() -> PathBuf {
+    // I've looked at $XDG_DATA_HOME: it's ~/.var/app/com.github.emmanueltouzery.projectpad/data
+    // when running in flatpak, but ~/.local/share/ when running native
+    // My problem is that I split my app in two in part due to flatpak. In reality, it's impossible to do
+    // all that I want to do with this app within flatpak. So I made two apps: this one, which has a GUI
+    // and doesn't need to run on the host, and a CLI statically linked companion app that must run
+    // on the host. And they share the database. And I'd like to support the case of the flatpak app
+    // being run on the metal too. That means that the CLI app must look in ~/.var/com.github... where
+    // the flatpak app saves, as well as ~/. local/share. And if a user wants to contribute to the
+    // app and run it on the host, I'd also like for the db to be found.
+    //
+    // https://github.com/flatpak/flatpak/wiki/Filesystem
+    if !std::env::var("XDG_DATA_HOME").is_ok() {
+        // assuming we're not in a flatpak
+        // it's still possible the user installed the app in a
+        // flatpak, and we are ppcli running on the host
+        // => check if i find the flatpak app data folder
+        let mut path = dirs::home_dir().expect("Failed to get the home folder");
+        path.push(".var");
+        path.push("app");
+        path.push("com.github.emmanueltouzery.projectpad");
+        path.push("data");
+        if path.exists() {
+            path.push("projectpad");
+            return path;
+        }
+    }
     let mut path = dirs::data_local_dir().expect("Failed to get the data local folder");
     path.push("projectpad");
     path

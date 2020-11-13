@@ -91,6 +91,18 @@ impl Widget for FileContentsButton {
                         }
                     }) {
                         Some((f, c)) => {
+                            if let Some(ext) = self.model.file_extension.as_ref() {
+                                // unfortunately the native file picker in gtk seems to ignore
+                                // my file extension constraints when run in flatpak...
+                                // => must gatekeep myself
+                                if !f.ends_with(&ext[1..]) {
+                                    standard_dialogs::display_error(
+                                        &format!("Can only pick {} files", ext),
+                                        None,
+                                    );
+                                    return;
+                                }
+                            }
                             self.model.filename = Some(f);
                             self.model.file_contents = Some(c);
                             self.update_auth_file();

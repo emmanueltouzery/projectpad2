@@ -196,6 +196,10 @@ pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem
     let mut items = filter_server_pois(&conn);
     items.extend(filter_project_pois(&conn));
     items.extend(filter_servers(&conn));
+    if items.is_empty() {
+        println!("No items to display. Keep in mind that ppcli will only display non RDP/non WWW servers, and point of interests");
+        std::process::exit(0);
+    }
     items.sort_by(|a, b| {
         b.project_name
             .cmp(&a.project_name)

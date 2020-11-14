@@ -121,7 +121,7 @@ pub fn main() {
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
         .expect(Some("ctrl-y,alt-enter".to_string()))
-        .height(Some("50%"))
+        // .height(Some("50%"))
         // .multi(true)
         .preview(Some("")) // preview should be specified to enable preview window
         .preview_window(Some("up:2"))

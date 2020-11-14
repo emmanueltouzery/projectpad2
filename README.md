@@ -30,7 +30,7 @@ And full-text search is supported.
 
 ![search screenshot](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/gui2.png)
 
-The application also supports operation in dark mode.
+The application also supports gtk's dark mode:
 
 ![dark theme screenshot](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/gui_dark1.png)
 
@@ -40,9 +40,11 @@ There was some effort made to make the GUI application as keyboard-friendly as p
 
 The command-line application loads all commands, servers, and files of interest, and displays them in a flat list, that you filter by typing and navigate using arrow keys. The application can execute commands, log you on ssh servers, edit configuration files, tail log files or fetch them, and so on.
 
+Here is the display of ppcli after startup, showing a list of possible actions (the action themselves are described in the last column):
+
 ![CLI1](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli1.svg)
 
-In this second screenshot, the user typed 'sra fail' and therefore filtered the rows to display only only application servers (SRA) and matched 'fail' on the line, which matched the failover server.
+And in the next screenshot, the user typed 'sra fail' and therefore filtered the rows to display only only application servers (SRA) and matched 'fail' on the line, which matched the failover server.
 Normally you would type keywords (part of the project name, of the environment, of the item type), until the list is filtered to contain a few or a single element, at which you point you can just press enter to run the command.
 
 ![CLI2](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli2.svg)
@@ -51,7 +53,8 @@ Normally you would type keywords (part of the project name, of the environment, 
 
 ## Installation
 
-The recommended way to install the applications with with flatpak for the projectpad GUI, and as a statically built linux binary for ppcli. You can download the ppcli static binary, that can auto-upgrade later, from [the github downloads](https://github.com/emmanueltouzery/projectpad2/releases), and the flatpak from flathub ([flathub deployment pending](https://github.com/flathub/flathub/pull/1931)).
+The recommended way to install the applications is with flatpak for the projectpad GUI, and as a statically built linux binary for ppcli. You can download the ppcli static binary, that can auto-upgrade later, from [the github downloads](https://github.com/emmanueltouzery/projectpad2/releases), and the flatpak from flathub ([flathub deployment pending](https://github.com/flathub/flathub/pull/1931)).
+
 It's possible to share the projectpad database between computers using Dropbox or similar services. The database is a single file and will be in `~/.var/app/com.github.emmanueltouzery.projectpad/data/projectpad/projectpad.db` if you use flatpak, or `~/.local/share/projectpad/projectpad.db` if you run the application natively. It's possible to use symbolic links to make these locations point anywhere (for instance to the Dropbox directory), but if you use flatpak,
 you must grant the application access to the folder where the DB is stored, through a command like `flatpak override com.github.emmanueltouzery.projectpad --filesystem=~/Dropbox/projectpad/ --user`.
 

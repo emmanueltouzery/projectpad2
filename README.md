@@ -49,6 +49,8 @@ Normally you would type keywords (part of the project name, of the environment, 
 
 ![CLI2](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli2.svg)
 
+Note that even though you can enter SSH passwords in projectpad, no effort is made to hand them to ssh when logging in through ppcli. The recommended way to login to SSH servers without password is through ssh keys, but regardless password management remains valuable.
+
 [sqlcipher]: https://www.zetetic.net/sqlcipher/
 
 ## Installation

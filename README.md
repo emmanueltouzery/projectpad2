@@ -55,7 +55,7 @@ Note that even though you can enter ssh passwords in projectpad, no effort is ma
 
 ## Installation
 
-The recommended way to install the applications is with flatpak for the projectpad GUI, and as a statically built linux binary for ppcli. You can download the ppcli static binary, that can auto-upgrade later, from [the github downloads](https://github.com/emmanueltouzery/projectpad2/releases), and the flatpak from flathub ([flathub deployment pending](https://github.com/flathub/flathub/pull/1931)).
+The recommended way to install the applications is with flatpak for the projectpad GUI, and as a statically built linux binary for ppcli. You can download the ppcli static binary, that can auto-upgrade later, from [the github downloads](https://github.com/emmanueltouzery/projectpad2/releases), and the flatpak from [flathub](https://flathub.org/apps/details/com.github.emmanueltouzery.projectpad).
 
 It's possible to share the projectpad database between computers using Dropbox or similar services. The database is a single file and will be in `~/.var/app/com.github.emmanueltouzery.projectpad/data/projectpad/projectpad.db` if you use flatpak, or `~/.local/share/projectpad/projectpad.db` if you run the application natively. It's possible to use symbolic links to make these locations point anywhere (for instance to the Dropbox directory), but if you use flatpak,
 you must grant the application access to the folder where the DB is stored, through a command like `flatpak override com.github.emmanueltouzery.projectpad --filesystem=~/Dropbox/projectpad/ --user`.

@@ -19,7 +19,7 @@ pub fn config_path() -> PathBuf {
     // app and run it on the host, I'd also like for the db to be found.
     //
     // https://github.com/flatpak/flatpak/wiki/Filesystem
-    if !std::env::var("XDG_DATA_HOME").is_ok() {
+    if std::env::var("XDG_DATA_HOME").is_err() {
         // assuming we're not in a flatpak
         // it's still possible the user installed the app in a
         // flatpak, and we are ppcli running on the host

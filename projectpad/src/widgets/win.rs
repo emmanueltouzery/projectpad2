@@ -386,7 +386,7 @@ impl Widget for Win {
                 self.project_poi_header
                     .emit(ProjectPoiHeaderMsg::ProjectItemSelected(pi.clone()));
                 self.project_poi_contents
-                    .emit(ProjectPoiContentsMsg::ProjectItemSelected(pi));
+                    .emit(ProjectPoiContentsMsg::ProjectItemSelected(Box::new(pi)));
             }
             Msg::SearchActiveChanged(is_active) => {
                 self.normal_or_search_stack

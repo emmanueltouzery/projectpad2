@@ -21,7 +21,7 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     GotHeaderBarHeight(i32),
-    ProjectItemSelected(Option<ProjectItem>),
+    ProjectItemSelected(Box<Option<ProjectItem>>),
     ViewServerNote(ServerNote),
     ServerNoteBack,
     TextViewMoveCursor(f64, f64),
@@ -112,7 +112,7 @@ impl Widget for ProjectPoiContents {
                 self.model.headerbar_height = Some(h);
             }
             Msg::ProjectItemSelected(pi) => {
-                self.model.cur_project_item = pi;
+                self.model.cur_project_item = *pi;
                 self.server_contents
                     .emit(match &self.model.cur_project_item.as_ref() {
                         Some(ProjectItem::Server(srv)) => {

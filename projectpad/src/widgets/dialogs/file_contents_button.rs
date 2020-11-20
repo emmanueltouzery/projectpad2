@@ -210,7 +210,7 @@ impl Widget for FileContentsButton {
                 gtk::Label {
                     hexpand: true,
                     ellipsize: pango::EllipsizeMode::End,
-                    text: self.model.filename.as_deref().unwrap_or_else(|| "")
+                    text: self.model.filename.as_deref().unwrap_or("")
                 },
                 gtk::Button {
                     always_show_image: true,

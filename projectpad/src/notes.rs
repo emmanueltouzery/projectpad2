@@ -223,9 +223,9 @@ pub fn note_markdown_to_quick_preview(input: &str) -> String {
         match event {
             EventExt::StandardEvent(Event::Text(t)) => result.push_str(&t),
             EventExt::StandardEvent(Event::Code(t)) => result.push_str(&t),
-            EventExt::StandardEvent(Event::Start(Tag::Paragraph)) => result.push_str("\n"),
-            EventExt::StandardEvent(Event::End(Tag::Paragraph)) => result.push_str("\n"),
-            EventExt::StandardEvent(Event::End(Tag::Heading(_))) => result.push_str("\n"),
+            EventExt::StandardEvent(Event::Start(Tag::Paragraph)) => result.push('\n'),
+            EventExt::StandardEvent(Event::End(Tag::Paragraph)) => result.push('\n'),
+            EventExt::StandardEvent(Event::End(Tag::Heading(_))) => result.push('\n'),
             EventExt::Password(_) => result.push_str("[password]"),
             _ => {}
         }

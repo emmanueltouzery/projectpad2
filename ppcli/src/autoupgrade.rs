@@ -28,11 +28,16 @@ pub fn try_upgrade() -> Result<(), Box<dyn std::error::Error>> {
     let download_bytes = Command::new("sh")
         .args(&[
             "-c",
-            "curl -sSf https://api.github.com/repos/emmanueltouzery/projectpad2/releases \
+            &[
+                "curl -sSf https://api.github.com/repos/emmanueltouzery/projectpad2/releases \
                                | jq '.[] | .assets | select(length > 0)' \
                                | jq -r '.[] | .browser_download_url' \
                                | grep cli \
-                               | head -n 1",
+                               | grep ",
+                std::env::consts::ARCH,
+                " | head -n 1",
+            ]
+            .join(""),
         ])
         .output()?
         .stdout;

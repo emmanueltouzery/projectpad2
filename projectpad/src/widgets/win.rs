@@ -32,6 +32,7 @@ use super::project_summary::ProjectSummary;
 use super::search_view::Msg as SearchViewMsg;
 use super::search_view::Msg::OpenItemFull as SearchViewOpenItemFull;
 use super::search_view::Msg::SearchResultsModified as SearchViewSearchResultsModified;
+use super::search_view::Msg::ShowInfoBar as SearchViewShowInfoBar;
 use super::search_view::{OperationMode, SearchItemsType, SearchView};
 use super::server_poi_contents::ServerItem;
 use super::tooltips_overlay;
@@ -873,6 +874,7 @@ impl Widget for Win {
                         },
                         SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new((**item).clone())),
                         SearchViewSearchResultsModified => Msg::SearchResultsModified,
+                        SearchViewShowInfoBar(ref msg) => Msg::ShowInfoBar(msg.clone()),
                     }
                 },
             },

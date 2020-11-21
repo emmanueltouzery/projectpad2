@@ -132,6 +132,7 @@ pub enum Msg {
     SelectedItem((ProjectPadItem, i32, String)),
     KeyPress(gdk::EventKey),
     KeyRelease(gdk::EventKey),
+    ShowInfoBar(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -535,11 +536,7 @@ impl Widget for SearchView {
             }
             Msg::ScrollChanged => self.search_result_area.queue_draw(),
             Msg::CopyClicked(val) => {
-                if let Some(clip) =
-                    gtk::Clipboard::get_default(&self.search_result_area.get_display())
-                {
-                    clip.set_text(&val);
-                }
+                self.copy_to_clipboard(&val);
             }
             Msg::OpenItem(item) => {
                 self.emit_open_item_full(item);
@@ -584,66 +581,7 @@ impl Widget for SearchView {
                 }
             }
             Msg::KeyPress(e) => {
-                if e.get_keyval() == gdk::keys::constants::Return
-                    || e.get_keyval() == gdk::keys::constants::KP_Enter
-                {
-                    let items = self.model.search_items.borrow();
-                    let level1_items: Vec<_> = items
-                        .iter()
-                        .filter(|i| matches!(i, ProjectPadItem::Project(_)))
-                        .collect();
-                    let level2_items: Vec<_> = items
-                        .iter()
-                        .filter(|i| i.to_project_item().is_some())
-                        .collect();
-                    let level3_items: Vec<_> = items
-                        .iter()
-                        .filter(|i| i.to_server_item().is_some())
-                        .collect();
-                    let open = |i: &ProjectPadItem| {
-                        self.model.relm.stream().emit(Msg::OpenItem(i.clone()))
-                    };
-                    match (&level1_items[..], &level2_items[..], &level3_items[..]) {
-                        ([fst], [], []) => open(fst),
-                        ([_], [snd], []) => open(snd),
-                        ([_], [_], [thrd]) => open(thrd),
-                        _ => {}
-                    }
-                } else if e.get_keyval().to_unicode() == Some('e') {
-                    let items = self.model.search_items.borrow();
-                    let urls = items
-                        .iter()
-                        .filter_map(|i| match i {
-                            ProjectPadItem::Server(srv)
-                                if srv.access_type == ServerAccessType::SrvAccessWww
-                                    && !srv.ip.is_empty() =>
-                            {
-                                Some(srv.ip.clone())
-                            }
-                            ProjectPadItem::ServerWebsite(www) if !www.url.is_empty() => {
-                                Some(www.url.clone())
-                            }
-                            _ => None,
-                        })
-                        .take(2)
-                        .collect::<Vec<_>>();
-                    // is there only one match...
-                    if let [url] = &urls[..] {
-                        if let Result::Err(e) =
-                            gtk::show_uri_on_window(None::<&gtk::Window>, &url, 0)
-                        {
-                            eprintln!("Error opening link: {}", e);
-                        }
-                    }
-                } else {
-                    let new_show_shortcuts = !(e.get_state() & gdk::ModifierType::MOD2_MASK)
-                        .is_empty()
-                        && e.get_keyval().to_unicode() == None;
-                    if new_show_shortcuts != self.model.show_shortcuts.get() {
-                        self.model.show_shortcuts.set(new_show_shortcuts);
-                        self.search_result_area.queue_draw();
-                    }
-                }
+                self.handle_keypress(e);
             }
             Msg::KeyRelease(e) => {
                 if self.model.show_shortcuts.get() {
@@ -669,6 +607,94 @@ impl Widget for SearchView {
             }
             // meant for my parent
             Msg::SelectedItem(_) => {}
+            Msg::ShowInfoBar(_) => {}
+        }
+    }
+
+    fn copy_to_clipboard(&self, val: &str) {
+        if let Some(clip) = gtk::Clipboard::get_default(&self.search_result_area.get_display()) {
+            clip.set_text(val);
+            self.model
+                .relm
+                .stream()
+                .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
+        }
+    }
+
+    fn handle_keypress(&self, e: gdk::EventKey) {
+        if e.get_keyval() == gdk::keys::constants::Return
+            || e.get_keyval() == gdk::keys::constants::KP_Enter
+        {
+            let items = self.model.search_items.borrow();
+            let level1_items: Vec<_> = items
+                .iter()
+                .filter(|i| matches!(i, ProjectPadItem::Project(_)))
+                .collect();
+            let level2_items: Vec<_> = items
+                .iter()
+                .filter(|i| i.to_project_item().is_some())
+                .collect();
+            let level3_items: Vec<_> = items
+                .iter()
+                .filter(|i| i.to_server_item().is_some())
+                .collect();
+            let open = |i: &ProjectPadItem| self.model.relm.stream().emit(Msg::OpenItem(i.clone()));
+            match (&level1_items[..], &level2_items[..], &level3_items[..]) {
+                ([fst], [], []) => open(fst),
+                ([_], [snd], []) => open(snd),
+                ([_], [_], [thrd]) => open(thrd),
+                _ => {}
+            }
+        } else if e.get_keyval().to_unicode() == Some('e') {
+            let items = self.model.search_items.borrow();
+            let urls = items
+                .iter()
+                .filter_map(|i| match i {
+                    ProjectPadItem::Server(srv)
+                        if srv.access_type == ServerAccessType::SrvAccessWww
+                            && !srv.ip.is_empty() =>
+                    {
+                        Some(srv.ip.clone())
+                    }
+                    ProjectPadItem::ServerWebsite(www) if !www.url.is_empty() => {
+                        Some(www.url.clone())
+                    }
+                    _ => None,
+                })
+                .take(2)
+                .collect::<Vec<_>>();
+            // is there only one match...
+            if let [url] = &urls[..] {
+                if let Result::Err(e) = gtk::show_uri_on_window(None::<&gtk::Window>, &url, 0) {
+                    eprintln!("Error opening link: {}", e);
+                }
+            }
+        } else if e.get_keyval().to_unicode() == Some('y') {
+            let items = self.model.search_items.borrow();
+            let passwords = items
+                .iter()
+                .filter_map(|i| match i {
+                    ProjectPadItem::Server(srv) if !srv.password.is_empty() => {
+                        Some(srv.password.clone())
+                    }
+                    ProjectPadItem::ServerWebsite(www) if !www.password.is_empty() => {
+                        Some(www.password.clone())
+                    }
+                    _ => None,
+                })
+                .take(2)
+                .collect::<Vec<_>>();
+            // is there only one match...
+            if let [password] = &passwords[..] {
+                self.copy_to_clipboard(password);
+            }
+        } else {
+            let new_show_shortcuts = !(e.get_state() & gdk::ModifierType::MOD2_MASK).is_empty()
+                && e.get_keyval().to_unicode() == None;
+            if new_show_shortcuts != self.model.show_shortcuts.get() {
+                self.model.show_shortcuts.set(new_show_shortcuts);
+                self.search_result_area.queue_draw();
+            }
         }
     }
 

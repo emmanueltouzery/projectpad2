@@ -64,12 +64,13 @@ impl Widget for Preferences {
             .get_style_context()
             .add_class("destructive-action");
         self.load_keyring_pass_state();
-        self.section_title1
-            .get_style_context()
-            .add_class("section_title");
-        self.section_title2
-            .get_style_context()
-            .add_class("section_title");
+        for title_widget in &[
+            &self.section_title1,
+            &self.section_title2,
+            &self.section_title3,
+        ] {
+            title_widget.get_style_context().add_class("section_title");
+        }
         let remove_pass_btn_contents = gtk::BoxBuilder::new().build();
         self.model.remove_pass_from_keyring_spinner.start();
         remove_pass_btn_contents.add(&self.model.remove_pass_from_keyring_spinner);
@@ -80,6 +81,14 @@ impl Widget for Preferences {
         );
         remove_pass_btn_contents.show_all();
         self.remove_from_keyring.add(&remove_pass_btn_contents);
+        let db_folder_pathbuf = projectpadsql::config_path();
+        let db_folder_path = db_folder_pathbuf.to_string_lossy();
+        let db_pathbuf = projectpadsql::database_path();
+        let db_path = db_pathbuf.to_string_lossy();
+        self.db_location_label.set_markup(&format!(
+            "The database file is in <a href=\"file://{}\">{}</a>",
+            &db_folder_path, &db_path
+        ));
     }
 
     fn model(relm: &relm::Relm<Self>, params: (gtk::Window, mpsc::Sender<SqlFunc>)) -> Model {
@@ -257,35 +266,45 @@ impl Widget for Preferences {
                 margin_top: 10,
                 margin_start: 30,
                 margin_end: 30,
-                margin_bottom: 6,
+                margin_bottom: 20,
                 spacing: 6,
                 #[name="section_title1"]
                 gtk::Label {
                     text: "User interface",
-                    xalign: 0.0
+                    xalign: 0.0,
                 },
                 gtk::CheckButton {
                     label: "Prefer dark theme",
                     active: self.model.prefer_dark_theme,
-                    toggled(t) => Msg::DarkThemeToggled(t.get_active())
+                    toggled(t) => Msg::DarkThemeToggled(t.get_active()),
                 },
                 #[name="section_title2"]
                 gtk::Label {
                     text: "Database password",
-                    xalign: 0.0
+                    xalign: 0.0,
                 },
                 #[name="remove_from_keyring"]
                 gtk::Button {
                     halign: gtk::Align::Start,
                     sensitive: false,
-                    clicked => Msg::RemovePasswordFromKeyring
+                    clicked => Msg::RemovePasswordFromKeyring,
                 },
                 #[name="change_password"]
                 gtk::Button {
                     label: "Change database password",
                     halign: gtk::Align::Start,
-                    clicked => Msg::ChangeDbPassword
+                    clicked => Msg::ChangeDbPassword,
                 },
+                #[name="section_title3"]
+                gtk::Label {
+                    text: "Database file",
+                    xalign: 0.0,
+                },
+                #[name="db_location_label"]
+                gtk::Label {
+                    xalign: 0.0,
+                    ellipsize: pango::EllipsizeMode::Middle,
+                }
             },
             key_press_event(_, key) => (Msg::KeyPress(key.clone()), Inhibit(false)), // just for the ESC key.. surely there's a better way..
         }

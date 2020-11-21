@@ -129,18 +129,19 @@ pub fn populate_popover(
         popover_vbox.add(extra_btn);
         left_align_menu(&extra_btn);
     }
-    if !fields.is_empty() {
-        popover_vbox.add(&gtk::SeparatorBuilder::new().build());
-    }
-    for item in fields
+    let fields_to_copy: Vec<_> = fields
         .iter()
         .filter(|cur_item| !cur_item.raw_value.is_empty())
-    {
+        .collect();
+    if !fields_to_copy.is_empty() {
+        popover_vbox.add(&gtk::SeparatorBuilder::new().build());
+    }
+    for item in fields_to_copy.iter() {
         let label = &format!("Copy {}", item.label_name);
         let popover_btn = match &item.shortcut {
             None => gtk::ModelButtonBuilder::new().label(&label).build(),
             Some((key, modifiers)) => {
-                let accel_lbl = gtk::AccelLabelBuilder::new().label(label).build();
+                let accel_lbl = gtk::AccelLabelBuilder::new().label(&label).build();
                 accel_lbl.set_accel(**key, *modifiers);
                 let lbl = gtk::ModelButtonBuilder::new().build();
                 accel_lbl.set_hexpand(true);

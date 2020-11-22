@@ -175,10 +175,14 @@ impl Widget for ChangeDbPasswordDialog {
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::GotNewPassword(pass) => {
-                self.model.new_password = Some(pass);
-                self.confirm_password_entry
-                    .stream()
-                    .emit(PasswordFieldMsg::RequestPassword);
+                if pass.is_empty() {
+                    self.show_error("New password must not be empty");
+                } else {
+                    self.model.new_password = Some(pass);
+                    self.confirm_password_entry
+                        .stream()
+                        .emit(PasswordFieldMsg::RequestPassword);
+                }
             }
             Msg::GotConfirmNewPassword(pass) => {
                 if Some(&pass) != self.model.new_password.as_ref() {

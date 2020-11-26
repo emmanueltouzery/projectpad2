@@ -1,5 +1,5 @@
 use crate::database::{ItemOfInterest, ItemType};
-use projectpadsql::models::{InterestType, ServerAccessType};
+use projectpadsql::models::{InterestType, RunOn, ServerAccessType};
 use std::borrow::Cow;
 
 enum SshCommandType {
@@ -136,11 +136,12 @@ fn get_value_text(item: &ItemOfInterest) -> std::borrow::Cow<str> {
 }
 
 fn get_value_ssh_run_on_ssh(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
-        Cow::Owned(format!("{} -t \"{}\"", ssh_command, &item.item_text))
-    } else {
-        Cow::Borrowed(&item.item_text)
+    if item.run_on == Some(RunOn::RunOnServer) {
+        if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
+            return Cow::Owned(format!("{} -t \"{}\"", ssh_command, &item.item_text));
+        }
     }
+    Cow::Borrowed(&item.item_text)
 }
 
 #[derive(PartialEq)]

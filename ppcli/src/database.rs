@@ -37,6 +37,7 @@ pub struct ItemOfInterest {
     pub item_text: String,
     pub server_info: Option<ServerInfo>,
     pub poi_info: Option<PoiInfo>,
+    pub run_on: Option<RunOn>,
 }
 
 fn filter_servers(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
@@ -87,6 +88,7 @@ fn filter_servers(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                         server_access_type,
                     }),
                     poi_info: None,
+                    run_on: None,
                 }
             },
         )
@@ -123,6 +125,7 @@ fn filter_project_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                     poi_info: Some(PoiInfo {
                         path: prj_path.into(),
                     }),
+                    run_on: None,
                 }
             },
         )
@@ -147,12 +150,13 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
             srv_poi::path,
             srv::access_type,
             srv::ip,
+            srv_poi::run_on,
         ))
         .filter(srv::access_type.ne_all(vec![
             ServerAccessType::SrvAccessRdp,
             ServerAccessType::SrvAccessWww,
         ]))
-        .load::<(_, _, _, _, _, _, _, _, String, _, _)>(db_conn)
+        .load::<(_, _, _, _, _, _, _, _, String, _, _, _)>(db_conn)
         .unwrap()
         .into_iter()
         .map(
@@ -168,6 +172,7 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                 srv_poi_path,
                 server_access_type,
                 server_ip,
+                run_on_val,
             )| {
                 ItemOfInterest {
                     id,
@@ -186,6 +191,7 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                     poi_info: Some(PoiInfo {
                         path: srv_poi_path.into(),
                     }),
+                    run_on: Some(run_on_val),
                 }
             },
         )

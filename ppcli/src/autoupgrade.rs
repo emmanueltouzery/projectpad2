@@ -34,6 +34,8 @@ pub fn try_upgrade() -> Result<(), Box<dyn std::error::Error>> {
                                | jq -r '.[] | .browser_download_url' \
                                | grep cli \
                                | grep ",
+                std::env::consts::OS,
+                "_",
                 std::env::consts::ARCH,
                 " | head -n 1",
             ]

@@ -26,6 +26,7 @@ pub enum Msg {
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
     AddProjectItem,
     EditProject,
+    ExportProject,
     AskDeleteProject,
     DeleteProject,
     ProjectDeleted(Project),
@@ -105,17 +106,17 @@ impl Widget for ProjectSummary {
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_btn = gtk::ModelButtonBuilder::new()
+        let popover_add_btn = gtk::ModelButtonBuilder::new()
             .label("Add project item...")
             .build();
-        left_align_menu(&popover_btn);
+        left_align_menu(&popover_add_btn);
         relm::connect!(
             self.model.relm,
-            popover_btn,
+            popover_add_btn,
             connect_clicked(_),
             Msg::AddProjectItem
         );
-        popover_vbox.add(&popover_btn);
+        popover_vbox.add(&popover_add_btn);
         let popover_edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
         left_align_menu(&popover_edit_btn);
         relm::connect!(
@@ -134,6 +135,15 @@ impl Widget for ProjectSummary {
             Msg::AskDeleteProject
         );
         popover_vbox.add(&popover_delete_btn);
+        let popover_export_btn = gtk::ModelButtonBuilder::new().label("Export").build();
+        left_align_menu(&popover_export_btn);
+        relm::connect!(
+            self.model.relm,
+            popover_export_btn,
+            connect_clicked(_),
+            Msg::ExportProject
+        );
+        popover_vbox.add(&popover_export_btn);
         popover_vbox.show_all();
         self.model.header_popover.add(&popover_vbox);
         self.header_actions_btn
@@ -298,6 +308,14 @@ impl Widget for ProjectSummary {
             }
             Msg::EditProject => {
                 self.show_project_edit_dialog();
+            }
+            Msg::ExportProject => {
+                if let Some(prj) = &self.model.project {
+                    let p = prj.clone();
+                    self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
+                        crate::import_export::export_project(&sql_conn, &p);
+                    }));
+                }
             }
             Msg::AskDeleteProject => {
                 self.handle_project_delete();

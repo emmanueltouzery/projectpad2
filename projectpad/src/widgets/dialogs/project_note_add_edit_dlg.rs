@@ -77,7 +77,7 @@ impl Widget for ProjectNoteAddEditDialog {
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
-                s.send(dialog_helpers::get_project_group_names(sql_conn, pid))
+                s.send(projectpadsql::get_project_group_names(sql_conn, pid))
                     .unwrap();
             }))
             .unwrap();

@@ -13,3 +13,5 @@ libsqlite3-sys = { version =  "0.18.0", features = ["sqlcipher"] }
 strum = "0.19.5"
 strum_macros = "0.19.4"
 chrono = "0.4.19"
+serde_derive = "1.0.117"
+serde = "1.0.117"

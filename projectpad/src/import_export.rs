@@ -1,52 +1,100 @@
 use diesel::prelude::*;
 use projectpadsql::models::{
-    EnvironmentType, Project, Server, ServerDatabase, ServerExtraUserAccount, ServerNote,
-    ServerWebsite,
+    EnvironmentType, Project, ProjectNote, Server, ServerDatabase, ServerExtraUserAccount,
+    ServerNote, ServerWebsite,
 };
+use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Serialize)]
+struct ProjectImportExport {
+    project_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    development_environment: Option<ProjectEnvImportExport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    staging_environment: Option<ProjectEnvImportExport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    uat_environment: Option<ProjectEnvImportExport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prod_environment: Option<ProjectEnvImportExport>,
+}
+
+#[derive(Serialize)]
+struct ProjectEnvImportExport {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    servers: Vec<ServerImportExport>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    servers_in_groups: HashMap<String, Vec<ServerImportExport>>,
+}
+
+#[derive(Serialize)]
+struct ServerImportExport {
+    server: Server,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    server_websites: Vec<ServerWebsite>, // <--- how to tie DB to website???
+    // server_databases: Vec<ServerDatabase>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    server_notes: Vec<ServerNote>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    server_extra_users: Vec<ServerExtraUserAccount>,
+}
 
 pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
-    let mut output = format!("# {}\n", project.name);
-
+    // if I export a 7zip i can export project icons and attachments in the zip too...
     let group_names = projectpadsql::get_project_group_names(sql_conn, project.id);
 
-    // if I export a 7zip i can export project icons and attachments in the zip too...
-    if project.has_dev {
-        export_env(
+    let development_environment = if project.has_dev {
+        Some(export_env(
             sql_conn,
             project,
             EnvironmentType::EnvDevelopment,
             &group_names,
-            &mut output,
-        );
-    }
-    if project.has_stage {
-        export_env(
+        ))
+    } else {
+        None
+    };
+
+    let staging_environment = if project.has_stage {
+        Some(export_env(
             sql_conn,
             project,
             EnvironmentType::EnvStage,
             &group_names,
-            &mut output,
-        );
-    }
-    if project.has_uat {
-        export_env(
+        ))
+    } else {
+        None
+    };
+
+    let uat_environment = if project.has_uat {
+        Some(export_env(
             sql_conn,
             project,
             EnvironmentType::EnvUat,
             &group_names,
-            &mut output,
-        );
-    }
-    if project.has_prod {
-        export_env(
+        ))
+    } else {
+        None
+    };
+
+    let prod_environment = if project.has_prod {
+        Some(export_env(
             sql_conn,
             project,
             EnvironmentType::EnvProd,
             &group_names,
-            &mut output,
-        );
-    }
-    println!("{}", &output);
+        ))
+    } else {
+        None
+    };
+
+    let project_importexport = ProjectImportExport {
+        project_name: project.name.clone(),
+        development_environment,
+        staging_environment,
+        uat_environment,
+        prod_environment,
+    };
+    println!("{}", serde_yaml::to_string(&project_importexport).unwrap());
 }
 
 fn export_env(
@@ -54,10 +102,8 @@ fn export_env(
     project: &Project,
     env: EnvironmentType,
     group_names: &[String],
-    output: &mut String,
-) {
+) -> ProjectEnvImportExport {
     use projectpadsql::schema::server::dsl as srv;
-    output.push_str(&format!("## {}\n", env));
 
     let srvs = srv::server
         .filter(
@@ -69,10 +115,10 @@ fn export_env(
         .order((srv::group_name.asc(), srv::desc.asc()))
         .load::<Server>(sql_conn)
         .unwrap();
-
-    for srv in srvs {
-        export_server(sql_conn, &srv, output);
-    }
+    let servers = srvs
+        .into_iter()
+        .map(|s| export_server(sql_conn, s))
+        .collect();
 
     // project notes
 
@@ -80,127 +126,45 @@ fn export_env(
 
     // project POIs
 
-    for group_name in group_names {
-        output.push_str(&format!("### {}\n", group_name));
-        let srvs = srv::server
-            .filter(
-                srv::project_id
-                    .eq(project.id)
-                    .and(srv::environment.eq(env))
-                    .and(srv::group_name.eq(group_name)),
+    let servers_in_groups = group_names
+        .iter()
+        .map(|gn| {
+            let srvs = srv::server
+                .filter(
+                    srv::project_id
+                        .eq(project.id)
+                        .and(srv::environment.eq(env))
+                        .and(srv::group_name.eq(gn)),
+                )
+                .order((srv::group_name.asc(), srv::desc.asc()))
+                .load::<Server>(sql_conn)
+                .unwrap();
+            (
+                gn.clone(),
+                srvs.into_iter()
+                    .map(|s| export_server(sql_conn, s))
+                    .collect(),
             )
-            .order((srv::group_name.asc(), srv::desc.asc()))
-            .load::<Server>(sql_conn)
-            .unwrap();
 
-        for srv in srvs {
-            export_server(sql_conn, &srv, output);
-        }
+            // project notes
 
-        // project notes
+            // server links
 
-        // server links
+            // project POIs
+        })
+        .collect();
 
-        // project POIs
+    ProjectEnvImportExport {
+        servers,
+        servers_in_groups,
     }
-    output.push_str("\n");
 }
 
-trait ImportExport<T> {
-    // fn import<'a, 'b>(lines: &'a [&'b str]) -> (Result<(), String>, &'a [&'b str]);
-    fn export(&self, output: &mut String);
-}
-
-macro_rules! generate_importexport {
-    // ####### i don't want to generate the object itself, but the stuff for the insert for diesel!!!
-    ($type: ident, $( $field:tt, $field_name:expr ),+ ) => {
-        impl ImportExport<$type> for $type {
-            // fn import<'a, 'b>(lines: &'a [&'b str]) -> (Result<$type, String>, &'a [&'b str]) {
-            //     (Ok($type {
-            //         $({
-            //             $field: "",
-            //         })+
-            //     }), lines)
-            // }
-            fn export(&self, output: &mut String) {
-                $({
-                    if !self.$field.to_string().is_empty() {
-                        output.push_str(&format!("{}: {}\n", $field_name, self.$field));
-                    }
-                })+
-            }
-        }
-    };
-}
-
-generate_importexport!(
-    Server,
-    desc,
-    "Description",
-    ip,
-    "Address",
-    text,
-    "Text",
-    is_retired,
-    "Is retired",
-    username,
-    "Username",
-    password,
-    "Password",
-    server_type,
-    "Server type",
-    access_type,
-    "Access type"
-);
-
-generate_importexport!(
-    ServerWebsite,
-    desc,
-    "Description",
-    url,
-    "Address",
-    text,
-    "Text",
-    username,
-    "Username",
-    password,
-    "Password"
-);
-
-generate_importexport!(
-    ServerDatabase,
-    desc,
-    "Description",
-    name,
-    "Name",
-    text,
-    "Text",
-    username,
-    "Username",
-    password,
-    "Password"
-);
-
-generate_importexport!(
-    ServerExtraUserAccount,
-    username,
-    "Username",
-    password,
-    "Password",
-    desc,
-    "Description"
-);
-
-generate_importexport!(ServerNote, title, "Title", contents, "Content");
-
-fn export_server(sql_conn: &diesel::SqliteConnection, server: &Server, output: &mut String) {
+fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerImportExport {
     use projectpadsql::schema::server_database::dsl as srv_db;
     use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
     use projectpadsql::schema::server_note::dsl as srv_note;
     use projectpadsql::schema::server_website::dsl as srv_www;
-    output.push_str("---\n#### Server\n");
-    // output.push_str(&format!("#### Server: {}\n", server.desc));
-    server.export(output);
 
     // server websites
     let server_websites = srv_www::server_website
@@ -208,38 +172,30 @@ fn export_server(sql_conn: &diesel::SqliteConnection, server: &Server, output: &
         .order(srv_www::desc.asc())
         .load::<ServerWebsite>(sql_conn)
         .unwrap();
-    for server_website in server_websites {
-        output.push_str("\n##### Server website\n");
-        server_website.export(output);
-    }
 
     let server_dbs = srv_db::server_database
         .filter(srv_db::server_id.eq(server.id))
         .order(srv_db::desc.asc())
         .load::<ServerDatabase>(sql_conn)
         .unwrap();
-    for server_db in server_dbs {
-        output.push_str("\n##### Server database\n");
-        server_db.export(output);
-    }
 
     let server_notes = srv_note::server_note
         .filter(srv_note::server_id.eq(server.id))
         .order(srv_note::title.asc())
         .load::<ServerNote>(sql_conn)
         .unwrap();
-    for server_note in server_notes {
-        output.push_str("\n##### Server note\n");
-        server_note.export(output);
-    }
 
-    let server_users = srv_usr::server_extra_user_account
+    let server_extra_users = srv_usr::server_extra_user_account
         .filter(srv_usr::server_id.eq(server.id))
         .order(srv_usr::username.asc())
         .load::<ServerExtraUserAccount>(sql_conn)
         .unwrap();
-    for server_user in server_users {
-        output.push_str("\n##### Server extra user\n");
-        server_user.export(output);
+
+    ServerImportExport {
+        server,
+        server_websites,
+        // server_databases,
+        server_notes,
+        server_extra_users,
     }
 }

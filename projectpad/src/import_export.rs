@@ -1,8 +1,9 @@
 use diesel::prelude::*;
 use projectpadsql::models::{
     EnvironmentType, Project, ProjectNote, Server, ServerDatabase, ServerExtraUserAccount,
-    ServerNote, ServerWebsite,
+    ServerNote, ServerPointOfInterest, ServerWebsite,
 };
+use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -31,8 +32,11 @@ struct ProjectEnvImportExport {
 struct ServerImportExport {
     server: Server,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    server_websites: Vec<ServerWebsite>, // <--- how to tie DB to website???
-    // server_databases: Vec<ServerDatabase>,
+    server_pois: Vec<ServerPointOfInterest>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    server_websites: Vec<ServerWebsite>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    server_databases: Vec<ServerDatabase>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     server_notes: Vec<ServerNote>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -94,7 +98,33 @@ pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
         uat_environment,
         prod_environment,
     };
-    println!("{}", serde_yaml::to_string(&project_importexport).unwrap());
+    println!("{}", generate_yaml(&project_importexport));
+}
+
+fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {
+    // https://github.com/dtolnay/serde-yaml/issues/174
+    // I really want notes to be exported with literal blocks,
+    // but the library doesn't do that yet, so i'll post-process.
+    let raw_output = serde_yaml::to_string(value).unwrap();
+    // println!("{}", raw_output);
+    let re = Regex::new(r#"(?m)^(\s*)([^"]*)"([^"]+)""#).unwrap();
+    re.replace_all(&raw_output, |item: &regex::Captures| {
+        let line_start = item.get(1).unwrap().as_str().to_string() + item.get(2).unwrap().as_str();
+        let contents = item.get(3).unwrap().as_str();
+        if contents.contains("\\n") {
+            // add extra spaces in the separator for the deeper indentation
+            let separator = format!("\n    {}", item.get(1).unwrap().as_str());
+            format!(
+                "{}|{}{}",
+                line_start,
+                separator,
+                itertools::join(contents.split("\\n").map(|l| format!("{}", l)), &separator)
+            )
+        } else {
+            format!("{}\"{}\"", line_start, contents)
+        }
+    })
+    .to_string()
 }
 
 fn export_env(
@@ -164,16 +194,22 @@ fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerI
     use projectpadsql::schema::server_database::dsl as srv_db;
     use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
     use projectpadsql::schema::server_note::dsl as srv_note;
+    use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
     use projectpadsql::schema::server_website::dsl as srv_www;
 
-    // server websites
+    let server_pois = srv_poi::server_point_of_interest
+        .filter(srv_poi::server_id.eq(server.id))
+        .order(srv_poi::desc.asc())
+        .load::<ServerPointOfInterest>(sql_conn)
+        .unwrap();
+
     let server_websites = srv_www::server_website
         .filter(srv_www::server_id.eq(server.id))
         .order(srv_www::desc.asc())
         .load::<ServerWebsite>(sql_conn)
         .unwrap();
 
-    let server_dbs = srv_db::server_database
+    let server_databases = srv_db::server_database
         .filter(srv_db::server_id.eq(server.id))
         .order(srv_db::desc.asc())
         .load::<ServerDatabase>(sql_conn)
@@ -193,8 +229,9 @@ fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerI
 
     ServerImportExport {
         server,
+        server_pois,
         server_websites,
-        // server_databases,
+        server_databases,
         server_notes,
         server_extra_users,
     }

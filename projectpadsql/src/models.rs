@@ -274,7 +274,6 @@ pub struct ServerWebsite {
     pub username: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub password: String,
-    #[serde(skip)]
     pub server_database_id: Option<i32>,
     #[serde(skip)]
     pub group_name: Option<String>,
@@ -336,7 +335,6 @@ pub struct ServerExtraUserAccount {
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerDatabase {
-    #[serde(skip)]
     pub id: i32,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub desc: String,

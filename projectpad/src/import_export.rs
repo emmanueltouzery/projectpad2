@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use projectpadsql::models::{
-    EnvironmentType, Project, ProjectNote, Server, ServerDatabase, ServerExtraUserAccount,
-    ServerNote, ServerPointOfInterest, ServerWebsite,
+    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase,
+    ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use projectpadsql::sqlite_is;
 use regex::Regex;
@@ -23,16 +23,17 @@ struct ProjectImportExport {
 
 #[derive(Serialize)]
 struct ProjectEnvImportExport {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    servers: Vec<ServerImportExport>,
+    items: ProjectEnvGroupImportExport,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    groups: HashMap<String, ProjectEnvGroupImportExport>,
+    items_in_groups: HashMap<String, ProjectEnvGroupImportExport>,
 }
 
 #[derive(Serialize)]
 struct ProjectEnvGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     servers: Vec<ServerImportExport>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    project_pois: Vec<ProjectPointOfInterest>,
 }
 
 #[derive(Serialize)]
@@ -140,9 +141,9 @@ fn export_env(
     env: EnvironmentType,
     group_names: &[String],
 ) -> ProjectEnvImportExport {
-    let no_group = export_env_group(sql_conn, project, env, None);
+    let items = export_env_group(sql_conn, project, env, None);
 
-    let groups = group_names
+    let items_in_groups = group_names
         .iter()
         .map(|gn| {
             let group = export_env_group(sql_conn, project, env, Some(gn));
@@ -151,8 +152,8 @@ fn export_env(
         .collect();
 
     ProjectEnvImportExport {
-        servers: no_group.servers,
-        groups,
+        items,
+        items_in_groups,
     }
 }
 
@@ -162,6 +163,7 @@ fn export_env_group(
     env: EnvironmentType,
     group_name: Option<&str>,
 ) -> ProjectEnvGroupImportExport {
+    use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
     use projectpadsql::schema::server::dsl as srv;
     let srvs = srv::server
         .filter(
@@ -178,12 +180,22 @@ fn export_env_group(
 
     // server links
 
-    // project POIs
+    let project_pois = prj_poi::project_point_of_interest
+        .filter(
+            prj_poi::project_id
+                .eq(project.id)
+                .and(sqlite_is(prj_poi::group_name, group_name)),
+        )
+        .order((prj_poi::desc.asc(), prj_poi::path.asc()))
+        .load::<ProjectPointOfInterest>(sql_conn)
+        .unwrap();
+
     ProjectEnvGroupImportExport {
         servers: srvs
             .into_iter()
             .map(|s| export_server(sql_conn, s))
             .collect(),
+        project_pois,
     }
 }
 

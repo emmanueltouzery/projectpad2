@@ -3,6 +3,7 @@ use projectpadsql::models::{
     EnvironmentType, Project, ProjectNote, Server, ServerDatabase, ServerExtraUserAccount,
     ServerNote, ServerPointOfInterest, ServerWebsite,
 };
+use projectpadsql::sqlite_is;
 use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -25,7 +26,13 @@ struct ProjectEnvImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     servers: Vec<ServerImportExport>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    servers_in_groups: HashMap<String, Vec<ServerImportExport>>,
+    groups: HashMap<String, ProjectEnvGroupImportExport>,
+}
+
+#[derive(Serialize)]
+struct ProjectEnvGroupImportExport {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    servers: Vec<ServerImportExport>,
 }
 
 #[derive(Serialize)]
@@ -133,60 +140,50 @@ fn export_env(
     env: EnvironmentType,
     group_names: &[String],
 ) -> ProjectEnvImportExport {
-    use projectpadsql::schema::server::dsl as srv;
+    let no_group = export_env_group(sql_conn, project, env, None);
 
+    let groups = group_names
+        .iter()
+        .map(|gn| {
+            let group = export_env_group(sql_conn, project, env, Some(gn));
+            (gn.clone(), group)
+        })
+        .collect();
+
+    ProjectEnvImportExport {
+        servers: no_group.servers,
+        groups,
+    }
+}
+
+fn export_env_group(
+    sql_conn: &diesel::SqliteConnection,
+    project: &Project,
+    env: EnvironmentType,
+    group_name: Option<&str>,
+) -> ProjectEnvGroupImportExport {
+    use projectpadsql::schema::server::dsl as srv;
     let srvs = srv::server
         .filter(
             srv::project_id
                 .eq(project.id)
                 .and(srv::environment.eq(env))
-                .and(srv::group_name.is_null()),
+                .and(sqlite_is(srv::group_name, group_name)),
         )
         .order((srv::group_name.asc(), srv::desc.asc()))
         .load::<Server>(sql_conn)
         .unwrap();
-    let servers = srvs
-        .into_iter()
-        .map(|s| export_server(sql_conn, s))
-        .collect();
 
     // project notes
 
     // server links
 
     // project POIs
-
-    let servers_in_groups = group_names
-        .iter()
-        .map(|gn| {
-            let srvs = srv::server
-                .filter(
-                    srv::project_id
-                        .eq(project.id)
-                        .and(srv::environment.eq(env))
-                        .and(srv::group_name.eq(gn)),
-                )
-                .order((srv::group_name.asc(), srv::desc.asc()))
-                .load::<Server>(sql_conn)
-                .unwrap();
-            (
-                gn.clone(),
-                srvs.into_iter()
-                    .map(|s| export_server(sql_conn, s))
-                    .collect(),
-            )
-
-            // project notes
-
-            // server links
-
-            // project POIs
-        })
-        .collect();
-
-    ProjectEnvImportExport {
-        servers,
-        servers_in_groups,
+    ProjectEnvGroupImportExport {
+        servers: srvs
+            .into_iter()
+            .map(|s| export_server(sql_conn, s))
+            .collect(),
     }
 }
 

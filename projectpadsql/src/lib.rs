@@ -4,8 +4,19 @@ extern crate diesel;
 pub mod models;
 pub mod schema;
 
+use diesel::expression::AsExpression;
 use diesel::prelude::*;
 use std::path::PathBuf;
+
+// http://docs.diesel.rs/diesel/macro.diesel_infix_operator.html
+diesel_infix_operator!(SqliteIs, " IS ", backend: diesel::sqlite::Sqlite);
+pub fn sqlite_is<T, U>(left: T, right: U) -> SqliteIs<T, U::Expression>
+where
+    T: Expression,
+    U: AsExpression<T::SqlType>,
+{
+    SqliteIs::new(left, right.as_expression())
+}
 
 pub fn config_path() -> PathBuf {
     // I've looked at $XDG_DATA_HOME: it's ~/.var/app/com.github.emmanueltouzery.projectpad/data

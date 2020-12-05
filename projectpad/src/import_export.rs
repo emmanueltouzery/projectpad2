@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use projectpadsql::models::{
     EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase,
-    ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerWebsite,
+    ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use projectpadsql::sqlite_is;
 use regex::Regex;
@@ -32,6 +32,8 @@ struct ProjectEnvImportExport {
 struct ProjectEnvGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     servers: Vec<ServerImportExport>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    server_links: Vec<ServerLink>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     project_pois: Vec<ProjectPointOfInterest>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -141,9 +143,10 @@ fn yaml_fix_multiline_strings(raw_output: &str) -> String {
                 line_start,
                 separator,
                 itertools::join(
-                    contents
-                        .split("\\n")
-                        .map(|l| format!("{}", l.replace(r#"\""#, r#"""#))),
+                    contents.split("\\n").map(|l| format!(
+                        "{}",
+                        l.replace(r#"\""#, r#"""#).replace(r#"\\"#, r#"\"#)
+                    )),
                     &separator
                 )
             )
@@ -185,6 +188,7 @@ fn export_env_group(
     use projectpadsql::schema::project_note::dsl as prj_note;
     use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
     use projectpadsql::schema::server::dsl as srv;
+    use projectpadsql::schema::server_link::dsl as srvl;
     let srvs = srv::server
         .filter(
             srv::project_id
@@ -215,7 +219,16 @@ fn export_env_group(
         .load::<ProjectNote>(sql_conn)
         .unwrap();
 
-    // server links
+    let server_links = srvl::server_link
+        .filter(
+            srvl::project_id
+                .eq(project.id)
+                .and(srvl::environment.eq(env))
+                .and(sqlite_is(srvl::group_name, group_name)),
+        )
+        .order(srvl::desc.asc())
+        .load::<ServerLink>(sql_conn)
+        .unwrap();
 
     let project_pois = prj_poi::project_point_of_interest
         .filter(
@@ -232,6 +245,7 @@ fn export_env_group(
             .into_iter()
             .map(|s| export_server(sql_conn, s))
             .collect(),
+        server_links,
         project_pois,
         project_notes,
     }
@@ -303,7 +317,7 @@ fn fix_yaml_strings_simple_newlines() {
 #[test]
 fn fix_yaml_strings_newlines_and_quotes_in_string() {
     assert_eq!(
-        "test: |\n    first \"line\"\n    second line",
-        yaml_fix_multiline_strings("test: \"first \\\"line\\\"\\nsecond line\"")
+        "test: |\n    first \"line\"\n    second \\line",
+        yaml_fix_multiline_strings("test: \"first \\\"line\\\"\\nsecond \\\\line\"")
     );
 }

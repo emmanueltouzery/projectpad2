@@ -177,8 +177,7 @@ simple_enum!(RunOn);
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Server {
-    #[serde(skip)]
-    pub id: i32,
+    pub id: i32, // must be serialized because of server links
     #[serde(skip_serializing_if = "String::is_empty")]
     pub desc: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -254,7 +253,6 @@ pub struct ServerLink {
     pub id: i32,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub desc: String,
-    #[serde(skip)]
     pub linked_server_id: i32,
     #[serde(skip)]
     pub environment: EnvironmentType,
@@ -339,7 +337,7 @@ pub struct ServerExtraUserAccount {
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerDatabase {
-    pub id: i32,
+    pub id: i32, // must be serialized, linked from serverwebsite
     #[serde(skip_serializing_if = "String::is_empty")]
     pub desc: String,
     #[serde(skip_serializing_if = "String::is_empty")]

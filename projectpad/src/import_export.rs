@@ -34,6 +34,8 @@ struct ProjectEnvGroupImportExport {
     servers: Vec<ServerImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     project_pois: Vec<ProjectPointOfInterest>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    project_notes: Vec<ProjectNote>,
 }
 
 #[derive(Serialize)]
@@ -163,6 +165,7 @@ fn export_env_group(
     env: EnvironmentType,
     group_name: Option<&str>,
 ) -> ProjectEnvGroupImportExport {
+    use projectpadsql::schema::project_note::dsl as prj_note;
     use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
     use projectpadsql::schema::server::dsl as srv;
     let srvs = srv::server
@@ -176,7 +179,24 @@ fn export_env_group(
         .load::<Server>(sql_conn)
         .unwrap();
 
-    // project notes
+    let mut notes_query = prj_note::project_note
+        .filter(
+            prj_note::project_id
+                .eq(project.id)
+                .and(sqlite_is(prj_note::group_name, group_name)),
+        )
+        .into_boxed();
+    notes_query = match env {
+        EnvironmentType::EnvDevelopment => notes_query.filter(prj_note::has_dev.eq(true)),
+        EnvironmentType::EnvStage => notes_query.filter(prj_note::has_stage.eq(true)),
+        EnvironmentType::EnvUat => notes_query.filter(prj_note::has_uat.eq(true)),
+        EnvironmentType::EnvProd => notes_query.filter(prj_note::has_prod.eq(true)),
+    };
+
+    let project_notes = notes_query
+        .order(prj_note::title.asc())
+        .load::<ProjectNote>(sql_conn)
+        .unwrap();
 
     // server links
 
@@ -196,6 +216,7 @@ fn export_env_group(
             .map(|s| export_server(sql_conn, s))
             .collect(),
         project_pois,
+        project_notes,
     }
 }
 

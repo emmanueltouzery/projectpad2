@@ -217,9 +217,13 @@ pub struct ProjectNote {
     pub title: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub contents: String,
+    #[serde(skip)]
     pub has_dev: bool,
+    #[serde(skip)]
     pub has_uat: bool,
+    #[serde(skip)]
     pub has_stage: bool,
+    #[serde(skip)]
     pub has_prod: bool,
     #[serde(skip)]
     pub group_name: Option<String>,

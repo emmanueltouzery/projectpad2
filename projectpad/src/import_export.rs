@@ -116,9 +116,21 @@ fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {
     // I really want notes to be exported with literal blocks,
     // but the library doesn't do that yet, so i'll post-process.
     let raw_output = serde_yaml::to_string(value).unwrap();
-    // println!("{}", raw_output);
-    let re = Regex::new(r#"(?m)^(\s*)([^"]*)"([^"]+)""#).unwrap();
-    re.replace_all(&raw_output, |item: &regex::Captures| {
+    yaml_fix_multiline_strings(&raw_output)
+}
+
+fn yaml_fix_multiline_strings(raw_output: &str) -> String {
+    // (?m) => enable regex multiline (^ and $ match beginning and end of line)
+    // ^ beginning of line
+    // (\s*) leading spaces, and we capture them in the first capture group
+    // ([^"]*) any non-quote characters, meaning the field name in yaml
+    //         (eg in 'name: "value"' this captures 'name: '), second capture group
+    // " quote, beginning of the string, that we want to maybe modify
+    // (.+) any quote contents (may include ", if escaped), third capture group
+    // " end of the string
+    // $ end of the line
+    let re = Regex::new(r#"(?m)^(\s*)([^"]*)"(.+)"$"#).unwrap();
+    re.replace_all(raw_output, |item: &regex::Captures| {
         let line_start = item.get(1).unwrap().as_str().to_string() + item.get(2).unwrap().as_str();
         let contents = item.get(3).unwrap().as_str();
         if contents.contains("\\n") {
@@ -128,7 +140,12 @@ fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {
                 "{}|{}{}",
                 line_start,
                 separator,
-                itertools::join(contents.split("\\n").map(|l| format!("{}", l)), &separator)
+                itertools::join(
+                    contents
+                        .split("\\n")
+                        .map(|l| format!("{}", l.replace(r#"\""#, r#"""#))),
+                    &separator
+                )
             )
         } else {
             format!("{}\"{}\"", line_start, contents)
@@ -265,4 +282,28 @@ fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerI
         server_notes,
         server_extra_users,
     }
+}
+
+#[test]
+fn fix_yaml_strings_nochange() {
+    assert_eq!(
+        r#"test: "no newlines""#,
+        yaml_fix_multiline_strings(r#"test: "no newlines""#)
+    );
+}
+
+#[test]
+fn fix_yaml_strings_simple_newlines() {
+    assert_eq!(
+        "test: |\n    first line\n    second line",
+        yaml_fix_multiline_strings("test: \"first line\\nsecond line\"")
+    );
+}
+
+#[test]
+fn fix_yaml_strings_newlines_and_quotes_in_string() {
+    assert_eq!(
+        "test: |\n    first \"line\"\n    second line",
+        yaml_fix_multiline_strings("test: \"first \\\"line\\\"\\nsecond line\"")
+    );
 }

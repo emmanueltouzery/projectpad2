@@ -12,47 +12,47 @@ use std::fs;
 #[derive(Serialize, Deserialize)]
 struct ProjectImportExport {
     project_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     development_environment: Option<ProjectEnvImportExport>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     staging_environment: Option<ProjectEnvImportExport>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     uat_environment: Option<ProjectEnvImportExport>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     prod_environment: Option<ProjectEnvImportExport>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct ProjectEnvImportExport {
     items: ProjectEnvGroupImportExport,
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
     items_in_groups: HashMap<String, ProjectEnvGroupImportExport>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct ProjectEnvGroupImportExport {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     servers: Vec<ServerImportExport>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_links: Vec<ServerLink>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     project_pois: Vec<ProjectPointOfInterest>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     project_notes: Vec<ProjectNote>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct ServerImportExport {
     server: Server,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_pois: Vec<ServerPointOfInterest>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_websites: Vec<ServerWebsite>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_databases: Vec<ServerDatabase>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_notes: Vec<ServerNote>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_extra_users: Vec<ServerExtraUserAccount>,
 }
 

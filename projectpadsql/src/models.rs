@@ -178,27 +178,27 @@ simple_enum!(RunOn);
 #[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Server {
     pub id: i32, // must be serialized because of server links
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub ip: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub text: String,
-    #[serde(skip_serializing_if = "is_false")]
+    #[serde(skip_serializing_if = "is_false", default)]
     pub is_retired: bool,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub auth_key: Option<Vec<u8>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub auth_key_filename: Option<String>,
     pub server_type: ServerType,
     pub access_type: ServerAccessType,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ssh_tunnel_port: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ssh_tunnel_through_server_id: Option<i32>,
     #[serde(skip)]
     pub environment: EnvironmentType,
@@ -212,9 +212,9 @@ pub struct Server {
 pub struct ProjectNote {
     #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub title: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub contents: String,
     #[serde(skip)]
     pub has_dev: bool,
@@ -234,11 +234,11 @@ pub struct ProjectNote {
 pub struct ProjectPointOfInterest {
     #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub path: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub text: String,
     pub interest_type: InterestType,
     #[serde(skip)]
@@ -251,7 +251,7 @@ pub struct ProjectPointOfInterest {
 pub struct ServerLink {
     #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
     pub linked_server_id: i32,
     #[serde(skip)]
@@ -266,15 +266,15 @@ pub struct ServerLink {
 pub struct ServerWebsite {
     #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub url: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub text: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password: String,
     pub server_database_id: Option<i32>,
     #[serde(skip)]
@@ -287,11 +287,11 @@ pub struct ServerWebsite {
 pub struct ServerPointOfInterest {
     #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub path: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub text: String,
     pub interest_type: InterestType,
     pub run_on: RunOn,
@@ -305,9 +305,9 @@ pub struct ServerPointOfInterest {
 pub struct ServerNote {
     #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub title: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub contents: String,
     #[serde(skip)]
     pub group_name: Option<String>,
@@ -319,15 +319,15 @@ pub struct ServerNote {
 pub struct ServerExtraUserAccount {
     #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub auth_key: Option<Vec<u8>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub auth_key_filename: Option<String>,
     #[serde(skip)]
     pub group_name: Option<String>,
@@ -338,15 +338,15 @@ pub struct ServerExtraUserAccount {
 #[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerDatabase {
     pub id: i32, // must be serialized, linked from serverwebsite
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub name: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub text: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password: String,
     #[serde(skip)]
     pub group_name: Option<String>,

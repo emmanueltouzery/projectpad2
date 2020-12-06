@@ -1,3 +1,4 @@
+use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::{
     EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase,
@@ -56,10 +57,31 @@ struct ServerImportExport {
     server_extra_users: Vec<ServerExtraUserAccount>,
 }
 
-pub fn do_import(fname: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn do_import(
+    sql_conn: &diesel::SqliteConnection,
+    fname: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use projectpadsql::schema::project::dsl as prj;
     let contents = fs::read_to_string(fname)?;
     let decoded: ProjectImportExport = serde_yaml::from_str(&contents)?;
-    println!("decoded OK! {}", decoded.project_name);
+    if prj::project
+        .filter(prj::name.eq(&decoded.project_name))
+        .select(count(prj::id))
+        .first::<i64>(sql_conn)
+        .unwrap()
+        >= 1
+    {
+        return Err("A project with this name already exists".into());
+    }
+    let changeset = (
+        prj::name.eq(decoded.project_name),
+        prj::has_dev.eq(decoded.development_environment.is_some()),
+        prj::has_stage.eq(decoded.staging_environment.is_some()),
+        prj::has_uat.eq(decoded.uat_environment.is_some()),
+        prj::has_prod.eq(decoded.prod_environment.is_some()),
+        // TODO load the icon from the import 7zip
+        prj::icon.eq(Some(Vec::<u8>::new())),
+    );
     Ok(())
 }
 

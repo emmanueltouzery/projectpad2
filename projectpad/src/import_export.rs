@@ -1,3 +1,4 @@
+use crate::sql_util::insert_row;
 use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::{
@@ -82,6 +83,29 @@ pub fn do_import(
         // TODO load the icon from the import 7zip
         prj::icon.eq(Some(Vec::<u8>::new())),
     );
+    let project_id =
+        insert_row(sql_conn, changeset).map_err(|(m, d)| m + " - " + d.as_deref().unwrap_or(""))?;
+    if let Some(dev_env) = decoded.development_environment {
+        import_project_env(project_id, EnvironmentType::EnvDevelopment, &dev_env)?;
+    }
+    if let Some(stg_env) = decoded.staging_environment {
+        import_project_env(project_id, EnvironmentType::EnvStage, &stg_env)?;
+    }
+    if let Some(uat_env) = decoded.uat_environment {
+        import_project_env(project_id, EnvironmentType::EnvUat, &uat_env)?;
+    }
+    if let Some(prod_env) = decoded.prod_environment {
+        import_project_env(project_id, EnvironmentType::EnvProd, &prod_env)?;
+    }
+    Ok(())
+}
+
+fn import_project_env(
+    project_id: i32,
+    env: EnvironmentType,
+    project_env: &ProjectEnvImportExport,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for item in &project_env.items.servers {}
     Ok(())
 }
 

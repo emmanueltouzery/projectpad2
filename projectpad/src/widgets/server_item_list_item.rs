@@ -12,6 +12,7 @@ use super::server_poi_contents::ServerItem;
 use crate::icons::*;
 use crate::notes;
 use crate::sql_thread::SqlFunc;
+use crate::sql_util;
 use diesel::helper_types::Find;
 use diesel::prelude::*;
 use diesel::query_builder::IntoUpdateTarget;
@@ -484,14 +485,14 @@ impl Widget for ServerItemListItem {
     where
         Tbl: FindDsl<i32> + Send + 'static + Copy,
         Find<Tbl, i32>: IntoUpdateTarget,
-        dialog_helpers::DeleteFindStatement<Find<Tbl, i32>>: ExecuteDsl<SqliteConnection>,
+        sql_util::DeleteFindStatement<Find<Tbl, i32>>: ExecuteDsl<SqliteConnection>,
     {
         let s = self.model.server_item_deleted_sender.clone();
         self.model
             .db_sender
             .send(SqlFunc::new(move |sql_conn| {
                 s.send(
-                    dialog_helpers::delete_row(sql_conn, table, server_item.get_id())
+                    sql_util::delete_row(sql_conn, table, server_item.get_id())
                         .map(|_| server_item.clone()),
                 )
                 .unwrap();
@@ -670,12 +671,8 @@ impl Widget for ServerItemListItem {
                             )))
                         } else {
                             s.send(
-                                dialog_helpers::delete_row(
-                                    sql_conn,
-                                    srv_db::server_database,
-                                    db.id,
-                                )
-                                .map(|_| ServerItem::Database(db.clone())),
+                                sql_util::delete_row(sql_conn, srv_db::server_database, db.id)
+                                    .map(|_| ServerItem::Database(db.clone())),
                             )
                         }
                         .unwrap();

@@ -16,6 +16,7 @@ use super::project_items_list::ProjectItem;
 use super::wintitlebar::left_align_menu;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
+use crate::sql_util;
 use diesel::prelude::*;
 use gdk::prelude::*;
 use gtk::prelude::*;
@@ -543,7 +544,7 @@ impl Widget for ProjectPoiHeader {
                     .send(SqlFunc::new(move |sql_conn| {
                         use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
                         s.send(
-                            dialog_helpers::delete_row(
+                            sql_util::delete_row(
                                 sql_conn,
                                 prj_poi::project_point_of_interest,
                                 poi_id,
@@ -562,7 +563,7 @@ impl Widget for ProjectPoiHeader {
                     .send(SqlFunc::new(move |sql_conn| {
                         use projectpadsql::schema::project_note::dsl as prj_note;
                         s.send(
-                            dialog_helpers::delete_row(sql_conn, prj_note::project_note, note_id)
+                            sql_util::delete_row(sql_conn, prj_note::project_note, note_id)
                                 .map(|_| ProjectItem::ProjectNote(note.clone())),
                         )
                         .unwrap();
@@ -577,7 +578,7 @@ impl Widget for ProjectPoiHeader {
                     .send(SqlFunc::new(move |sql_conn| {
                         use projectpadsql::schema::server_link::dsl as srv_link;
                         s.send(
-                            dialog_helpers::delete_row(sql_conn, srv_link::server_link, link_id)
+                            sql_util::delete_row(sql_conn, srv_link::server_link, link_id)
                                 .map(|_| ProjectItem::ServerLink(srv_link.clone())),
                         )
                         .unwrap();
@@ -731,7 +732,7 @@ impl Widget for ProjectPoiHeader {
                     )))
                 } else {
                     s.send(
-                        dialog_helpers::delete_row(sql_conn, srv::server, server_id)
+                        sql_util::delete_row(sql_conn, srv::server, server_id)
                             .map(|_| ProjectItem::Server(server.clone())),
                     )
                 }

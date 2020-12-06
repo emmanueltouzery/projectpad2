@@ -8,6 +8,7 @@ use super::project_items_list::ProjectItem;
 use super::wintitlebar::left_align_menu;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
+use crate::sql_util;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::{
@@ -411,8 +412,7 @@ impl Widget for ProjectSummary {
                     )))
                 } else {
                     s.send(
-                        dialog_helpers::delete_row(sql_conn, prj::project, prj_id)
-                            .map(|_| prj.clone()),
+                        sql_util::delete_row(sql_conn, prj::project, prj_id).map(|_| prj.clone()),
                     )
                 }
                 .unwrap();

@@ -6,6 +6,8 @@ pub mod icons;
 pub mod import_export;
 pub mod notes;
 mod sql_thread;
+#[macro_use]
+pub mod sql_util;
 mod widgets;
 
 use relm::Widget;

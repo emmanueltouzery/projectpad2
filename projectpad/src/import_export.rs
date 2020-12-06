@@ -7,8 +7,9 @@ use projectpadsql::sqlite_is;
 use regex::Regex;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct ProjectImportExport {
     project_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -21,14 +22,14 @@ struct ProjectImportExport {
     prod_environment: Option<ProjectEnvImportExport>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct ProjectEnvImportExport {
     items: ProjectEnvGroupImportExport,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     items_in_groups: HashMap<String, ProjectEnvGroupImportExport>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct ProjectEnvGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     servers: Vec<ServerImportExport>,
@@ -40,7 +41,7 @@ struct ProjectEnvGroupImportExport {
     project_notes: Vec<ProjectNote>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct ServerImportExport {
     server: Server,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -53,6 +54,13 @@ struct ServerImportExport {
     server_notes: Vec<ServerNote>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     server_extra_users: Vec<ServerExtraUserAccount>,
+}
+
+pub fn do_import(fname: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let contents = fs::read_to_string(fname)?;
+    let decoded: ProjectImportExport = serde_yaml::from_str(&contents)?;
+    println!("decoded OK! {}", decoded.project_name);
+    Ok(())
 }
 
 pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
@@ -118,6 +126,7 @@ fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {
     // I really want notes to be exported with literal blocks,
     // but the library doesn't do that yet, so i'll post-process.
     let raw_output = serde_yaml::to_string(value).unwrap();
+    // println!("RAW: {:?}", raw_output);
     yaml_fix_multiline_strings(&raw_output)
 }
 
@@ -125,19 +134,20 @@ fn yaml_fix_multiline_strings(raw_output: &str) -> String {
     // (?m) => enable regex multiline (^ and $ match beginning and end of line)
     // ^ beginning of line
     // (\s*) leading spaces, and we capture them in the first capture group
-    // ([^"]*) any non-quote characters, meaning the field name in yaml
+    // ([^\s\n][^"\n]*) a non-space character, followed by any non-quote characters,
+    //         excluding newlines; meaning the field name in yaml
     //         (eg in 'name: "value"' this captures 'name: '), second capture group
     // " quote, beginning of the string, that we want to maybe modify
-    // (.+) any quote contents (may include ", if escaped), third capture group
+    // ([^\n]+) any quote contents, excluding \n (may include ", if escaped), third capture group
     // " end of the string
     // $ end of the line
-    let re = Regex::new(r#"(?m)^(\s*)([^"]*)"(.+)"$"#).unwrap();
+    let re = Regex::new(r#"(?m)^(\s*)([^\s\n][^"\n]*)"([^\n]+)"$"#).unwrap();
     re.replace_all(raw_output, |item: &regex::Captures| {
         let line_start = item.get(1).unwrap().as_str().to_string() + item.get(2).unwrap().as_str();
         let contents = item.get(3).unwrap().as_str();
         if contents.contains("\\n") {
             // add extra spaces in the separator for the deeper indentation
-            let separator = format!("\n    {}", item.get(1).unwrap().as_str());
+            let separator = format!("\n  {}", item.get(1).unwrap().as_str());
             format!(
                 "{}|{}{}",
                 line_start,
@@ -309,7 +319,7 @@ fn fix_yaml_strings_nochange() {
 #[test]
 fn fix_yaml_strings_simple_newlines() {
     assert_eq!(
-        "test: |\n    first line\n    second line",
+        "test: |\n  first line\n  second line",
         yaml_fix_multiline_strings("test: \"first line\\nsecond line\"")
     );
 }
@@ -317,7 +327,7 @@ fn fix_yaml_strings_simple_newlines() {
 #[test]
 fn fix_yaml_strings_newlines_and_quotes_in_string() {
     assert_eq!(
-        "test: |\n    first \"line\"\n    second \\line",
+        "test: |\n  first \"line\"\n  second \\line",
         yaml_fix_multiline_strings("test: \"first \\\"line\\\"\\nsecond \\\\line\"")
     );
 }

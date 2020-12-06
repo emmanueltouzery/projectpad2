@@ -4,6 +4,7 @@ use super::dialogs::standard_dialogs;
 use super::search_view::PROJECT_FILTER_PREFIX;
 use crate::config::Config;
 use crate::icons::Icon;
+use crate::import_export::do_import;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
 use relm::{init, Component, Widget};
@@ -15,6 +16,7 @@ const SHORTCUTS_UI: &str = include_str!("shortcuts.ui");
 #[derive(Msg)]
 pub enum Msg {
     DisplayPreferences,
+    DisplayImport,
     DisplayShortcuts,
     DisplayHelp,
     DisplayAbout,
@@ -72,6 +74,16 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&preferences_btn);
 
+        let import_btn = gtk::ModelButtonBuilder::new().label("Import...").build();
+        left_align_menu(&import_btn);
+        relm::connect!(
+            self.model.relm,
+            &import_btn,
+            connect_clicked(_),
+            Msg::DisplayImport
+        );
+        vbox.add(&import_btn);
+
         let shortcuts_btn = gtk::ModelButtonBuilder::new()
             .label("Keyboard Shortcuts")
             .build();
@@ -127,6 +139,7 @@ impl Widget for WinTitleBar {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::DisplayPreferences => self.display_preferences(),
+            Msg::DisplayImport => self.display_import(),
             Msg::DisplayShortcuts => self.display_shortcuts(),
             Msg::DisplayAbout => Self::display_about(),
             Msg::SearchClicked => {
@@ -205,6 +218,12 @@ impl Widget for WinTitleBar {
             .set_position(gtk::WindowPosition::CenterOnParent);
         prefs_win.widget().set_modal(true);
         prefs_win.widget().show();
+    }
+
+    fn display_import(&mut self) {
+        if let Err(e) = do_import("/home/emmanuel/hubli.txt") {
+            eprintln!("import failed: {:?}", e);
+        }
     }
 
     fn display_about() {

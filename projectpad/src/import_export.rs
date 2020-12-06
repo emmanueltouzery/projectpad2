@@ -11,6 +11,8 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 
+type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
+
 #[derive(Serialize, Deserialize)]
 struct ProjectImportExport {
     project_name: String,
@@ -46,6 +48,13 @@ struct ProjectEnvGroupImportExport {
 #[derive(Serialize, Deserialize)]
 struct ServerImportExport {
     server: Server,
+    items: ServerGroupImportExport,
+    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
+    items_in_groups: HashMap<String, ServerGroupImportExport>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ServerGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_pois: Vec<ServerPointOfInterest>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -58,10 +67,11 @@ struct ServerImportExport {
     server_extra_users: Vec<ServerExtraUserAccount>,
 }
 
-pub fn do_import(
-    sql_conn: &diesel::SqliteConnection,
-    fname: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn to_boxed_stderr(err: (String, Option<String>)) -> Box<dyn std::error::Error> {
+    (err.0 + " - " + err.1.as_deref().unwrap_or("")).into()
+}
+
+pub fn do_import(sql_conn: &diesel::SqliteConnection, fname: &str) -> ImportResult<()> {
     use projectpadsql::schema::project::dsl as prj;
     let contents = fs::read_to_string(fname)?;
     let decoded: ProjectImportExport = serde_yaml::from_str(&contents)?;
@@ -83,29 +93,91 @@ pub fn do_import(
         // TODO load the icon from the import 7zip
         prj::icon.eq(Some(Vec::<u8>::new())),
     );
-    let project_id =
-        insert_row(sql_conn, changeset).map_err(|(m, d)| m + " - " + d.as_deref().unwrap_or(""))?;
+    let project_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
     if let Some(dev_env) = decoded.development_environment {
-        import_project_env(project_id, EnvironmentType::EnvDevelopment, &dev_env)?;
+        import_project_env(
+            sql_conn,
+            project_id,
+            EnvironmentType::EnvDevelopment,
+            &dev_env,
+        )?;
     }
     if let Some(stg_env) = decoded.staging_environment {
-        import_project_env(project_id, EnvironmentType::EnvStage, &stg_env)?;
+        import_project_env(sql_conn, project_id, EnvironmentType::EnvStage, &stg_env)?;
     }
     if let Some(uat_env) = decoded.uat_environment {
-        import_project_env(project_id, EnvironmentType::EnvUat, &uat_env)?;
+        import_project_env(sql_conn, project_id, EnvironmentType::EnvUat, &uat_env)?;
     }
     if let Some(prod_env) = decoded.prod_environment {
-        import_project_env(project_id, EnvironmentType::EnvProd, &prod_env)?;
+        import_project_env(sql_conn, project_id, EnvironmentType::EnvProd, &prod_env)?;
     }
     Ok(())
 }
 
 fn import_project_env(
+    sql_conn: &diesel::SqliteConnection,
     project_id: i32,
     env: EnvironmentType,
     project_env: &ProjectEnvImportExport,
-) -> Result<(), Box<dyn std::error::Error>> {
-    for item in &project_env.items.servers {}
+) -> ImportResult<()> {
+    for server in &project_env.items.servers {
+        import_server(sql_conn, project_id, env, None, server)?;
+    }
+    Ok(())
+}
+
+fn import_server(
+    sql_conn: &diesel::SqliteConnection,
+    project_id: i32,
+    env: EnvironmentType,
+    group_name: Option<&str>,
+    server: &ServerImportExport,
+) -> ImportResult<()> {
+    use projectpadsql::schema::server::dsl as srv;
+    let changeset = (
+        srv::desc.eq(&server.server.desc),
+        srv::is_retired.eq(server.server.is_retired),
+        srv::ip.eq(&server.server.ip),
+        srv::text.eq(&server.server.text),
+        srv::group_name.eq(group_name),
+        srv::username.eq(&server.server.username),
+        srv::password.eq(&server.server.password),
+        srv::auth_key.eq(server.server.auth_key.as_ref()), // TODO probably stored elsewhere
+        srv::auth_key_filename.eq(server.server.auth_key_filename.as_ref()),
+        srv::server_type.eq(server.server.server_type),
+        srv::access_type.eq(server.server.access_type),
+        srv::environment.eq(env),
+        srv::project_id.eq(project_id),
+    );
+    let server_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+
+    import_server_items(sql_conn, server_id, None, &server.items)?;
+    for (group_name, items) in &server.items_in_groups {
+        import_server_items(sql_conn, server_id, Some(group_name), items)?;
+    }
+
+    Ok(())
+}
+
+fn import_server_items(
+    sql_conn: &diesel::SqliteConnection,
+    server_id: i32,
+    group_name: Option<&str>,
+    items: &ServerGroupImportExport,
+) -> ImportResult<()> {
+    for db in &items.server_databases {
+        use projectpadsql::schema::server_database::dsl as srv_db;
+        let changeset = (
+            srv_db::desc.eq(&db.desc),
+            srv_db::name.eq(&db.name),
+            srv_db::group_name.eq(group_name),
+            srv_db::text.eq(&db.text),
+            srv_db::username.eq(&db.username),
+            srv_db::password.eq(&db.password),
+            srv_db::server_id.eq(server_id),
+        );
+        let db_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+    }
     Ok(())
 }
 
@@ -308,12 +380,34 @@ fn export_env_group(
 }
 
 fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerImportExport {
+    let items = export_server_items(sql_conn, &server, None);
+    let group_names = projectpadsql::get_server_group_names(sql_conn, server.id);
+    let items_in_groups = group_names
+        .into_iter()
+        .map(|gn| {
+            (
+                gn.clone(),
+                export_server_items(sql_conn, &server, Some(&gn)),
+            )
+        })
+        .collect();
+    ServerImportExport {
+        server,
+        items,
+        items_in_groups,
+    }
+}
+
+fn export_server_items(
+    sql_conn: &diesel::SqliteConnection,
+    server: &Server,
+    group_name: Option<&str>,
+) -> ServerGroupImportExport {
     use projectpadsql::schema::server_database::dsl as srv_db;
     use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
     use projectpadsql::schema::server_note::dsl as srv_note;
     use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
     use projectpadsql::schema::server_website::dsl as srv_www;
-
     let server_pois = srv_poi::server_point_of_interest
         .filter(srv_poi::server_id.eq(server.id))
         .order(srv_poi::desc.asc())
@@ -344,8 +438,7 @@ fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerI
         .load::<ServerExtraUserAccount>(sql_conn)
         .unwrap();
 
-    ServerImportExport {
-        server,
+    ServerGroupImportExport {
         server_pois,
         server_websites,
         server_databases,

@@ -178,6 +178,43 @@ fn import_server_items(
         );
         let db_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
     }
+    for note in &items.server_notes {
+        use projectpadsql::schema::server_note::dsl as srv_note;
+        let changeset = (
+            srv_note::title.eq(&note.title),
+            srv_note::group_name.eq(group_name),
+            srv_note::contents.eq(&note.contents),
+            srv_note::server_id.eq(server_id),
+        );
+        insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+    }
+    for poi in &items.server_pois {
+        use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+        let changeset = (
+            srv_poi::desc.eq(&poi.desc),
+            srv_poi::path.eq(&poi.path),
+            srv_poi::text.eq(&poi.text),
+            srv_poi::group_name.eq(group_name),
+            srv_poi::interest_type.eq(poi.interest_type),
+            srv_poi::run_on.eq(poi.run_on),
+            srv_poi::server_id.eq(server_id),
+        );
+        insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+    }
+    for user in &items.server_extra_users {
+        use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
+        let changeset = (
+            srv_usr::desc.eq(&user.desc),
+            srv_usr::group_name.eq(group_name),
+            srv_usr::username.eq(&user.username),
+            srv_usr::password.eq(&user.password),
+            srv_usr::auth_key.eq(&user.auth_key), // TODO stored elsewhere?
+            srv_usr::auth_key_filename.eq(&user.auth_key_filename),
+            srv_usr::server_id.eq(server_id),
+        );
+        insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+    }
+    // TODO server website ("interesting" FK to server DB)
     Ok(())
 }
 

@@ -7,9 +7,128 @@ use projectpadsql::models::{
 };
 use projectpadsql::sqlite_is;
 use regex::Regex;
+use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+
+fn serialize_if_present<T>(map: &mut T, key: &str, value: &str) -> Result<(), T::Error>
+where
+    T: SerializeMap,
+{
+    if !value.is_empty() {
+        map.serialize_entry(key, value)
+    } else {
+        Ok(())
+    }
+}
+
+fn serialize_if_some<T, V>(map: &mut T, key: &str, value: &Option<V>) -> Result<(), T::Error>
+where
+    T: SerializeMap,
+    V: Serialize,
+{
+    if value.is_some() {
+        map.serialize_entry(key, value)
+    } else {
+        Ok(())
+    }
+}
+
+#[derive(Deserialize)]
+struct ServerImportExport(Server);
+
+impl Serialize for ServerImportExport {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = &self.0;
+        let mut state = serializer.serialize_map(None)?;
+
+        // we want to allow to link to any server (ServerLink may need to)
+        // if there is a desc, we'll link to the desc. If there is no desc,
+        // we'll link to the id.
+        if s.desc.is_empty() {
+            state.serialize_entry("id", &s.id)?;
+        } else {
+            state.serialize_entry("desc", &s.desc)?;
+        }
+        serialize_if_present(&mut state, "ip", &s.ip)?;
+        serialize_if_present(&mut state, "text", &s.text)?;
+        if s.is_retired {
+            state.serialize_entry("is_retired", &s.is_retired)?;
+        }
+        serialize_if_present(&mut state, "username", &s.username)?;
+        serialize_if_present(&mut state, "password", &s.password)?;
+        // TODO auth_key
+        serialize_if_some(&mut state, "auth_key_filename", &s.auth_key_filename)?;
+        state.serialize_entry("server_type", &s.server_type)?;
+        state.serialize_entry("access_type", &s.access_type)?;
+        serialize_if_some(&mut state, "ssh_tunnel_port", &s.ssh_tunnel_port)?;
+        // TODO through_server_id
+
+        state.end()
+    }
+}
+
+#[derive(Deserialize)]
+struct ServerDatabaseImportExport(ServerDatabase);
+
+impl Serialize for ServerDatabaseImportExport {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = &self.0;
+        let mut state = serializer.serialize_map(None)?;
+
+        // we want to allow to link to any server (ServerWebsite may need to)
+        // if there is a desc, we'll link to the desc. If there is no desc,
+        // we'll link to the id.
+        if s.desc.is_empty() {
+            state.serialize_entry("id", &s.id)?;
+        } else {
+            state.serialize_entry("desc", &s.desc)?;
+        }
+        serialize_if_present(&mut state, "name", &s.name)?;
+        serialize_if_present(&mut state, "text", &s.text)?;
+        serialize_if_present(&mut state, "username", &s.username)?;
+        serialize_if_present(&mut state, "password", &s.password)?;
+
+        state.end()
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct ServerDatabasePath {
+    project_name: String,
+    environment: EnvironmentType,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    server_id: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    server_desc: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    database_id: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    database_desc: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ServerWebsiteImportExport {
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    desc: String,
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    url: String,
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    text: String,
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    username: String,
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    password: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    server_database: Option<ServerDatabasePath>,
+}
 
 type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -36,7 +155,7 @@ struct ProjectEnvImportExport {
 #[derive(Serialize, Deserialize)]
 struct ProjectEnvGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    servers: Vec<ServerImportExport>,
+    servers: Vec<ServerWithItemsImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_links: Vec<ServerLink>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -46,8 +165,8 @@ struct ProjectEnvGroupImportExport {
 }
 
 #[derive(Serialize, Deserialize)]
-struct ServerImportExport {
-    server: Server,
+struct ServerWithItemsImportExport {
+    server: ServerImportExport,
     items: ServerGroupImportExport,
     #[serde(skip_serializing_if = "HashMap::is_empty", default)]
     items_in_groups: HashMap<String, ServerGroupImportExport>,
@@ -58,9 +177,9 @@ struct ServerGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_pois: Vec<ServerPointOfInterest>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    server_websites: Vec<ServerWebsite>,
+    server_websites: Vec<ServerWebsiteImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    server_databases: Vec<ServerDatabase>,
+    server_databases: Vec<ServerDatabaseImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     server_notes: Vec<ServerNote>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -131,21 +250,21 @@ fn import_server(
     project_id: i32,
     env: EnvironmentType,
     group_name: Option<&str>,
-    server: &ServerImportExport,
+    server: &ServerWithItemsImportExport,
 ) -> ImportResult<()> {
     use projectpadsql::schema::server::dsl as srv;
     let changeset = (
-        srv::desc.eq(&server.server.desc),
-        srv::is_retired.eq(server.server.is_retired),
-        srv::ip.eq(&server.server.ip),
-        srv::text.eq(&server.server.text),
+        srv::desc.eq(&server.server.0.desc),
+        srv::is_retired.eq(server.server.0.is_retired),
+        srv::ip.eq(&server.server.0.ip),
+        srv::text.eq(&server.server.0.text),
         srv::group_name.eq(group_name),
-        srv::username.eq(&server.server.username),
-        srv::password.eq(&server.server.password),
-        srv::auth_key.eq(server.server.auth_key.as_ref()), // TODO probably stored elsewhere
-        srv::auth_key_filename.eq(server.server.auth_key_filename.as_ref()),
-        srv::server_type.eq(server.server.server_type),
-        srv::access_type.eq(server.server.access_type),
+        srv::username.eq(&server.server.0.username),
+        srv::password.eq(&server.server.0.password),
+        srv::auth_key.eq(server.server.0.auth_key.as_ref()), // TODO probably stored elsewhere
+        srv::auth_key_filename.eq(server.server.0.auth_key_filename.as_ref()),
+        srv::server_type.eq(server.server.0.server_type),
+        srv::access_type.eq(server.server.0.access_type),
         srv::environment.eq(env),
         srv::project_id.eq(project_id),
     );
@@ -168,12 +287,12 @@ fn import_server_items(
     for db in &items.server_databases {
         use projectpadsql::schema::server_database::dsl as srv_db;
         let changeset = (
-            srv_db::desc.eq(&db.desc),
-            srv_db::name.eq(&db.name),
+            srv_db::desc.eq(&db.0.desc),
+            srv_db::name.eq(&db.0.name),
             srv_db::group_name.eq(group_name),
-            srv_db::text.eq(&db.text),
-            srv_db::username.eq(&db.username),
-            srv_db::password.eq(&db.password),
+            srv_db::text.eq(&db.0.text),
+            srv_db::username.eq(&db.0.username),
+            srv_db::password.eq(&db.0.password),
             srv_db::server_id.eq(server_id),
         );
         let db_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
@@ -310,7 +429,9 @@ fn yaml_fix_multiline_strings(raw_output: &str) -> String {
                 itertools::join(
                     contents.split("\\n").map(|l| format!(
                         "{}",
-                        l.replace(r#"\""#, r#"""#).replace(r#"\\"#, r#"\"#)
+                        l.replace(r#"\""#, r#"""#)
+                            .replace(r#"\\"#, r#"\"#)
+                            .replace(r#"\t"#, "\t")
                     )),
                     &separator
                 )
@@ -416,7 +537,10 @@ fn export_env_group(
     }
 }
 
-fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerImportExport {
+fn export_server(
+    sql_conn: &diesel::SqliteConnection,
+    server: Server,
+) -> ServerWithItemsImportExport {
     let items = export_server_items(sql_conn, &server, None);
     let group_names = projectpadsql::get_server_group_names(sql_conn, server.id);
     let items_in_groups = group_names
@@ -428,8 +552,8 @@ fn export_server(sql_conn: &diesel::SqliteConnection, server: Server) -> ServerI
             )
         })
         .collect();
-    ServerImportExport {
-        server,
+    ServerWithItemsImportExport {
+        server: ServerImportExport(server),
         items,
         items_in_groups,
     }
@@ -440,6 +564,7 @@ fn export_server_items(
     server: &Server,
     group_name: Option<&str>,
 ) -> ServerGroupImportExport {
+    // TODO should return Result instead of unwrapping
     use projectpadsql::schema::server_database::dsl as srv_db;
     use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
     use projectpadsql::schema::server_note::dsl as srv_note;
@@ -455,13 +580,19 @@ fn export_server_items(
         .filter(srv_www::server_id.eq(server.id))
         .order(srv_www::desc.asc())
         .load::<ServerWebsite>(sql_conn)
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .map(|www| to_server_website_import_export(sql_conn, www).unwrap())
+        .collect();
 
     let server_databases = srv_db::server_database
         .filter(srv_db::server_id.eq(server.id))
         .order(srv_db::desc.asc())
         .load::<ServerDatabase>(sql_conn)
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .map(ServerDatabaseImportExport)
+        .collect();
 
     let server_notes = srv_note::server_note
         .filter(srv_note::server_id.eq(server.id))
@@ -482,6 +613,49 @@ fn export_server_items(
         server_notes,
         server_extra_users,
     }
+}
+
+fn to_server_website_import_export(
+    sql_conn: &SqliteConnection,
+    website: ServerWebsite,
+) -> ImportResult<ServerWebsiteImportExport> {
+    use projectpadsql::schema::project::dsl as prj;
+    use projectpadsql::schema::server::dsl as srv;
+    use projectpadsql::schema::server_database::dsl as srv_db;
+    let server_database = match website.server_database_id {
+        Some(id) => {
+            let (db, (srv, prj)) = srv_db::server_database
+                .inner_join(srv::server.inner_join(prj::project))
+                .filter(srv_db::id.eq(id))
+                .first::<(ServerDatabase, (Server, Project))>(sql_conn)?;
+            Some(ServerDatabasePath {
+                project_name: prj.name,
+                environment: srv.environment,
+                server_id: if srv.desc.is_empty() {
+                    Some(srv.id)
+                } else {
+                    None
+                },
+                server_desc: Some(srv.desc).filter(|d| !d.is_empty()),
+                database_id: if db.desc.is_empty() {
+                    Some(db.id)
+                } else {
+                    None
+                },
+                database_desc: Some(db.desc).filter(|d| !d.is_empty()),
+            })
+        }
+        None => None,
+    };
+
+    Ok(ServerWebsiteImportExport {
+        desc: website.desc,
+        url: website.url,
+        text: website.text,
+        username: website.username,
+        password: website.password,
+        server_database,
+    })
 }
 
 #[test]

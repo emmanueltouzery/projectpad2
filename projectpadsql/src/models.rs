@@ -175,36 +175,37 @@ simple_enum!(ServerAccessType);
 simple_enum!(InterestType);
 simple_enum!(RunOn);
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Server {
-    pub id: i32, // must be serialized because of server links
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
+    pub id: i32,
+    #[serde(default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub ip: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub text: String,
-    #[serde(skip_serializing_if = "is_false", default)]
+    #[serde(default)]
     pub is_retired: bool,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub password: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(default)]
     pub auth_key: Option<Vec<u8>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(default)]
     pub auth_key_filename: Option<String>,
     pub server_type: ServerType,
     pub access_type: ServerAccessType,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(default)]
     pub ssh_tunnel_port: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(default)]
     pub ssh_tunnel_through_server_id: Option<i32>,
-    #[serde(skip)]
+    #[serde(default)]
     pub environment: EnvironmentType,
-    #[serde(skip)]
+    #[serde(default)]
     pub group_name: Option<String>,
-    #[serde(skip)]
+    #[serde(default)]
     pub project_id: i32,
 }
 
@@ -262,24 +263,16 @@ pub struct ServerLink {
     pub project_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct ServerWebsite {
-    #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub url: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub text: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password: String,
     pub server_database_id: Option<i32>,
-    #[serde(skip)]
     pub group_name: Option<String>,
-    #[serde(skip)]
     pub server_id: i32,
 }
 
@@ -335,22 +328,23 @@ pub struct ServerExtraUserAccount {
     pub server_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ServerDatabase {
-    pub id: i32, // must be serialized, linked from serverwebsite
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
+    pub id: i32,
+    #[serde(default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub name: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub text: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
+    #[serde(default)]
     pub password: String,
-    #[serde(skip)]
+    #[serde(default)]
     pub group_name: Option<String>,
-    #[serde(skip)]
+    #[serde(default)]
     pub server_id: i32,
 }
 
@@ -359,11 +353,4 @@ pub struct DbVersion {
     pub id: i32,
     pub code: i32,
     pub update_date: NaiveDateTime,
-}
-
-// https://stackoverflow.com/a/53900684/516188
-/// This is only used for serialize
-#[allow(clippy::trivially_copy_pass_by_ref)]
-fn is_false(num: &bool) -> bool {
-    !num
 }

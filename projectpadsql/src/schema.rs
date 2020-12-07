@@ -142,7 +142,6 @@ table! {
 }
 
 joinable!(server_website -> server_database (server_database_id));
-allow_tables_to_appear_in_same_query!(server_website, server_database, server);
 joinable!(server_website -> server (server_id));
 
 joinable!(server_link -> server (linked_server_id));
@@ -155,4 +154,10 @@ allow_tables_to_appear_in_same_query!(project, project_point_of_interest);
 
 joinable!(server -> project (project_id));
 joinable!(server_point_of_interest -> server (server_id));
-allow_tables_to_appear_in_same_query!(project, server_point_of_interest, server);
+allow_tables_to_appear_in_same_query!(
+    project,
+    server_point_of_interest,
+    server_website,
+    server_database,
+    server
+);

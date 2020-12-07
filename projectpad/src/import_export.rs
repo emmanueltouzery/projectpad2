@@ -212,7 +212,11 @@ pub fn do_import(sql_conn: &diesel::SqliteConnection, fname: &str) -> ImportResu
         // TODO load the icon from the import 7zip
         prj::icon.eq(Some(Vec::<u8>::new())),
     );
-    let project_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+    let project_id = insert_row(
+        sql_conn,
+        diesel::insert_into(prj::project).values(changeset),
+    )
+    .map_err(to_boxed_stderr)?;
     if let Some(dev_env) = decoded.development_environment {
         import_project_env(
             sql_conn,
@@ -268,7 +272,8 @@ fn import_server(
         srv::environment.eq(env),
         srv::project_id.eq(project_id),
     );
-    let server_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+    let server_id = insert_row(sql_conn, diesel::insert_into(srv::server).values(changeset))
+        .map_err(to_boxed_stderr)?;
 
     import_server_items(sql_conn, server_id, None, &server.items)?;
     for (group_name, items) in &server.items_in_groups {
@@ -295,7 +300,11 @@ fn import_server_items(
             srv_db::password.eq(&db.0.password),
             srv_db::server_id.eq(server_id),
         );
-        let db_id = insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+        let db_id = insert_row(
+            sql_conn,
+            diesel::insert_into(srv_db::server_database).values(changeset),
+        )
+        .map_err(to_boxed_stderr)?;
     }
     for note in &items.server_notes {
         use projectpadsql::schema::server_note::dsl as srv_note;
@@ -305,7 +314,11 @@ fn import_server_items(
             srv_note::contents.eq(&note.contents),
             srv_note::server_id.eq(server_id),
         );
-        insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+        insert_row(
+            sql_conn,
+            diesel::insert_into(srv_note::server_note).values(changeset),
+        )
+        .map_err(to_boxed_stderr)?;
     }
     for poi in &items.server_pois {
         use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
@@ -318,7 +331,11 @@ fn import_server_items(
             srv_poi::run_on.eq(poi.run_on),
             srv_poi::server_id.eq(server_id),
         );
-        insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+        insert_row(
+            sql_conn,
+            diesel::insert_into(srv_poi::server_point_of_interest).values(changeset),
+        )
+        .map_err(to_boxed_stderr)?;
     }
     for user in &items.server_extra_users {
         use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
@@ -331,7 +348,11 @@ fn import_server_items(
             srv_usr::auth_key_filename.eq(&user.auth_key_filename),
             srv_usr::server_id.eq(server_id),
         );
-        insert_row(sql_conn, changeset).map_err(to_boxed_stderr)?;
+        insert_row(
+            sql_conn,
+            diesel::insert_into(srv_usr::server_extra_user_account).values(changeset),
+        )
+        .map_err(to_boxed_stderr)?;
     }
     // TODO server website ("interesting" FK to server DB)
     Ok(())

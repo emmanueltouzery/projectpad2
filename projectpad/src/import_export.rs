@@ -276,11 +276,33 @@ fn import_project_env_first_pass(
     env: EnvironmentType,
     project_env: &ProjectEnvImportExport,
 ) -> ImportResult<Vec<UnprocessedWebsite>> {
-    project_env
-        .items
+    let mut unprocessed_websites =
+        import_project_env_group_first_pass(sql_conn, project_id, &project_env.items, env, None)?;
+
+    for (group, items) in &project_env.items_in_groups {
+        unprocessed_websites.append(&mut import_project_env_group_first_pass(
+            sql_conn,
+            project_id,
+            &items,
+            env,
+            Some(group),
+        )?);
+    }
+
+    Ok(unprocessed_websites)
+}
+
+fn import_project_env_group_first_pass(
+    sql_conn: &diesel::SqliteConnection,
+    project_id: i32,
+    items: &ProjectEnvGroupImportExport,
+    env: EnvironmentType,
+    group_name: Option<&str>,
+) -> ImportResult<Vec<UnprocessedWebsite>> {
+    items
         .servers
         .iter()
-        .map(|server| import_server(sql_conn, project_id, env, None, server))
+        .map(|server| import_server(sql_conn, project_id, env, group_name, server))
         .collect::<ImportResult<Vec<_>>>()
         // TODO next line is horrible
         .map(|v| v.into_iter().flat_map(|x| x).collect::<Vec<_>>())
@@ -717,13 +739,21 @@ fn export_server_items(
     use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
     use projectpadsql::schema::server_website::dsl as srv_www;
     let server_pois = srv_poi::server_point_of_interest
-        .filter(srv_poi::server_id.eq(server.id))
+        .filter(
+            srv_poi::server_id
+                .eq(server.id)
+                .and(sqlite_is(srv_poi::group_name, group_name)),
+        )
         .order(srv_poi::desc.asc())
         .load::<ServerPointOfInterest>(sql_conn)
         .unwrap();
 
     let server_websites = srv_www::server_website
-        .filter(srv_www::server_id.eq(server.id))
+        .filter(
+            srv_www::server_id
+                .eq(server.id)
+                .and(sqlite_is(srv_www::group_name, group_name)),
+        )
         .order(srv_www::desc.asc())
         .load::<ServerWebsite>(sql_conn)
         .unwrap()
@@ -732,7 +762,11 @@ fn export_server_items(
         .collect();
 
     let server_databases = srv_db::server_database
-        .filter(srv_db::server_id.eq(server.id))
+        .filter(
+            srv_db::server_id
+                .eq(server.id)
+                .and(sqlite_is(srv_db::group_name, group_name)),
+        )
         .order(srv_db::desc.asc())
         .load::<ServerDatabase>(sql_conn)
         .unwrap()
@@ -741,13 +775,21 @@ fn export_server_items(
         .collect();
 
     let server_notes = srv_note::server_note
-        .filter(srv_note::server_id.eq(server.id))
+        .filter(
+            srv_note::server_id
+                .eq(server.id)
+                .and(sqlite_is(srv_note::group_name, group_name)),
+        )
         .order(srv_note::title.asc())
         .load::<ServerNote>(sql_conn)
         .unwrap();
 
     let server_extra_users = srv_usr::server_extra_user_account
-        .filter(srv_usr::server_id.eq(server.id))
+        .filter(
+            srv_usr::server_id
+                .eq(server.id)
+                .and(sqlite_is(srv_usr::group_name, group_name)),
+        )
         .order(srv_usr::username.asc())
         .load::<ServerExtraUserAccount>(sql_conn)
         .unwrap();

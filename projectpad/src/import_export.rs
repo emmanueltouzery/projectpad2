@@ -100,7 +100,7 @@ impl Serialize for ServerDatabaseImportExport {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct ServerDatabasePath {
     project_name: String,
     environment: EnvironmentType,
@@ -114,7 +114,7 @@ struct ServerDatabasePath {
     database_desc: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct ServerWebsiteImportExport {
     #[serde(skip_serializing_if = "String::is_empty", default)]
     desc: String,
@@ -217,36 +217,73 @@ pub fn do_import(sql_conn: &diesel::SqliteConnection, fname: &str) -> ImportResu
         diesel::insert_into(prj::project).values(changeset),
     )
     .map_err(to_boxed_stderr)?;
+    let mut unprocessed_websites = vec![];
+
     if let Some(dev_env) = decoded.development_environment {
-        import_project_env(
+        unprocessed_websites.extend(import_project_env_first_pass(
             sql_conn,
             project_id,
             EnvironmentType::EnvDevelopment,
             &dev_env,
-        )?;
+        )?);
     }
     if let Some(stg_env) = decoded.staging_environment {
-        import_project_env(sql_conn, project_id, EnvironmentType::EnvStage, &stg_env)?;
+        unprocessed_websites.extend(import_project_env_first_pass(
+            sql_conn,
+            project_id,
+            EnvironmentType::EnvStage,
+            &stg_env,
+        )?);
     }
     if let Some(uat_env) = decoded.uat_environment {
-        import_project_env(sql_conn, project_id, EnvironmentType::EnvUat, &uat_env)?;
+        unprocessed_websites.extend(import_project_env_first_pass(
+            sql_conn,
+            project_id,
+            EnvironmentType::EnvUat,
+            &uat_env,
+        )?);
     }
     if let Some(prod_env) = decoded.prod_environment {
-        import_project_env(sql_conn, project_id, EnvironmentType::EnvProd, &prod_env)?;
+        unprocessed_websites.extend(import_project_env_first_pass(
+            sql_conn,
+            project_id,
+            EnvironmentType::EnvProd,
+            &prod_env,
+        )?);
+    }
+    for unprocessed_website in unprocessed_websites {
+        import_server_website(sql_conn, &unprocessed_website)?;
     }
     Ok(())
 }
 
-fn import_project_env(
+struct UnprocessedWebsite {
+    server_id: i32,
+    group_name: Option<String>,
+    website: ServerWebsiteImportExport,
+}
+
+/// in the first pass we don't do server links and
+/// server websites. server links can link to other
+/// servers and websites and link to server databases.
+///
+/// we want to import all the potential link targets
+/// in the first pass so the links are resolved, if
+/// at all possible, when we'll process the second pass.
+fn import_project_env_first_pass(
     sql_conn: &diesel::SqliteConnection,
     project_id: i32,
     env: EnvironmentType,
     project_env: &ProjectEnvImportExport,
-) -> ImportResult<()> {
-    for server in &project_env.items.servers {
-        import_server(sql_conn, project_id, env, None, server)?;
-    }
-    Ok(())
+) -> ImportResult<Vec<UnprocessedWebsite>> {
+    project_env
+        .items
+        .servers
+        .iter()
+        .map(|server| import_server(sql_conn, project_id, env, None, server))
+        .collect::<ImportResult<Vec<_>>>()
+        // TODO next line is horrible
+        .map(|v| v.into_iter().flat_map(|x| x).collect::<Vec<_>>())
 }
 
 fn import_server(
@@ -255,7 +292,7 @@ fn import_server(
     env: EnvironmentType,
     group_name: Option<&str>,
     server: &ServerWithItemsImportExport,
-) -> ImportResult<()> {
+) -> ImportResult<Vec<UnprocessedWebsite>> {
     use projectpadsql::schema::server::dsl as srv;
     let changeset = (
         srv::desc.eq(&server.server.0.desc),
@@ -280,7 +317,24 @@ fn import_server(
         import_server_items(sql_conn, server_id, Some(group_name), items)?;
     }
 
-    Ok(())
+    let mut unprocessed_websites: Vec<_> = server
+        .items
+        .server_websites
+        .iter()
+        .map(|w| UnprocessedWebsite {
+            server_id,
+            group_name: None,
+            website: w.clone(),
+        })
+        .collect();
+    unprocessed_websites.extend(server.items_in_groups.iter().flat_map(|(k, v)| {
+        v.server_websites.iter().map(move |www| UnprocessedWebsite {
+            server_id,
+            group_name: Some(k.to_string()),
+            website: www.clone(),
+        })
+    }));
+    Ok(unprocessed_websites)
 }
 
 fn import_server_items(
@@ -300,7 +354,7 @@ fn import_server_items(
             srv_db::password.eq(&db.0.password),
             srv_db::server_id.eq(server_id),
         );
-        let db_id = insert_row(
+        insert_row(
             sql_conn,
             diesel::insert_into(srv_db::server_database).values(changeset),
         )
@@ -354,8 +408,79 @@ fn import_server_items(
         )
         .map_err(to_boxed_stderr)?;
     }
-    // TODO server website ("interesting" FK to server DB)
+    // server websites are handled in the second pass
     Ok(())
+}
+
+fn import_server_website(
+    sql_conn: &diesel::SqliteConnection,
+    website_info: &UnprocessedWebsite,
+) -> ImportResult<()> {
+    use projectpadsql::schema::server_website::dsl as srv_www;
+    let new_databaseid = website_info
+        .website
+        .server_database
+        .as_ref()
+        .and_then(|db_path| get_new_databaseid(sql_conn, db_path).ok());
+    let changeset = (
+        srv_www::desc.eq(&website_info.website.desc),
+        srv_www::url.eq(&website_info.website.url),
+        srv_www::text.eq(&website_info.website.text),
+        srv_www::group_name.eq(website_info.group_name.as_ref()),
+        srv_www::username.eq(&website_info.website.username),
+        srv_www::password.eq(&website_info.website.password),
+        srv_www::server_database_id.eq(new_databaseid),
+        srv_www::server_id.eq(website_info.server_id),
+    );
+    insert_row(
+        sql_conn,
+        diesel::insert_into(srv_www::server_website).values(changeset),
+    )
+    .map_err(to_boxed_stderr)?;
+    Ok(())
+}
+
+fn get_new_databaseid(
+    sql_conn: &diesel::SqliteConnection,
+    db_path: &ServerDatabasePath,
+) -> ImportResult<i32> {
+    use projectpadsql::schema::server_database::dsl as srv_db;
+    if let Some(db_id) = db_path.database_id {
+        return Ok(db_id);
+    }
+
+    // since database_id is not defined, i know that database_desc is.
+
+    // first find the server id
+    let server_id: i32 = match db_path.server_id {
+        Some(id) => id,
+        None => {
+            // no server id, must find the server using desc, environment and project name
+            use projectpadsql::schema::project::dsl as prj;
+            use projectpadsql::schema::server::dsl as srv;
+            srv::server
+                .inner_join(prj::project)
+                .select(srv::id)
+                .filter(
+                    prj::name
+                        .eq(&db_path.project_name)
+                        .and(srv::environment.eq(db_path.environment))
+                        // we know server_desc is present, because server_id is not.
+                        .and(srv::desc.eq(db_path.server_desc.as_ref().unwrap())),
+                )
+                .first(sql_conn)
+                .map_err(|e| e.to_string())?
+        }
+    };
+    Ok(srv_db::server_database
+        .select(srv_db::id)
+        .filter(
+            srv_db::desc
+                .eq(db_path.database_desc.as_ref().unwrap())
+                .and(srv_db::server_id.eq(server_id)),
+        )
+        .first(sql_conn)
+        .map_err(|e| e.to_string())?)
 }
 
 pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {

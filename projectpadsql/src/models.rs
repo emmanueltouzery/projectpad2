@@ -125,6 +125,12 @@ pub enum InterestType {
     PoiBackupArchive,
 }
 
+impl Default for InterestType {
+    fn default() -> Self {
+        InterestType::PoiApplication
+    }
+}
+
 #[derive(
     Debug,
     Clone,
@@ -231,20 +237,14 @@ pub struct ProjectNote {
     pub project_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct ProjectPointOfInterest {
-    #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub path: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub text: String,
     pub interest_type: InterestType,
-    #[serde(skip)]
     pub group_name: Option<String>,
-    #[serde(skip)]
     pub project_id: i32,
 }
 

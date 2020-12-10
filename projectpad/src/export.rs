@@ -267,7 +267,7 @@ fn export_env_group(
         servers: srvs
             .into_iter()
             .map(|s| export_server(sql_conn, s))
-            .collect(),
+            .collect::<ExportResult<Vec<_>>>()?,
         server_links: server_links_export,
         project_pois: project_pois_export,
         project_notes: project_notes_import_export,
@@ -277,31 +277,30 @@ fn export_env_group(
 fn export_server(
     sql_conn: &diesel::SqliteConnection,
     server: Server,
-) -> ServerWithItemsImportExport {
-    let items = export_server_items(sql_conn, &server, None);
+) -> ExportResult<ServerWithItemsImportExport> {
+    let items = export_server_items(sql_conn, &server, None)?;
     let group_names = projectpadsql::get_server_group_names(sql_conn, server.id);
     let items_in_groups = group_names
         .into_iter()
         .map(|gn| {
-            (
-                gn.clone(),
-                export_server_items(sql_conn, &server, Some(&gn)),
-            )
-        })
-        .collect();
-    ServerWithItemsImportExport {
+            let items = export_server_items(sql_conn, &server, Some(&gn))?;
+            Ok((gn.clone(), items))
+        }) // step 1: Iterator<Result<(_,_)>>
+        .collect::<ExportResult<Vec<_>>>()? // step 2: Result<Vec<(_,_)>>, drop the Result with ?
+        .into_iter() // step 3: Iterator<(_,_)>
+        .collect(); // step 4: HashMap
+    Ok(ServerWithItemsImportExport {
         server: ServerImportExport(server),
         items,
         items_in_groups,
-    }
+    })
 }
 
 fn export_server_items(
     sql_conn: &diesel::SqliteConnection,
     server: &Server,
     group_name: Option<&str>,
-) -> ServerGroupImportExport {
-    // TODO should return Result instead of unwrapping
+) -> ExportResult<ServerGroupImportExport> {
     use projectpadsql::schema::server_database::dsl as srv_db;
     use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
     use projectpadsql::schema::server_note::dsl as srv_note;
@@ -314,8 +313,7 @@ fn export_server_items(
                 .and(sqlite_is(srv_poi::group_name, group_name)),
         )
         .order(srv_poi::desc.asc())
-        .load::<ServerPointOfInterest>(sql_conn)
-        .unwrap();
+        .load::<ServerPointOfInterest>(sql_conn)?;
 
     let server_websites = srv_www::server_website
         .filter(
@@ -324,11 +322,10 @@ fn export_server_items(
                 .and(sqlite_is(srv_www::group_name, group_name)),
         )
         .order(srv_www::desc.asc())
-        .load::<ServerWebsite>(sql_conn)
-        .unwrap()
+        .load::<ServerWebsite>(sql_conn)?
         .into_iter()
-        .map(|www| to_server_website_import_export(sql_conn, www).unwrap())
-        .collect();
+        .map(|www| to_server_website_import_export(sql_conn, www))
+        .collect::<ExportResult<Vec<_>>>()?;
 
     let server_databases = srv_db::server_database
         .filter(
@@ -337,8 +334,7 @@ fn export_server_items(
                 .and(sqlite_is(srv_db::group_name, group_name)),
         )
         .order(srv_db::desc.asc())
-        .load::<ServerDatabase>(sql_conn)
-        .unwrap()
+        .load::<ServerDatabase>(sql_conn)?
         .into_iter()
         .map(ServerDatabaseImportExport)
         .collect();
@@ -350,8 +346,7 @@ fn export_server_items(
                 .and(sqlite_is(srv_note::group_name, group_name)),
         )
         .order(srv_note::title.asc())
-        .load::<ServerNote>(sql_conn)
-        .unwrap();
+        .load::<ServerNote>(sql_conn)?;
 
     let server_extra_users = srv_usr::server_extra_user_account
         .filter(
@@ -360,16 +355,15 @@ fn export_server_items(
                 .and(sqlite_is(srv_usr::group_name, group_name)),
         )
         .order(srv_usr::username.asc())
-        .load::<ServerExtraUserAccount>(sql_conn)
-        .unwrap();
+        .load::<ServerExtraUserAccount>(sql_conn)?;
 
-    ServerGroupImportExport {
+    Ok(ServerGroupImportExport {
         server_pois,
         server_websites,
         server_databases,
         server_notes,
         server_extra_users,
-    }
+    })
 }
 
 fn to_server_link_import_export(

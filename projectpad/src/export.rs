@@ -111,12 +111,10 @@ fn yaml_fix_multiline_strings(raw_output: &str) -> String {
                 line_start,
                 separator,
                 itertools::join(
-                    contents.split("\\n").map(|l| format!(
-                        "{}",
-                        l.replace(r#"\""#, r#"""#)
-                            .replace(r#"\\"#, r#"\"#)
-                            .replace(r#"\t"#, "\t")
-                    )),
+                    contents.split("\\n").map(|l| l
+                        .replace(r#"\""#, r#"""#)
+                        .replace(r#"\\"#, r#"\"#)
+                        .replace(r#"\t"#, "\t")),
                     &separator
                 )
             )

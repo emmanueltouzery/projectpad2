@@ -136,8 +136,7 @@ fn import_project_env_group_first_pass(
         .iter()
         .map(|server| import_server(sql_conn, project_id, env, group_name, server))
         .collect::<ImportResult<Vec<_>>>()
-        // TODO next line is horrible
-        .map(|v| v.into_iter().flat_map(|x| x).collect::<Vec<_>>())
+        .map(|v| v.into_iter().flatten().collect::<Vec<_>>())
 }
 
 fn import_project_poi(
@@ -188,7 +187,7 @@ fn import_project_note(
             .first::<i32>(sql_conn)?;
         let what = prj_note::project_note.filter(prj_note::id.eq(note_id_to_update));
 
-        let update = match env {
+        match env {
             // dev is the first, normally we come here at the 2nd
             // environment the earlier => skip it
             EnvironmentType::EnvStage => diesel::update(what)
@@ -203,7 +202,7 @@ fn import_project_note(
             _ => unreachable!(),
         }
         .map(|_| ())?;
-        Ok(update)
+        Ok(())
     } else {
         // this note was not imported yet, import it the first time
         let changeset = (

@@ -13,6 +13,8 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 
+type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
+
 fn serialize_if_present<T>(map: &mut T, key: &str, value: &str) -> Result<(), T::Error>
 where
     T: SerializeMap,
@@ -131,7 +133,22 @@ struct ServerWebsiteImportExport {
     server_database: Option<ServerDatabasePath>,
 }
 
-type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
+#[derive(Serialize, Deserialize)]
+struct ServerLinkImportExport {
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    desc: String,
+    server: ServerPath,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ServerPath {
+    project_name: String,
+    environment: EnvironmentType,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    server_id: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    server_desc: Option<String>,
+}
 
 #[derive(Serialize, Deserialize)]
 struct ProjectImportExport {
@@ -232,7 +249,7 @@ struct ProjectEnvGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     servers: Vec<ServerWithItemsImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    server_links: Vec<ServerLink>,
+    server_links: Vec<ServerLinkImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     project_pois: Vec<ProjectPoiImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -380,6 +397,9 @@ fn import_project_env_group_first_pass(
     for project_note in &items.project_notes {
         import_project_note(sql_conn, project_id, group_name, env, project_note)?;
     }
+    for server_link in &items.server_links {
+        import_server_link(sql_conn, project_id, group_name, env, server_link)?;
+    }
 
     items
         .servers
@@ -473,6 +493,30 @@ fn import_project_note(
         .map_err(to_boxed_stderr)
         .map(|_| ())
     }
+}
+
+fn import_server_link(
+    sql_conn: &diesel::SqliteConnection,
+    project_id: i32,
+    group_name: Option<&str>,
+    env: EnvironmentType,
+    server_link: &ServerLinkImportExport,
+) -> ImportResult<()> {
+    use projectpadsql::schema::server_link::dsl as srv_link;
+    let linked_server_id = get_linked_server_id(sql_conn, &server_link.server)?;
+    let changeset = (
+        srv_link::desc.eq(&server_link.desc),
+        srv_link::group_name.eq(group_name),
+        srv_link::linked_server_id.eq(linked_server_id),
+        srv_link::project_id.eq(project_id),
+        srv_link::environment.eq(env),
+    );
+    insert_row(
+        sql_conn,
+        diesel::insert_into(srv_link::server_link).values(changeset),
+    )
+    .map_err(to_boxed_stderr)
+    .map(|_| ())
 }
 
 fn import_server(
@@ -629,6 +673,28 @@ fn import_server_website(
     Ok(())
 }
 
+fn get_linked_server_id(
+    sql_conn: &diesel::SqliteConnection,
+    server_path: &ServerPath,
+) -> ImportResult<i32> {
+    use projectpadsql::schema::project::dsl as prj;
+    use projectpadsql::schema::server::dsl as srv;
+    if let Some(id) = server_path.server_id {
+        return Ok(id);
+    }
+    // server_id is not present, so I know that server_desc is present.
+    Ok(srv::server
+        .inner_join(prj::project)
+        .select(srv::id)
+        .filter(
+            prj::name
+                .eq(&server_path.project_name)
+                .and(srv::environment.eq(server_path.environment))
+                .and(srv::desc.eq(server_path.server_desc.as_ref().unwrap())),
+        )
+        .first::<i32>(sql_conn)?)
+}
+
 fn get_new_databaseid(
     sql_conn: &diesel::SqliteConnection,
     db_path: &ServerDatabasePath,
@@ -672,7 +738,7 @@ fn get_new_databaseid(
         .map_err(|e| e.to_string())?)
 }
 
-pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
+pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) -> ImportResult<()> {
     // if I export a 7zip i can export project icons and attachments in the zip too...
     let group_names = projectpadsql::get_project_group_names(sql_conn, project.id);
     let mut is_first_env = true;
@@ -684,7 +750,7 @@ pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
             EnvironmentType::EnvDevelopment,
             is_first_env,
             &group_names,
-        ));
+        )?);
         is_first_env = false;
         e
     } else {
@@ -698,7 +764,7 @@ pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
             EnvironmentType::EnvStage,
             is_first_env,
             &group_names,
-        ));
+        )?);
         is_first_env = false;
         e
     } else {
@@ -712,7 +778,7 @@ pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
             EnvironmentType::EnvUat,
             is_first_env,
             &group_names,
-        ));
+        )?);
         is_first_env = false;
         e
     } else {
@@ -726,7 +792,7 @@ pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
             EnvironmentType::EnvProd,
             is_first_env,
             &group_names,
-        ))
+        )?)
     } else {
         None
     };
@@ -739,6 +805,7 @@ pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) {
         prod_environment,
     };
     println!("{}", generate_yaml(&project_importexport));
+    Ok(())
 }
 
 fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {
@@ -795,21 +862,22 @@ fn export_env(
     env: EnvironmentType,
     is_first_env: bool,
     group_names: &[String],
-) -> ProjectEnvImportExport {
-    let items = export_env_group(sql_conn, project, env, is_first_env, None);
+) -> ImportResult<ProjectEnvImportExport> {
+    let items = export_env_group(sql_conn, project, env, is_first_env, None)?;
 
     let items_in_groups = group_names
         .iter()
         .map(|gn| {
-            let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn));
+            // TODO unwrap
+            let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn)).unwrap();
             (gn.clone(), group)
         })
         .collect();
 
-    ProjectEnvImportExport {
+    Ok(ProjectEnvImportExport {
         items,
         items_in_groups,
-    }
+    })
 }
 
 fn export_env_group(
@@ -818,7 +886,7 @@ fn export_env_group(
     env: EnvironmentType,
     is_first_env: bool,
     group_name: Option<&str>,
-) -> ProjectEnvGroupImportExport {
+) -> ImportResult<ProjectEnvGroupImportExport> {
     use projectpadsql::schema::project_note::dsl as prj_note;
     use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
     use projectpadsql::schema::server::dsl as srv;
@@ -831,8 +899,7 @@ fn export_env_group(
                 .and(sqlite_is(srv::group_name, group_name)),
         )
         .order((srv::group_name.asc(), srv::desc.asc()))
-        .load::<Server>(sql_conn)
-        .unwrap();
+        .load::<Server>(sql_conn)?;
 
     let mut notes_query = prj_note::project_note
         .filter(
@@ -850,8 +917,7 @@ fn export_env_group(
 
     let project_notes = notes_query
         .order(prj_note::title.asc())
-        .load::<ProjectNote>(sql_conn)
-        .unwrap();
+        .load::<ProjectNote>(sql_conn)?;
 
     let project_notes_import_export = project_notes
         .into_iter()
@@ -892,8 +958,13 @@ fn export_env_group(
                 .and(sqlite_is(srvl::group_name, group_name)),
         )
         .order(srvl::desc.asc())
-        .load::<ServerLink>(sql_conn)
-        .unwrap();
+        .load::<ServerLink>(sql_conn)?;
+
+    let server_links_export = server_links
+        .into_iter()
+        // TODO unwrap
+        .map(|srv| to_server_link_import_export(sql_conn, srv).unwrap())
+        .collect();
 
     let project_pois = prj_poi::project_point_of_interest
         .filter(
@@ -902,8 +973,7 @@ fn export_env_group(
                 .and(sqlite_is(prj_poi::group_name, group_name)),
         )
         .order((prj_poi::desc.asc(), prj_poi::path.asc()))
-        .load::<ProjectPointOfInterest>(sql_conn)
-        .unwrap();
+        .load::<ProjectPointOfInterest>(sql_conn)?;
 
     let project_pois_export = project_pois
         .into_iter()
@@ -924,15 +994,15 @@ fn export_env_group(
         })
         .collect();
 
-    ProjectEnvGroupImportExport {
+    Ok(ProjectEnvGroupImportExport {
         servers: srvs
             .into_iter()
             .map(|s| export_server(sql_conn, s))
             .collect(),
-        server_links,
+        server_links: server_links_export,
         project_pois: project_pois_export,
         project_notes: project_notes_import_export,
-    }
+    })
 }
 
 fn export_server(
@@ -1031,6 +1101,28 @@ fn export_server_items(
         server_notes,
         server_extra_users,
     }
+}
+
+fn to_server_link_import_export(
+    sql_conn: &SqliteConnection,
+    server_link: ServerLink,
+) -> ImportResult<ServerLinkImportExport> {
+    use projectpadsql::schema::project::dsl as prj;
+    use projectpadsql::schema::server::dsl as srv;
+    let (srv, prj) = srv::server
+        .inner_join(prj::project)
+        .filter(srv::id.eq(server_link.linked_server_id))
+        .first::<(Server, Project)>(sql_conn)?;
+    let server = ServerPath {
+        project_name: prj.name,
+        environment: srv.environment,
+        server_id: Some(srv.id).filter(|_| srv.desc.is_empty()),
+        server_desc: Some(srv.desc).filter(|d| !d.is_empty()),
+    };
+    Ok(ServerLinkImportExport {
+        desc: server_link.desc,
+        server,
+    })
 }
 
 fn to_server_website_import_export(

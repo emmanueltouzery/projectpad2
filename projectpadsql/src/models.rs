@@ -239,18 +239,13 @@ pub struct ProjectPointOfInterest {
     pub project_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct ServerLink {
-    #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
     pub linked_server_id: i32,
-    #[serde(skip)]
     pub environment: EnvironmentType,
-    #[serde(skip)]
     pub group_name: Option<String>,
-    #[serde(skip)]
     pub project_id: i32,
 }
 

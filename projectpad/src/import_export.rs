@@ -868,11 +868,12 @@ fn export_env(
     let items_in_groups = group_names
         .iter()
         .map(|gn| {
-            // TODO unwrap
-            let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn)).unwrap();
-            (gn.clone(), group)
-        })
-        .collect();
+            let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn))?;
+            Ok((gn.clone(), group))
+        }) // step 1: Iterator<Result<(_, _)>>
+        .collect::<ImportResult<Vec<(_, _)>>>()? // step 2: Result<Vec<(_, _)>>, drop the Result with ?
+        .into_iter() // step 3: Iterator<(_, _)>
+        .collect(); // step 4: HashMap
 
     Ok(ProjectEnvImportExport {
         items,
@@ -960,11 +961,10 @@ fn export_env_group(
         .order(srvl::desc.asc())
         .load::<ServerLink>(sql_conn)?;
 
-    let server_links_export = server_links
+    let server_links_export: Vec<_> = server_links
         .into_iter()
-        // TODO unwrap
-        .map(|srv| to_server_link_import_export(sql_conn, srv).unwrap())
-        .collect();
+        .map(|srv| to_server_link_import_export(sql_conn, srv))
+        .collect::<ImportResult<_>>()?;
 
     let project_pois = prj_poi::project_point_of_interest
         .filter(

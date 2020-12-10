@@ -181,8 +181,7 @@ impl Serialize for ProjectPoiImportExport {
             serialize_if_present(&mut state, "text", &self.text)?;
             state.serialize_entry("interest_type", &self.interest_type)?;
         } else {
-            serialize_if_present(
-                &mut state,
+            state.serialize_entry(
                 "shared_with_other_environments",
                 if self.desc.is_empty() {
                     &self.text
@@ -190,6 +189,32 @@ impl Serialize for ProjectPoiImportExport {
                     &self.desc
                 },
             )?;
+        }
+        state.end()
+    }
+}
+
+#[derive(Deserialize)]
+struct ProjectNoteImportExport {
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub contents: String,
+    #[serde(default)]
+    shared_with_other_environments: Option<String>,
+}
+
+impl Serialize for ProjectNoteImportExport {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_map(None)?;
+        if self.shared_with_other_environments.is_none() {
+            serialize_if_present(&mut state, "title", &self.title)?;
+            serialize_if_present(&mut state, "contents", &self.contents)?;
+        } else {
+            state.serialize_entry("shared_with_other_environments", &self.title)?;
         }
         state.end()
     }
@@ -211,7 +236,7 @@ struct ProjectEnvGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     project_pois: Vec<ProjectPoiImportExport>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    project_notes: Vec<ProjectNote>,
+    project_notes: Vec<ProjectNoteImportExport>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -352,6 +377,9 @@ fn import_project_env_group_first_pass(
     for project_poi in &items.project_pois {
         import_project_poi(sql_conn, project_id, group_name, project_poi)?;
     }
+    for project_note in &items.project_notes {
+        import_project_note(sql_conn, project_id, group_name, env, project_note)?;
+    }
 
     items
         .servers
@@ -386,6 +414,65 @@ fn import_project_poi(
     )
     .map_err(to_boxed_stderr)
     .map(|_| ())
+}
+
+fn import_project_note(
+    sql_conn: &diesel::SqliteConnection,
+    project_id: i32,
+    group_name: Option<&str>,
+    env: EnvironmentType,
+    project_note: &ProjectNoteImportExport,
+) -> ImportResult<()> {
+    use projectpadsql::schema::project_note::dsl as prj_note;
+    if let Some(shared_title) = project_note.shared_with_other_environments.as_ref() {
+        // update the row to mark that it's active
+        // also for this environment
+        let note_id_to_update = prj_note::project_note
+            .select(prj_note::id)
+            .filter(
+                prj_note::title
+                    .eq(&shared_title)
+                    .and(sqlite_is(prj_note::group_name, group_name))
+                    .and(prj_note::project_id.eq(project_id)),
+            )
+            .first::<i32>(sql_conn)?;
+        let what = prj_note::project_note.filter(prj_note::id.eq(note_id_to_update));
+
+        let update = match env {
+            // dev is the first, normally we come here at the 2nd
+            // environment the earlier => skip it
+            EnvironmentType::EnvStage => diesel::update(what)
+                .set(prj_note::has_stage.eq(true))
+                .execute(sql_conn),
+            EnvironmentType::EnvUat => diesel::update(what)
+                .set(prj_note::has_uat.eq(true))
+                .execute(sql_conn),
+            EnvironmentType::EnvProd => diesel::update(what)
+                .set(prj_note::has_prod.eq(true))
+                .execute(sql_conn),
+            _ => unreachable!(),
+        }
+        .map(|_| ())?;
+        Ok(update)
+    } else {
+        // this note was not imported yet, import it the first time
+        let changeset = (
+            prj_note::title.eq(&project_note.title),
+            prj_note::contents.eq(&project_note.contents),
+            prj_note::has_dev.eq(env == EnvironmentType::EnvDevelopment),
+            prj_note::has_stage.eq(env == EnvironmentType::EnvStage),
+            prj_note::has_uat.eq(env == EnvironmentType::EnvUat),
+            prj_note::has_prod.eq(env == EnvironmentType::EnvProd),
+            prj_note::group_name.eq(group_name),
+            prj_note::project_id.eq(project_id),
+        );
+        insert_row(
+            sql_conn,
+            diesel::insert_into(prj_note::project_note).values(changeset),
+        )
+        .map_err(to_boxed_stderr)
+        .map(|_| ())
+    }
 }
 
 fn import_server(
@@ -766,6 +853,37 @@ fn export_env_group(
         .load::<ProjectNote>(sql_conn)
         .unwrap();
 
+    let project_notes_import_export = project_notes
+        .into_iter()
+        .map(|n| {
+            // we don't want to repeat the same note, once for each environment.
+            // is this the first time we export this note?
+            // YES => we export the full note
+            // NO => we will display just "shared"
+            let is_first_env_for_this_note = match (
+                n.has_dev && project.has_dev,
+                n.has_stage && project.has_stage,
+                n.has_uat && project.has_uat,
+                env,
+            ) {
+                (_, _, _, EnvironmentType::EnvDevelopment) => true,
+                (false, _, _, EnvironmentType::EnvStage) => true,
+                (false, false, _, EnvironmentType::EnvUat) => true,
+                (false, false, false, EnvironmentType::EnvProd) => true,
+                _ => false,
+            };
+            ProjectNoteImportExport {
+                title: n.title.clone(),
+                contents: n.contents,
+                shared_with_other_environments: if is_first_env_for_this_note {
+                    None
+                } else {
+                    Some(n.title)
+                },
+            }
+        })
+        .collect();
+
     let server_links = srvl::server_link
         .filter(
             srvl::project_id
@@ -813,7 +931,7 @@ fn export_env_group(
             .collect(),
         server_links,
         project_pois: project_pois_export,
-        project_notes,
+        project_notes: project_notes_import_export,
     }
 }
 

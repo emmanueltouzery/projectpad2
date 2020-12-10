@@ -215,25 +215,16 @@ pub struct Server {
     pub project_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct ProjectNote {
-    #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub title: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub contents: String,
-    #[serde(skip)]
     pub has_dev: bool,
-    #[serde(skip)]
     pub has_uat: bool,
-    #[serde(skip)]
     pub has_stage: bool,
-    #[serde(skip)]
     pub has_prod: bool,
-    #[serde(skip)]
     pub group_name: Option<String>,
-    #[serde(skip)]
     pub project_id: i32,
 }
 

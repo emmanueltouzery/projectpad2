@@ -2,8 +2,10 @@
 extern crate diesel;
 
 pub mod config;
+pub mod export;
 pub mod icons;
-pub mod import_export;
+pub mod import;
+pub mod import_export_dtos;
 pub mod notes;
 mod sql_thread;
 #[macro_use]

@@ -4,7 +4,7 @@ use super::dialogs::standard_dialogs;
 use super::search_view::PROJECT_FILTER_PREFIX;
 use crate::config::Config;
 use crate::icons::Icon;
-use crate::import_export::do_import;
+use crate::import::do_import;
 use crate::sql_thread::SqlFunc;
 use diesel::connection::Connection;
 use gtk::prelude::*;

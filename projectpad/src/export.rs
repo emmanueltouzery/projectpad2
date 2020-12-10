@@ -7,9 +7,9 @@ use projectpadsql::models::{
 use projectpadsql::sqlite_is;
 use regex::Regex;
 
-type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
+type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) -> ImportResult<()> {
+pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) -> ExportResult<()> {
     // if I export a 7zip i can export project icons and attachments in the zip too...
     let group_names = projectpadsql::get_project_group_names(sql_conn, project.id);
     let mut is_first_env = true;
@@ -131,7 +131,7 @@ fn export_env(
     env: EnvironmentType,
     is_first_env: bool,
     group_names: &[String],
-) -> ImportResult<ProjectEnvImportExport> {
+) -> ExportResult<ProjectEnvImportExport> {
     let items = export_env_group(sql_conn, project, env, is_first_env, None)?;
 
     let items_in_groups = group_names
@@ -140,7 +140,7 @@ fn export_env(
             let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn))?;
             Ok((gn.clone(), group))
         }) // step 1: Iterator<Result<(_, _)>>
-        .collect::<ImportResult<Vec<(_, _)>>>()? // step 2: Result<Vec<(_, _)>>, drop the Result with ?
+        .collect::<ExportResult<Vec<(_, _)>>>()? // step 2: Result<Vec<(_, _)>>, drop the Result with ?
         .into_iter() // step 3: Iterator<(_, _)>
         .collect(); // step 4: HashMap
 
@@ -156,7 +156,7 @@ fn export_env_group(
     env: EnvironmentType,
     is_first_env: bool,
     group_name: Option<&str>,
-) -> ImportResult<ProjectEnvGroupImportExport> {
+) -> ExportResult<ProjectEnvGroupImportExport> {
     use projectpadsql::schema::project_note::dsl as prj_note;
     use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
     use projectpadsql::schema::server::dsl as srv;
@@ -233,7 +233,7 @@ fn export_env_group(
     let server_links_export: Vec<_> = server_links
         .into_iter()
         .map(|srv| to_server_link_import_export(sql_conn, srv))
-        .collect::<ImportResult<_>>()?;
+        .collect::<ExportResult<_>>()?;
 
     let project_pois = prj_poi::project_point_of_interest
         .filter(
@@ -375,7 +375,7 @@ fn export_server_items(
 fn to_server_link_import_export(
     sql_conn: &SqliteConnection,
     server_link: ServerLink,
-) -> ImportResult<ServerLinkImportExport> {
+) -> ExportResult<ServerLinkImportExport> {
     use projectpadsql::schema::project::dsl as prj;
     use projectpadsql::schema::server::dsl as srv;
     let (srv, prj) = srv::server
@@ -397,7 +397,7 @@ fn to_server_link_import_export(
 fn to_server_website_import_export(
     sql_conn: &SqliteConnection,
     website: ServerWebsite,
-) -> ImportResult<ServerWebsiteImportExport> {
+) -> ExportResult<ServerWebsiteImportExport> {
     use projectpadsql::schema::project::dsl as prj;
     use projectpadsql::schema::server::dsl as srv;
     use projectpadsql::schema::server_database::dsl as srv_db;

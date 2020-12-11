@@ -223,8 +223,13 @@ impl Widget for WinTitleBar {
 
     fn display_import(&mut self) {
         self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
-            if let Err(e) = sql_conn.transaction(|| do_import(sql_conn, "/home/emmanuel/hubli.txt"))
-            {
+            if let Err(e) = sql_conn.transaction(|| {
+                do_import(
+                    sql_conn,
+                    "/home/emmanuel/home/projectpad-cli/Hubli.7z",
+                    "pass",
+                )
+            }) {
                 eprintln!("import failed: {:?}", e);
             }
         }));

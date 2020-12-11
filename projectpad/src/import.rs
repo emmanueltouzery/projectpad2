@@ -1,10 +1,11 @@
+use super::export;
 use super::import_export_dtos::*;
 use crate::sql_util::insert_row;
 use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use projectpadsql::sqlite_is;
-use std::fs;
+use std::{fs, process};
 
 type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -12,9 +13,32 @@ fn to_boxed_stderr(err: (String, Option<String>)) -> Box<dyn std::error::Error> 
     (err.0 + " - " + err.1.as_deref().unwrap_or("")).into()
 }
 
-pub fn do_import(sql_conn: &diesel::SqliteConnection, fname: &str) -> ImportResult<()> {
+pub fn do_import(
+    sql_conn: &diesel::SqliteConnection,
+    fname: &str,
+    password: &str,
+) -> ImportResult<()> {
     use projectpadsql::schema::project::dsl as prj;
-    let contents = fs::read_to_string(fname)?;
+    let mut temp_folder = export::temp_folder()?;
+
+    // extract the 7zip...
+    let status = process::Command::new("7za")
+        .current_dir(&temp_folder)
+        .args(&["x", &format!("-p{}", password), fname])
+        .status()?;
+    if !status.success() {
+        return Err(format!("7z extraction failed: {:?}", status.code()).into());
+    }
+
+    temp_folder.push("contents.yaml");
+    let contents = fs::read_to_string(&temp_folder); // no ? on purpose
+    temp_folder.pop();
+    fs::remove_dir_all(temp_folder)?;
+
+    // only now fail if reading the file failed, we want
+    // to remove the temp folder no matter what.
+    let contents = contents?;
+
     let decoded: ProjectImportExport = serde_yaml::from_str(&contents)?;
     if prj::project
         .filter(prj::name.eq(&decoded.project_name))

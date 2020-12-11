@@ -314,7 +314,7 @@ impl Widget for ProjectSummary {
                 if let Some(prj) = &self.model.project {
                     let p = prj.clone();
                     self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
-                        crate::export::export_project(&sql_conn, &p);
+                        crate::export::export_project(&sql_conn, &p, "pass");
                     }));
                 }
             }

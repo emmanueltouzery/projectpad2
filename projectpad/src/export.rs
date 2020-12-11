@@ -7,10 +7,15 @@ use projectpadsql::models::{
 use projectpadsql::sqlite_is;
 use regex::Regex;
 use std::collections::HashMap;
+use std::{env, fs, path, process, time};
 
 type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) -> ExportResult<()> {
+pub fn export_project(
+    sql_conn: &diesel::SqliteConnection,
+    project: &Project,
+    password: &str,
+) -> ExportResult<()> {
     // if I export a 7zip i can export project icons and attachments in the zip too...
     let group_names = projectpadsql::get_project_group_names(sql_conn, project.id);
     let mut is_first_env = true;
@@ -76,8 +81,64 @@ pub fn export_project(sql_conn: &diesel::SqliteConnection, project: &Project) ->
         uat_environment,
         prod_environment,
     };
-    println!("{}", generate_yaml(&project_importexport));
-    Ok(())
+    write_7z(
+        &project.name,
+        password,
+        &generate_yaml(&project_importexport),
+    )
+}
+
+pub fn temp_folder() -> ExportResult<path::PathBuf> {
+    let mut tmp_path = env::temp_dir();
+    tmp_path.push(&format!(
+        "projectpad-{}",
+        time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)?
+            .as_millis()
+    ));
+    fs::create_dir_all(&tmp_path)?;
+    Ok(tmp_path)
+}
+
+fn write_7z(project_name: &str, password: &str, main_contents: &str) -> ExportResult<()> {
+    let mut tmp_export_path = temp_folder()?;
+    tmp_export_path.push("contents.yaml");
+    fs::write(&tmp_export_path, main_contents)?;
+    tmp_export_path.pop();
+
+    let target_file = &format!("{}.7z", project_name);
+
+    // 7za will *add* files to an existing archive.
+    // but we want a clean new archive => delete
+    // the file if it existed
+    tmp_export_path.push(target_file);
+    if tmp_export_path.exists() {
+        fs::remove_file(&tmp_export_path)?;
+    }
+    tmp_export_path.pop();
+
+    let status = process::Command::new("7za")
+        .args(&[
+            "a",
+            &format!("-p{}", password),
+            "-sdel",
+            target_file,
+            &format!("{}/*", tmp_export_path.to_string_lossy()),
+        ])
+        .status(); // no ? on purpose!
+
+    // remove the temp folder, no matter whether compression
+    // succeeded or not (hence no ? previously)
+    // if everything went well, it'll just be the folder itself,
+    // as we asked 7za to remove the files as it went.
+    fs::remove_dir_all(tmp_export_path)?;
+
+    let status = status?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("7zip execution failed: {:?}", status.code()).into())
+    }
 }
 
 fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {

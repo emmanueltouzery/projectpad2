@@ -6,6 +6,7 @@ use projectpadsql::models::{
 };
 use projectpadsql::sqlite_is;
 use regex::Regex;
+use std::collections::HashMap;
 
 type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -134,15 +135,11 @@ fn export_env(
 ) -> ExportResult<ProjectEnvImportExport> {
     let items = export_env_group(sql_conn, project, env, is_first_env, None)?;
 
-    let items_in_groups = group_names
-        .iter()
-        .map(|gn| {
-            let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn))?;
-            Ok((gn.clone(), group))
-        }) // step 1: Iterator<Result<(_, _)>>
-        .collect::<ExportResult<Vec<(_, _)>>>()? // step 2: Result<Vec<(_, _)>>, drop the Result with ?
-        .into_iter() // step 3: Iterator<(_, _)>
-        .collect(); // step 4: HashMap
+    let mut items_in_groups = HashMap::new();
+    for gn in group_names {
+        let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn))?;
+        items_in_groups.insert(gn.clone(), group);
+    }
 
     Ok(ProjectEnvImportExport {
         items,
@@ -280,15 +277,11 @@ fn export_server(
 ) -> ExportResult<ServerWithItemsImportExport> {
     let items = export_server_items(sql_conn, &server, None)?;
     let group_names = projectpadsql::get_server_group_names(sql_conn, server.id);
-    let items_in_groups = group_names
-        .into_iter()
-        .map(|gn| {
-            let items = export_server_items(sql_conn, &server, Some(&gn))?;
-            Ok((gn.clone(), items))
-        }) // step 1: Iterator<Result<(_,_)>>
-        .collect::<ExportResult<Vec<_>>>()? // step 2: Result<Vec<(_,_)>>, drop the Result with ?
-        .into_iter() // step 3: Iterator<(_,_)>
-        .collect(); // step 4: HashMap
+    let mut items_in_groups = HashMap::new();
+    for gn in &group_names {
+        let items = export_server_items(sql_conn, &server, Some(&gn))?;
+        items_in_groups.insert(gn.clone(), items);
+    }
     Ok(ServerWithItemsImportExport {
         server: ServerImportExport(server),
         items,

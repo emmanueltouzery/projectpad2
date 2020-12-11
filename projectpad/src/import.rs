@@ -131,12 +131,13 @@ fn import_project_env_group_first_pass(
         import_server_link(sql_conn, project_id, group_name, env, server_link)?;
     }
 
-    items
-        .servers
-        .iter()
-        .map(|server| import_server(sql_conn, project_id, env, group_name, server))
-        .collect::<ImportResult<Vec<_>>>()
-        .map(|v| v.into_iter().flatten().collect::<Vec<_>>())
+    let mut unprocessed_websites = vec![];
+    for server in &items.servers {
+        unprocessed_websites.append(&mut import_server(
+            sql_conn, project_id, env, group_name, server,
+        )?);
+    }
+    Ok(unprocessed_websites)
 }
 
 fn import_project_poi(

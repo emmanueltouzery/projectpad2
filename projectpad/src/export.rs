@@ -7,6 +7,7 @@ use projectpadsql::models::{
 use projectpadsql::sqlite_is;
 use regex::Regex;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::{env, fs, path, process, time};
 
 type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
@@ -100,6 +101,22 @@ pub fn temp_folder() -> ExportResult<path::PathBuf> {
     Ok(tmp_path)
 }
 
+pub fn seven_z_command() -> ExportResult<Option<&'static str>> {
+    for dir in env::var("PATH")?.split(':') {
+        let mut path = PathBuf::from(dir);
+        path.push("7z");
+        if path.exists() {
+            return Ok(Some("7z"));
+        }
+        path.pop();
+        path.push("7za");
+        if path.exists() {
+            return Ok(Some("7za"));
+        }
+    }
+    Ok(None)
+}
+
 fn write_7z(project_name: &str, password: &str, main_contents: &str) -> ExportResult<()> {
     let mut tmp_export_path = temp_folder()?;
     tmp_export_path.push("contents.yaml");
@@ -117,7 +134,11 @@ fn write_7z(project_name: &str, password: &str, main_contents: &str) -> ExportRe
     }
     tmp_export_path.pop();
 
-    let status = process::Command::new("7za")
+    let seven_z_cmd = seven_z_command()?;
+    if seven_z_cmd.is_none() {
+        return Err("Need the 7z or 7za command to be installed".into());
+    }
+    let status = process::Command::new(seven_z_cmd.unwrap())
         .args(&[
             "a",
             &format!("-p{}", password),

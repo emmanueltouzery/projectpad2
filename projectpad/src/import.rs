@@ -22,7 +22,11 @@ pub fn do_import(
     let mut temp_folder = export::temp_folder()?;
 
     // extract the 7zip...
-    let status = process::Command::new("7za")
+    let seven_z_cmd = export::seven_z_command()?;
+    if seven_z_cmd.is_none() {
+        return Err("Need the 7z or 7za command to be installed".into());
+    }
+    let status = process::Command::new(seven_z_cmd.unwrap())
         .current_dir(&temp_folder)
         .args(&["x", &format!("-p{}", password), fname])
         .status()?;

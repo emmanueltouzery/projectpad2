@@ -59,7 +59,7 @@ pub enum Msg {
     Close,
     NextClicked,
     GotPassword(String),
-    ImportFileSet,
+    FilePicked,
     ImportResult(Result<(), String>),
     ImportApplied,
 }
@@ -81,12 +81,15 @@ pub struct Model {
 }
 
 const CHILD_NAME_IMPORT: &str = "import";
+const CHILD_NAME_EXPORT: &str = "export";
 
 #[widget]
 impl Widget for ImportExportDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.grid);
         self.grid.set_margin_top(20);
+        dialog_helpers::style_grid(&self.grid_export);
+        self.grid_export.set_margin_top(20);
         self.export_file_radio
             .join_group(Some(&self.import_file_radio));
         let h = &self.model.header;
@@ -136,8 +139,13 @@ impl Widget for ImportExportDialog {
                         .header
                         .stream()
                         .emit(HeaderMsg::EnableNext(false));
-                    self.wizard_stack.set_visible_child_name(CHILD_NAME_IMPORT);
-                    self.model.wizard_state = WizardState::ImportPickFile;
+                    if self.import_file_radio.get_active() {
+                        self.wizard_stack.set_visible_child_name(CHILD_NAME_IMPORT);
+                        self.model.wizard_state = WizardState::ImportPickFile;
+                    } else {
+                        self.wizard_stack.set_visible_child_name(CHILD_NAME_EXPORT);
+                        self.model.wizard_state = WizardState::ExportPickFile;
+                    }
                 }
                 WizardState::ImportPickFile => {
                     self.password_entry
@@ -146,7 +154,7 @@ impl Widget for ImportExportDialog {
                 }
                 WizardState::ExportPickFile => {}
             },
-            Msg::ImportFileSet => {
+            Msg::FilePicked => {
                 self.model.header.stream().emit(HeaderMsg::EnableNext(true));
             }
             Msg::GotPassword(pass) => match self.model.wizard_state {
@@ -258,7 +266,7 @@ impl Widget for ImportExportDialog {
                             left_attach: 1,
                             top_attach: 1,
                         },
-                        file_set => Msg::ImportFileSet,
+                        file_set => Msg::FilePicked,
                     },
                     gtk::Label {
                         text: "Password",
@@ -270,6 +278,58 @@ impl Widget for ImportExportDialog {
                         },
                     },
                     #[name="password_entry"]
+                    PasswordField(("".to_string(), password_field::ActivatesDefault::Yes)) {
+                        hexpand: true,
+                        cell: {
+                            left_attach: 1,
+                            top_attach: 2,
+                        },
+                        PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPassword(pass.clone()),
+                    },
+                },
+                #[name="grid_export"]
+                gtk::Grid {
+                    child: {
+                        name: Some(CHILD_NAME_EXPORT)
+                    },
+                    #[name="export_error_infobar"]
+                    gtk::InfoBar {
+                        message_type: gtk::MessageType::Error,
+                        cell: {
+                            left_attach: 0,
+                            top_attach: 0,
+                            width: 2,
+                        },
+                        visible: false,
+                    },
+                    gtk::Label {
+                        text: "Export to",
+                        halign: gtk::Align::End,
+                        cell: {
+                            left_attach: 0,
+                            top_attach: 1,
+                        }
+                    },
+                    #[name="export_picker_btn"]
+                    gtk::FileChooserButton {
+                        title: "Export to",
+                        hexpand: true,
+                        cell: {
+                            left_attach: 1,
+                            top_attach: 1,
+                        },
+                        file_set => Msg::FilePicked,
+                    },
+                    gtk::Label {
+                        text: "Password",
+                        halign: gtk::Align::End,
+                        margin_top: 20,
+                        cell: {
+                            left_attach: 0,
+                            top_attach: 2,
+                        },
+                    },
+                    #[name="export_password_entry"]
                     PasswordField(("".to_string(), password_field::ActivatesDefault::Yes)) {
                         hexpand: true,
                         cell: {

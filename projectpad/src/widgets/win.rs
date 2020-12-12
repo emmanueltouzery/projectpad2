@@ -97,6 +97,7 @@ pub enum Msg {
     HideInfobar,
     SearchResultsModified,
     OpenSingleWebsiteLink,
+    ImportApplied,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -151,6 +152,8 @@ impl Widget for Win {
                                self.model.relm, Msg::SearchTextChanged(search_text.clone()));
         relm::connect!(titlebar@WinTitleBarMsg::DarkThemeToggled,
                                self.model.relm, Msg::DarkThemeToggled);
+        relm::connect!(titlebar@WinTitleBarMsg::ImportApplied,
+                               self.model.relm, Msg::ImportApplied);
         self.init_infobar_overlay();
 
         self.unlock_db();
@@ -556,6 +559,10 @@ impl Widget for Win {
                 self.project_poi_contents
                     .stream()
                     .emit(ProjectPoiContentsMsg::OpenSingleWebsiteLink);
+            }
+            Msg::ImportApplied => {
+                // the user imported data, maybe new projects were added
+                self.project_list.stream().emit(ProjectListMsg::ForceReload);
             }
         }
     }

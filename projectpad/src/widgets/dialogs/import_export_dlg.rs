@@ -61,6 +61,7 @@ pub enum Msg {
     GotPassword(String),
     ImportFileSet,
     ImportResult(Result<(), String>),
+    ImportApplied,
 }
 
 pub enum WizardState {
@@ -156,11 +157,13 @@ impl Widget for ImportExportDialog {
             },
             Msg::ImportResult(Result::Ok(())) => {
                 self.import_win.close();
+                self.model.relm.stream().emit(Msg::ImportApplied);
             }
             Msg::ImportResult(Result::Err(e)) => {
                 self.show_import_error(&format!("Import failed: {}", e));
                 self.model.header.stream().emit(HeaderMsg::EnableNext(true));
             }
+            Msg::ImportApplied => {}
         }
     }
 

@@ -1,4 +1,5 @@
 use super::dialogs::import_export_dlg::ImportExportDialog;
+use super::dialogs::import_export_dlg::Msg as ImportExportMsg;
 use super::dialogs::preferences::Msg as PreferencesMsg;
 use super::dialogs::preferences::Preferences;
 use super::dialogs::standard_dialogs;
@@ -28,6 +29,7 @@ pub enum Msg {
     SearchTextChanged(String),
     SearchTextChangedFromElsewhere((String, gdk::EventKey)),
     EnterOrUpdateSearchProject,
+    ImportApplied,
 }
 
 pub struct Model {
@@ -201,6 +203,7 @@ impl Widget for WinTitleBar {
             // these are meant for win... we emit here, not interested by it ourselves
             Msg::ConfigUpdated(_) => {}
             Msg::DarkThemeToggled => {}
+            Msg::ImportApplied => {}
         }
     }
 
@@ -232,6 +235,8 @@ impl Widget for WinTitleBar {
                 .expect("error initializing the import export dialog"),
         );
         let import_win = self.model.import_win.as_ref().unwrap();
+        relm::connect!(import_win@ImportExportMsg::ImportApplied,
+                               self.model.relm, Msg::ImportApplied);
         import_win.widget().set_transient_for(Some(&main_win));
         import_win
             .widget()

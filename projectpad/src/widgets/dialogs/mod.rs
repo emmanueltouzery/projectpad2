@@ -5,6 +5,7 @@ pub mod server_add_item_dlg;
 mod change_db_password_dlg;
 mod environments_picker;
 mod file_contents_button;
+pub mod import_export_dlg;
 mod note_edit;
 mod pick_projectpad_item_button;
 pub mod preferences;

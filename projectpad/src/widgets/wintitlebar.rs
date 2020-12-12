@@ -1,12 +1,11 @@
+use super::dialogs::import_export_dlg::ImportExportDialog;
 use super::dialogs::preferences::Msg as PreferencesMsg;
 use super::dialogs::preferences::Preferences;
 use super::dialogs::standard_dialogs;
 use super::search_view::PROJECT_FILTER_PREFIX;
 use crate::config::Config;
 use crate::icons::Icon;
-use crate::import::do_import;
 use crate::sql_thread::SqlFunc;
-use diesel::connection::Connection;
 use gtk::prelude::*;
 use relm::{init, Component, Widget};
 use relm_derive::{widget, Msg};
@@ -37,6 +36,7 @@ pub struct Model {
     search_toggle_signal: Option<glib::SignalHandlerId>,
     menu_popover: gtk::Popover,
     prefs_win: Option<Component<Preferences>>,
+    import_win: Option<Component<ImportExportDialog>>,
 }
 
 pub fn left_align_menu(menu: &gtk::ModelButton) {
@@ -75,7 +75,9 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&preferences_btn);
 
-        let import_btn = gtk::ModelButtonBuilder::new().label("Import...").build();
+        let import_btn = gtk::ModelButtonBuilder::new()
+            .label("Import/Export")
+            .build();
         left_align_menu(&import_btn);
         relm::connect!(
             self.model.relm,
@@ -134,6 +136,7 @@ impl Widget for WinTitleBar {
             search_toggle_signal: None,
             menu_popover: gtk::Popover::new(None::<&gtk::MenuButton>),
             prefs_win: None,
+            import_win: None,
         }
     }
 
@@ -222,17 +225,19 @@ impl Widget for WinTitleBar {
     }
 
     fn display_import(&mut self) {
-        self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
-            if let Err(e) = sql_conn.transaction(|| {
-                do_import(
-                    sql_conn,
-                    "/home/emmanuel/home/projectpad-cli/Hubli.7z",
-                    "pass",
-                )
-            }) {
-                eprintln!("import failed: {:?}", e);
-            }
-        }));
+        let main_win =
+            standard_dialogs::get_main_window(self.header_bar.clone().upcast::<gtk::Widget>());
+        self.model.import_win = Some(
+            init::<ImportExportDialog>(self.model.db_sender.clone())
+                .expect("error initializing the import export dialog"),
+        );
+        let import_win = self.model.import_win.as_ref().unwrap();
+        import_win.widget().set_transient_for(Some(&main_win));
+        import_win
+            .widget()
+            .set_position(gtk::WindowPosition::CenterOnParent);
+        import_win.widget().set_modal(true);
+        import_win.widget().show();
     }
 
     fn display_about() {

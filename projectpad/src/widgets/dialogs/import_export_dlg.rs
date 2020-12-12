@@ -60,6 +60,7 @@ pub enum Msg {
     NextClicked,
     GotPassword(String),
     ImportFileSet,
+    ImportResult(Result<(), String>),
 }
 
 pub enum WizardState {
@@ -73,6 +74,9 @@ pub struct Model {
     header: Component<Header>,
     db_sender: mpsc::Sender<SqlFunc>,
     wizard_state: WizardState,
+    error_label: gtk::Label,
+    _import_result_channel: relm::Channel<Result<(), String>>,
+    import_result_sender: relm::Sender<Result<(), String>>,
 }
 
 const CHILD_NAME_IMPORT: &str = "import";
@@ -90,16 +94,36 @@ impl Widget for ImportExportDialog {
         let filter = gtk::FileFilter::new();
         filter.add_pattern("*.7z");
         self.import_picker_btn.set_filter(&filter);
+
+        self.model.error_label.show();
+        self.import_error_infobar
+            .get_content_area()
+            .add(&self.model.error_label);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
         let header = relm::init(()).expect("header");
+        let stream = relm.stream().clone();
+        let (_import_result_channel, import_result_sender) =
+            relm::Channel::new(move |r| stream.emit(Msg::ImportResult(r)));
         Model {
             relm: relm.clone(),
             db_sender,
             header,
             wizard_state: WizardState::Start,
+            error_label: gtk::LabelBuilder::new()
+                .label("")
+                .ellipsize(pango::EllipsizeMode::End)
+                .build(),
+            import_result_sender,
+            _import_result_channel,
         }
+    }
+
+    fn show_import_error(&self, msg: &str) {
+        self.model.error_label.set_text(msg);
+        self.model.error_label.set_tooltip_text(Some(msg));
+        self.import_error_infobar.set_visible(true);
     }
 
     fn update(&mut self, event: Msg) {
@@ -130,20 +154,40 @@ impl Widget for ImportExportDialog {
                 }
                 _ => panic!(),
             },
+            Msg::ImportResult(Result::Ok(())) => {
+                self.import_win.close();
+            }
+            Msg::ImportResult(Result::Err(e)) => {
+                self.show_import_error(&format!("Import failed: {}", e));
+                self.model.header.stream().emit(HeaderMsg::EnableNext(true));
+            }
         }
     }
 
     fn do_import(&self, pass: String) {
+        self.model
+            .header
+            .stream()
+            .emit(HeaderMsg::EnableNext(false));
         match self.import_picker_btn.get_filename() {
-            None => eprintln!("Please pick a file to import"), // shouldn't happen, but i don't want to crash
+            None => {
+                // shouldn't happen, but i don't want to crash
+                self.show_import_error("Please pick a file to import");
+            }
             Some(fname) => {
-                self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
-                    if let Err(e) = sql_conn.transaction(|| {
-                        import::do_import(sql_conn, &fname.to_string_lossy(), &pass)
-                    }) {
-                        eprintln!("import failed: {:?}", e);
-                    }
-                }));
+                let import_result_sender = self.model.import_result_sender.clone();
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        import_result_sender.send(
+                            sql_conn
+                                .transaction(|| {
+                                    import::do_import(sql_conn, &fname.to_string_lossy(), &pass)
+                                })
+                                .map_err(|e| e.to_string()),
+                        );
+                    }))
+                    .unwrap();
             }
         }
     }
@@ -184,6 +228,16 @@ impl Widget for ImportExportDialog {
                 gtk::Grid {
                     child: {
                         name: Some(CHILD_NAME_IMPORT)
+                    },
+                    #[name="import_error_infobar"]
+                    gtk::InfoBar {
+                        message_type: gtk::MessageType::Error,
+                        cell: {
+                            left_attach: 0,
+                            top_attach: 0,
+                            width: 2,
+                        },
+                        visible: false,
                     },
                     gtk::Label {
                         text: "Pick a .7z projectpad file to import",

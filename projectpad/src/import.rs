@@ -5,12 +5,21 @@ use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use projectpadsql::sqlite_is;
-use std::{fs, process};
+use std::{fs, process, str};
 
 type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 fn to_boxed_stderr(err: (String, Option<String>)) -> Box<dyn std::error::Error> {
     (err.0 + " - " + err.1.as_deref().unwrap_or("")).into()
+}
+
+pub fn get_7z_error_details(output: &[u8]) -> String {
+    let stderr = str::from_utf8(output).unwrap_or("");
+    stderr
+        .lines()
+        .find(|l| l.starts_with("ERROR: "))
+        .unwrap_or("No details")
+        .to_string()
 }
 
 pub fn do_import(
@@ -26,12 +35,21 @@ pub fn do_import(
     if seven_z_cmd.is_none() {
         return Err("Need the 7z or 7za command to be installed".into());
     }
-    let status = process::Command::new(seven_z_cmd.unwrap())
+    let output = process::Command::new(seven_z_cmd.unwrap())
         .current_dir(&temp_folder)
         .args(&["x", &format!("-p{}", password), fname])
-        .status()?;
-    if !status.success() {
-        return Err(format!("7z extraction failed: {:?}", status.code()).into());
+        .output()?;
+    if !output.status.success() {
+        return Err(format!(
+            "7z extraction failed: {} - code {}",
+            get_7z_error_details(&output.stderr),
+            output
+                .status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "none".to_string())
+        )
+        .into());
     }
 
     temp_folder.push("contents.yaml");

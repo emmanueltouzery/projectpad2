@@ -5,6 +5,7 @@ use crate::widgets::password_field;
 use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
 use crate::widgets::password_field::PasswordField;
 use diesel::connection::Connection;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
@@ -37,7 +38,7 @@ impl Widget for Header {
 
     view! {
         gtk::HeaderBar {
-            title: Some("Import Export"),
+            title: Some("Import / Export"),
             gtk::Button {
                 label: "Cancel",
                 clicked => HeaderMsg::CancelAction,
@@ -62,6 +63,7 @@ pub enum Msg {
     FilePicked,
     ImportResult(Result<(), String>),
     ImportApplied,
+    GotProjectList(Result<Vec<String>, String>),
 }
 
 pub enum WizardState {
@@ -78,6 +80,8 @@ pub struct Model {
     error_label: gtk::Label,
     _import_result_channel: relm::Channel<Result<(), String>>,
     import_result_sender: relm::Sender<Result<(), String>>,
+    _projectlist_channel: relm::Channel<Result<Vec<String>, String>>,
+    projectlist_sender: relm::Sender<Result<Vec<String>, String>>,
 }
 
 const CHILD_NAME_IMPORT: &str = "import";
@@ -110,6 +114,9 @@ impl Widget for ImportExportDialog {
         let stream = relm.stream().clone();
         let (_import_result_channel, import_result_sender) =
             relm::Channel::new(move |r| stream.emit(Msg::ImportResult(r)));
+        let stream2 = relm.stream().clone();
+        let (_projectlist_channel, projectlist_sender) =
+            relm::Channel::new(move |r| stream2.emit(Msg::GotProjectList(r)));
         Model {
             relm: relm.clone(),
             db_sender,
@@ -121,6 +128,8 @@ impl Widget for ImportExportDialog {
                 .build(),
             import_result_sender,
             _import_result_channel,
+            projectlist_sender,
+            _projectlist_channel,
         }
     }
 
@@ -128,6 +137,12 @@ impl Widget for ImportExportDialog {
         self.model.error_label.set_text(msg);
         self.model.error_label.set_tooltip_text(Some(msg));
         self.import_error_infobar.set_visible(true);
+    }
+
+    fn show_export_error(&self, msg: &str) {
+        self.model.error_label.set_text(msg);
+        self.model.error_label.set_tooltip_text(Some(msg));
+        self.export_error_infobar.set_visible(true);
     }
 
     fn update(&mut self, event: Msg) {
@@ -143,6 +158,7 @@ impl Widget for ImportExportDialog {
                         self.wizard_stack.set_visible_child_name(CHILD_NAME_IMPORT);
                         self.model.wizard_state = WizardState::ImportPickFile;
                     } else {
+                        self.fetch_project_list();
                         self.wizard_stack.set_visible_child_name(CHILD_NAME_EXPORT);
                         self.model.wizard_state = WizardState::ExportPickFile;
                     }
@@ -172,7 +188,46 @@ impl Widget for ImportExportDialog {
                 self.model.header.stream().emit(HeaderMsg::EnableNext(true));
             }
             Msg::ImportApplied => {}
+            Msg::GotProjectList(Err(e)) => self.show_export_error(&e),
+            Msg::GotProjectList(Ok(project_names)) => self.populate_project_list(&project_names),
         }
+    }
+
+    fn fetch_project_list(&self) {
+        let sender = self.model.projectlist_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                sender
+                    .send(
+                        prj::project
+                            .select(prj::name)
+                            .order(prj::name.asc())
+                            .load(sql_conn)
+                            .map_err(|e| format!("Error loading projects: {:?}", e)),
+                    )
+                    .unwrap();
+            }))
+            .unwrap();
+    }
+
+    fn populate_project_list(&self, project_names: &[String]) {
+        for child in self.project_list.get_children() {
+            self.project_list.remove(&child);
+        }
+        for project_name in project_names {
+            self.project_list.add(
+                &gtk::LabelBuilder::new()
+                    .label(project_name)
+                    .xalign(0.0)
+                    .margin(5)
+                    .build(),
+            );
+        }
+        self.project_list
+            .select_row(self.project_list.get_row_at_index(0).as_ref());
+        self.project_list.show_all();
     }
 
     fn do_import(&self, pass: String) {
@@ -190,13 +245,15 @@ impl Widget for ImportExportDialog {
                 self.model
                     .db_sender
                     .send(SqlFunc::new(move |sql_conn| {
-                        import_result_sender.send(
-                            sql_conn
-                                .transaction(|| {
-                                    import::do_import(sql_conn, &fname.to_string_lossy(), &pass)
-                                })
-                                .map_err(|e| e.to_string()),
-                        );
+                        import_result_sender
+                            .send(
+                                sql_conn
+                                    .transaction(|| {
+                                        import::do_import(sql_conn, &fname.to_string_lossy(), &pass)
+                                    })
+                                    .map_err(|e| e.to_string()),
+                            )
+                            .unwrap();
                     }))
                     .unwrap();
             }
@@ -208,7 +265,7 @@ impl Widget for ImportExportDialog {
         gtk::Window {
             titlebar: Some(self.model.header.widget()),
             property_default_width: 600,
-            property_default_height: 200,
+            property_default_height: 300, // need more height for the export due to the project list
             #[name="wizard_stack"]
             gtk::Stack {
                 gtk::Box {
@@ -232,7 +289,7 @@ impl Widget for ImportExportDialog {
                     },
                     #[name="export_file_radio"]
                     gtk::RadioButton {
-                        label: "Export file",
+                        label: "Export to file",
                     },
                 },
                 #[name="grid"]
@@ -303,11 +360,33 @@ impl Widget for ImportExportDialog {
                         visible: false,
                     },
                     gtk::Label {
+                        text: "Projects to export:",
+                        cell: {
+                            left_attach: 0,
+                            top_attach: 1,
+                        }
+                    },
+                    gtk::ScrolledWindow {
+                        cell: {
+                            left_attach: 0,
+                            top_attach: 2,
+                            width: 2,
+                        },
+                        vexpand: true,
+                        #[name="project_list"]
+                        gtk::ListBox {
+                            hexpand: true,
+                            selection_mode: gtk::SelectionMode::Multiple,
+                            // https://gitlab.gnome.org/GNOME/gtk/-/issues/497
+                            activate_on_single_click: false,
+                        },
+                    },
+                    gtk::Label {
                         text: "Export to",
                         halign: gtk::Align::End,
                         cell: {
                             left_attach: 0,
-                            top_attach: 1,
+                            top_attach: 3,
                         }
                     },
                     #[name="export_picker_btn"]
@@ -316,7 +395,7 @@ impl Widget for ImportExportDialog {
                         hexpand: true,
                         cell: {
                             left_attach: 1,
-                            top_attach: 1,
+                            top_attach: 3,
                         },
                         file_set => Msg::FilePicked,
                     },
@@ -326,7 +405,7 @@ impl Widget for ImportExportDialog {
                         margin_top: 20,
                         cell: {
                             left_attach: 0,
-                            top_attach: 2,
+                            top_attach: 4,
                         },
                     },
                     #[name="export_password_entry"]
@@ -334,7 +413,7 @@ impl Widget for ImportExportDialog {
                         hexpand: true,
                         cell: {
                             left_attach: 1,
-                            top_attach: 2,
+                            top_attach: 4,
                         },
                         PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPassword(pass.clone()),
                     },

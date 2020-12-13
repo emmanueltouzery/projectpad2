@@ -27,7 +27,6 @@ pub enum Msg {
     ProjectEnvironmentSelectedFromElsewhere((Project, EnvironmentType)),
     AddProjectItem,
     EditProject,
-    ExportProject,
     AskDeleteProject,
     DeleteProject,
     ProjectDeleted(Project),
@@ -136,15 +135,6 @@ impl Widget for ProjectSummary {
             Msg::AskDeleteProject
         );
         popover_vbox.add(&popover_delete_btn);
-        let popover_export_btn = gtk::ModelButtonBuilder::new().label("Export").build();
-        left_align_menu(&popover_export_btn);
-        relm::connect!(
-            self.model.relm,
-            popover_export_btn,
-            connect_clicked(_),
-            Msg::ExportProject
-        );
-        popover_vbox.add(&popover_export_btn);
         popover_vbox.show_all();
         self.model.header_popover.add(&popover_vbox);
         self.header_actions_btn
@@ -309,14 +299,6 @@ impl Widget for ProjectSummary {
             }
             Msg::EditProject => {
                 self.show_project_edit_dialog();
-            }
-            Msg::ExportProject => {
-                if let Some(prj) = &self.model.project {
-                    let p = prj.clone();
-                    self.model.db_sender.send(SqlFunc::new(move |sql_conn| {
-                        crate::export::export_project(&sql_conn, &p, "pass");
-                    }));
-                }
             }
             Msg::AskDeleteProject => {
                 self.handle_project_delete();

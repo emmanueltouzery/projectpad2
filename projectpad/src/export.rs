@@ -12,12 +12,23 @@ use std::{env, fs, path, process, time};
 
 type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-pub fn export_project(
+pub fn export_projects(
     sql_conn: &diesel::SqliteConnection,
-    project: &Project,
+    projects: &[Project],
+    fname: &path::PathBuf,
     password: &str,
 ) -> ExportResult<()> {
-    // if I export a 7zip i can export project icons and attachments in the zip too...
+    let mut project_exports = vec![];
+    for p in projects {
+        project_exports.push(export_project(sql_conn, &p)?);
+    }
+    write_7z(&project_exports, fname, password)
+}
+
+fn export_project(
+    sql_conn: &diesel::SqliteConnection,
+    project: &Project,
+) -> ExportResult<ProjectImportExport> {
     let group_names = projectpadsql::get_project_group_names(sql_conn, project.id);
     let mut is_first_env = true;
 
@@ -75,18 +86,13 @@ pub fn export_project(
         None
     };
 
-    let project_importexport = ProjectImportExport {
+    Ok(ProjectImportExport {
         project_name: project.name.clone(),
         development_environment,
         staging_environment,
         uat_environment,
         prod_environment,
-    };
-    write_7z(
-        &project.name,
-        password,
-        &generate_yaml(&project_importexport),
-    )
+    })
 }
 
 pub fn temp_folder() -> ExportResult<path::PathBuf> {
@@ -117,18 +123,22 @@ pub fn seven_z_command() -> ExportResult<&'static str> {
     Err("Need the 7z or 7za command to be installed".into())
 }
 
-fn write_7z(project_name: &str, password: &str, main_contents: &str) -> ExportResult<()> {
+fn write_7z(
+    projects_data: &[ProjectImportExport],
+    fname: &path::PathBuf,
+    password: &str,
+) -> ExportResult<()> {
     let mut tmp_export_path = temp_folder()?;
-    tmp_export_path.push("contents.yaml");
-    fs::write(&tmp_export_path, main_contents)?;
-    tmp_export_path.pop();
-
-    let target_file = &format!("{}.7z", project_name);
+    for project_data in projects_data {
+        tmp_export_path.push(format!("{}.yaml", project_data.project_name));
+        fs::write(&tmp_export_path, generate_yaml(&project_data))?;
+        tmp_export_path.pop();
+    }
 
     // 7za will *add* files to an existing archive.
     // but we want a clean new archive => delete
     // the file if it existed
-    tmp_export_path.push(target_file);
+    tmp_export_path.push(fname);
     if tmp_export_path.exists() {
         fs::remove_file(&tmp_export_path)?;
     }
@@ -140,7 +150,7 @@ fn write_7z(project_name: &str, password: &str, main_contents: &str) -> ExportRe
             "a",
             &format!("-p{}", password),
             "-sdel",
-            target_file,
+            &fname.to_string_lossy(),
             &format!("{}/*", tmp_export_path.to_string_lossy()),
         ])
         .status(); // no ? on purpose!

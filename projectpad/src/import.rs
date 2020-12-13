@@ -5,6 +5,7 @@ use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use projectpadsql::sqlite_is;
+use std::path::Path;
 use std::{borrow, fs, process, str};
 
 type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
@@ -28,7 +29,7 @@ pub fn do_import(
     password: &str,
 ) -> ImportResult<()> {
     use projectpadsql::schema::project::dsl as prj;
-    let mut temp_folder = export::temp_folder()?;
+    let temp_folder = export::temp_folder()?;
 
     // extract the 7zip...
     let seven_z_cmd = export::seven_z_command()?;
@@ -54,77 +55,96 @@ pub fn do_import(
         .into());
     }
 
-    temp_folder.push("contents.yaml");
-    let contents = fs::read_to_string(&temp_folder); // no ? on purpose
-    temp_folder.pop();
+    let project_name_to_contents = get_project_files(&temp_folder); // no ? on purpose
     fs::remove_dir_all(temp_folder)?;
-
     // only now fail if reading the file failed, we want
     // to remove the temp folder no matter what.
-    let contents = contents?;
+    let project_name_to_contents = project_name_to_contents?;
 
-    let decoded: ProjectImportExport = serde_yaml::from_str(&contents)?;
-    if prj::project
-        .filter(prj::name.eq(&decoded.project_name))
-        .select(count(prj::id))
-        .first::<i64>(sql_conn)
-        .unwrap()
-        >= 1
-    {
-        return Err("A project with this name already exists".into());
-    }
-    let changeset = (
-        prj::name.eq(decoded.project_name),
-        prj::has_dev.eq(decoded.development_environment.is_some()),
-        prj::has_stage.eq(decoded.staging_environment.is_some()),
-        prj::has_uat.eq(decoded.uat_environment.is_some()),
-        prj::has_prod.eq(decoded.prod_environment.is_some()),
-        // TODO load the icon from the import 7zip
-        prj::icon.eq(Some(Vec::<u8>::new())),
-    );
-    let project_id = insert_row(
-        sql_conn,
-        diesel::insert_into(prj::project).values(changeset),
-    )
-    .map_err(to_boxed_stderr)?;
-    let mut unprocessed_websites = vec![];
+    // TODO there could be inter-project dependencies, make a best effort to
+    // import in the best possible order
+    for (_, contents) in project_name_to_contents {
+        let decoded: ProjectImportExport = serde_yaml::from_str(&contents)?;
+        if prj::project
+            .filter(prj::name.eq(&decoded.project_name))
+            .select(count(prj::id))
+            .first::<i64>(sql_conn)
+            .unwrap()
+            >= 1
+        {
+            return Err("A project with this name already exists".into());
+        }
+        let changeset = (
+            prj::name.eq(decoded.project_name),
+            prj::has_dev.eq(decoded.development_environment.is_some()),
+            prj::has_stage.eq(decoded.staging_environment.is_some()),
+            prj::has_uat.eq(decoded.uat_environment.is_some()),
+            prj::has_prod.eq(decoded.prod_environment.is_some()),
+            // TODO load the icon from the import 7zip
+            prj::icon.eq(Some(Vec::<u8>::new())),
+        );
+        let project_id = insert_row(
+            sql_conn,
+            diesel::insert_into(prj::project).values(changeset),
+        )
+        .map_err(to_boxed_stderr)?;
+        let mut unprocessed_websites = vec![];
 
-    if let Some(dev_env) = decoded.development_environment {
-        unprocessed_websites.extend(import_project_env_first_pass(
-            sql_conn,
-            project_id,
-            EnvironmentType::EnvDevelopment,
-            &dev_env,
-        )?);
-    }
-    if let Some(stg_env) = decoded.staging_environment {
-        unprocessed_websites.extend(import_project_env_first_pass(
-            sql_conn,
-            project_id,
-            EnvironmentType::EnvStage,
-            &stg_env,
-        )?);
-    }
-    if let Some(uat_env) = decoded.uat_environment {
-        unprocessed_websites.extend(import_project_env_first_pass(
-            sql_conn,
-            project_id,
-            EnvironmentType::EnvUat,
-            &uat_env,
-        )?);
-    }
-    if let Some(prod_env) = decoded.prod_environment {
-        unprocessed_websites.extend(import_project_env_first_pass(
-            sql_conn,
-            project_id,
-            EnvironmentType::EnvProd,
-            &prod_env,
-        )?);
-    }
-    for unprocessed_website in unprocessed_websites {
-        import_server_website(sql_conn, &unprocessed_website)?;
+        if let Some(dev_env) = decoded.development_environment {
+            unprocessed_websites.extend(import_project_env_first_pass(
+                sql_conn,
+                project_id,
+                EnvironmentType::EnvDevelopment,
+                &dev_env,
+            )?);
+        }
+        if let Some(stg_env) = decoded.staging_environment {
+            unprocessed_websites.extend(import_project_env_first_pass(
+                sql_conn,
+                project_id,
+                EnvironmentType::EnvStage,
+                &stg_env,
+            )?);
+        }
+        if let Some(uat_env) = decoded.uat_environment {
+            unprocessed_websites.extend(import_project_env_first_pass(
+                sql_conn,
+                project_id,
+                EnvironmentType::EnvUat,
+                &uat_env,
+            )?);
+        }
+        if let Some(prod_env) = decoded.prod_environment {
+            unprocessed_websites.extend(import_project_env_first_pass(
+                sql_conn,
+                project_id,
+                EnvironmentType::EnvProd,
+                &prod_env,
+            )?);
+        }
+        for unprocessed_website in unprocessed_websites {
+            import_server_website(sql_conn, &unprocessed_website)?;
+        }
     }
     Ok(())
+}
+
+fn get_project_files<P: AsRef<Path>>(temp_folder: P) -> ImportResult<Vec<(String, String)>> {
+    let mut res = vec![];
+    for dir_entry in fs::read_dir(temp_folder)? {
+        let dir_entry = dir_entry?;
+        if dir_entry.path().is_file() {
+            res.push((
+                dir_entry
+                    .file_name()
+                    .to_str()
+                    .ok_or("Invalid 7z entry filename")?
+                    .to_string(),
+                fs::read_to_string(&dir_entry.path())?,
+            ));
+        }
+    }
+    Ok(res)
 }
 
 struct UnprocessedWebsite {

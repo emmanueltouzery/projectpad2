@@ -8,7 +8,7 @@ use projectpadsql::sqlite_is;
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::{env, fs, path, process, time};
+use std::{borrow, env, fs, path, process, time};
 
 type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -138,17 +138,20 @@ fn write_7z(
     // 7za will *add* files to an existing archive.
     // but we want a clean new archive => delete
     // the file if it existed
-    tmp_export_path.push(fname);
-    if tmp_export_path.exists() {
-        fs::remove_file(&tmp_export_path)?;
+    if fname.exists() {
+        fs::remove_file(&fname)?;
     }
-    tmp_export_path.pop();
 
     let seven_z_cmd = seven_z_command()?;
+    let pass_param = if password.is_empty() {
+        borrow::Cow::Borrowed("")
+    } else {
+        borrow::Cow::Owned(format!("-p{}", password))
+    };
     let status = process::Command::new(seven_z_cmd)
         .args(&[
             "a",
-            &format!("-p{}", password),
+            pass_param.as_ref(),
             "-sdel",
             &fname.to_string_lossy(),
             &format!("{}/*", tmp_export_path.to_string_lossy()),

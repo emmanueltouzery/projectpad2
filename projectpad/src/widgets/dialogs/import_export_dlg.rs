@@ -177,12 +177,12 @@ impl Widget for ImportExportDialog {
                     }
                 }
                 WizardState::ImportPickFile => {
-                    self.password_entry
+                    self.import_password_entry
                         .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
                 WizardState::ExportPickFile => {
-                    self.password_entry
+                    self.export_password_entry
                         .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
@@ -402,7 +402,7 @@ impl Widget for ImportExportDialog {
                             top_attach: 2,
                         },
                     },
-                    #[name="password_entry"]
+                    #[name="import_password_entry"]
                     PasswordField(("".to_string(), password_field::ActivatesDefault::Yes)) {
                         hexpand: true,
                         cell: {

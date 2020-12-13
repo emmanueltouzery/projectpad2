@@ -5,7 +5,7 @@ use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use projectpadsql::sqlite_is;
-use std::{fs, process, str};
+use std::{borrow, fs, process, str};
 
 type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -32,9 +32,14 @@ pub fn do_import(
 
     // extract the 7zip...
     let seven_z_cmd = export::seven_z_command()?;
+    let pass_param = if password.is_empty() {
+        borrow::Cow::Borrowed("")
+    } else {
+        borrow::Cow::Owned(format!("-p{}", password))
+    };
     let output = process::Command::new(seven_z_cmd)
         .current_dir(&temp_folder)
-        .args(&["x", &format!("-p{}", password), fname])
+        .args(&["x", pass_param.as_ref(), fname])
         .output()?;
     if !output.status.success() {
         return Err(format!(

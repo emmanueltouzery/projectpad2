@@ -563,6 +563,7 @@ impl Widget for Win {
             Msg::ImportApplied => {
                 // the user imported data, maybe new projects were added
                 self.project_list.stream().emit(ProjectListMsg::ForceReload);
+                self.request_update_welcome_status();
             }
         }
     }

@@ -338,20 +338,25 @@ fn import_server_link(
     server_link: &ServerLinkImportExport,
 ) -> ImportResult<()> {
     use projectpadsql::schema::server_link::dsl as srv_link;
-    let linked_server_id = get_linked_server_id(sql_conn, &server_link.server)?;
-    let changeset = (
-        srv_link::desc.eq(&server_link.desc),
-        srv_link::group_name.eq(group_name),
-        srv_link::linked_server_id.eq(linked_server_id),
-        srv_link::project_id.eq(project_id),
-        srv_link::environment.eq(env),
-    );
-    insert_row(
-        sql_conn,
-        diesel::insert_into(srv_link::server_link).values(changeset),
-    )
-    .map_err(to_boxed_stderr)
-    .map(|_| ())
+    let linked_server_id_opt = get_linked_server_id(sql_conn, &server_link.server)?;
+
+    if let Some(linked_server_id) = linked_server_id_opt {
+        let changeset = (
+            srv_link::desc.eq(&server_link.desc),
+            srv_link::group_name.eq(group_name),
+            srv_link::linked_server_id.eq(linked_server_id),
+            srv_link::project_id.eq(project_id),
+            srv_link::environment.eq(env),
+        );
+        insert_row(
+            sql_conn,
+            diesel::insert_into(srv_link::server_link).values(changeset),
+        )
+        .map_err(to_boxed_stderr)
+        .map(|_| ())
+    } else {
+        Ok(())
+    }
 }
 
 fn import_server(
@@ -489,7 +494,7 @@ fn import_server_website(
         .website
         .server_database
         .as_ref()
-        .and_then(|db_path| get_new_databaseid(sql_conn, db_path).ok());
+        .and_then(|db_path| get_new_databaseid(sql_conn, db_path).ok().flatten());
     let changeset = (
         srv_www::desc.eq(&website_info.website.desc),
         srv_www::url.eq(&website_info.website.url),
@@ -508,15 +513,21 @@ fn import_server_website(
     Ok(())
 }
 
-// TODO tolerate it missing!!!
+/// we return an option because maybe the linked server
+/// is in another project, and maybe that server wasn't
+/// exported together with the rest.
 fn get_linked_server_id(
     sql_conn: &diesel::SqliteConnection,
     server_path: &ServerPath,
-) -> ImportResult<i32> {
+) -> ImportResult<Option<i32>> {
     use projectpadsql::schema::project::dsl as prj;
     use projectpadsql::schema::server::dsl as srv;
     if let Some(id) = server_path.server_id {
-        return Ok(id);
+        // i must check that the id was _in fact_ imported,
+        // because maybe the dependent project wasn't exported,
+        // _and_ the linked server doesn't have a desc and so
+        // we linked by id, which would be present.
+        return Ok(Some(id).filter(|id_| server_id_exists(sql_conn, *id_)));
     }
     // server_id is not present, so I know that server_desc is present.
     Ok(srv::server
@@ -528,24 +539,50 @@ fn get_linked_server_id(
                 .and(srv::environment.eq(server_path.environment))
                 .and(srv::desc.eq(server_path.server_desc.as_ref().unwrap())),
         )
-        .first::<i32>(sql_conn)?)
+        .first::<i32>(sql_conn)
+        .optional()?)
 }
 
-// differenciate between not finding & other errors
+fn server_id_exists(sql_conn: &diesel::SqliteConnection, id: i32) -> bool {
+    use projectpadsql::schema::server::dsl as srv;
+    srv::server
+        .filter(srv::id.eq(id))
+        .select(count(srv::id))
+        .first::<i64>(sql_conn)
+        .unwrap()
+        == 1
+}
+
 fn get_new_databaseid(
     sql_conn: &diesel::SqliteConnection,
     db_path: &ServerDatabasePath,
-) -> ImportResult<i32> {
+) -> ImportResult<Option<i32>> {
     use projectpadsql::schema::server_database::dsl as srv_db;
     if let Some(db_id) = db_path.database_id {
-        return Ok(db_id);
+        // i must check that the id was _in fact_ imported,
+        // because maybe the dependent project wasn't exported,
+        // _and_ the linked db doesn't have a desc and so
+        // we linked by id, which would be present.
+        let is_present = srv_db::server_database
+            .filter(srv_db::id.eq(db_id))
+            .select(count(srv_db::id))
+            .first::<i64>(sql_conn)
+            .unwrap()
+            == 1;
+        return Ok(Some(db_id).filter(|_| is_present));
     }
 
     // since database_id is not defined, i know that database_desc is.
 
     // first find the server id
-    let server_id: i32 = match db_path.server_id {
-        Some(id) => id,
+    let server_id_opt: Option<i32> = match db_path.server_id {
+        Some(id) => {
+            // i must check that the id was _in fact_ imported,
+            // because maybe the dependent project wasn't exported,
+            // _and_ the linked db doesn't have a desc and so
+            // we linked by id, which would be present.
+            return Ok(Some(id).filter(|id_| server_id_exists(sql_conn, *id_)));
+        }
         None => {
             // no server id, must find the server using desc, environment and project name
             use projectpadsql::schema::project::dsl as prj;
@@ -561,18 +598,23 @@ fn get_new_databaseid(
                         .and(srv::desc.eq(db_path.server_desc.as_ref().unwrap())),
                 )
                 .first(sql_conn)
+                .optional()
                 .map_err(|e| e.to_string())?
         }
     };
-    Ok(srv_db::server_database
-        .select(srv_db::id)
-        .filter(
-            srv_db::desc
-                .eq(db_path.database_desc.as_ref().unwrap())
-                .and(srv_db::server_id.eq(server_id)),
-        )
-        .first(sql_conn)
-        .map_err(|e| e.to_string())?)
+    match server_id_opt {
+        None => Ok(None),
+        Some(server_id) => Ok(srv_db::server_database
+            .select(srv_db::id)
+            .filter(
+                srv_db::desc
+                    .eq(db_path.database_desc.as_ref().unwrap())
+                    .and(srv_db::server_id.eq(server_id)),
+            )
+            .first(sql_conn)
+            .optional()
+            .map_err(|e| e.to_string())?),
+    }
 }
 
 #[cfg(test)]

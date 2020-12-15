@@ -5,6 +5,7 @@ use projectpadsql::models::{
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 fn serialize_if_present<T>(map: &mut T, key: &str, value: &str) -> Result<(), T::Error>
 where
@@ -154,6 +155,26 @@ pub struct ProjectImportExport {
     pub prod_environment: Option<ProjectEnvImportExport>,
 }
 
+impl ProjectImportExport {
+    pub fn dependencies_project_names(&self) -> HashSet<String> {
+        let mut deps = HashSet::new();
+
+        if let Some(env) = &self.development_environment {
+            deps.extend(env.dependencies_project_names());
+        }
+        if let Some(env) = &self.staging_environment {
+            deps.extend(env.dependencies_project_names());
+        }
+        if let Some(env) = &self.uat_environment {
+            deps.extend(env.dependencies_project_names());
+        }
+        if let Some(env) = &self.prod_environment {
+            deps.extend(env.dependencies_project_names());
+        }
+        deps
+    }
+}
+
 /// currently project POIs are present for all environments,
 /// cannot be restricted. I don't want to export them only
 /// in one environment, but i don't want to repeat them (verbose)
@@ -235,6 +256,16 @@ pub struct ProjectEnvImportExport {
     pub items_in_groups: HashMap<String, ProjectEnvGroupImportExport>,
 }
 
+impl ProjectEnvImportExport {
+    fn dependencies_project_names(&self) -> HashSet<String> {
+        let mut result = self.items.dependencies_project_names();
+        for group in self.items_in_groups.values() {
+            result.extend(group.dependencies_project_names())
+        }
+        result
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ProjectEnvGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -247,12 +278,38 @@ pub struct ProjectEnvGroupImportExport {
     pub project_notes: Vec<ProjectNoteImportExport>,
 }
 
+impl ProjectEnvGroupImportExport {
+    fn dependencies_project_names(&self) -> HashSet<String> {
+        // https://github.com/rust-lang/rfcs/issues/2023
+        // https://users.rust-lang.org/t/intersecting-multiple-hashset-string/34176
+        // https://users.rust-lang.org/t/hashset-union-expecting-hashset-string-got-hashset-string/24584/11 <---------
+        let mut linked_projects = HashSet::new();
+        for server in &self.servers {
+            linked_projects.extend(server.dependencies_project_names());
+        }
+        for server_link in &self.server_links {
+            linked_projects.insert(server_link.server.project_name.clone());
+        }
+        linked_projects
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ServerWithItemsImportExport {
     pub server: ServerImportExport,
     pub items: ServerGroupImportExport,
     #[serde(skip_serializing_if = "HashMap::is_empty", default)]
     pub items_in_groups: HashMap<String, ServerGroupImportExport>,
+}
+
+impl ServerWithItemsImportExport {
+    fn dependencies_project_names(&self) -> HashSet<String> {
+        let mut result = self.items.dependencies_project_names();
+        for group in self.items_in_groups.values() {
+            result.extend(group.dependencies_project_names());
+        }
+        result
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -267,4 +324,16 @@ pub struct ServerGroupImportExport {
     pub server_notes: Vec<ServerNote>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub server_extra_users: Vec<ServerExtraUserAccount>,
+}
+
+impl ServerGroupImportExport {
+    fn dependencies_project_names(&self) -> HashSet<String> {
+        let mut deps = HashSet::new();
+        for www in &self.server_websites {
+            if let Some(db) = www.server_database.as_ref() {
+                deps.insert(db.project_name.clone());
+            }
+        }
+        deps
+    }
 }

@@ -5,6 +5,9 @@ use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use projectpadsql::sqlite_is;
+#[cfg(test)]
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
 use std::{borrow, fs, process, str};
 
@@ -55,16 +58,15 @@ pub fn do_import(
         .into());
     }
 
-    let project_name_to_contents = get_project_files(&temp_folder); // no ? on purpose
+    let projects_contents = get_project_files(&temp_folder); // no ? on purpose
     fs::remove_dir_all(temp_folder)?;
     // only now fail if reading the file failed, we want
     // to remove the temp folder no matter what.
-    let project_name_to_contents = project_name_to_contents?;
+    let projects_contents = projects_contents?;
 
-    // TODO there could be inter-project dependencies, make a best effort to
-    // import in the best possible order
-    for (_, contents) in project_name_to_contents {
-        let decoded: ProjectImportExport = serde_yaml::from_str(&contents)?;
+    let sorted_projects = sort_by_deps(projects_contents);
+    for decoded in sorted_projects {
+        println!("importing {}", &decoded.project_name);
         if prj::project
             .filter(prj::name.eq(&decoded.project_name))
             .select(count(prj::id))
@@ -129,22 +131,57 @@ pub fn do_import(
     Ok(())
 }
 
-fn get_project_files<P: AsRef<Path>>(temp_folder: P) -> ImportResult<Vec<(String, String)>> {
+fn get_project_files<P: AsRef<Path>>(temp_folder: P) -> ImportResult<Vec<ProjectImportExport>> {
     let mut res = vec![];
     for dir_entry in fs::read_dir(temp_folder)? {
         let dir_entry = dir_entry?;
         if dir_entry.path().is_file() {
-            res.push((
-                dir_entry
-                    .file_name()
-                    .to_str()
-                    .ok_or("Invalid 7z entry filename")?
-                    .to_string(),
-                fs::read_to_string(&dir_entry.path())?,
-            ));
+            res.push(serde_yaml::from_str(&fs::read_to_string(
+                &dir_entry.path(),
+            )?)?);
         }
     }
     Ok(res)
+}
+
+fn sort_by_deps(projects: Vec<ProjectImportExport>) -> Vec<ProjectImportExport> {
+    let project_names: HashSet<String> = projects
+        .iter()
+        .map(|p| p.project_name.to_string())
+        .collect();
+    let mut deps_to_projects: Vec<_> = projects
+        .into_iter()
+        .map(|p| {
+            (
+                p.dependencies_project_names()
+                    .into_iter()
+                    // remove dependencies that we cannot resolve anyway
+                    .filter(|d| project_names.contains(d))
+                    .collect(),
+                p,
+            )
+        })
+        .collect();
+
+    let mut covered_deps = HashSet::new();
+    let mut result = vec![];
+
+    while !deps_to_projects.is_empty() {
+        let (deps_ok, deps_remaining) = deps_to_projects
+            .into_iter()
+            .partition::<Vec<_>, _>(|(d, _p)| covered_deps.is_superset(&d));
+        if deps_ok.is_empty() {
+            // the remaining projects, if any, will never be resolved
+            deps_to_projects = deps_remaining;
+            break;
+        }
+        covered_deps.extend(deps_ok.iter().map(|(_d, p)| p.project_name.clone()));
+        result.extend(deps_ok.into_iter().map(|(_d, p)| p));
+        deps_to_projects = deps_remaining;
+    }
+    result.extend(deps_to_projects.into_iter().map(|(_d, p)| p));
+
+    result
 }
 
 struct UnprocessedWebsite {
@@ -471,6 +508,7 @@ fn import_server_website(
     Ok(())
 }
 
+// TODO tolerate it missing!!!
 fn get_linked_server_id(
     sql_conn: &diesel::SqliteConnection,
     server_path: &ServerPath,
@@ -493,6 +531,7 @@ fn get_linked_server_id(
         .first::<i32>(sql_conn)?)
 }
 
+// differenciate between not finding & other errors
 fn get_new_databaseid(
     sql_conn: &diesel::SqliteConnection,
     db_path: &ServerDatabasePath,
@@ -534,4 +573,70 @@ fn get_new_databaseid(
         )
         .first(sql_conn)
         .map_err(|e| e.to_string())?)
+}
+
+#[cfg(test)]
+fn project_depending_on(pname: &str, depends_on: &[&str]) -> ProjectImportExport {
+    let depends_server_links = depends_on
+        .into_iter()
+        .map(|dep_prj| ServerLinkImportExport {
+            desc: "".to_string(),
+            server: ServerPath {
+                project_name: dep_prj.to_string(),
+                environment: EnvironmentType::EnvDevelopment,
+                server_id: None,
+                server_desc: None,
+            },
+        })
+        .collect();
+    ProjectImportExport {
+        project_name: pname.to_string(),
+        development_environment: Some(ProjectEnvImportExport {
+            items: ProjectEnvGroupImportExport {
+                servers: vec![],
+                server_links: depends_server_links,
+                project_pois: vec![],
+                project_notes: vec![],
+            },
+            items_in_groups: HashMap::new(),
+        }),
+        staging_environment: None,
+        uat_environment: None,
+        prod_environment: None,
+    }
+}
+
+#[test]
+fn sort_with_deps() {
+    assert_eq!(
+        vec![
+            "no_deps1",
+            "2_deps_on_1",
+            "3_deps_on_2",
+            "4_deps_on_3_and_1"
+        ],
+        sort_by_deps(vec![
+            project_depending_on("4_deps_on_3_and_1", &["3_deps_on_2", "no_deps1"]),
+            project_depending_on("3_deps_on_2", &["2_deps_on_1"]),
+            project_depending_on("2_deps_on_1", &["no_deps1"]),
+            project_depending_on("no_deps1", &[])
+        ])
+        .into_iter()
+        .map(|d| d.project_name)
+        .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn sort_with_some_unresolvable_deps() {
+    assert_eq!(
+        vec!["B", "A",],
+        sort_by_deps(vec![
+            project_depending_on("A", &["A", "B"]),
+            project_depending_on("B", &["C", "D"]),
+        ])
+        .into_iter()
+        .map(|d| d.project_name)
+        .collect::<Vec<_>>()
+    );
 }

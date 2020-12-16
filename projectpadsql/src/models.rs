@@ -181,37 +181,23 @@ simple_enum!(ServerAccessType);
 simple_enum!(InterestType);
 simple_enum!(RunOn);
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct Server {
-    #[serde(default)]
     pub id: i32,
-    #[serde(default)]
     pub desc: String,
-    #[serde(default)]
     pub ip: String,
-    #[serde(default)]
     pub text: String,
-    #[serde(default)]
     pub is_retired: bool,
-    #[serde(default)]
     pub username: String,
-    #[serde(default)]
     pub password: String,
-    #[serde(default)]
-    pub auth_key: Option<Vec<u8>>,
-    #[serde(default)]
+    pub auth_key: Option<Vec<u8>>, //
     pub auth_key_filename: Option<String>,
     pub server_type: ServerType,
     pub access_type: ServerAccessType,
-    #[serde(default)]
     pub ssh_tunnel_port: Option<i32>,
-    #[serde(default)]
     pub ssh_tunnel_through_server_id: Option<i32>,
-    #[serde(default)]
     pub environment: EnvironmentType,
-    #[serde(default)]
     pub group_name: Option<String>,
-    #[serde(default)]
     pub project_id: i32,
 }
 

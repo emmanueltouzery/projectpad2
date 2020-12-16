@@ -1,12 +1,16 @@
 use projectpadsql::models::{
-    EnvironmentType, InterestType, Server, ServerDatabase, ServerExtraUserAccount, ServerNote,
-    ServerPointOfInterest,
+    EnvironmentType, InterestType, Server, ServerAccessType, ServerDatabase,
+    ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerType,
 };
+use serde::de;
+use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fmt;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 fn serialize_if_present<T>(map: &mut T, key: &str, value: &str) -> Result<(), T::Error>
 where
@@ -31,10 +35,8 @@ where
     }
 }
 
-#[derive(Deserialize)]
 pub struct ServerImportExport {
     pub server: Server,
-    #[serde(default)]
     pub data_path: Option<PathBuf>,
 }
 
@@ -62,7 +64,7 @@ impl Serialize for ServerImportExport {
         serialize_if_present(&mut state, "username", &s.username)?;
         serialize_if_present(&mut state, "password", &s.password)?;
 
-        serialize_if_some(&mut state, "data_folder", &self.data_path)?;
+        serialize_if_some(&mut state, "data_folder", &self.data_path)?; // TODO rename?
         serialize_if_some(&mut state, "auth_key_filename", &s.auth_key_filename)?;
         state.serialize_entry("server_type", &s.server_type)?;
         state.serialize_entry("access_type", &s.access_type)?;
@@ -70,6 +72,74 @@ impl Serialize for ServerImportExport {
         // TODO through_server_id
 
         state.end()
+    }
+}
+
+struct ServerImportExportMapVisitor {}
+
+impl<'de> Visitor<'de> for ServerImportExportMapVisitor {
+    type Value = ServerImportExport;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("ServerImportExport")
+    }
+
+    fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        let mut map = HashMap::<String, String>::new(); // TODO do I need String for kv?
+        while let Some((key, value)) = access.next_entry()? {
+            map.insert(key, value);
+        }
+        Ok(ServerImportExport {
+            server: Server {
+                id: 0,
+                desc: map.get("desc").cloned().unwrap_or_else(|| "".to_string()),
+                ip: map.get("ip").cloned().unwrap_or_else(|| "".to_string()),
+                text: map.get("text").cloned().unwrap_or_else(|| "".to_string()),
+                is_retired: map.get("is_retired").map(|r| r == "true").unwrap_or(false),
+                username: map
+                    .get("username")
+                    .cloned()
+                    .unwrap_or_else(|| "".to_string()),
+                password: map
+                    .get("password")
+                    .cloned()
+                    .unwrap_or_else(|| "".to_string()),
+                auth_key: None,
+                auth_key_filename: map
+                    .get("auth_key_filename")
+                    .map(|f| Some(f.clone()))
+                    .unwrap_or(None),
+                server_type: map
+                    .get("server_type")
+                    .and_then(|s| ServerType::from_str(s.as_str()).ok())
+                    .ok_or_else(|| de::Error::custom("missing or invalid server_type"))?,
+                access_type: map
+                    .get("access_type")
+                    .and_then(|s| ServerAccessType::from_str(s.as_str()).ok())
+                    .ok_or_else(|| de::Error::custom("missing or invalid access_type"))?,
+                ssh_tunnel_port: None,
+                ssh_tunnel_through_server_id: None,
+                environment: EnvironmentType::EnvDevelopment,
+                group_name: None,
+                project_id: 0,
+            },
+            data_path: map
+                .get("data_folder") // TODO rename? (path_folder vs data_folder)
+                .map(|f| Some(PathBuf::from(f)))
+                .unwrap_or(None),
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for ServerImportExport {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_map(ServerImportExportMapVisitor {})
     }
 }
 

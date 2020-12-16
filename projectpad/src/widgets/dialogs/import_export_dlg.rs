@@ -81,7 +81,8 @@ pub struct Model {
     header: Component<Header>,
     db_sender: mpsc::Sender<SqlFunc>,
     wizard_state: WizardState,
-    error_label: gtk::Label,
+    import_error_label: gtk::Label,
+    export_error_label: gtk::Label,
     displayed_projects: Vec<Project>,
     _import_result_channel: relm::Channel<Result<(), String>>,
     import_result_sender: relm::Sender<Result<(), String>>,
@@ -110,10 +111,15 @@ impl Widget for ImportExportDialog {
         filter.add_pattern("*.7z");
         self.import_picker_btn.set_filter(&filter);
 
-        self.model.error_label.show();
+        self.model.import_error_label.show();
         self.import_error_infobar
             .get_content_area()
-            .add(&self.model.error_label);
+            .add(&self.model.import_error_label);
+
+        self.model.export_error_label.show();
+        self.export_error_infobar
+            .get_content_area()
+            .add(&self.model.export_error_label);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -132,7 +138,11 @@ impl Widget for ImportExportDialog {
             db_sender,
             header,
             wizard_state: WizardState::Start,
-            error_label: gtk::LabelBuilder::new()
+            import_error_label: gtk::LabelBuilder::new()
+                .label("")
+                .ellipsize(pango::EllipsizeMode::End)
+                .build(),
+            export_error_label: gtk::LabelBuilder::new()
                 .label("")
                 .ellipsize(pango::EllipsizeMode::End)
                 .build(),
@@ -147,14 +157,14 @@ impl Widget for ImportExportDialog {
     }
 
     fn show_import_error(&self, msg: &str) {
-        self.model.error_label.set_text(msg);
-        self.model.error_label.set_tooltip_text(Some(msg));
+        self.model.import_error_label.set_text(msg);
+        self.model.import_error_label.set_tooltip_text(Some(msg));
         self.import_error_infobar.set_visible(true);
     }
 
     fn show_export_error(&self, msg: &str) {
-        self.model.error_label.set_text(msg);
-        self.model.error_label.set_tooltip_text(Some(msg));
+        self.model.export_error_label.set_text(msg);
+        self.model.export_error_label.set_tooltip_text(Some(msg));
         self.export_error_infobar.set_visible(true);
     }
 
@@ -223,7 +233,7 @@ impl Widget for ImportExportDialog {
                 self.import_win.close();
             }
             Msg::ExportResult(Result::Err(e)) => {
-                self.show_import_error(&format!("Export failed: {}", e));
+                self.show_export_error(&format!("Export failed: {}", e));
                 self.model.header.stream().emit(HeaderMsg::EnableNext(true));
             }
             Msg::ImportApplied => {}

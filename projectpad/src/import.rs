@@ -368,17 +368,17 @@ fn import_server(
 ) -> ImportResult<Vec<UnprocessedWebsite>> {
     use projectpadsql::schema::server::dsl as srv;
     let changeset = (
-        srv::desc.eq(&server.server.0.desc),
-        srv::is_retired.eq(server.server.0.is_retired),
-        srv::ip.eq(&server.server.0.ip),
-        srv::text.eq(&server.server.0.text),
+        srv::desc.eq(&server.server.server.desc),
+        srv::is_retired.eq(server.server.server.is_retired),
+        srv::ip.eq(&server.server.server.ip),
+        srv::text.eq(&server.server.server.text),
         srv::group_name.eq(group_name),
-        srv::username.eq(&server.server.0.username),
-        srv::password.eq(&server.server.0.password),
-        srv::auth_key.eq(server.server.0.auth_key.as_ref()), // TODO probably stored elsewhere
-        srv::auth_key_filename.eq(server.server.0.auth_key_filename.as_ref()),
-        srv::server_type.eq(server.server.0.server_type),
-        srv::access_type.eq(server.server.0.access_type),
+        srv::username.eq(&server.server.server.username),
+        srv::password.eq(&server.server.server.password),
+        srv::auth_key.eq(server.server.server.auth_key.as_ref()), // TODO probably stored elsewhere
+        srv::auth_key_filename.eq(server.server.server.auth_key_filename.as_ref()),
+        srv::server_type.eq(server.server.server.server_type),
+        srv::access_type.eq(server.server.server.access_type),
         srv::environment.eq(env),
         srv::project_id.eq(project_id),
     );

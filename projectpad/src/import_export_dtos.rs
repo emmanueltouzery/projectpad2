@@ -6,6 +6,7 @@ use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 fn serialize_if_present<T>(map: &mut T, key: &str, value: &str) -> Result<(), T::Error>
 where
@@ -31,14 +32,18 @@ where
 }
 
 #[derive(Deserialize)]
-pub struct ServerImportExport(pub Server);
+pub struct ServerImportExport {
+    pub server: Server,
+    #[serde(default)]
+    pub data_path: Option<PathBuf>,
+}
 
 impl Serialize for ServerImportExport {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let s = &self.0;
+        let s = &self.server;
         let mut state = serializer.serialize_map(None)?;
 
         // we want to allow to link to any server (ServerLink may need to)
@@ -56,7 +61,8 @@ impl Serialize for ServerImportExport {
         }
         serialize_if_present(&mut state, "username", &s.username)?;
         serialize_if_present(&mut state, "password", &s.password)?;
-        // TODO auth_key
+
+        serialize_if_some(&mut state, "data_folder", &self.data_path)?;
         serialize_if_some(&mut state, "auth_key_filename", &s.auth_key_filename)?;
         state.serialize_entry("server_type", &s.server_type)?;
         state.serialize_entry("access_type", &s.access_type)?;

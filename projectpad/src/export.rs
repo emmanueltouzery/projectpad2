@@ -19,15 +19,22 @@ pub fn export_projects(
     password: &str,
 ) -> ExportResult<()> {
     let mut project_exports = vec![];
+    // it's useful to pass down the map of extra_files so that
+    // components can try to optimistically add semantic file & folder
+    // names, being able to detect duplicates by looking up in the map.
+    // the alternative would be to generate computer-generated file &
+    // folder names to ensure unicity.
+    let mut extra_files = HashMap::new();
     for p in projects {
-        project_exports.push(export_project(sql_conn, &p)?);
+        project_exports.push(export_project(sql_conn, &p, &mut extra_files)?);
     }
-    write_7z(&project_exports, fname, password)
+    write_7z(&project_exports, &extra_files, fname, password)
 }
 
 fn export_project(
     sql_conn: &diesel::SqliteConnection,
     project: &Project,
+    extra_files: &mut HashMap<PathBuf, Vec<u8>>,
 ) -> ExportResult<ProjectImportExport> {
     let group_names = projectpadsql::get_project_group_names(sql_conn, project.id);
     let mut is_first_env = true;
@@ -39,6 +46,7 @@ fn export_project(
             EnvironmentType::EnvDevelopment,
             is_first_env,
             &group_names,
+            extra_files,
         )?);
         is_first_env = false;
         e
@@ -53,6 +61,7 @@ fn export_project(
             EnvironmentType::EnvStage,
             is_first_env,
             &group_names,
+            extra_files,
         )?);
         is_first_env = false;
         e
@@ -67,6 +76,7 @@ fn export_project(
             EnvironmentType::EnvUat,
             is_first_env,
             &group_names,
+            extra_files,
         )?);
         is_first_env = false;
         e
@@ -81,6 +91,7 @@ fn export_project(
             EnvironmentType::EnvProd,
             is_first_env,
             &group_names,
+            extra_files,
         )?)
     } else {
         None
@@ -125,13 +136,27 @@ pub fn seven_z_command() -> ExportResult<&'static str> {
 
 fn write_7z(
     projects_data: &[ProjectImportExport],
+    extra_files: &HashMap<PathBuf, Vec<u8>>,
     fname: &path::PathBuf,
     password: &str,
 ) -> ExportResult<()> {
-    let mut tmp_export_path = temp_folder()?;
+    let mut tmp_export_path = temp_folder()?; // TODO will not clean up in case of errors...
     for project_data in projects_data {
         tmp_export_path.push(format!("{}.yaml", project_data.project_name));
         fs::write(&tmp_export_path, generate_yaml(&project_data))?;
+        tmp_export_path.pop();
+    }
+    for (path, data) in extra_files {
+        tmp_export_path.push(
+            path.parent()
+                .ok_or(format!("extra_file.path is not in a subfolder? {:?}", path))?,
+        );
+        // not create_dir_all on purpose. because of the single pop() later,
+        // we only support 1-level subdirs.
+        fs::create_dir(&tmp_export_path)?;
+        tmp_export_path.push(&path.file_name().unwrap());
+        fs::write(&tmp_export_path, &data)?;
+        tmp_export_path.pop();
         tmp_export_path.pop();
     }
 
@@ -224,12 +249,13 @@ fn export_env(
     env: EnvironmentType,
     is_first_env: bool,
     group_names: &[String],
+    extra_files: &mut HashMap<PathBuf, Vec<u8>>,
 ) -> ExportResult<ProjectEnvImportExport> {
-    let items = export_env_group(sql_conn, project, env, is_first_env, None)?;
+    let items = export_env_group(sql_conn, project, env, is_first_env, None, extra_files)?;
 
     let mut items_in_groups = HashMap::new();
     for gn in group_names {
-        let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn))?;
+        let group = export_env_group(sql_conn, project, env, is_first_env, Some(gn), extra_files)?;
         items_in_groups.insert(gn.clone(), group);
     }
 
@@ -245,6 +271,7 @@ fn export_env_group(
     env: EnvironmentType,
     is_first_env: bool,
     group_name: Option<&str>,
+    extra_files: &mut HashMap<PathBuf, Vec<u8>>,
 ) -> ExportResult<ProjectEnvGroupImportExport> {
     use projectpadsql::schema::project_note::dsl as prj_note;
     use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
@@ -355,7 +382,7 @@ fn export_env_group(
     Ok(ProjectEnvGroupImportExport {
         servers: srvs
             .into_iter()
-            .map(|s| export_server(sql_conn, s))
+            .map(|s| export_server(sql_conn, s, extra_files))
             .collect::<ExportResult<Vec<_>>>()?,
         server_links: server_links_export,
         project_pois: project_pois_export,
@@ -366,6 +393,7 @@ fn export_env_group(
 fn export_server(
     sql_conn: &diesel::SqliteConnection,
     server: Server,
+    extra_files: &mut HashMap<PathBuf, Vec<u8>>,
 ) -> ExportResult<ServerWithItemsImportExport> {
     let items = export_server_items(sql_conn, &server, None)?;
     let group_names = projectpadsql::get_server_group_names(sql_conn, server.id);
@@ -374,11 +402,46 @@ fn export_server(
         let items = export_server_items(sql_conn, &server, Some(&gn))?;
         items_in_groups.insert(gn.clone(), items);
     }
+    let data_path = match (&server.auth_key, &server.auth_key_filename) {
+        (Some(key), Some(fname)) => {
+            let sub_path = find_unique_data_path(&server, &extra_files);
+            let mut path = PathBuf::from(&sub_path);
+            path.push(fname);
+            extra_files.insert(path, key.clone());
+            Some(PathBuf::from(sub_path))
+        }
+        _ => None,
+    };
     Ok(ServerWithItemsImportExport {
-        server: ServerImportExport(server),
+        server: ServerImportExport { server, data_path },
         items,
         items_in_groups,
     })
+}
+
+fn find_unique_data_path(server: &Server, extra_files: &HashMap<PathBuf, Vec<u8>>) -> String {
+    let path_base = if server.desc.is_empty() {
+        server.id.to_string()
+    } else {
+        server.desc.clone()
+    };
+
+    // generate an infinite lazy sequence of candidate folder names
+    let mut counter = 0;
+    let mut path_candidates = std::iter::from_fn(move || {
+        counter += 1;
+        Some(if counter == 1 {
+            path_base.clone()
+        } else {
+            format!("{}-{}", path_base, counter)
+        })
+    });
+
+    path_candidates
+        // can't use contains because the keys are full paths, but i want
+        // to test only root folders existence now
+        .find(|c| !extra_files.keys().any(|k| k.starts_with(c)))
+        .unwrap()
 }
 
 fn export_server_items(

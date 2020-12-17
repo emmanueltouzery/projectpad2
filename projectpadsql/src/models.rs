@@ -6,6 +6,7 @@ use diesel::serialize::*;
 use diesel::sql_types::*;
 use serde_derive::{Deserialize, Serialize};
 use std::io::Write;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
 use strum_macros::{Display, EnumIter, EnumString};
@@ -280,23 +281,15 @@ pub struct ServerNote {
     pub server_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct ServerExtraUserAccount {
-    #[serde(skip)]
     pub id: i32,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub username: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub password: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub desc: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub auth_key: Option<Vec<u8>>,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub auth_key_filename: Option<String>,
-    #[serde(skip)]
     pub group_name: Option<String>,
-    #[serde(skip)]
     pub server_id: i32,
 }
 

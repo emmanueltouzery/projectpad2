@@ -1,6 +1,6 @@
 use projectpadsql::models::{
-    EnvironmentType, InterestType, Server, ServerAccessType, ServerDatabase,
-    ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerType,
+    EnvironmentType, InterestType, Server, ServerAccessType, ServerDatabase, ServerNote,
+    ServerPointOfInterest, ServerType,
 };
 use serde::de;
 use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
@@ -35,6 +35,8 @@ where
     }
 }
 
+// TODO less work not embedding Server? See what was done
+// for ExtraUser...
 pub struct ServerImportExport {
     pub server: Server,
     pub data_path: Option<PathBuf>,
@@ -183,6 +185,20 @@ pub struct ServerDatabasePath {
     pub database_id: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub database_desc: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ServerExtraUserImportExport {
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    pub username: String,
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    pub password: String,
+    #[serde(skip_serializing_if = "String::is_empty", default)]
+    pub desc: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub data_path: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub auth_key_filename: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -399,7 +415,7 @@ pub struct ServerGroupImportExport {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub server_notes: Vec<ServerNote>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub server_extra_users: Vec<ServerExtraUserAccount>,
+    pub server_extra_users: Vec<ServerExtraUserImportExport>,
 }
 
 impl ServerGroupImportExport {

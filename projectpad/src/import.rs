@@ -407,7 +407,7 @@ fn import_server(
         _ => None,
     };
     let changeset = (
-        srv::desc.eq(&server.server.server.desc),
+        srv::desc.eq(&server.server.server.desc), // TODO -ETOOMANYSERVERS
         srv::is_retired.eq(server.server.server.is_retired),
         srv::ip.eq(&server.server.server.ip),
         srv::text.eq(&server.server.server.text),
@@ -424,9 +424,9 @@ fn import_server(
     let server_id = insert_row(sql_conn, diesel::insert_into(srv::server).values(changeset))
         .map_err(to_boxed_stderr)?;
 
-    import_server_items(sql_conn, server_id, None, &server.items)?;
+    import_server_items(sql_conn, import_folder, server_id, None, &server.items)?;
     for (group_name, items) in &server.items_in_groups {
-        import_server_items(sql_conn, server_id, Some(group_name), items)?;
+        import_server_items(sql_conn, import_folder, server_id, Some(group_name), items)?;
     }
 
     let mut unprocessed_websites: Vec<_> = server
@@ -451,6 +451,7 @@ fn import_server(
 
 fn import_server_items(
     sql_conn: &diesel::SqliteConnection,
+    import_folder: &Path,
     server_id: i32,
     group_name: Option<&str>,
     items: &ServerGroupImportExport,
@@ -505,12 +506,21 @@ fn import_server_items(
     }
     for user in &items.server_extra_users {
         use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
+        let auth_key_contents = match (&user.data_path, user.auth_key_filename.as_ref()) {
+            (Some(data_path), Some(key_fname)) => {
+                let mut path = import_folder.to_path_buf();
+                path.push(data_path);
+                path.push(key_fname);
+                Some(fs::read(path)?)
+            }
+            _ => None,
+        };
         let changeset = (
             srv_usr::desc.eq(&user.desc),
             srv_usr::group_name.eq(group_name),
             srv_usr::username.eq(&user.username),
             srv_usr::password.eq(&user.password),
-            srv_usr::auth_key.eq(&user.auth_key), // TODO stored elsewhere?
+            srv_usr::auth_key.eq(auth_key_contents),
             srv_usr::auth_key_filename.eq(&user.auth_key_filename),
             srv_usr::server_id.eq(server_id),
         );

@@ -397,16 +397,21 @@ fn export_server(
     server: Server,
     extra_files: &mut HashMap<PathBuf, Vec<u8>>,
 ) -> ExportResult<ServerWithItemsImportExport> {
-    let items = export_server_items(sql_conn, &server, None)?;
+    let items = export_server_items(sql_conn, extra_files, &server, None)?;
     let group_names = projectpadsql::get_server_group_names(sql_conn, server.id);
     let mut items_in_groups = HashMap::new();
     for gn in &group_names {
-        let items = export_server_items(sql_conn, &server, Some(&gn))?;
+        let items = export_server_items(sql_conn, extra_files, &server, Some(&gn))?;
         items_in_groups.insert(gn.clone(), items);
     }
     let data_path = match (&server.auth_key, &server.auth_key_filename) {
         (Some(key), Some(fname)) => {
-            let sub_path = find_unique_data_path(&server, &extra_files);
+            let path_base = if server.desc.is_empty() {
+                server.id.to_string()
+            } else {
+                server.desc.clone()
+            };
+            let sub_path = find_unique_data_path(path_base, &extra_files);
             let mut path = PathBuf::from(&sub_path);
             path.push(fname);
             extra_files.insert(path, key.clone());
@@ -421,13 +426,7 @@ fn export_server(
     })
 }
 
-fn find_unique_data_path(server: &Server, extra_files: &HashMap<PathBuf, Vec<u8>>) -> String {
-    let path_base = if server.desc.is_empty() {
-        server.id.to_string()
-    } else {
-        server.desc.clone()
-    };
-
+fn find_unique_data_path(path_base: String, extra_files: &HashMap<PathBuf, Vec<u8>>) -> String {
     // generate an infinite lazy sequence of candidate folder names
     let mut counter = 0;
     let mut path_candidates = std::iter::from_fn(move || {
@@ -448,6 +447,7 @@ fn find_unique_data_path(server: &Server, extra_files: &HashMap<PathBuf, Vec<u8>
 
 fn export_server_items(
     sql_conn: &diesel::SqliteConnection,
+    extra_files: &mut HashMap<PathBuf, Vec<u8>>,
     server: &Server,
     group_name: Option<&str>,
 ) -> ExportResult<ServerGroupImportExport> {
@@ -506,6 +506,10 @@ fn export_server_items(
         )
         .order(srv_usr::username.asc())
         .load::<ServerExtraUserAccount>(sql_conn)?;
+    let server_extra_users = server_extra_users
+        .into_iter()
+        .map(|usr| export_server_extra_user(usr, extra_files))
+        .collect();
 
     Ok(ServerGroupImportExport {
         server_pois,
@@ -514,6 +518,34 @@ fn export_server_items(
         server_notes,
         server_extra_users,
     })
+}
+
+fn export_server_extra_user(
+    user: ServerExtraUserAccount,
+    extra_files: &mut HashMap<PathBuf, Vec<u8>>,
+) -> ServerExtraUserImportExport {
+    let data_path = match (user.auth_key.as_ref(), user.auth_key_filename.as_ref()) {
+        (Some(key), Some(fname)) => {
+            let path_base = if user.desc.is_empty() {
+                user.id.to_string()
+            } else {
+                user.desc.clone()
+            };
+            let sub_path = find_unique_data_path(path_base, &extra_files);
+            let mut path = PathBuf::from(&sub_path);
+            path.push(fname);
+            extra_files.insert(path, key.clone());
+            Some(PathBuf::from(sub_path))
+        }
+        _ => None,
+    };
+    ServerExtraUserImportExport {
+        username: user.username,
+        password: user.password,
+        desc: user.desc,
+        data_path,
+        auth_key_filename: user.auth_key_filename,
+    }
 }
 
 fn to_server_link_import_export(

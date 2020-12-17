@@ -224,9 +224,11 @@ fn yaml_fix_multiline_strings(raw_output: &str) -> String {
         if contents.contains("\\n") {
             // add extra spaces in the separator for the deeper indentation
             let separator = format!("\n  {}", item.get(1).unwrap().as_str());
+            let indentation_indicator = 2;
             format!(
-                "{}|{}{}",
+                "{}|{}{}{}",
                 line_start,
+                indentation_indicator,
                 separator,
                 itertools::join(
                     contents.split("\\n").map(|l| l

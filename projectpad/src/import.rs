@@ -31,7 +31,6 @@ pub fn do_import(
     fname: &str,
     password: &str,
 ) -> ImportResult<()> {
-    use projectpadsql::schema::project::dsl as prj;
     let temp_folder = export::temp_folder()?;
 
     // extract the 7zip...
@@ -59,11 +58,20 @@ pub fn do_import(
     }
 
     let projects_contents = get_project_files(&temp_folder); // no ? on purpose
+    let imported = import_projects(sql_conn, projects_contents, &temp_folder); // no ? on purpose
     fs::remove_dir_all(temp_folder)?;
     // only now fail if reading the file failed, we want
     // to remove the temp folder no matter what.
-    let projects_contents = projects_contents?;
+    imported
+}
 
+fn import_projects(
+    sql_conn: &diesel::SqliteConnection,
+    projects_contents: ImportResult<Vec<ProjectImportExport>>,
+    import_folder: &Path,
+) -> ImportResult<()> {
+    use projectpadsql::schema::project::dsl as prj;
+    let projects_contents = projects_contents?;
     let sorted_projects = sort_by_deps(projects_contents);
     for decoded in sorted_projects {
         println!("importing {}", &decoded.project_name);
@@ -95,6 +103,7 @@ pub fn do_import(
         if let Some(dev_env) = decoded.development_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
+                import_folder,
                 project_id,
                 EnvironmentType::EnvDevelopment,
                 &dev_env,
@@ -103,6 +112,7 @@ pub fn do_import(
         if let Some(stg_env) = decoded.staging_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
+                import_folder,
                 project_id,
                 EnvironmentType::EnvStage,
                 &stg_env,
@@ -111,6 +121,7 @@ pub fn do_import(
         if let Some(uat_env) = decoded.uat_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
+                import_folder,
                 project_id,
                 EnvironmentType::EnvUat,
                 &uat_env,
@@ -119,6 +130,7 @@ pub fn do_import(
         if let Some(prod_env) = decoded.prod_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
+                import_folder,
                 project_id,
                 EnvironmentType::EnvProd,
                 &prod_env,
@@ -199,16 +211,24 @@ struct UnprocessedWebsite {
 /// at all possible, when we'll process the second pass.
 fn import_project_env_first_pass(
     sql_conn: &diesel::SqliteConnection,
+    import_folder: &Path,
     project_id: i32,
     env: EnvironmentType,
     project_env: &ProjectEnvImportExport,
 ) -> ImportResult<Vec<UnprocessedWebsite>> {
-    let mut unprocessed_websites =
-        import_project_env_group_first_pass(sql_conn, project_id, &project_env.items, env, None)?;
+    let mut unprocessed_websites = import_project_env_group_first_pass(
+        sql_conn,
+        import_folder,
+        project_id,
+        &project_env.items,
+        env,
+        None,
+    )?;
 
     for (group, items) in &project_env.items_in_groups {
         unprocessed_websites.append(&mut import_project_env_group_first_pass(
             sql_conn,
+            import_folder,
             project_id,
             &items,
             env,
@@ -221,6 +241,7 @@ fn import_project_env_first_pass(
 
 fn import_project_env_group_first_pass(
     sql_conn: &diesel::SqliteConnection,
+    import_folder: &Path,
     project_id: i32,
     items: &ProjectEnvGroupImportExport,
     env: EnvironmentType,
@@ -239,7 +260,12 @@ fn import_project_env_group_first_pass(
     let mut unprocessed_websites = vec![];
     for server in &items.servers {
         unprocessed_websites.append(&mut import_server(
-            sql_conn, project_id, env, group_name, server,
+            sql_conn,
+            import_folder,
+            project_id,
+            env,
+            group_name,
+            server,
         )?);
     }
     Ok(unprocessed_websites)
@@ -361,12 +387,25 @@ fn import_server_link(
 
 fn import_server(
     sql_conn: &diesel::SqliteConnection,
+    import_folder: &Path,
     project_id: i32,
     env: EnvironmentType,
     group_name: Option<&str>,
     server: &ServerWithItemsImportExport,
 ) -> ImportResult<Vec<UnprocessedWebsite>> {
     use projectpadsql::schema::server::dsl as srv;
+    let auth_key_contents = match (
+        &server.server.data_path,
+        server.server.server.auth_key_filename.as_ref(),
+    ) {
+        (Some(data_path), Some(key_fname)) => {
+            let mut path = import_folder.to_path_buf();
+            path.push(data_path);
+            path.push(key_fname);
+            Some(fs::read(path)?)
+        }
+        _ => None,
+    };
     let changeset = (
         srv::desc.eq(&server.server.server.desc),
         srv::is_retired.eq(server.server.server.is_retired),
@@ -375,7 +414,7 @@ fn import_server(
         srv::group_name.eq(group_name),
         srv::username.eq(&server.server.server.username),
         srv::password.eq(&server.server.server.password),
-        srv::auth_key.eq(server.server.server.auth_key.as_ref()), // TODO probably stored elsewhere
+        srv::auth_key.eq(auth_key_contents),
         srv::auth_key_filename.eq(server.server.server.auth_key_filename.as_ref()),
         srv::server_type.eq(server.server.server.server_type),
         srv::access_type.eq(server.server.server.access_type),

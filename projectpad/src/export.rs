@@ -6,19 +6,21 @@ use projectpadsql::models::{
 };
 use projectpadsql::sqlite_is;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
 use std::{borrow, env, fs, path, process, time};
 
 type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 
+/// Return the list of dependent project names that were
+/// not exported but maybe should have been
 pub fn export_projects(
     sql_conn: &diesel::SqliteConnection,
     projects: &[Project],
     fname: &path::PathBuf,
     password: &str,
-) -> ExportResult<()> {
+) -> ExportResult<HashSet<String>> {
     let mut project_id_to_folder_name = compute_project_to_folder_name(projects);
 
     let mut project_exports = vec![];
@@ -37,7 +39,15 @@ pub fn export_projects(
             project_folder,
         ));
     }
-    write_7z(&project_exports, &extra_files, fname, password)
+    write_7z(&project_exports, &extra_files, fname, password)?;
+
+    let dependent_project_names: HashSet<String> = project_exports
+        .iter()
+        .flat_map(|(pe, _)| pe.dependencies_project_names())
+        .collect();
+    let project_names: HashSet<String> = projects.iter().map(|prj| prj.name.to_owned()).collect();
+
+    Ok(&dependent_project_names - &project_names)
 }
 
 fn compute_project_to_folder_name(projects: &[Project]) -> HashMap<i32, PathBuf> {

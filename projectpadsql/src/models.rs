@@ -6,7 +6,6 @@ use diesel::serialize::*;
 use diesel::sql_types::*;
 use serde_derive::{Deserialize, Serialize};
 use std::io::Write;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
 use strum_macros::{Display, EnumIter, EnumString};

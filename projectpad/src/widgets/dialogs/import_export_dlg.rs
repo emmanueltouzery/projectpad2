@@ -1,4 +1,5 @@
 use super::dialog_helpers;
+use super::standard_dialogs;
 use crate::export;
 use crate::import;
 use crate::sql_thread::SqlFunc;
@@ -8,9 +9,11 @@ use crate::widgets::password_field::PasswordField;
 use diesel::connection::Connection;
 use diesel::prelude::*;
 use gtk::prelude::*;
+use itertools::Itertools;
 use projectpadsql::models::Project;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
+use std::collections::HashSet;
 use std::path;
 use std::sync::mpsc;
 
@@ -65,7 +68,7 @@ pub enum Msg {
     GotPassword(String),
     FilePicked,
     ImportResult(Result<(), String>),
-    ExportResult(Result<(), String>),
+    ExportResult(Result<HashSet<String>, String>),
     ImportApplied,
     GotProjectList(Result<Vec<Project>, String>),
 }
@@ -86,8 +89,8 @@ pub struct Model {
     displayed_projects: Vec<Project>,
     _import_result_channel: relm::Channel<Result<(), String>>,
     import_result_sender: relm::Sender<Result<(), String>>,
-    _export_result_channel: relm::Channel<Result<(), String>>,
-    export_result_sender: relm::Sender<Result<(), String>>,
+    _export_result_channel: relm::Channel<Result<HashSet<String>, String>>,
+    export_result_sender: relm::Sender<Result<HashSet<String>, String>>,
     _projectlist_channel: relm::Channel<Result<Vec<Project>, String>>,
     projectlist_sender: relm::Sender<Result<Vec<Project>, String>>,
 }
@@ -229,8 +232,19 @@ impl Widget for ImportExportDialog {
                 self.show_import_error(&format!("Import failed: {}", e));
                 self.model.header.stream().emit(HeaderMsg::EnableNext(true));
             }
-            Msg::ExportResult(Result::Ok(())) => {
-                self.import_win.close();
+            Msg::ExportResult(Result::Ok(missing_dep_project_names)) => {
+                if missing_dep_project_names.is_empty() {
+                    self.import_win.close();
+                } else {
+                    self.model.header.stream().emit(HeaderMsg::EnableNext(true));
+                    standard_dialogs::display_error_str(
+                        "Warning: some dependent projects were not exported",
+                        Some(format!(
+                            "Projects: {}",
+                            missing_dep_project_names.iter().join(", ")
+                        )),
+                    );
+                }
             }
             Msg::ExportResult(Result::Err(e)) => {
                 self.show_export_error(&format!("Export failed: {}", e));

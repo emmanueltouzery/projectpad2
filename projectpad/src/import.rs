@@ -719,13 +719,16 @@ fn sort_with_deps() {
             "4_deps_on_3_and_1"
         ],
         sort_by_deps(vec![
-            project_depending_on("4_deps_on_3_and_1", &["3_deps_on_2", "no_deps1"]),
-            project_depending_on("3_deps_on_2", &["2_deps_on_1"]),
-            project_depending_on("2_deps_on_1", &["no_deps1"]),
-            project_depending_on("no_deps1", &[])
+            (
+                1,
+                project_depending_on("4_deps_on_3_and_1", &["3_deps_on_2", "no_deps1"])
+            ),
+            (1, project_depending_on("3_deps_on_2", &["2_deps_on_1"])),
+            (1, project_depending_on("2_deps_on_1", &["no_deps1"])),
+            (1, project_depending_on("no_deps1", &[]))
         ])
         .into_iter()
-        .map(|d| d.project_name)
+        .map(|d| d.1.project_name)
         .collect::<Vec<_>>()
     );
 }
@@ -735,11 +738,11 @@ fn sort_with_some_unresolvable_deps() {
     assert_eq!(
         vec!["B", "A",],
         sort_by_deps(vec![
-            project_depending_on("A", &["A", "B"]),
-            project_depending_on("B", &["C", "D"]),
+            (1, project_depending_on("A", &["A", "B"])),
+            (1, project_depending_on("B", &["C", "D"])),
         ])
         .into_iter()
-        .map(|d| d.project_name)
+        .map(|d| d.1.project_name)
         .collect::<Vec<_>>()
     );
 }

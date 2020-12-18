@@ -684,7 +684,7 @@ fn fix_yaml_strings_nochange() {
 #[test]
 fn fix_yaml_strings_simple_newlines() {
     assert_eq!(
-        "test: |\n  first line\n  second line",
+        "test: |2\n  first line\n  second line",
         yaml_fix_multiline_strings("test: \"first line\\nsecond line\"")
     );
 }
@@ -692,7 +692,7 @@ fn fix_yaml_strings_simple_newlines() {
 #[test]
 fn fix_yaml_strings_newlines_and_quotes_in_string() {
     assert_eq!(
-        "test: |\n  first \"line\"\n  second \\line",
+        "test: |2\n  first \"line\"\n  second \\line",
         yaml_fix_multiline_strings("test: \"first \\\"line\\\"\\nsecond \\\\line\"")
     );
 }

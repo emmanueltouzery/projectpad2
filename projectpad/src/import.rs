@@ -41,7 +41,7 @@ pub fn do_import(
         borrow::Cow::Owned(format!("-p{}", password))
     };
     let output = process::Command::new(seven_z_cmd)
-        .current_dir(&temp_folder)
+        .current_dir(&temp_folder.folder)
         .args(&["x", pass_param.as_ref(), fname])
         .output()?;
     if !output.status.success() {
@@ -57,21 +57,16 @@ pub fn do_import(
         .into());
     }
 
-    let projects_contents = get_project_files(&temp_folder); // no ? on purpose
-    let imported = import_projects(sql_conn, projects_contents, &temp_folder); // no ? on purpose
-    fs::remove_dir_all(temp_folder)?;
-    // only now fail if reading the file failed, we want
-    // to remove the temp folder no matter what.
-    imported
+    let projects_contents = get_project_files(&temp_folder.folder)?;
+    import_projects(sql_conn, projects_contents, &temp_folder.folder)
 }
 
 fn import_projects(
     sql_conn: &diesel::SqliteConnection,
-    projects_contents: ImportResult<Vec<(PathBuf, ProjectImportExport)>>,
+    projects_contents: Vec<(PathBuf, ProjectImportExport)>,
     import_folder: &Path,
 ) -> ImportResult<()> {
     use projectpadsql::schema::project::dsl as prj;
-    let projects_contents = projects_contents?;
     let sorted_projects = sort_by_deps(projects_contents);
     for (project_path, decoded) in sorted_projects {
         let mut project_folder = import_folder.to_path_buf();

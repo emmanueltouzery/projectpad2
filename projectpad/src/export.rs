@@ -153,7 +153,19 @@ fn export_project(
     })
 }
 
-pub fn temp_folder() -> ExportResult<path::PathBuf> {
+pub struct TempFolder {
+    pub folder: path::PathBuf,
+}
+
+impl Drop for TempFolder {
+    fn drop(&mut self) {
+        if let Err(e) = fs::remove_dir_all(&self.folder) {
+            eprintln!("Error cleaning up a temp folder: {:?}", e);
+        }
+    }
+}
+
+pub fn temp_folder() -> ExportResult<TempFolder> {
     let mut tmp_path = env::temp_dir();
     tmp_path.push(&format!(
         "projectpad-{}",
@@ -162,7 +174,7 @@ pub fn temp_folder() -> ExportResult<path::PathBuf> {
             .as_millis()
     ));
     fs::create_dir_all(&tmp_path)?;
-    Ok(tmp_path)
+    Ok(TempFolder { folder: tmp_path })
 }
 
 fn escape_filename(input: &str) -> String {
@@ -192,7 +204,8 @@ fn write_7z(
     fname: &path::PathBuf,
     password: &str,
 ) -> ExportResult<()> {
-    let mut tmp_export_path = temp_folder()?; // TODO will not clean up in case of errors...
+    let tmp_export = temp_folder()?;
+    let mut tmp_export_path = tmp_export.folder.clone();
     for (project_data, project_path) in projects_data {
         tmp_export_path.push(project_path);
         fs::create_dir(&tmp_export_path)?;
@@ -235,15 +248,8 @@ fn write_7z(
             &fname.to_string_lossy(),
             &format!("{}/*", tmp_export_path.to_string_lossy()),
         ])
-        .status(); // no ? on purpose!
+        .status()?;
 
-    // remove the temp folder, no matter whether compression
-    // succeeded or not (hence no ? previously)
-    // if everything went well, it'll just be the folder itself,
-    // as we asked 7za to remove the files as it went.
-    fs::remove_dir_all(tmp_export_path)?;
-
-    let status = status?;
     if status.success() {
         Ok(())
     } else {

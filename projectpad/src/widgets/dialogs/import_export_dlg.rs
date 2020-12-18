@@ -63,6 +63,7 @@ impl Widget for Header {
 
 #[derive(Msg)]
 pub enum Msg {
+    KeyPress(gdk::EventKey),
     Close,
     NextClicked,
     GotPassword(String),
@@ -173,6 +174,11 @@ impl Widget for ImportExportDialog {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::KeyPress(key) => {
+                if key.get_keyval() == gdk::keys::constants::Escape {
+                    self.import_win.close();
+                }
+            }
             Msg::Close => self.import_win.close(),
             Msg::NextClicked => match self.model.wizard_state {
                 WizardState::Start => {
@@ -492,7 +498,8 @@ impl Widget for ImportExportDialog {
                         PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPassword(pass.clone()),
                     },
                 }
-            }
+            },
+            key_press_event(_, key) => (Msg::KeyPress(key.clone()), Inhibit(false)), // just for the ESC key.. surely there's a better way..
         }
     }
 }

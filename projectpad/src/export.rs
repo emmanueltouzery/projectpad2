@@ -126,6 +126,14 @@ fn export_project(
         extra_files.insert(path_with_prj, contents);
     }
 
+    if let Some(icon) = &project.icon {
+        if !icon.is_empty() {
+            let mut icon_path = project_folder.to_path_buf();
+            icon_path.push("icon.png");
+            extra_files.insert(icon_path, icon.clone());
+        }
+    }
+
     Ok(ProjectImportExport {
         project_name: project.name.clone(),
         development_environment,

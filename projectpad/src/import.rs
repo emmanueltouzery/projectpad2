@@ -74,7 +74,6 @@ fn import_projects(
     let projects_contents = projects_contents?;
     let sorted_projects = sort_by_deps(projects_contents);
     for (project_path, decoded) in sorted_projects {
-        println!("importing {}", &decoded.project_name);
         let mut project_folder = import_folder.to_path_buf();
         project_folder.push(&project_path);
         if prj::project
@@ -84,16 +83,22 @@ fn import_projects(
             .unwrap()
             >= 1
         {
-            return Err("A project with this name already exists".into());
+            return Err(format!("Project {} already exists", decoded.project_name).into());
         }
+        let mut icon_path = project_folder.clone();
+        icon_path.push("icon.png");
+        let icon = if icon_path.exists() {
+            fs::read(icon_path)?
+        } else {
+            vec![]
+        };
         let changeset = (
             prj::name.eq(decoded.project_name),
             prj::has_dev.eq(decoded.development_environment.is_some()),
             prj::has_stage.eq(decoded.staging_environment.is_some()),
             prj::has_uat.eq(decoded.uat_environment.is_some()),
             prj::has_prod.eq(decoded.prod_environment.is_some()),
-            // TODO load the icon from the import 7zip
-            prj::icon.eq(Some(Vec::<u8>::new())),
+            prj::icon.eq(Some(icon)),
         );
         let project_id = insert_row(
             sql_conn,

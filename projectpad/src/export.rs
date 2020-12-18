@@ -7,6 +7,7 @@ use projectpadsql::models::{
 use projectpadsql::sqlite_is;
 use regex::Regex;
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 use std::{borrow, env, fs, path, process, time};
 
@@ -18,6 +19,8 @@ pub fn export_projects(
     fname: &path::PathBuf,
     password: &str,
 ) -> ExportResult<()> {
+    let mut project_id_to_folder_name = compute_project_to_folder_name(projects);
+
     let mut project_exports = vec![];
     // it's useful to pass down the map of extra_files so that
     // components can try to optimistically add semantic file & folder
@@ -26,18 +29,38 @@ pub fn export_projects(
     // folder names to ensure unicity.
     let mut extra_files = HashMap::new();
     for p in projects {
-        project_exports.push(export_project(sql_conn, &p, &mut extra_files)?);
+        let project_folder = project_id_to_folder_name
+            .remove(&p.id)
+            .expect("failed getting project folder name");
+        project_exports.push((
+            export_project(sql_conn, &p, &mut extra_files, &project_folder)?,
+            project_folder,
+        ));
     }
     write_7z(&project_exports, &extra_files, fname, password)
+}
+
+fn compute_project_to_folder_name(projects: &[Project]) -> HashMap<i32, PathBuf> {
+    let project_to_folder_name = projects.iter().fold(HashMap::new(), |mut sofar, project| {
+        let project_folder = find_unique_data_path(escape_filename(&project.name), &sofar);
+        sofar.insert(PathBuf::from(project_folder), project.id);
+        sofar
+    });
+    project_to_folder_name
+        .into_iter()
+        .map(|(k, v)| (v, k))
+        .collect()
 }
 
 fn export_project(
     sql_conn: &diesel::SqliteConnection,
     project: &Project,
     extra_files: &mut HashMap<PathBuf, Vec<u8>>,
+    project_folder: &Path,
 ) -> ExportResult<ProjectImportExport> {
     let group_names = projectpadsql::get_project_group_names(sql_conn, project.id);
     let mut is_first_env = true;
+    let mut project_extra_files = HashMap::new();
 
     let development_environment = if project.has_dev {
         let e = Some(export_env(
@@ -46,7 +69,7 @@ fn export_project(
             EnvironmentType::EnvDevelopment,
             is_first_env,
             &group_names,
-            extra_files,
+            &mut project_extra_files,
         )?);
         is_first_env = false;
         e
@@ -61,7 +84,7 @@ fn export_project(
             EnvironmentType::EnvStage,
             is_first_env,
             &group_names,
-            extra_files,
+            &mut project_extra_files,
         )?);
         is_first_env = false;
         e
@@ -76,7 +99,7 @@ fn export_project(
             EnvironmentType::EnvUat,
             is_first_env,
             &group_names,
-            extra_files,
+            &mut project_extra_files,
         )?);
         is_first_env = false;
         e
@@ -91,11 +114,17 @@ fn export_project(
             EnvironmentType::EnvProd,
             is_first_env,
             &group_names,
-            extra_files,
+            &mut project_extra_files,
         )?)
     } else {
         None
     };
+
+    for (path, contents) in project_extra_files {
+        let mut path_with_prj = project_folder.to_path_buf();
+        path_with_prj.push(path);
+        extra_files.insert(path_with_prj, contents);
+    }
 
     Ok(ProjectImportExport {
         project_name: project.name.clone(),
@@ -118,6 +147,11 @@ pub fn temp_folder() -> ExportResult<path::PathBuf> {
     Ok(tmp_path)
 }
 
+fn escape_filename(input: &str) -> String {
+    let re = Regex::new("[^0-9a-zA-Z_]+").unwrap();
+    re.replace(input, "_").to_string()
+}
+
 pub fn seven_z_command() -> ExportResult<&'static str> {
     for dir in env::var("PATH")?.split(':') {
         let mut path = PathBuf::from(dir);
@@ -135,29 +169,31 @@ pub fn seven_z_command() -> ExportResult<&'static str> {
 }
 
 fn write_7z(
-    projects_data: &[ProjectImportExport],
+    projects_data: &[(ProjectImportExport, PathBuf)],
     extra_files: &HashMap<PathBuf, Vec<u8>>,
     fname: &path::PathBuf,
     password: &str,
 ) -> ExportResult<()> {
     let mut tmp_export_path = temp_folder()?; // TODO will not clean up in case of errors...
-    for project_data in projects_data {
-        tmp_export_path.push(format!("{}.yaml", project_data.project_name));
+    for (project_data, project_path) in projects_data {
+        tmp_export_path.push(project_path);
+        fs::create_dir(&tmp_export_path)?;
+        tmp_export_path.push("contents.yaml");
         fs::write(&tmp_export_path, generate_yaml(&project_data))?;
+        tmp_export_path.pop();
         tmp_export_path.pop();
     }
     for (path, data) in extra_files {
-        tmp_export_path.push(
+        // cloning because we can't be sure of the depth of the files.
+        // we wouldn't know how many children to pop() to return here.
+        let mut child_path = tmp_export_path.clone();
+        child_path.push(
             path.parent()
                 .ok_or(format!("extra_file.path is not in a subfolder? {:?}", path))?,
         );
-        // not create_dir_all on purpose. because of the single pop() later,
-        // we only support 1-level subdirs.
-        fs::create_dir(&tmp_export_path)?;
-        tmp_export_path.push(&path.file_name().unwrap());
-        fs::write(&tmp_export_path, &data)?;
-        tmp_export_path.pop();
-        tmp_export_path.pop();
+        fs::create_dir_all(&child_path)?;
+        child_path.push(&path.file_name().unwrap());
+        fs::write(&child_path, &data)?;
     }
 
     // 7za will *add* files to an existing archive.
@@ -409,7 +445,7 @@ fn export_server(
             let path_base = if server.desc.is_empty() {
                 server.id.to_string()
             } else {
-                server.desc.clone()
+                escape_filename(&server.desc.clone())
             };
             let sub_path = find_unique_data_path(path_base, &extra_files);
             let mut path = PathBuf::from(&sub_path);
@@ -426,7 +462,7 @@ fn export_server(
     })
 }
 
-fn find_unique_data_path(path_base: String, extra_files: &HashMap<PathBuf, Vec<u8>>) -> String {
+fn find_unique_data_path<T>(path_base: String, extra_files: &HashMap<PathBuf, T>) -> String {
     // generate an infinite lazy sequence of candidate folder names
     let mut counter = 0;
     let mut path_candidates = std::iter::from_fn(move || {
@@ -529,7 +565,7 @@ fn export_server_extra_user(
             let path_base = if user.desc.is_empty() {
                 user.id.to_string()
             } else {
-                user.desc.clone()
+                escape_filename(&user.desc.clone())
             };
             let sub_path = find_unique_data_path(path_base, &extra_files);
             let mut path = PathBuf::from(&sub_path);

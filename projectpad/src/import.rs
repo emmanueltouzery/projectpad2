@@ -8,7 +8,7 @@ use projectpadsql::sqlite_is;
 #[cfg(test)]
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{borrow, fs, process, str};
 
 type ImportResult<T> = Result<T, Box<dyn std::error::Error>>;
@@ -67,14 +67,16 @@ pub fn do_import(
 
 fn import_projects(
     sql_conn: &diesel::SqliteConnection,
-    projects_contents: ImportResult<Vec<ProjectImportExport>>,
+    projects_contents: ImportResult<Vec<(PathBuf, ProjectImportExport)>>,
     import_folder: &Path,
 ) -> ImportResult<()> {
     use projectpadsql::schema::project::dsl as prj;
     let projects_contents = projects_contents?;
     let sorted_projects = sort_by_deps(projects_contents);
-    for decoded in sorted_projects {
+    for (project_path, decoded) in sorted_projects {
         println!("importing {}", &decoded.project_name);
+        let mut project_folder = import_folder.to_path_buf();
+        project_folder.push(&project_path);
         if prj::project
             .filter(prj::name.eq(&decoded.project_name))
             .select(count(prj::id))
@@ -103,7 +105,7 @@ fn import_projects(
         if let Some(dev_env) = decoded.development_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
-                import_folder,
+                &project_folder,
                 project_id,
                 EnvironmentType::EnvDevelopment,
                 &dev_env,
@@ -112,7 +114,7 @@ fn import_projects(
         if let Some(stg_env) = decoded.staging_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
-                import_folder,
+                &project_folder,
                 project_id,
                 EnvironmentType::EnvStage,
                 &stg_env,
@@ -121,7 +123,7 @@ fn import_projects(
         if let Some(uat_env) = decoded.uat_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
-                import_folder,
+                &project_folder,
                 project_id,
                 EnvironmentType::EnvUat,
                 &uat_env,
@@ -130,7 +132,7 @@ fn import_projects(
         if let Some(prod_env) = decoded.prod_environment {
             unprocessed_websites.extend(import_project_env_first_pass(
                 sql_conn,
-                import_folder,
+                &project_folder,
                 project_id,
                 EnvironmentType::EnvProd,
                 &prod_env,
@@ -143,29 +145,39 @@ fn import_projects(
     Ok(())
 }
 
-fn get_project_files<P: AsRef<Path>>(temp_folder: P) -> ImportResult<Vec<ProjectImportExport>> {
+fn get_project_files<P: AsRef<Path>>(
+    temp_folder: P,
+) -> ImportResult<Vec<(PathBuf, ProjectImportExport)>> {
     let mut res = vec![];
     for dir_entry in fs::read_dir(temp_folder)? {
         let dir_entry = dir_entry?;
-        if dir_entry.path().is_file() {
-            res.push(serde_yaml::from_str(&fs::read_to_string(
-                &dir_entry.path(),
-            )?)?);
+        let mut dir_path = dir_entry.path();
+        if dir_path.is_dir() {
+            let dir_name = dir_path
+                .file_name()
+                .expect("get_project_files dir_name")
+                .to_os_string();
+            dir_path.push("contents.yaml");
+            res.push((
+                PathBuf::from(dir_name),
+                serde_yaml::from_str(&fs::read_to_string(&dir_path)?)?,
+            ));
+            dir_path.pop();
         }
     }
     Ok(res)
 }
 
-fn sort_by_deps(projects: Vec<ProjectImportExport>) -> Vec<ProjectImportExport> {
+fn sort_by_deps<T>(projects: Vec<(T, ProjectImportExport)>) -> Vec<(T, ProjectImportExport)> {
     let project_names: HashSet<String> = projects
         .iter()
-        .map(|p| p.project_name.to_string())
+        .map(|p| p.1.project_name.to_string())
         .collect();
     let mut deps_to_projects: Vec<_> = projects
         .into_iter()
         .map(|p| {
             (
-                p.dependencies_project_names()
+                p.1.dependencies_project_names()
                     .into_iter()
                     // remove dependencies that we cannot resolve anyway
                     .filter(|d| project_names.contains(d))
@@ -187,7 +199,7 @@ fn sort_by_deps(projects: Vec<ProjectImportExport>) -> Vec<ProjectImportExport> 
             deps_to_projects = deps_remaining;
             break;
         }
-        covered_deps.extend(deps_ok.iter().map(|(_d, p)| p.project_name.clone()));
+        covered_deps.extend(deps_ok.iter().map(|(_d, p)| p.1.project_name.clone()));
         result.extend(deps_ok.into_iter().map(|(_d, p)| p));
         deps_to_projects = deps_remaining;
     }

@@ -91,6 +91,7 @@ pub fn get_project_group_names(
     sql_conn: &diesel::SqliteConnection,
     project_id: i32,
 ) -> Vec<String> {
+    use schema::project_note::dsl as pnote;
     use schema::project_point_of_interest::dsl as ppoi;
     use schema::server::dsl as srv;
     let server_group_names = srv::server
@@ -113,8 +114,20 @@ pub fn get_project_group_names(
         .select(ppoi::group_name)
         .load(sql_conn)
         .unwrap();
+    let mut prj_note_group_names = pnote::project_note
+        .filter(
+            pnote::project_id
+                .eq(project_id)
+                .and(pnote::group_name.is_not_null()),
+        )
+        .order(pnote::group_name.asc())
+        .select(pnote::group_name)
+        .load(sql_conn)
+        .unwrap();
+
     let mut project_group_names = server_group_names;
     project_group_names.append(&mut prj_poi_group_names);
+    project_group_names.append(&mut prj_note_group_names);
     let mut project_group_names_no_options: Vec<_> = project_group_names
         .into_iter()
         .map(|n: Option<String>| n.unwrap())

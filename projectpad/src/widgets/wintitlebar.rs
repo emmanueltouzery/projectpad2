@@ -3,7 +3,7 @@ use super::dialogs::import_export_dlg::Msg as ImportExportMsg;
 use super::dialogs::preferences::Msg as PreferencesMsg;
 use super::dialogs::preferences::Preferences;
 use super::dialogs::standard_dialogs;
-use super::search_view::PROJECT_FILTER_PREFIX;
+use super::search_engine::PROJECT_FILTER_PREFIX;
 use crate::config::Config;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;

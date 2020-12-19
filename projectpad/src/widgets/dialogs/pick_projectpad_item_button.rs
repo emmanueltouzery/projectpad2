@@ -1,4 +1,4 @@
-use super::super::search_view::PROJECT_FILTER_PREFIX;
+use super::super::search_engine::PROJECT_FILTER_PREFIX;
 use super::standard_dialogs;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::search_view;

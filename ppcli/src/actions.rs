@@ -24,19 +24,15 @@ fn try_prepare_ssh_command(
         [addr] => Some([addr, "22"]),
         _ => None,
     } {
+        let username = &item.server_info.as_ref().unwrap().server_username;
+        let user_param = if username.is_empty() {
+            Cow::Borrowed("")
+        } else {
+            Cow::Owned(format!("{}@", username))
+        };
         Some(match ssh_command_type {
-            SshCommandType::Ssh => format!(
-                "ssh -p {} {}@{}",
-                port,
-                item.server_info.as_ref().unwrap().server_username,
-                addr
-            ),
-            SshCommandType::Scp => format!(
-                "scp -P {} {}@{}",
-                port,
-                item.server_info.as_ref().unwrap().server_username,
-                addr
-            ),
+            SshCommandType::Ssh => format!("ssh -p {} {}{}", port, user_param, addr),
+            SshCommandType::Scp => format!("scp -P {} {}{}", port, user_param, addr),
         })
     } else {
         None

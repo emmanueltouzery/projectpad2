@@ -1,16 +1,17 @@
 use diesel::prelude::*;
 use skim::prelude::*;
+use std::borrow::Borrow;
 use std::env;
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
+mod actions;
 mod autoupgrade;
 pub mod config;
+mod database;
 #[cfg_attr(target_os = "linux", path = "secretservice_linux.rs")]
 #[cfg_attr(not(target_os = "linux"), path = "secretservice_generic.rs")]
 mod secretservice;
-use std::path::PathBuf;
-mod actions;
-mod database;
 
 const MIN_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
 const MAX_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
@@ -185,7 +186,7 @@ fn check_db_version(conn: &SqliteConnection) -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
-fn run_command(command_line: &str, cur_dir: &PathBuf) {
+fn run_command(command_line: &str, cur_dir: &Path) {
     let cl_elts = shell_words::split(command_line).unwrap_or_else(|e| {
         println!("Couldn't parse the command: {}: {}", command_line, e);
         Vec::new()
@@ -195,10 +196,15 @@ fn run_command(command_line: &str, cur_dir: &PathBuf) {
         // some time before they print out any output -- for instance
         // ssh on a far, slow server. With this println we give some
         // feedback to the user.
-        println!("Running {} in folder {:?}...", command_line, cur_dir);
+        let actual_dir = if cur_dir.as_os_str().is_empty() {
+            Cow::Owned(std::env::current_dir().unwrap())
+        } else {
+            Cow::Borrowed(cur_dir)
+        };
+        println!("Running {} in folder {:?}...", command_line, actual_dir);
         Command::new(cl_elts[0].clone())
             .args(cl_elts.iter().skip(1))
-            .current_dir(cur_dir)
+            .current_dir::<&Path>(actual_dir.borrow())
             .status()
             .map(|_| ())
             .unwrap_or_else(|e| {

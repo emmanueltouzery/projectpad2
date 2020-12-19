@@ -573,6 +573,7 @@ impl Widget for SearchView {
     }
 
     fn handle_keypress(&self, e: gdk::EventKey) {
+        let has_ctrl = !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty();
         if e.get_keyval() == gdk::keys::constants::Return
             || e.get_keyval() == gdk::keys::constants::KP_Enter
         {
@@ -596,7 +597,7 @@ impl Widget for SearchView {
                 ([_], [_], [thrd]) => open(thrd),
                 _ => {}
             }
-        } else if e.get_keyval().to_unicode() == Some('e') {
+        } else if has_ctrl && e.get_keyval().to_unicode() == Some('e') {
             let items = self.model.search_items.borrow();
             let urls = items
                 .iter()
@@ -620,7 +621,7 @@ impl Widget for SearchView {
                     eprintln!("Error opening link: {}", e);
                 }
             }
-        } else if e.get_keyval().to_unicode() == Some('y') {
+        } else if has_ctrl && e.get_keyval().to_unicode() == Some('y') {
             let items = self.model.search_items.borrow();
             let passwords = items
                 .iter()

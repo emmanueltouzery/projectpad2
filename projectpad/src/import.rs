@@ -812,7 +812,7 @@ uat_environment:
     }
 
     #[test]
-    fn import_then_export_db() {
+    fn import_from_yaml() {
         let db_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
         use projectpadsql::schema::project::dsl as prj;
         let imported_projects = prj::project.load::<Project>(&db_conn).unwrap();

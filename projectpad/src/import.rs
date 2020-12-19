@@ -5,8 +5,6 @@ use diesel::dsl::count;
 use diesel::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use projectpadsql::sqlite_is;
-#[cfg(test)]
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::{borrow, fs, process, str};
@@ -679,70 +677,153 @@ fn get_new_databaseid(
 }
 
 #[cfg(test)]
-fn project_depending_on(pname: &str, depends_on: &[&str]) -> ProjectImportExport {
-    let depends_server_links = depends_on
-        .into_iter()
-        .map(|dep_prj| ServerLinkImportExport {
-            desc: "".to_string(),
-            server: ServerPath {
-                project_name: dep_prj.to_string(),
-                environment: EnvironmentType::EnvDevelopment,
-                server_id: None,
-                server_desc: None,
-            },
-        })
-        .collect();
-    ProjectImportExport {
-        project_name: pname.to_string(),
-        development_environment: Some(ProjectEnvImportExport {
-            items: ProjectEnvGroupImportExport {
-                servers: vec![],
-                server_links: depends_server_links,
-                project_pois: vec![],
-                project_notes: vec![],
-            },
-            items_in_groups: HashMap::new(),
-        }),
-        staging_environment: None,
-        uat_environment: None,
-        prod_environment: None,
+pub mod tests {
+    use super::*;
+    use crate::sql_thread;
+    use projectpadsql::models::Project;
+    use std::collections::HashMap;
+
+    pub const SAMPLE_YAML_PROJECT: &str = r#"
+---
+project_name: Demo
+development_environment:
+  items:
+    project_pois:
+      - desc: my first script
+        path: /my/path/on/disk
+        text: sh run.sh myparams
+        interest_type: PoiCommandTerminal
+    project_notes:
+      - title: My note
+        contents: |2
+          * First
+          * Second
+          * Third
+uat_environment:
+  items:
+    servers:
+      - server:
+          desc: My server
+          ip: 254.245.33.34
+          text: Comments about my server
+          username: itisi
+          password: i
+          server_type: SrvApplication
+          access_type: SrvAccessSsh
+        items:
+          server_websites:
+            - desc: my website
+              url: "https://mywww.com"
+              username: itisi
+              password: pass!
+              server_database:
+                project_name: Demo
+                environment: EnvUat
+                server_desc: My server
+                database_desc: mydb
+          server_databases:
+            - desc: mydb
+          server_extra_users:
+            - username: monitor
+              password: monpass
+              desc: metrics user
+    project_pois:
+      - shared_with_other_environments: my first script"#;
+
+    pub fn tests_load_yaml(yaml: &str) -> SqliteConnection {
+        let db_conn = SqliteConnection::establish(":memory:").unwrap();
+        sql_thread::migrate_db_if_needed(&db_conn).unwrap();
+        let input = serde_yaml::from_str(yaml).unwrap();
+        import_projects(
+            &db_conn,
+            vec![(PathBuf::from(""), input)],
+            &PathBuf::from(""),
+        )
+        .unwrap();
+        db_conn
     }
-}
 
-#[test]
-fn sort_with_deps() {
-    assert_eq!(
-        vec![
-            "no_deps1",
-            "2_deps_on_1",
-            "3_deps_on_2",
-            "4_deps_on_3_and_1"
-        ],
-        sort_by_deps(vec![
-            (
-                1,
-                project_depending_on("4_deps_on_3_and_1", &["3_deps_on_2", "no_deps1"])
-            ),
-            (1, project_depending_on("3_deps_on_2", &["2_deps_on_1"])),
-            (1, project_depending_on("2_deps_on_1", &["no_deps1"])),
-            (1, project_depending_on("no_deps1", &[]))
-        ])
-        .into_iter()
-        .map(|d| d.1.project_name)
-        .collect::<Vec<_>>()
-    );
-}
+    fn project_depending_on(pname: &str, depends_on: &[&str]) -> ProjectImportExport {
+        let depends_server_links = depends_on
+            .into_iter()
+            .map(|dep_prj| ServerLinkImportExport {
+                desc: "".to_string(),
+                server: ServerPath {
+                    project_name: dep_prj.to_string(),
+                    environment: EnvironmentType::EnvDevelopment,
+                    server_id: None,
+                    server_desc: None,
+                },
+            })
+            .collect();
+        ProjectImportExport {
+            project_name: pname.to_string(),
+            development_environment: Some(ProjectEnvImportExport {
+                items: ProjectEnvGroupImportExport {
+                    servers: vec![],
+                    server_links: depends_server_links,
+                    project_pois: vec![],
+                    project_notes: vec![],
+                },
+                items_in_groups: HashMap::new(),
+            }),
+            staging_environment: None,
+            uat_environment: None,
+            prod_environment: None,
+        }
+    }
 
-#[test]
-fn sort_with_some_unresolvable_deps() {
-    assert_eq!(
-        vec!["B", "A",],
-        sort_by_deps(vec![
-            (1, project_depending_on("A", &["A", "B"])),
-            (1, project_depending_on("B", &["C", "D"])),
-        ])
-        .into_iter()
-        .map(|d| d.1.project_name)
-        .collect::<Vec<_>>()
-    );
+    #[test]
+    fn sort_with_deps() {
+        assert_eq!(
+            vec![
+                "no_deps1",
+                "2_deps_on_1",
+                "3_deps_on_2",
+                "4_deps_on_3_and_1"
+            ],
+            sort_by_deps(vec![
+                (
+                    1,
+                    project_depending_on("4_deps_on_3_and_1", &["3_deps_on_2", "no_deps1"])
+                ),
+                (1, project_depending_on("3_deps_on_2", &["2_deps_on_1"])),
+                (1, project_depending_on("2_deps_on_1", &["no_deps1"])),
+                (1, project_depending_on("no_deps1", &[]))
+            ])
+            .into_iter()
+            .map(|d| d.1.project_name)
+            .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn sort_with_some_unresolvable_deps() {
+        assert_eq!(
+            vec!["B", "A",],
+            sort_by_deps(vec![
+                (1, project_depending_on("A", &["A", "B"])),
+                (1, project_depending_on("B", &["C", "D"])),
+            ])
+            .into_iter()
+            .map(|d| d.1.project_name)
+            .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn import_then_export_db() {
+        let db_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
+        use projectpadsql::schema::project::dsl as prj;
+        let imported_projects = prj::project.load::<Project>(&db_conn).unwrap();
+        assert_eq!(1, imported_projects.len());
+        let p = imported_projects.get(0).unwrap();
+        assert_eq!("Demo", p.name);
+        assert_eq!(true, p.has_dev);
+        assert_eq!(true, p.has_uat);
+        assert_eq!(false, p.has_stage);
+        assert_eq!(false, p.has_prod);
+        // we get a little more coverage in the export tests
+        // where we import then export back and compare the YAML
+    }
 }

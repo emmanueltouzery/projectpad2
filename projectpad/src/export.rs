@@ -673,26 +673,51 @@ fn to_server_website_import_export(
     })
 }
 
-#[test]
-fn fix_yaml_strings_nochange() {
-    assert_eq!(
-        r#"test: "no newlines""#,
-        yaml_fix_multiline_strings(r#"test: "no newlines""#)
-    );
-}
+#[cfg(test)]
+mod tests {
+    use super::super::import::tests::{tests_load_yaml, SAMPLE_YAML_PROJECT};
+    use super::*;
 
-#[test]
-fn fix_yaml_strings_simple_newlines() {
-    assert_eq!(
-        "test: |2\n  first line\n  second line",
-        yaml_fix_multiline_strings("test: \"first line\\nsecond line\"")
-    );
-}
+    #[test]
+    fn fix_yaml_strings_nochange() {
+        assert_eq!(
+            r#"test: "no newlines""#,
+            yaml_fix_multiline_strings(r#"test: "no newlines""#)
+        );
+    }
 
-#[test]
-fn fix_yaml_strings_newlines_and_quotes_in_string() {
-    assert_eq!(
-        "test: |2\n  first \"line\"\n  second \\line",
-        yaml_fix_multiline_strings("test: \"first \\\"line\\\"\\nsecond \\\\line\"")
-    );
+    #[test]
+    fn fix_yaml_strings_simple_newlines() {
+        assert_eq!(
+            "test: |2\n  first line\n  second line",
+            yaml_fix_multiline_strings("test: \"first line\\nsecond line\"")
+        );
+    }
+
+    #[test]
+    fn fix_yaml_strings_newlines_and_quotes_in_string() {
+        assert_eq!(
+            "test: |2\n  first \"line\"\n  second \\line",
+            yaml_fix_multiline_strings("test: \"first \\\"line\\\"\\nsecond \\\\line\"")
+        );
+    }
+
+    #[test]
+    fn serialize_should_yield_same_yaml() {
+        use projectpadsql::schema::project::dsl as prj;
+        let sql_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
+        let projects = prj::project.load::<Project>(&sql_conn).unwrap();
+        let project = projects.get(0).unwrap();
+
+        let project_import_export =
+            export_project(&sql_conn, &project, &mut HashMap::new(), &PathBuf::from("")).unwrap();
+        let raw_output = generate_yaml(&project_import_export);
+        assert_eq!(
+            // drop the leading \n on the left
+            &SAMPLE_YAML_PROJECT[1..],
+            // the replace is a workaround for a minor issue (trailing \n, i think)
+            // that i'm not particularly interested in at this point
+            &raw_output.replace("          \nuat_environ", "uat_environ")
+        );
+    }
 }

@@ -1,4 +1,7 @@
 use crate::icons::Icon;
+use crate::widgets::search_bar;
+use crate::widgets::search_bar::Msg as SearchBarMsg;
+use crate::widgets::search_bar::SearchBar;
 use gtk::prelude::*;
 use itertools::Itertools;
 use relm::Widget;
@@ -11,6 +14,7 @@ const HEADER_CYCLE: &[&str] = &[" # ", " ## ", " ### ", " - "];
 
 #[derive(Msg)]
 pub enum Msg {
+    KeyRelease(gdk::EventKey),
     ListUl,
     ListOl,
     TextBold,
@@ -21,6 +25,10 @@ pub enum Msg {
     TextPassword,
     TextPreformat,
     TextBlockquote,
+    NoteSearchChange(String),
+    NoteSearchPrevious,
+    NoteSearchNext,
+    SearchBarReveal(bool),
     // it would be too wasteful to notify the parent of the textview
     // contents everytime the textview changes. So the parent will
     // send us a RequestContents, and we'll return a PublishContents
@@ -32,6 +40,8 @@ pub struct Model {
     relm: relm::Relm<NoteEdit>,
     contents: String,
     accel_group: gtk::AccelGroup,
+    search_bar: relm::Component<SearchBar>,
+    note_search_text: Option<String>,
 }
 
 #[widget]
@@ -62,6 +72,26 @@ impl Widget for NoteEdit {
         self.add_tool_accelerator(&self.password_btn, 'p');
         self.add_tool_accelerator(&self.preformat_btn, 'f');
         self.add_tool_accelerator(&self.blockquote_btn, 'q');
+
+        let search_bar = &self.model.search_bar;
+        relm::connect!(
+            search_bar@SearchBarMsg::SearchChanged(ref s),
+            self.model.relm,
+            Msg::NoteSearchChange(s.clone()));
+        relm::connect!(
+            search_bar@SearchBarMsg::SearchNext,
+            self.model.relm,
+            Msg::NoteSearchNext);
+        relm::connect!(
+            search_bar@SearchBarMsg::SearchPrevious,
+            self.model.relm,
+            Msg::NoteSearchPrevious);
+        relm::connect!(
+            search_bar@SearchBarMsg::Reveal(show),
+            self.model.relm,
+            Msg::SearchBarReveal(show));
+        let search_bar_widget = self.model.search_bar.widget();
+        self.note_search_overlay.add_overlay(search_bar_widget);
     }
 
     fn add_tool_accelerator<T: IsA<gtk::Widget>>(&self, btn: &T, key: char) {
@@ -69,7 +99,7 @@ impl Widget for NoteEdit {
             "clicked",
             &self.model.accel_group,
             key.into(),
-            gdk::ModifierType::CONTROL_MASK,
+            gdk::ModifierType::CONTROL_MASK | gdk::ModifierType::SHIFT_MASK,
             gtk::AccelFlags::VISIBLE,
         );
     }
@@ -80,11 +110,46 @@ impl Widget for NoteEdit {
             relm: relm.clone(),
             contents,
             accel_group,
+            search_bar: relm::init::<SearchBar>(()).expect("searchbar init"),
+            note_search_text: None,
         }
     }
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::KeyRelease(e) => {
+                if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
+                    if e.get_keyval() == gdk::keys::constants::Escape {
+                        self.model.search_bar.emit(search_bar::Msg::Reveal(false));
+                    } else if e.get_keyval() == gdk::keys::constants::Return
+                        || e.get_keyval() == gdk::keys::constants::KP_Enter
+                    {
+                        search_bar::note_search_next(
+                            &self.note_textview,
+                            &self.model.note_search_text,
+                        );
+                    } else {
+                        match e.get_keyval().to_unicode() {
+                            Some('f') => {
+                                self.model.search_bar.emit(search_bar::Msg::Reveal(true));
+                            }
+                            Some('n') => {
+                                search_bar::note_search_next(
+                                    &self.note_textview,
+                                    &self.model.note_search_text,
+                                );
+                            }
+                            Some('p') => {
+                                search_bar::note_search_previous(
+                                    &self.note_textview,
+                                    &self.model.note_search_text,
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
             Msg::ListUl => {
                 Self::toggle_ul(&self.note_textview);
             }
@@ -114,6 +179,21 @@ impl Widget for NoteEdit {
             }
             Msg::TextBlockquote => {
                 Self::toggle_blockquote(&self.note_textview);
+            }
+            Msg::NoteSearchNext => {
+                search_bar::note_search_next(&self.note_textview, &self.model.note_search_text);
+            }
+            Msg::SearchBarReveal(show) => {
+                if !show {
+                    self.note_textview.grab_focus();
+                }
+            }
+            Msg::NoteSearchPrevious => {
+                search_bar::note_search_previous(&self.note_textview, &self.model.note_search_text);
+            }
+            Msg::NoteSearchChange(text) => {
+                search_bar::note_search_change(&self.note_textview, &text);
+                self.model.note_search_text = Some(text);
             }
             Msg::RequestContents => {
                 let buf = self.note_textview.get_buffer().unwrap();
@@ -346,6 +426,7 @@ impl Widget for NoteEdit {
     }
 
     view! {
+        #[name="note_box"]
         gtk::Box {
             orientation: gtk::Orientation::Vertical,
             gtk::Toolbar {
@@ -402,19 +483,26 @@ impl Widget for NoteEdit {
                     clicked => Msg::TextBlockquote
                 },
             },
-            gtk::Frame {
-                margin_start: 10,
-                margin_end: 10,
-                margin_bottom: 10,
-                hexpand: true,
-                vexpand: true,
-                gtk::ScrolledWindow {
-                    #[name="note_textview"]
-                    sourceview::View {
-                        editable: true,
+            #[name="note_search_overlay"]
+            gtk::Overlay {
+                child: {
+                    expand: true,
+                },
+                gtk::Frame {
+                    margin_start: 10,
+                    margin_end: 10,
+                    margin_bottom: 10,
+                    hexpand: true,
+                    vexpand: true,
+                    gtk::ScrolledWindow {
+                        #[name="note_textview"]
+                        sourceview::View {
+                            editable: true,
+                        }
                     }
                 }
-            }
+            },
+            key_release_event(_, event) => (Msg::KeyRelease(event.clone()), Inhibit(false)),
         }
     }
 }

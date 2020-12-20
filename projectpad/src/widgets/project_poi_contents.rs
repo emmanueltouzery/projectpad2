@@ -80,7 +80,7 @@ impl Widget for ProjectPoiContents {
             self.model.relm,
             Msg::NoteSearchPrevious);
         let search_bar_widget = self.model.search_bar.widget();
-        self.note_overlay.add_overlay(search_bar_widget);
+        self.note_search_overlay.add_overlay(search_bar_widget);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -204,12 +204,15 @@ impl Widget for ProjectPoiContents {
             }
             Msg::KeyboardCtrlN => {
                 if self.is_displaying_note() {
-                    self.note_search_next();
+                    search_bar::note_search_next(&self.note_textview, &self.model.note_search_text);
                 }
             }
             Msg::KeyboardCtrlP => {
                 if self.is_displaying_note() {
-                    self.note_search_previous();
+                    search_bar::note_search_previous(
+                        &self.note_textview,
+                        &self.model.note_search_text,
+                    );
                 }
             }
             Msg::KeyboardEscape => {
@@ -218,20 +221,14 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::NoteSearchChange(text) => {
-                self.apply_search(
-                    self.note_textview
-                        .get_buffer()
-                        .unwrap()
-                        .get_start_iter()
-                        .forward_search(&text, gtk::TextSearchFlags::all(), None),
-                );
+                search_bar::note_search_change(&self.note_textview, &text);
                 self.model.note_search_text = Some(text);
             }
             Msg::NoteSearchNext => {
-                self.note_search_next();
+                search_bar::note_search_next(&self.note_textview, &self.model.note_search_text);
             }
             Msg::NoteSearchPrevious => {
-                self.note_search_previous();
+                search_bar::note_search_previous(&self.note_textview, &self.model.note_search_text);
             }
             Msg::OpenSingleWebsiteLink => {
                 if matches!(&self.model.cur_project_item, Some(ProjectItem::Server(_))) {
@@ -244,37 +241,6 @@ impl Widget for ProjectPoiContents {
             Msg::ShowInfoBar(_) => {}
             // meant for my parent
             Msg::RequestDisplayServerItem(_) => {}
-        }
-    }
-
-    fn note_search_next(&self) {
-        let buffer = self.note_textview.get_buffer().unwrap();
-        if let (Some((_start, end)), Some(search)) = (
-            buffer.get_selection_bounds(),
-            self.model.note_search_text.clone(),
-        ) {
-            self.apply_search(end.forward_search(&search, gtk::TextSearchFlags::all(), None));
-        }
-    }
-
-    fn note_search_previous(&self) {
-        let buffer = self.note_textview.get_buffer().unwrap();
-        if let (Some((start, _end)), Some(search)) = (
-            buffer.get_selection_bounds(),
-            self.model.note_search_text.clone(),
-        ) {
-            self.apply_search(start.backward_search(&search, gtk::TextSearchFlags::all(), None));
-        }
-    }
-
-    fn apply_search(&self, range: Option<(gtk::TextIter, gtk::TextIter)>) {
-        if let Some((mut start, end)) = range {
-            self.note_textview
-                .get_buffer()
-                .unwrap()
-                .select_range(&start, &end);
-            self.note_textview
-                .scroll_to_iter(&mut start, 0.0, false, 0.0, 0.0);
         }
     }
 
@@ -443,7 +409,7 @@ impl Widget for ProjectPoiContents {
                     gtk::Label {
                     }
                 },
-                #[name="note_overlay"]
+                #[name="note_search_overlay"]
                 gtk::Overlay {
                     child: {
                         expand: true,

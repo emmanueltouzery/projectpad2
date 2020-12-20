@@ -230,9 +230,9 @@ fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
         .env
         .as_ref()
         .map(display_env)
-        .unwrap_or("-")
+        .unwrap_or("-   ")
         .to_string();
-    col2.truncate(cols_spec[1]);
+    // col2.truncate(cols_spec[1]);
     let mut col3 = render_type(&item.item_type).to_string();
     col3.truncate(cols_spec[2]);
     let mut col4 = item
@@ -268,10 +268,10 @@ fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
 
 fn display_env(env: &EnvironmentType) -> &'static str {
     match env {
-        EnvironmentType::EnvDevelopment => "Dev",
-        EnvironmentType::EnvUat => "Uat",
-        EnvironmentType::EnvStage => "Stg",
-        EnvironmentType::EnvProd => "Prd",
+        EnvironmentType::EnvDevelopment => "\x1b[32m\x1b[1m❚D\x1b[0mEV",
+        EnvironmentType::EnvStage => "\x1b[34m\x1b[1m❚S\x1b[0mTG",
+        EnvironmentType::EnvUat => "\x1b[33m\x1b[1m❚U\x1b[0mAT",
+        EnvironmentType::EnvProd => "\x1b[31m\x1b[1m❚P\x1b[0mRD",
     }
 }
 

@@ -23,7 +23,7 @@ pub struct MyItem {
 
 impl SkimItem for MyItem {
     fn display(&self, _context: DisplayContext) -> AnsiString {
-        self.display.as_str().into()
+        AnsiString::parse(self.display.as_str())
     }
 
     fn text(&self) -> Cow<str> {

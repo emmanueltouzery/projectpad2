@@ -141,6 +141,10 @@ pub fn main() {
         .unwrap_or_else(|| (Vec::new(), "".to_string(), Key::Enter));
 
     if let Some(item) = selected_items.get(0) {
+        if !query.is_empty() {
+            config::write_history(&history, &query, 100).unwrap();
+        }
+
         // this pattern from the skim apidocs for SkimItem, and also
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
@@ -164,9 +168,6 @@ pub fn main() {
                     .unwrap_or_else(|| dirs::home_dir().unwrap()),
             ),
             _ => {}
-        }
-        if !query.is_empty() {
-            config::write_history(&history, &query, 100).unwrap();
         }
     }
 }

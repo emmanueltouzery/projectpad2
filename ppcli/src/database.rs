@@ -226,7 +226,7 @@ fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
     let item = &action.item;
     let mut col1 = item.project_name.clone();
     col1.truncate(cols_spec[0]);
-    let mut col2 = item
+    let col2 = item
         .env
         .as_ref()
         .map(display_env)

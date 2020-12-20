@@ -53,7 +53,7 @@ pub enum Msg {
     GotoItem(Project, Server),
     ShowInfoBar(String),
     CopyPassword,
-    OpenLink,
+    OpenLinkOrEditProjectNote,
     OpenSingleWebsiteLink,
 }
 
@@ -443,26 +443,8 @@ impl Widget for ProjectPoiHeader {
                         dialog.show();
                     }
                     Some(ProjectItem::ProjectNote(ref note)) => {
-                        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
-                            dialog_helpers::prepare_dialog_param(
-                                self.model.db_sender.clone(),
-                                note.project_id,
-                                Some(note.clone()),
-                            ),
-                            project_note_add_edit_dlg::Msg::OkPressed,
-                            "Project note",
-                        );
-                        relm::connect!(
-                            component@MsgProjectNoteAddEditDialog::ProjectNoteUpdated(ref note),
-                            self.model.relm,
-                            Msg::ProjectItemRefresh(ProjectItem::ProjectNote(note.clone()))
-                        );
-                        self.model.project_add_edit_dialog = Some((
-                            dialogs::ProjectAddEditDialogComponent::ProjectNote(component),
-                            dialog.clone(),
-                        ));
-                        dialog.show();
+                        let note_copy = note.clone();
+                        self.edit_project_note(note_copy);
                     }
                     Some(ProjectItem::ServerLink(ref link)) => {
                         let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
@@ -611,19 +593,26 @@ impl Widget for ProjectPoiHeader {
                     }
                 }
             }
-            Msg::OpenLink => {
-                if let Some(ProjectItem::Server(srv)) = self.model.project_item.as_ref() {
-                    if srv.access_type == ServerAccessType::SrvAccessWww && !srv.ip.is_empty() {
-                        if let Result::Err(e) =
-                            gtk::show_uri_on_window(None::<&gtk::Window>, &srv.ip, 0)
-                        {
-                            eprintln!("Error opening link: {}", e);
+            Msg::OpenLinkOrEditProjectNote => {
+                match self.model.project_item.as_ref() {
+                    Some(ProjectItem::Server(srv)) => {
+                        if srv.access_type == ServerAccessType::SrvAccessWww && !srv.ip.is_empty() {
+                            if let Result::Err(e) =
+                                gtk::show_uri_on_window(None::<&gtk::Window>, &srv.ip, 0)
+                            {
+                                eprintln!("Error opening link: {}", e);
+                            }
+                        } else {
+                            // ok, the server has no link. we could still open it, if
+                            // there's a single website with an address under that server
+                            self.model.relm.stream().emit(Msg::OpenSingleWebsiteLink);
                         }
-                    } else {
-                        // ok, the server has no link. we could still open it, if
-                        // there's a single website with an address under that server
-                        self.model.relm.stream().emit(Msg::OpenSingleWebsiteLink);
                     }
+                    Some(ProjectItem::ProjectNote(note)) => {
+                        let note_copy = note.clone();
+                        self.edit_project_note(note_copy);
+                    }
+                    _ => {}
                 }
             }
             // meant for my parent
@@ -632,6 +621,29 @@ impl Widget for ProjectPoiHeader {
             Msg::ProjectItemUpdated(_pi) => {}
             Msg::GotoItem(_, _) => {}
         }
+    }
+
+    fn edit_project_note(&mut self, note: ProjectNote) {
+        let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
+            self.items_frame.clone().upcast::<gtk::Widget>(),
+            dialog_helpers::prepare_dialog_param(
+                self.model.db_sender.clone(),
+                note.project_id,
+                Some(note),
+            ),
+            project_note_add_edit_dlg::Msg::OkPressed,
+            "Project note",
+        );
+        relm::connect!(
+            component@MsgProjectNoteAddEditDialog::ProjectNoteUpdated(ref note),
+            self.model.relm,
+            Msg::ProjectItemRefresh(ProjectItem::ProjectNote(note.clone()))
+        );
+        self.model.project_add_edit_dialog = Some((
+            dialogs::ProjectAddEditDialogComponent::ProjectNote(component),
+            dialog.clone(),
+        ));
+        dialog.show();
     }
 
     fn ask_deletion(&self, item_type_desc: &str, item_desc: &str, msg: Msg) {

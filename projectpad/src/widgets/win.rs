@@ -616,7 +616,7 @@ impl Widget for Win {
                 Some('e') => {
                     self.project_poi_header
                         .stream()
-                        .emit(ProjectPoiHeaderMsg::OpenLink);
+                        .emit(ProjectPoiHeaderMsg::OpenLinkOrEditProjectNote);
                 }
                 Some('s') => {
                     self.model

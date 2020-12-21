@@ -64,6 +64,7 @@ table! {
         id -> Integer,
         desc -> Varchar,
         linked_server_id -> Integer,
+        linked_group_name -> Nullable<Varchar>,
         environment -> Varchar,
         group_name -> Nullable<Varchar>,
         project_id -> Integer,

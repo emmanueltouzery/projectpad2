@@ -2,6 +2,7 @@ use super::project_items_list::ProjectItem;
 use super::search_bar;
 use super::search_bar::Msg as SearchBarMsg;
 use super::search_bar::SearchBar;
+use super::server_poi_contents;
 use super::server_poi_contents::Msg as ServerPoiContentsMsg;
 use super::server_poi_contents::Msg::RequestDisplayServerItem as ServerPoiContentsRequestDisplayServerItem;
 use super::server_poi_contents::Msg::ShowInfoBar as ServerPoiContentsShowInfoBar;
@@ -195,7 +196,9 @@ impl Widget for ProjectPoiContents {
             Msg::ScrollToServerItem(si) => {
                 self.server_contents
                     .stream()
-                    .emit(ServerPoiContentsMsg::ScrollToServerItem(si));
+                    .emit(ServerPoiContentsMsg::ScrollTo(
+                        server_poi_contents::ScrollTarget::ServerItem(si),
+                    ));
             }
             Msg::KeyboardCtrlF => {
                 if self.is_displaying_note() {

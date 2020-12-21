@@ -16,6 +16,7 @@ use std::sync::mpsc;
 pub enum Msg {
     SetEnvironmentType(EnvironmentType),
     GotGroups(Vec<String>),
+    GotLinkedGroups(Vec<String>),
     GotProjectNameAndId((String, i32)),
     ServerSelected(i32),
     ServerRemoved,
@@ -36,6 +37,10 @@ pub struct Model {
     _groups_channel: relm::Channel<Vec<String>>,
     groups_sender: relm::Sender<Vec<String>>,
 
+    linked_groups_store: gtk::ListStore,
+    _linked_groups_channel: relm::Channel<Vec<String>>,
+    linked_groups_sender: relm::Sender<Vec<String>>,
+
     _projectname_id_channel: relm::Channel<(String, i32)>,
     projectname_id_sender: relm::Sender<(String, i32)>,
 
@@ -45,6 +50,7 @@ pub struct Model {
     description: String,
     group_name: Option<String>,
     linked_server_id: Option<i32>,
+    linked_group_name: Option<String>,
 }
 
 #[widget]
@@ -74,6 +80,27 @@ impl Widget for ServerLinkAddEditDialog {
             }))
             .unwrap();
         dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+
+        self.reload_linked_groups();
+        dialog_helpers::init_group_control(&self.model.linked_groups_store, &self.linked_group);
+    }
+
+    fn reload_linked_groups(&self) {
+        let s = self.model.linked_groups_sender.clone();
+        match self.model.linked_server_id {
+            Some(server_id) => {
+                self.model
+                    .db_sender
+                    .send(SqlFunc::new(move |sql_conn| {
+                        s.send(projectpadsql::get_server_group_names(sql_conn, server_id))
+                            .unwrap();
+                    }))
+                    .unwrap();
+            }
+            None => {
+                s.send(vec![]).unwrap();
+            }
+        }
     }
 
     fn fetch_project_name_and_id(&self) {
@@ -119,6 +146,11 @@ impl Widget for ServerLinkAddEditDialog {
             relm::Channel::new(move |projectname_id: (String, i32)| {
                 stream3.emit(Msg::GotProjectNameAndId(projectname_id));
             });
+        let stream4 = relm.stream().clone();
+        let (linked_groups_channel, linked_groups_sender) =
+            relm::Channel::new(move |groups: Vec<String>| {
+                stream4.emit(Msg::GotLinkedGroups(groups));
+            });
         Model {
             db_sender,
             project_id,
@@ -129,11 +161,15 @@ impl Widget for ServerLinkAddEditDialog {
             _groups_channel: groups_channel,
             groups_sender,
             groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            _linked_groups_channel: linked_groups_channel,
+            linked_groups_sender,
+            linked_groups_store: gtk::ListStore::new(&[glib::Type::String]),
             _server_link_updated_channel: server_link_updated_channel,
             server_link_updated_sender,
             description: sl.map(|d| d.desc.clone()).unwrap_or_else(|| "".to_string()),
             group_name: sl.and_then(|s| s.group_name.clone()),
             linked_server_id: sl.map(|s| s.linked_server_id),
+            linked_group_name: sl.and_then(|s| s.linked_group_name.clone()),
         }
     }
 
@@ -148,6 +184,14 @@ impl Widget for ServerLinkAddEditDialog {
                     &self.model.group_name,
                 );
             }
+            Msg::GotLinkedGroups(groups) => {
+                dialog_helpers::fill_groups(
+                    &self.model.linked_groups_store,
+                    &self.linked_group,
+                    &groups,
+                    &self.model.linked_group_name,
+                );
+            }
             Msg::GotProjectNameAndId((name, id)) => {
                 self.pick_srv_button.stream().emit(
                     pick_projectpad_item_button::Msg::SetProjectNameAndId(Some((name, id))),
@@ -155,9 +199,11 @@ impl Widget for ServerLinkAddEditDialog {
             }
             Msg::ServerSelected(s_id) => {
                 self.model.linked_server_id = Some(s_id);
+                self.reload_linked_groups();
             }
             Msg::ServerRemoved => {
                 self.model.linked_server_id = None;
+                self.reload_linked_groups();
             }
             Msg::OkPressed => {
                 self.update_server_link();
@@ -177,6 +223,7 @@ impl Widget for ServerLinkAddEditDialog {
         let new_linked_server_id = self.model.linked_server_id.unwrap();
         let new_desc = self.desc_entry.get_text();
         let new_group = self.group.get_active_text();
+        let new_linked_group = self.linked_group.get_active_text();
         let new_env_type = self.model.environment_type.unwrap();
         let s = self.model.server_link_updated_sender.clone();
         self.model
@@ -187,6 +234,11 @@ impl Widget for ServerLinkAddEditDialog {
                     srv_link::desc.eq(new_desc.as_str()),
                     // never store Some("") for group, we want None then.
                     srv_link::group_name.eq(new_group
+                        .as_ref()
+                        .map(|s| s.as_str())
+                        .filter(|s| !s.is_empty())),
+                    // never store Some("") for group, we want None then.
+                    srv_link::linked_group_name.eq(new_linked_group
                         .as_ref()
                         .map(|s| s.as_str())
                         .filter(|s| !s.is_empty())),
@@ -275,7 +327,23 @@ impl Widget for ServerLinkAddEditDialog {
                 },
                 PickPpItemSelected(ref v) => Msg::ServerSelected(v.1),
                 PickPpItemRemoved => Msg::ServerRemoved
-            }
+            },
+            gtk::Label {
+                text: "Linked group",
+                halign: gtk::Align::End,
+                cell: {
+                    left_attach: 0,
+                    top_attach: 4,
+                },
+            },
+            #[name="linked_group"]
+            gtk::ComboBoxText({has_entry: true}) {
+                hexpand: true,
+                cell: {
+                    left_attach: 1,
+                    top_attach: 4,
+                },
+            },
         }
     }
 }

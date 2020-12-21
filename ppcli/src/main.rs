@@ -15,7 +15,7 @@ mod database;
 mod secretservice;
 
 const MIN_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
-const MAX_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
+const MAX_SUPPORTED_DB_SCHEMA_VERSION: i32 = 22;
 
 pub struct MyItem {
     display: String,

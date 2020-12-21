@@ -230,6 +230,7 @@ pub struct ServerLink {
     pub id: i32,
     pub desc: String,
     pub linked_server_id: i32,
+    pub linked_group_name: Option<String>,
     pub environment: EnvironmentType,
     pub group_name: Option<String>,
     pub project_id: i32,

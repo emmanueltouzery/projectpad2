@@ -29,7 +29,7 @@ pub enum Msg {
     RefreshItems,
     RequestDisplayServerItem(ServerItem),
     ShowInfoBar(String),
-    ScrollToServerItem(ServerItem),
+    ScrollTo(ScrollTarget),
     OpenSingleWebsiteLink,
 }
 
@@ -74,6 +74,12 @@ impl ServerItem {
     }
 }
 
+#[derive(Clone)]
+pub enum ScrollTarget {
+    ServerItem(ServerItem),
+    GroupName(String),
+}
+
 pub struct Model {
     relm: relm::Relm<ServerPoiContents>,
     db_sender: mpsc::Sender<SqlFunc>,
@@ -85,7 +91,7 @@ pub struct Model {
     databases_for_websites: HashMap<i32, ServerDatabase>,
     websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
     _children_components: Vec<Component<ServerItemListItem>>,
-    scroll_to_item_request: Option<ServerItem>,
+    scroll_to_item_request: Option<ScrollTarget>,
 }
 
 #[widget]
@@ -167,6 +173,32 @@ impl Widget for ServerPoiContents {
         }
     }
 
+    fn scroll_to(&mut self, st: ScrollTarget) {
+        match st {
+            ScrollTarget::ServerItem(si) => self.scroll_to_server_item(si),
+            ScrollTarget::GroupName(gn) => {
+                let mut found = false;
+                if let Some((idx, _)) = self
+                    .model
+                    .server_item_groups_start_indexes
+                    .iter()
+                    .find(|(_cur_idx, cur_grp)| **cur_grp == gn)
+                {
+                    if let Some(row) = self.contents_list.get_row_at_index(*idx as i32) {
+                        self.contents_list.select_row(Some(&row));
+                        row.grab_focus();
+                        found = true;
+                    }
+                }
+                if !found {
+                    // didn't find the item, maybe we didn't load that list
+                    // yet, save the request and we'll check next time we'll load
+                    self.model.scroll_to_item_request = Some(ScrollTarget::GroupName(gn));
+                }
+            }
+        }
+    }
+
     fn scroll_to_server_item(&mut self, si: ServerItem) {
         let find_cb = Self::get_find_serveritem_cb(&si);
         let midx = self.model.server_items.iter().position(find_cb);
@@ -178,7 +210,7 @@ impl Widget for ServerPoiContents {
         } else {
             // didn't find the item, maybe we didn't load that list
             // yet, save the request and we'll check next time we'll load
-            self.model.scroll_to_item_request = Some(si);
+            self.model.scroll_to_item_request = Some(ScrollTarget::ServerItem(si));
         }
     }
 
@@ -190,6 +222,9 @@ impl Widget for ServerPoiContents {
             }
             Msg::ServerLinkSelected(srv_l) => {
                 self.model.cur_server_id = Some(srv_l.linked_server_id);
+                self.model.scroll_to_item_request = srv_l
+                    .linked_group_name
+                    .map(|gn| ScrollTarget::GroupName(gn));
                 self.fetch_items();
             }
             Msg::GotItems(items) => {
@@ -199,13 +234,13 @@ impl Widget for ServerPoiContents {
                 self.model.websites_for_databases = items.websites_for_databases;
                 self.update_contents_list();
                 // do we have a pending request to scroll to a certain item?
-                if let Some(si) = self.model.scroll_to_item_request.take() {
+                if let Some(st) = self.model.scroll_to_item_request.take() {
                     let relm = self.model.relm.clone();
                     // must request the scroll through a gtk idle callback,
                     // because the list was just populated and row items are
                     // not ready to be interacted with
                     glib::idle_add_local(move || {
-                        relm.stream().emit(Msg::ScrollToServerItem(si.clone()));
+                        relm.stream().emit(Msg::ScrollTo(st.clone()));
                         glib::Continue(false)
                     });
                 }
@@ -214,8 +249,8 @@ impl Widget for ServerPoiContents {
             Msg::RefreshItems => {
                 self.fetch_items();
             }
-            Msg::ScrollToServerItem(si) => {
-                self.scroll_to_server_item(si);
+            Msg::ScrollTo(st) => {
+                self.scroll_to(st);
             }
             Msg::OpenSingleWebsiteLink => {
                 let websites_with_urls: Vec<_> = self

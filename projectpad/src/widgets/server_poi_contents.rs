@@ -185,8 +185,15 @@ impl Widget for ServerPoiContents {
                     .find(|(_cur_idx, cur_grp)| **cur_grp == gn)
                 {
                     if let Some(row) = self.contents_list.get_row_at_index(*idx as i32) {
-                        self.contents_list.select_row(Some(&row));
-                        row.grab_focus();
+                        if let Some(vscroll) = self.contents_scroll.get_vadjustment() {
+                            if let Some((_x, y)) =
+                                row.translate_coordinates(&self.contents_list, 0, 0)
+                            {
+                                vscroll.set_value(y.into());
+                            }
+                        }
+                        // self.contents_list.select_row(Some(&row));
+                        // row.grab_focus();
                         found = true;
                     }
                 }
@@ -204,8 +211,13 @@ impl Widget for ServerPoiContents {
         let midx = self.model.server_items.iter().position(find_cb);
         if let Some(idx) = midx {
             if let Some(row) = self.contents_list.get_row_at_index(idx as i32) {
-                self.contents_list.select_row(Some(&row));
-                row.grab_focus();
+                if let Some(vscroll) = self.contents_scroll.get_vadjustment() {
+                    if let Some((_x, y)) = row.translate_coordinates(&self.contents_list, 0, 0) {
+                        vscroll.set_value(y.into());
+                    }
+                }
+                // self.contents_list.select_row(Some(&row));
+                // row.grab_focus();
             }
         } else {
             // didn't find the item, maybe we didn't load that list

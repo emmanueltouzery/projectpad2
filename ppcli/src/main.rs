@@ -1,3 +1,4 @@
+use database::DisplayMode;
 use diesel::prelude::*;
 use skim::prelude::*;
 use std::borrow::Borrow;
@@ -59,7 +60,7 @@ macro_rules! ok_or_exit {
     }};
 }
 
-fn handle_params() {
+fn handle_params() -> DisplayMode {
     if env::args().skip(1).any(|p| p == "--version") {
         println!("version {}", env!("CARGO_PKG_VERSION"));
         std::process::exit(0);
@@ -70,7 +71,8 @@ fn handle_params() {
             vec![
                 " --version   Print version",
                 " --help      This documentation",
-                " --upgrade   Upgrade ppcli"
+                " --upgrade   Upgrade ppcli",
+                " --no-color  Disable color display"
             ]
             .join("\n")
         );
@@ -83,10 +85,15 @@ fn handle_params() {
         }
         std::process::exit(0);
     }
+    if env::args().skip(1).any(|p| p == "--no-color") {
+        DisplayMode::Plain
+    } else {
+        DisplayMode::Color
+    }
 }
 
 pub fn main() {
-    handle_params();
+    let display_mode = handle_params();
     let db_pass = ok_or_exit!(
         secretservice::get_keyring_pass().and_then(|r| r.ok_or_else(|| "no matching credentials".into())),
         "Cannot find the database password in the OS keyring, aborting: did you run the projectpad GUI app to create a database first? {}",
@@ -134,7 +141,7 @@ pub fn main() {
 
     let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
 
-    std::thread::spawn(move || database::load_items(&conn, &tx_item));
+    std::thread::spawn(move || database::load_items(&conn, display_mode, &tx_item));
 
     let (selected_items, query, accept_key) = Skim::run_with(&options, Some(rx_item))
         .map(|out| (out.selected_items, out.query, out.final_key))

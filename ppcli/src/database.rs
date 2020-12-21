@@ -198,7 +198,11 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
         .collect()
 }
 
-pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem>>) {
+pub fn load_items(
+    conn: &SqliteConnection,
+    display_mode: DisplayMode,
+    item_sender: &Sender<Arc<dyn SkimItem>>,
+) {
     let mut items = filter_server_pois(&conn);
     items.extend(filter_project_pois(&conn));
     items.extend(filter_servers(&conn));
@@ -216,21 +220,25 @@ pub fn load_items(conn: &SqliteConnection, item_sender: &Sender<Arc<dyn SkimItem
     let cols_spec = vec![7, 3, 4, 30, 25, 10];
     for action in items.into_iter().flat_map(actions::get_value) {
         let _ = item_sender.send(Arc::new(crate::MyItem {
-            display: render_row(&cols_spec, &action),
+            display: render_row(&cols_spec, &action, display_mode),
             inner: action,
         }));
     }
 }
 
-fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
+fn render_row(cols_spec: &[usize], action: &actions::Action, display_mode: DisplayMode) -> String {
     let item = &action.item;
     let mut col1 = item.project_name.clone();
     col1.truncate(cols_spec[0]);
     let col2 = item
         .env
         .as_ref()
-        .map(display_env)
-        .unwrap_or("-   ")
+        .map(|env| display_env(env, display_mode))
+        .unwrap_or(if display_mode == DisplayMode::Color {
+            "-   "
+        } else {
+            "-  "
+        })
         .to_string();
     // col2.truncate(cols_spec[1]);
     let mut col3 = render_type(&item.item_type).to_string();
@@ -266,12 +274,22 @@ fn render_row(cols_spec: &[usize], action: &actions::Action) -> String {
     )
 }
 
-fn display_env(env: &EnvironmentType) -> &'static str {
-    match env {
-        EnvironmentType::EnvDevelopment => "\x1b[32m\x1b[1m❚D\x1b[0mEV",
-        EnvironmentType::EnvStage => "\x1b[34m\x1b[1m❚S\x1b[0mTG",
-        EnvironmentType::EnvUat => "\x1b[33m\x1b[1m❚U\x1b[0mAT",
-        EnvironmentType::EnvProd => "\x1b[31m\x1b[1m❚P\x1b[0mRD",
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum DisplayMode {
+    Plain,
+    Color,
+}
+
+fn display_env(env: &EnvironmentType, display_mode: DisplayMode) -> &'static str {
+    match (env, display_mode) {
+        (EnvironmentType::EnvDevelopment, DisplayMode::Color) => "\x1b[32m\x1b[1m❚D\x1b[0mEV",
+        (EnvironmentType::EnvDevelopment, DisplayMode::Plain) => "DEV",
+        (EnvironmentType::EnvStage, DisplayMode::Color) => "\x1b[34m\x1b[1m❚S\x1b[0mTG",
+        (EnvironmentType::EnvStage, DisplayMode::Plain) => "STG",
+        (EnvironmentType::EnvUat, DisplayMode::Color) => "\x1b[33m\x1b[1m❚U\x1b[0mAT",
+        (EnvironmentType::EnvUat, DisplayMode::Plain) => "UAT",
+        (EnvironmentType::EnvProd, DisplayMode::Color) => "\x1b[31m\x1b[1m❚P\x1b[0mRD",
+        (EnvironmentType::EnvProd, DisplayMode::Plain) => "PRD",
     }
 }
 

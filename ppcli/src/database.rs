@@ -282,13 +282,13 @@ pub enum DisplayMode {
 
 fn display_env(env: &EnvironmentType, display_mode: DisplayMode) -> &'static str {
     match (env, display_mode) {
-        (EnvironmentType::EnvDevelopment, DisplayMode::Color) => "\x1b[32m\x1b[1m❚D\x1b[0mEV",
+        (EnvironmentType::EnvDevelopment, DisplayMode::Color) => "\x1b[32m\x1b[1m❚DEV\x1b[0m",
         (EnvironmentType::EnvDevelopment, DisplayMode::Plain) => "DEV",
-        (EnvironmentType::EnvStage, DisplayMode::Color) => "\x1b[34m\x1b[1m❚S\x1b[0mTG",
+        (EnvironmentType::EnvStage, DisplayMode::Color) => "\x1b[34m\x1b[1m❚STG\x1b[0m",
         (EnvironmentType::EnvStage, DisplayMode::Plain) => "STG",
-        (EnvironmentType::EnvUat, DisplayMode::Color) => "\x1b[33m\x1b[1m❚U\x1b[0mAT",
+        (EnvironmentType::EnvUat, DisplayMode::Color) => "\x1b[33m\x1b[1m❚UAT\x1b[0m",
         (EnvironmentType::EnvUat, DisplayMode::Plain) => "UAT",
-        (EnvironmentType::EnvProd, DisplayMode::Color) => "\x1b[31m\x1b[1m❚P\x1b[0mRD",
+        (EnvironmentType::EnvProd, DisplayMode::Color) => "\x1b[31m\x1b[1m❚PRD\x1b[0m",
         (EnvironmentType::EnvProd, DisplayMode::Plain) => "PRD",
     }
 }

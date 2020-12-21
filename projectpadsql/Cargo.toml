@@ -9,9 +9,9 @@ dirs = "3.0.1"
 diesel = { version = "1.4.5", features = ["sqlite"] }
 # want the same version as diesel...
 # https://github.com/diesel-rs/diesel/blob/master/diesel/Cargo.toml
-libsqlite3-sys = { version =  "0.18.0", features = ["sqlcipher"] }
-strum = "0.19.5"
-strum_macros = "0.19.4"
+libsqlite3-sys = { version = "0.18.0", features = ["sqlcipher"] }
+strum = "0.20.0"
+strum_macros = "0.20.1"
 chrono = "0.4.19"
-serde_derive = "1.0.117"
-serde = "1.0.117"
+serde_derive = "1.0.118"
+serde = "1.0.118"

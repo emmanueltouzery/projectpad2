@@ -1804,6 +1804,7 @@ dependencies = [
  "keyring",
  "libc",
  "projectpadsql",
+ "regex",
  "serde",
  "shell-words",
  "skim",

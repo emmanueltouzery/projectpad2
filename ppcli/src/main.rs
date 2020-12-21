@@ -1,5 +1,6 @@
 use database::DisplayMode;
 use diesel::prelude::*;
+use regex::Regex;
 use skim::prelude::*;
 use std::borrow::Borrow;
 use std::env;
@@ -22,13 +23,18 @@ pub struct MyItem {
     inner: actions::Action,
 }
 
+fn remove_ansi_escapes(input: &str) -> Cow<str> {
+    let ansicode_regex = Regex::new("\x1b.*?m").unwrap();
+    ansicode_regex.replace_all(input, "")
+}
+
 impl SkimItem for MyItem {
     fn display(&self, _context: DisplayContext) -> AnsiString {
         AnsiString::parse(self.display.as_str())
     }
 
     fn text(&self) -> Cow<str> {
-        Cow::Borrowed(&self.display)
+        remove_ansi_escapes(&self.display)
     }
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
@@ -290,4 +296,9 @@ fn write_command_line_to_terminal(command_line: &str) {
     //     .arg(&myitem.command)
     //     .status()
     //     .unwrap();
+}
+
+#[test]
+fn remove_ansi_escapes_prd() {
+    assert_eq!("❚PRD", remove_ansi_escapes("\x1b[31m\x1b[1m❚P\x1b[0mRD"));
 }

@@ -60,11 +60,11 @@ enum ForcePseudoTTY {
     No,
 }
 
-fn get_value_action_file(
-    item: &ItemOfInterest,
+fn get_value_action_file<'a>(
+    item: &'a ItemOfInterest,
     force_pseudo: ForcePseudoTTY,
-    action: String,
-) -> std::borrow::Cow<str> {
+    action: &'static str,
+) -> std::borrow::Cow<'a, str> {
     if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
         Cow::Owned(format!(
             "{} {}\"{} {}\"",
@@ -83,15 +83,15 @@ fn get_value_action_file(
 }
 
 fn get_value_edit_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_file(item, ForcePseudoTTY::Yes, "vim".to_string())
+    get_value_action_file(item, ForcePseudoTTY::Yes, "vim")
 }
 
 fn get_value_tail_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_file(item, ForcePseudoTTY::No, "tail -f".to_string())
+    get_value_action_file(item, ForcePseudoTTY::No, "tail -f")
 }
 
 fn get_value_less_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_file(item, ForcePseudoTTY::Yes, "less".to_string())
+    get_value_action_file(item, ForcePseudoTTY::Yes, "less")
 }
 
 fn get_value_fetch_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {

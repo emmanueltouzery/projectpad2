@@ -141,20 +141,7 @@ pub fn populate_popover(
         let label = &format!("Copy {}", item.label_name);
         let popover_btn = match &item.shortcut {
             None => gtk::ModelButtonBuilder::new().label(&label).build(),
-            Some((key, modifiers)) => {
-                let accel_lbl = gtk::AccelLabelBuilder::new().label(&label).build();
-                accel_lbl.set_accel(**key, *modifiers);
-                let lbl = gtk::ModelButtonBuilder::new().build();
-                accel_lbl.set_hexpand(true);
-                accel_lbl.set_xalign(0.0);
-                accel_lbl.show_all();
-                lbl.get_child()
-                    .unwrap()
-                    .downcast::<gtk::Box>()
-                    .unwrap()
-                    .add(&accel_lbl);
-                lbl
-            }
+            Some((key, modifiers)) => label_with_accelerator(label, &key, *modifiers),
         };
         left_align_menu(&popover_btn);
         register_copy_btn(&popover_btn, item.raw_value.clone());
@@ -162,6 +149,25 @@ pub fn populate_popover(
     }
     popover_vbox.show_all();
     actions_popover.add(&popover_vbox);
+}
+
+fn label_with_accelerator(
+    label: &str,
+    key: &gdk::keys::Key,
+    modifiers: gdk::ModifierType,
+) -> gtk::ModelButton {
+    let lbl = gtk::ModelButtonBuilder::new().build();
+    let accel_lbl = gtk::AccelLabelBuilder::new().label(&label).build();
+    accel_lbl.set_accel(**key, modifiers);
+    accel_lbl.set_hexpand(true);
+    accel_lbl.set_xalign(0.0);
+    accel_lbl.show_all();
+    lbl.get_child()
+        .unwrap()
+        .downcast::<gtk::Box>()
+        .unwrap()
+        .add(&accel_lbl);
+    lbl
 }
 
 pub fn populate_grid(
@@ -781,7 +787,15 @@ impl Widget for ProjectPoiHeader {
             .as_ref()
             .map(|pi| get_project_item_fields(pi, false))
             .unwrap_or_else(|| vec![]);
-        let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+        let edit_btn = if let Some(ProjectItem::ProjectNote(_)) = self.model.project_item.as_ref() {
+            label_with_accelerator(
+                "Edit",
+                &gdk::keys::constants::E,
+                gdk::ModifierType::CONTROL_MASK,
+            )
+        } else {
+            gtk::ModelButtonBuilder::new().label("Edit").build()
+        };
         relm::connect!(
             self.model.relm,
             &edit_btn,

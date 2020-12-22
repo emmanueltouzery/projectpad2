@@ -818,7 +818,8 @@ impl Widget for Win {
                                                          • <u>Server link</u> - Sometimes a specific server is shared between \
                                                          different projects. Since we don't want to enter that server multiple \
                                                          times in projectpad, we can enter it just once and 'link' to it from \
-                                                         the various projects making use of it."
+                                                         the various projects making use of it. It's also possible to link to \
+                                                         a specific group on that server."
                                             }
                                         }
                                     },

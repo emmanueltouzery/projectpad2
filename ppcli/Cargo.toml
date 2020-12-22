@@ -18,7 +18,6 @@ regex = "1.4.2"
 
 # on linux depend on zbus to get the keyring info, that way
 # we have a pure rust solution and can hope to statically link
-# custom git repo, workaround for https://gitlab.freedesktop.org/zeenix/zbus/-/issues/104
 [target.'cfg(target_os = "linux")'.dependencies]
 serde = "1.0.118"
 zbus = "1.3.0"

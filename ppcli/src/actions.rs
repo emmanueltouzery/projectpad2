@@ -96,12 +96,21 @@ fn get_value_less_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
 
 fn get_value_fetch_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     if let Some(scp_command) = try_prepare_ssh_command(item, SshCommandType::Scp) {
-        Cow::Owned(format!(
+        let filename = item.poi_info.as_ref().unwrap().path.to_str().unwrap();
+        let base_command = format!(
             "{}:{} {}",
             scp_command,
-            item.poi_info.as_ref().unwrap().path.to_str().unwrap(),
+            filename,
             dirs::download_dir().unwrap().to_str().unwrap()
-        ))
+        );
+        Cow::Owned(if filename.contains('`') {
+            // support shell expansion with ` in filenames, so that you can for instance
+            // have as a file name /opt/app/myapp/logs/myfile.`date "+%Y-%m-%d"`.log
+            // -- dynamic date parameter in the filename.
+            format!("sh -c \"{}\"", base_command)
+        } else {
+            base_command
+        })
     } else {
         Cow::Borrowed(&item.item_text)
     }

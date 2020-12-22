@@ -255,7 +255,7 @@ fn render_row(cols_spec: &[usize], action: &actions::Action, display_mode: Displ
         .cloned()
         .unwrap_or_else(|| "".to_string());
     col5.truncate(cols_spec[4]);
-    let mut col6 = action.desc.clone();
+    let mut col6 = action.desc.to_string();
     col6.truncate(cols_spec[5]);
     format!(
         "{:<w1$} {:<w2$} {:<w3$} {:<w4$} {:<w5$}  {:<w6$}",

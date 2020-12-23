@@ -1819,7 +1819,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
 name = "ppcli"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "diesel",
  "dirs 3.0.1",
@@ -1906,7 +1906,7 @@ dependencies = [
 
 [[package]]
 name = "projectpad"
-version = "2.0.2"
+version = "2.1.0"
 dependencies = [
  "cairo-rs",
  "chrono",
@@ -1940,7 +1940,7 @@ dependencies = [
 
 [[package]]
 name = "projectpadsql"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "chrono",
  "diesel",

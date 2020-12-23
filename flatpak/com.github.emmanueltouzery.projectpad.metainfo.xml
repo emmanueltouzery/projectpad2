@@ -35,6 +35,20 @@ https://hughsie.github.io/oars/index.html
 -->
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="2.1.0" date="2020-12-23">
+      <description>
+        <ul>
+          <li>Support for import/export with project granularity to 7zipped YAML files</li>
+          <li>A server link can now link to a specific group within a server</li>
+          <li>Ability to search within notes also when editing</li>
+          <li>New shortcut to edit a note: ctrl-e</li>
+          <li>Scrolling to server item: more precise scrolling</li>
+          <li>Refresh versions of dependencies</li>
+          <li>Bugfix: shortcuts in the search view were tied to e and y instead of ctrl-e and ctrl-y</li>
+          <li>Bugfix: project note groups were not included in the group entry completion</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.2" date="2020-11-22">
       <description>
         <ul>

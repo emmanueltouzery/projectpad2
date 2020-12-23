@@ -234,9 +234,8 @@ impl Widget for ServerPoiContents {
             }
             Msg::ServerLinkSelected(srv_l) => {
                 self.model.cur_server_id = Some(srv_l.linked_server_id);
-                self.model.scroll_to_item_request = srv_l
-                    .linked_group_name
-                    .map(|gn| ScrollTarget::GroupName(gn));
+                self.model.scroll_to_item_request =
+                    srv_l.linked_group_name.map(ScrollTarget::GroupName);
                 self.fetch_items();
             }
             Msg::GotItems(items) => {

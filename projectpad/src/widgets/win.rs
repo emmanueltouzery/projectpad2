@@ -405,76 +405,10 @@ impl Widget for Win {
                     .emit(SearchViewMsg::FilterChanged(Some(search_text)));
             }
             Msg::DisplayItem(di) => {
-                let (project, project_item, server_item) = *di;
-                self.project_list
-                    .emit(ProjectListMsg::ProjectSelectedFromElsewhere(project.id));
-                let env = match &project_item {
-                    Some(ProjectItem::Server(s)) => Some(s.environment),
-                    Some(ProjectItem::ServerLink(s)) => Some(s.environment),
-                    Some(ProjectItem::ProjectNote(n)) if n.has_prod => {
-                        Some(EnvironmentType::EnvProd)
-                    }
-                    Some(ProjectItem::ProjectNote(n)) if n.has_uat => Some(EnvironmentType::EnvUat),
-                    Some(ProjectItem::ProjectNote(n)) if n.has_stage => {
-                        Some(EnvironmentType::EnvStage)
-                    }
-                    Some(ProjectItem::ProjectNote(n)) if n.has_dev => {
-                        Some(EnvironmentType::EnvDevelopment)
-                    }
-                    _ => None,
-                };
-                if let Some(e) = env {
-                    self.project_summary.emit(
-                        ProjectSummaryMsg::ProjectEnvironmentSelectedFromElsewhere((
-                            project.clone(),
-                            e,
-                        )),
-                    );
-                } else {
-                    self.project_summary
-                        .emit(ProjectSummaryMsg::ProjectActivated(project.clone()));
-                }
-                self.project_items_list.emit(
-                    ProjectItemsListMsg::ProjectItemSelectedFromElsewhere((
-                        project,
-                        env,
-                        project_item,
-                    )),
-                );
-                if let Some(sitem) = server_item {
-                    self.project_poi_contents
-                        .stream()
-                        .emit(ProjectPoiContentsMsg::ScrollToServerItem(sitem));
-                }
-                self.model
-                    .relm
-                    .stream()
-                    .emit(Msg::SearchActiveChanged(false));
-                self.model
-                    .titlebar
-                    .stream()
-                    .emit(WinTitleBarMsg::SearchActiveChanged(false));
+                self.display_item(di);
             }
             Msg::RequestDisplayItem(server_item) => {
-                let s = self.model.display_item_sender.clone();
-                self.model
-                    .db_sender
-                    .send(SqlFunc::new(move |sql_conn| {
-                        use projectpadsql::schema::project::dsl as prj;
-                        use projectpadsql::schema::server::dsl as srv;
-                        let (server, project) = srv::server
-                            .inner_join(prj::project)
-                            .filter(srv::id.eq(server_item.server_id()))
-                            .first::<(Server, Project)>(sql_conn)
-                            .unwrap();
-                        s.send((
-                            project,
-                            Some(ProjectItem::Server(server)),
-                            Some(server_item.clone()),
-                        ))
-                        .unwrap();
-                    }))
-                    .unwrap();
+                self.request_display_item(server_item);
             }
             Msg::KeyPress(e) => {
                 self.handle_keypress(e);
@@ -566,6 +500,71 @@ impl Widget for Win {
                 self.request_update_welcome_status();
             }
         }
+    }
+
+    fn request_display_item(&self, server_item: ServerItem) {
+        let s = self.model.display_item_sender.clone();
+        self.model
+            .db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                use projectpadsql::schema::server::dsl as srv;
+                let (server, project) = srv::server
+                    .inner_join(prj::project)
+                    .filter(srv::id.eq(server_item.server_id()))
+                    .first::<(Server, Project)>(sql_conn)
+                    .unwrap();
+                s.send((
+                    project,
+                    Some(ProjectItem::Server(server)),
+                    Some(server_item.clone()),
+                ))
+                .unwrap();
+            }))
+            .unwrap();
+    }
+
+    fn display_item(&self, di: Box<DisplayItemParams>) {
+        let (project, project_item, server_item) = *di;
+        self.project_list
+            .emit(ProjectListMsg::ProjectSelectedFromElsewhere(project.id));
+        let env = match &project_item {
+            Some(ProjectItem::Server(s)) => Some(s.environment),
+            Some(ProjectItem::ServerLink(s)) => Some(s.environment),
+            Some(ProjectItem::ProjectNote(n)) if n.has_prod => Some(EnvironmentType::EnvProd),
+            Some(ProjectItem::ProjectNote(n)) if n.has_uat => Some(EnvironmentType::EnvUat),
+            Some(ProjectItem::ProjectNote(n)) if n.has_stage => Some(EnvironmentType::EnvStage),
+            Some(ProjectItem::ProjectNote(n)) if n.has_dev => Some(EnvironmentType::EnvDevelopment),
+            _ => None,
+        };
+        if let Some(e) = env {
+            self.project_summary
+                .emit(ProjectSummaryMsg::ProjectEnvironmentSelectedFromElsewhere(
+                    (project.clone(), e),
+                ));
+        } else {
+            self.project_summary
+                .emit(ProjectSummaryMsg::ProjectActivated(project.clone()));
+        }
+        self.project_items_list
+            .emit(ProjectItemsListMsg::ProjectItemSelectedFromElsewhere((
+                project,
+                env,
+                project_item,
+            )));
+        if let Some(sitem) = server_item {
+            self.project_poi_contents
+                .stream()
+                .emit(ProjectPoiContentsMsg::ScrollToServerItem(sitem));
+        }
+        self.model
+            .relm
+            .stream()
+            .emit(Msg::SearchActiveChanged(false));
+        self.model
+            .titlebar
+            .stream()
+            .emit(WinTitleBarMsg::SearchActiveChanged(false));
     }
 
     fn load_style(&self) -> Result<(), Box<dyn std::error::Error>> {

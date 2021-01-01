@@ -316,7 +316,7 @@ impl Widget for SearchView {
 
         project_poi_header::populate_popover(
             popover,
-            &vec![open_btn, edit_btn],
+            &[open_btn, edit_btn],
             &grid_items,
             &move |btn: &gtk::ModelButton, str_val: String| {
                 relm::connect!(
@@ -543,7 +543,7 @@ impl Widget for SearchView {
                     .get_keyval()
                     .to_unicode()
                     .and_then(|letter| letter.to_digit(10))
-                    .map(|i| if i == 0 { 9 as usize } else { i as usize - 1 })
+                    .map(|i| if i == 0 { 9_usize } else { i as usize - 1 })
                 {
                     let items = self.model.search_items.borrow();
                     if let Some(item) = items.get(index) {
@@ -852,7 +852,7 @@ impl Widget for SearchView {
                     self.search_result_area.clone().upcast::<gtk::Widget>(),
                     (
                         self.model.db_sender.clone(),
-                        Some(prj.clone()),
+                        Some(prj),
                         gtk::AccelGroup::new(),
                     ),
                     MsgProjectAddEditDialog::OkPressed,
@@ -896,7 +896,7 @@ impl Widget for SearchView {
             ProjectPadItem::Project(p) => (p, None, None),
             ProjectPadItem::Server(s) => (
                 project_by_id(s.project_id),
-                Some(ProjectItem::Server(s.clone())),
+                Some(ProjectItem::Server(s)),
                 None,
             ),
             ProjectPadItem::ProjectNote(n) => (

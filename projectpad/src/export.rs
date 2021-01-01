@@ -374,18 +374,16 @@ fn export_env_group(
             // is this the first time we export this note?
             // YES => we export the full note
             // NO => we will display just "shared"
-            let is_first_env_for_this_note = match (
+            let is_first_env_for_this_note = matches!((
                 n.has_dev && project.has_dev,
                 n.has_stage && project.has_stage,
                 n.has_uat && project.has_uat,
                 env,
-            ) {
-                (_, _, _, EnvironmentType::EnvDevelopment) => true,
-                (false, _, _, EnvironmentType::EnvStage) => true,
-                (false, false, _, EnvironmentType::EnvUat) => true,
-                (false, false, false, EnvironmentType::EnvProd) => true,
-                _ => false,
-            };
+             ),
+                (_, _, _, EnvironmentType::EnvDevelopment) |
+                (false, _, _, EnvironmentType::EnvStage) |
+                (false, false, _, EnvironmentType::EnvUat) |
+                (false, false, false, EnvironmentType::EnvProd));
             ProjectNoteImportExport {
                 title: n.title.clone(),
                 contents: n.contents,

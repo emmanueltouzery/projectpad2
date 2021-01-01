@@ -250,15 +250,14 @@ impl Widget for ServerItemListItem {
                     Msg::EditNote(n1.clone())
                 );
                 let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
-                let n2 = n.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
                     Msg::AskDeleteServerItem((
-                        n2.title.clone(),
+                        n.title.clone(),
                         "note",
-                        Box::new(Msg::DeleteServerNote(n2.clone()))
+                        Box::new(Msg::DeleteServerNote(n.clone()))
                     ))
                 );
                 vec![view_btn, edit_btn, delete_btn]
@@ -273,16 +272,15 @@ impl Widget for ServerItemListItem {
                     Msg::EditPoi(p.clone())
                 );
                 let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
-                let p2 = poi.clone(); // TODO too many clones
-                                      // TODO skip the ask step
+                // TODO skip the ask step
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
                     Msg::AskDeleteServerItem((
-                        p2.desc.clone(),
+                        poi.desc.clone(),
                         "server POI",
-                        Box::new(Msg::DeleteServerPoi(p2.clone()))
+                        Box::new(Msg::DeleteServerPoi(poi.clone()))
                     ))
                 );
                 vec![edit_btn, delete_btn]
@@ -297,15 +295,14 @@ impl Widget for ServerItemListItem {
                     Msg::EditDb(d.clone())
                 );
                 let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
-                let d2 = db.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
                     Msg::AskDeleteServerItem((
-                        d2.desc.clone(),
+                        db.desc.clone(),
                         "server database",
-                        Box::new(Msg::DeleteServerDb(d2.clone()))
+                        Box::new(Msg::DeleteServerDb(db.clone()))
                     ))
                 );
                 let mut db_menu_items = vec![edit_btn, delete_btn];
@@ -334,15 +331,14 @@ impl Widget for ServerItemListItem {
                     Msg::EditUser(u.clone())
                 );
                 let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
-                let u2 = usr.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
                     Msg::AskDeleteServerItem((
-                        u2.desc.clone(),
+                        usr.desc.clone(),
                         "extra user",
-                        Box::new(Msg::DeleteServerExtraUser(u2.clone()))
+                        Box::new(Msg::DeleteServerExtraUser(usr.clone()))
                     ))
                 );
                 vec![edit_btn, delete_btn]
@@ -357,16 +353,15 @@ impl Widget for ServerItemListItem {
                     Msg::EditWebsite(w.clone())
                 );
                 let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
-                let w2 = www.clone(); // TODO too many clones
-                                      // TODO skip the ask step
+                // TODO skip the ask step
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
                     connect_clicked(_),
                     Msg::AskDeleteServerItem((
-                        w2.desc.clone(),
+                        www.desc.clone(),
                         "server website",
-                        Box::new(Msg::DeleteServerWebsite(w2.clone()))
+                        Box::new(Msg::DeleteServerWebsite(www.clone()))
                     ))
                 );
                 let mut www_menu_items = vec![edit_btn, delete_btn];
@@ -385,7 +380,6 @@ impl Widget for ServerItemListItem {
                 }
                 www_menu_items
             }
-            _ => vec![],
         };
         populate_grid(
             self.items_grid.clone(),
@@ -681,7 +675,7 @@ impl Widget for ServerItemListItem {
             }
             Msg::AskDeleteServerItem((item_desc, message, delete_evt)) => {
                 let relm = self.model.relm.clone();
-                let evt = (*delete_evt);
+                let evt = *delete_evt;
                 standard_dialogs::confirm_deletion(
                     &format!("Delete server {}", message),
                     &format!("Are you sure you want to delete the server {} {}? This action cannot be undone.", message, &item_desc),

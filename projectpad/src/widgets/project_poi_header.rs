@@ -341,9 +341,7 @@ impl Widget for ProjectPoiHeader {
             });
         let stream2 = relm.stream().clone();
         let (_goto_server_channel, goto_server_sender) =
-            relm::Channel::new(move |r: GotoResult| {
-                stream2.emit(Msg::GotoItem(r.0.clone(), r.1.clone()))
-            });
+            relm::Channel::new(move |r: GotoResult| stream2.emit(Msg::GotoItem(r.0.clone(), r.1)));
         Model {
             relm: relm.clone(),
             db_sender,
@@ -786,7 +784,7 @@ impl Widget for ProjectPoiHeader {
             .project_item
             .as_ref()
             .map(|pi| get_project_item_fields(pi, false))
-            .unwrap_or_else(|| vec![]);
+            .unwrap_or_else(Vec::new);
         let edit_btn = if let Some(ProjectItem::ProjectNote(_)) = self.model.project_item.as_ref() {
             label_with_accelerator(
                 "Edit",

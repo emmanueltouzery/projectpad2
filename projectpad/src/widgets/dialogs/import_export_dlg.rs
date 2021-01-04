@@ -223,8 +223,17 @@ impl Widget for ImportExportDialog {
                     filter.add_pattern("*.7z");
                     dialog.set_filter(&filter);
                     if dialog.run() == gtk::ResponseType::Accept {
-                        if let Some(fname) = dialog.get_filename() {
-                            self.do_export(fname, pass);
+                        match dialog.get_filename() {
+                            Some(fname) if fname.ends_with(".7z") => self.do_export(fname, pass),
+                            // need to make sure the user picks a filename ending in .7z, or we get
+                            // a subtle issue in the flatpak: when you enter filename /a/b/c in the
+                            // file picker, flatpak gives us access to /a/b/c and NOTHING ELSE.
+                            // attempting to write to /a/b/c.7z will fail, and we do want to have
+                            // the extension...
+                            _ => standard_dialogs::display_error(
+                                "Please pick a file name ending with .7z",
+                                None,
+                            ),
                         }
                     }
                 }

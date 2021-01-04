@@ -30,9 +30,14 @@ fn try_prepare_ssh_command(
         } else {
             Cow::Owned(format!("{}@", username))
         };
-        Some(match ssh_command_type {
-            SshCommandType::Ssh => format!("ssh -p {} {}{}", port, user_param, addr),
-            SshCommandType::Scp => format!("scp -P {} {}{}", port, user_param, addr),
+        Some(match (ssh_command_type, port) {
+            // don't pass in the -p/-P parameter if we're using the default port
+            // I sometimes use alt-enter to edit a ssh command into a scp command
+            // and the -p/-P difference gets in the way...
+            (SshCommandType::Ssh, "22") => format!("ssh {}{}", user_param, addr),
+            (SshCommandType::Scp, "22") => format!("scp {}{}", user_param, addr),
+            (SshCommandType::Ssh, _) => format!("ssh -p {} {}{}", port, user_param, addr),
+            (SshCommandType::Scp, _) => format!("scp -P {} {}{}", port, user_param, addr),
         })
     } else {
         None

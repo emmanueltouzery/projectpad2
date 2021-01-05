@@ -641,8 +641,13 @@ impl Widget for SearchView {
                 self.copy_to_clipboard(password);
             }
         } else {
-            let new_show_shortcuts = !(e.get_state() & gdk::ModifierType::MOD2_MASK).is_empty()
-                && e.get_keyval().to_unicode() == None;
+            let new_show_shortcuts = [
+                gdk::keys::constants::Control_L,
+                gdk::keys::constants::Control_R,
+                gdk::keys::constants::Alt_L,
+                gdk::keys::constants::Alt_R,
+            ]
+            .contains(&e.get_keyval());
             if new_show_shortcuts != self.model.show_shortcuts.get() {
                 self.model.show_shortcuts.set(new_show_shortcuts);
                 self.search_result_area.queue_draw();

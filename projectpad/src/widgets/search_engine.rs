@@ -315,7 +315,7 @@ pub fn search_parse(search: &str) -> SearchSpec {
                 SearchParseState::InProject => (
                     search,
                     Some(project.unwrap() + " " + &fragment.to_lowercase()[..]),
-                    if fragment.contains("\"") {
+                    if fragment.contains('\"') {
                         SearchParseState::Normal
                     } else {
                         SearchParseState::InProject

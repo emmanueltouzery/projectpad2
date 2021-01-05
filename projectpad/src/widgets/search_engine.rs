@@ -280,17 +280,55 @@ pub struct SearchSpec {
     pub project_pattern: Option<String>,
 }
 
+#[derive(PartialEq, Eq)]
+enum SearchParseState {
+    InProject,
+    Normal,
+}
+
 pub fn search_parse(search: &str) -> SearchSpec {
     let fmt = |t: &str| format!("%{}%", t.replace('%', "\\%"));
     if search.starts_with(PROJECT_FILTER_PREFIX)
         || search.contains(&(" ".to_string() + PROJECT_FILTER_PREFIX))
     {
-        let (prj, rest) = search
-            .split(' ')
-            .partition::<Vec<_>, _>(|i| i.starts_with(PROJECT_FILTER_PREFIX));
+        let (search, project, _) = search.split(' ').fold(
+            ("".to_string(), None, SearchParseState::Normal),
+            |(search, project, parse_state), fragment| match parse_state {
+                SearchParseState::Normal if fragment.starts_with(PROJECT_FILTER_PREFIX) => (
+                    search,
+                    Some(fragment[4..].to_lowercase()),
+                    if fragment.chars().filter(|c| *c == '"').count() % 2 != 0 {
+                        SearchParseState::InProject
+                    } else {
+                        SearchParseState::Normal
+                    },
+                ),
+                SearchParseState::Normal => (
+                    if search.is_empty() {
+                        fragment.to_owned()
+                    } else {
+                        search + " " + fragment
+                    },
+                    project,
+                    SearchParseState::Normal,
+                ),
+                SearchParseState::InProject => (
+                    search,
+                    Some(project.unwrap() + " " + &fragment.to_lowercase()[..]),
+                    if fragment.contains("\"") {
+                        SearchParseState::Normal
+                    } else {
+                        SearchParseState::InProject
+                    },
+                ),
+            },
+        );
         SearchSpec {
-            search_pattern: fmt(&rest.join(" ")),
-            project_pattern: prj.first().map(|s| s[4..].to_lowercase()),
+            search_pattern: fmt(&search),
+            project_pattern: match project {
+                Some(p) if p.starts_with('"') => Some(p.replace('"', "")),
+                _ => project,
+            },
         }
     } else {
         SearchSpec {
@@ -324,6 +362,28 @@ mod tests {
                 project_pattern: Some("project".to_string())
             },
             search_parse("item1 test prj:prOject item3")
+        );
+    }
+
+    #[test]
+    fn search_parse_with_quoted_project() {
+        assert_eq!(
+            SearchSpec {
+                search_pattern: "%item1 test item3%".to_string(),
+                project_pattern: Some("project with spaces".to_string())
+            },
+            search_parse("item1 test prj:\"prOject with spaces\" item3")
+        );
+    }
+
+    #[test]
+    fn search_parse_with_unnecessarily_quoted_project() {
+        assert_eq!(
+            SearchSpec {
+                search_pattern: "%item1 test item3%".to_string(),
+                project_pattern: Some("project".to_string())
+            },
+            search_parse("item1 test prj:\"prOject\" item3")
         );
     }
 

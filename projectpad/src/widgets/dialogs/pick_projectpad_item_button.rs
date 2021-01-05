@@ -197,9 +197,15 @@ impl Widget for PickProjectpadItemButton {
 
         // format the search text based on item name and potentially project name
         let search_text = match (&self.model.item_name, &project_name) {
+            (Some(name), Some(project)) if project.contains(' ') => {
+                format!("{} {}\"{}\"", name, PROJECT_FILTER_PREFIX, project)
+            }
             (Some(name), Some(project)) => format!("{} {}{}", name, PROJECT_FILTER_PREFIX, project),
-            (Some(name), None) => name.clone(),
+            (None, Some(project)) if project.contains(' ') => {
+                format!("{}\"{}\"", PROJECT_FILTER_PREFIX, project)
+            }
             (None, Some(project)) => format!("{}{}", PROJECT_FILTER_PREFIX, project),
+            (Some(name), None) => name.clone(),
             (None, None) => "".to_string(),
         };
         comp.stream()

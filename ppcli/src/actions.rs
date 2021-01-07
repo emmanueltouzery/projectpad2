@@ -88,7 +88,8 @@ fn get_value_action_file<'a>(
 }
 
 fn get_value_edit_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_file(item, ForcePseudoTTY::Yes, "vim")
+    // first try $EDITOR, if not specified, fallback on vim
+    get_value_action_file(item, ForcePseudoTTY::Yes, "\\${EDITOR:-vim}")
 }
 
 fn get_value_tail_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {

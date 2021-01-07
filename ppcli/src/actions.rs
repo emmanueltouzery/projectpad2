@@ -68,7 +68,7 @@ enum ForcePseudoTTY {
 fn get_value_action_file<'a>(
     item: &'a ItemOfInterest,
     force_pseudo: ForcePseudoTTY,
-    action: &'static str,
+    action: Cow<'static, str>,
 ) -> std::borrow::Cow<'a, str> {
     if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
         Cow::Owned(format!(
@@ -88,16 +88,25 @@ fn get_value_action_file<'a>(
 }
 
 fn get_value_edit_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    // first try $EDITOR, if not specified, fallback on vim
-    get_value_action_file(item, ForcePseudoTTY::Yes, "\\${EDITOR:-vim}")
+    let local_editor = std::env::var("EDITOR");
+    // first try $EDITOR of the remote, if not specified, fallback on the local editor,
+    // and if not given, finally vim
+    get_value_action_file(
+        item,
+        ForcePseudoTTY::Yes,
+        Cow::Owned(format!(
+            "\\${{EDITOR:-{}}}",
+            local_editor.as_deref().unwrap_or("vim")
+        )),
+    )
 }
 
 fn get_value_tail_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_file(item, ForcePseudoTTY::No, "tail -f")
+    get_value_action_file(item, ForcePseudoTTY::No, Cow::Borrowed("tail -f"))
 }
 
 fn get_value_less_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
-    get_value_action_file(item, ForcePseudoTTY::Yes, "less")
+    get_value_action_file(item, ForcePseudoTTY::Yes, Cow::Borrowed("less"))
 }
 
 fn get_value_fetch_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {

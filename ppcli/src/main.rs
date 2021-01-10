@@ -35,6 +35,11 @@ impl SkimItem for MyItem {
 
     fn text(&self) -> Cow<str> {
         remove_ansi_escapes(&self.display)
+            + "\n"
+            // this text is used for filtering items when the user types.
+            // also include the full POI descriptions so that we don't match
+            // only against the truncated POI description
+            + self.inner.item.poi_desc.as_deref().unwrap_or("")
     }
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {

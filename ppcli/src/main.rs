@@ -72,7 +72,12 @@ macro_rules! ok_or_exit {
     }};
 }
 
-fn handle_params() -> DisplayMode {
+struct Options {
+    display_mode: DisplayMode,
+    upgrade_check: bool,
+}
+
+fn handle_params() -> Options {
     if env::args().skip(1).any(|p| p == "--version") {
         println!("version {}", env!("CARGO_PKG_VERSION"));
         std::process::exit(0);
@@ -81,10 +86,11 @@ fn handle_params() -> DisplayMode {
         println!(
             "{}",
             vec![
-                " --version   Print version",
-                " --help      This documentation",
-                " --upgrade   Upgrade ppcli",
-                " --no-color  Disable color display"
+                " --version           Print version",
+                " --help              This documentation",
+                " --upgrade           Upgrade ppcli",
+                " --no-color          Disable color display",
+                " --no-upgrade-check  Disable the new version check"
             ]
             .join("\n")
         );
@@ -97,10 +103,15 @@ fn handle_params() -> DisplayMode {
         }
         std::process::exit(0);
     }
-    if env::args().skip(1).any(|p| p == "--no-color") {
+    let display_mode = if env::args().skip(1).any(|p| p == "--no-color") {
         DisplayMode::Plain
     } else {
         DisplayMode::Color
+    };
+    let upgrade_check = !env::args().skip(1).any(|p| p == "--no-upgrade-check");
+    Options {
+        display_mode,
+        upgrade_check,
     }
 }
 
@@ -111,7 +122,7 @@ enum UpgradeAvailableData {
 }
 
 pub fn main() {
-    let display_mode = handle_params();
+    let flag_options = handle_params();
     let db_pass = ok_or_exit!(
         secretservice::get_keyring_pass().and_then(|r| r.ok_or_else(|| "no matching credentials".into())),
         "Cannot find the database password in the OS keyring, aborting: did you run the projectpad GUI app to create a database first? {}",
@@ -148,24 +159,32 @@ pub fn main() {
     // We write to a channel and check the contents of the channel at the end
     // of the runtime of the application
     let (has_upgrade_tx, has_upgrade_rx) = mpsc::channel::<UpgradeAvailableData>();
-    std::thread::spawn(move || {
-        has_upgrade_tx.send(match config::upgrade_days_since_last_check() {
-            Ok(days) if days > 7 => {
-                if let Ok(Some(download_url)) = autoupgrade::is_upgrade_available() {
-                    UpgradeAvailableData::HasUpgrade(download_url)
-                } else {
-                    // also applies in case of errors. I could handle that
-                    // and make it set NoNeedToCheck to avoid skipping another
-                    // seven days, but I'm not concerned about that.
-                    UpgradeAvailableData::CheckedNoUpgrade
-                }
-            }
-            // this also applies in case of errors, but that's OK,
-            // we want to hide errors for that feature, and NoNeedToCheck
-            // is a NOP.
-            _ => UpgradeAvailableData::NoNeedToCheck,
-        })
-    });
+    if flag_options.upgrade_check {
+        std::thread::spawn(move || {
+            has_upgrade_tx
+                .send(match config::upgrade_days_since_last_check() {
+                    Ok(days) if days > 7 => {
+                        if let Ok(Some(download_url)) = autoupgrade::is_upgrade_available() {
+                            UpgradeAvailableData::HasUpgrade(download_url)
+                        } else {
+                            // also applies in case of errors. I could handle that
+                            // and make it set NoNeedToCheck to avoid skipping another
+                            // seven days, but I'm not concerned about that.
+                            UpgradeAvailableData::CheckedNoUpgrade
+                        }
+                    }
+                    // this also applies in case of errors, but that's OK,
+                    // we want to hide errors for that feature, and NoNeedToCheck
+                    // is a NOP.
+                    _ => UpgradeAvailableData::NoNeedToCheck,
+                })
+                .unwrap()
+        });
+    } else {
+        has_upgrade_tx
+            .send(UpgradeAvailableData::NoNeedToCheck)
+            .unwrap();
+    }
 
     let history = config::read_history().unwrap_or_else(|_| vec![]);
     let options = SkimOptionsBuilder::default()
@@ -183,7 +202,7 @@ pub fn main() {
 
     let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
 
-    std::thread::spawn(move || database::load_items(&conn, display_mode, &tx_item));
+    std::thread::spawn(move || database::load_items(&conn, flag_options.display_mode, &tx_item));
 
     let (selected_items, query, accept_key) = Skim::run_with(&options, Some(rx_item))
         .map(|out| (out.selected_items, out.query, out.final_key))

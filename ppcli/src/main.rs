@@ -7,6 +7,7 @@ use std::env;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::mpsc;
 mod actions;
 mod autoupgrade;
 pub mod config;
@@ -103,6 +104,12 @@ fn handle_params() -> DisplayMode {
     }
 }
 
+enum UpgradeAvailableData {
+    HasUpgrade(String),
+    CheckedNoUpgrade,
+    NoNeedToCheck,
+}
+
 pub fn main() {
     let display_mode = handle_params();
     let db_pass = ok_or_exit!(
@@ -135,6 +142,30 @@ pub fn main() {
         "{} https://github.com/emmanueltouzery/projectpad2",
         5
     );
+
+    // start a thread to, if we didn't check for 7 days, check whether there is
+    // a new version of ppcli available (in a thread not to block the GUI).
+    // We write to a channel and check the contents of the channel at the end
+    // of the runtime of the application
+    let (has_upgrade_tx, has_upgrade_rx) = mpsc::channel::<UpgradeAvailableData>();
+    std::thread::spawn(move || {
+        has_upgrade_tx.send(match config::upgrade_days_since_last_check() {
+            Ok(days) if days > 7 => {
+                if let Ok(Some(download_url)) = autoupgrade::is_upgrade_available() {
+                    UpgradeAvailableData::HasUpgrade(download_url)
+                } else {
+                    // also applies in case of errors. I could handle that
+                    // and make it set NoNeedToCheck to avoid skipping another
+                    // seven days, but I'm not concerned about that.
+                    UpgradeAvailableData::CheckedNoUpgrade
+                }
+            }
+            // this also applies in case of errors, but that's OK,
+            // we want to hide errors for that feature, and NoNeedToCheck
+            // is a NOP.
+            _ => UpgradeAvailableData::NoNeedToCheck,
+        })
+    });
 
     let history = config::read_history().unwrap_or_else(|_| vec![]);
     let options = SkimOptionsBuilder::default()
@@ -187,6 +218,21 @@ pub fn main() {
             ),
             _ => {}
         }
+    }
+
+    // try_recv, don't want to block there... don't want
+    // ppcli to block at the end of the runtime if it's run
+    // on a system without network for instance.
+    match has_upgrade_rx.try_recv() {
+        Ok(UpgradeAvailableData::HasUpgrade(download_url)) => {
+            if let Ok(()) = autoupgrade::apply_upgrade(&download_url) {
+                let _ = config::upgrade_check_mark_done();
+            }
+        }
+        Ok(UpgradeAvailableData::CheckedNoUpgrade) => {
+            let _ = config::upgrade_check_mark_done();
+        }
+        _ => {}
     }
 }
 

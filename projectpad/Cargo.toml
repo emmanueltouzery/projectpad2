@@ -1,6 +1,6 @@
 [package]
 name = "projectpad"
-version = "2.1.0"
+version = "2.2.0"
 authors = ["Emmanuel Touzery <etouzery@gmail.com>"]
 edition = "2018"
 
@@ -24,7 +24,7 @@ projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "1.4.5", features = ["sqlite"] }
 pango = "0.9.1"
 pulldown-cmark = { version = "0.8.0", default-features = false }
-itertools = "0.9.0"
+itertools = "0.10.0"
 strum = "0.20.0"
 chrono = "0.4.19"
 includedir = "0.6.0"
@@ -35,7 +35,7 @@ serde_derive = "1.0.118"
 toml = "0.5.8"
 dirs = "3.0.1"
 keyring = "0.10.1"
-serde_yaml = "0.8.14"
+serde_yaml = "0.8.15"
 regex = "1.4.2"
 
 [dependencies.gtk]

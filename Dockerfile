@@ -3,7 +3,7 @@
 # An example Dockerfile showing how to add new static C libraries using
 # musl-gcc.
 
-FROM ekidd/rust-musl-builder:1.48.0
+FROM ekidd/rust-musl-builder:1.49.0
 
 # https://rtfm.co.ua/en/docker-configure-tzdata-and-timezone-during-build/
 ENV TZ=Europe/Ljubljana

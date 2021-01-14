@@ -35,6 +35,16 @@ https://hughsie.github.io/oars/index.html
 -->
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="2.2.0" date="2021-01-14">
+      <description>
+        <ul>
+          <li>Fix export if the user typed a filename not ending in .7z</li>
+          <li>Search view: displaying preview of shortcuts when holding ALT or CTRL wasn't reliable</li>
+          <li>Project search filter (prj:) - allow quotes for project names with spaces</li>
+          <li>Minor cleanups</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.1.0" date="2020-12-23">
       <description>
         <ul>

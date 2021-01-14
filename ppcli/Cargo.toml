@@ -1,6 +1,6 @@
 [package]
 name = "ppcli"
-version = "2.1.0"
+version = "2.2.0"
 authors = ["Emmanuel Touzery <etouzery@gmail.com>"]
 edition = "2018"
 
@@ -20,7 +20,7 @@ regex = "1.4.2"
 # we have a pure rust solution and can hope to statically link
 [target.'cfg(target_os = "linux")'.dependencies]
 serde = "1.0.118"
-zbus = "1.3.0"
+zbus = "1.7.0"
 zvariant = "2.4.0"
 zvariant_derive = "2.4.0"
 

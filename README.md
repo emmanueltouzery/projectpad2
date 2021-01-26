@@ -24,7 +24,9 @@ At the top of the second pane we can see the project environments (development, 
 
 ![Main view screenshot](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/gui1.png)
 
-Notes are especially interesting, you author them in markdown syntax.
+Notes are especially interesting, you author them in markdown syntax. They can be tied to a server or a project.
+
+![notes screenshot](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/notes.png)
 
 And full-text search is supported.
 

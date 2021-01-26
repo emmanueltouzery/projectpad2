@@ -1,5 +1,7 @@
 # Projectpad
 
+<a href='https://flathub.org/apps/details/com.github.emmanueltouzery.projectpad'><img width='180' align='right' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-en.png'/></a>
+
 Projectpad allows to manage secret credentials and server information that you need to handle as a software developer. List of servers, list of point of interests on those servers (applications, log files, databases, servers). It will securely store passwords and keys. It will also allow you to run commands (locally or on SSH servers), open terminals on remote SSH servers, and so on.
 The data is securely stored on-disk using [SQLcipher][], which uses 256-bit AES. The database is password-protected, but you can store the password in your OS keyring. Since the database is encrypted, you can put it in your dropbox (or similar account), to share it between computers.
 

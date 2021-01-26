@@ -6,8 +6,10 @@ use std::borrow::Borrow;
 use std::env;
 use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
+use structopt::clap::arg_enum;
 use structopt::StructOpt;
 mod actions;
 mod autoupgrade;
@@ -16,6 +18,8 @@ mod database;
 #[cfg_attr(target_os = "linux", path = "secretservice_linux.rs")]
 #[cfg_attr(not(target_os = "linux"), path = "secretservice_generic.rs")]
 mod secretservice;
+
+const ZSH_FUNCTION: &str = include_str!("../shell/integration.zsh");
 
 const MIN_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
 const MAX_SUPPORTED_DB_SCHEMA_VERSION: i32 = 22;
@@ -32,6 +36,19 @@ struct Options {
     /// Disable the new version check
     #[structopt(long = "no-upgrade-check", parse(from_flag = std::ops::Not::not))]
     upgrade_check: bool,
+    #[structopt(long = "shell-integration", hidden = true)]
+    shell_integration_mode: bool,
+    /// Print to stdout the function for a given shell
+    #[structopt(long, default_value = "none")]
+    print_shell_function: Shell,
+}
+
+arg_enum! {
+    #[derive(PartialEq, Eq)]
+    enum Shell {
+        None,
+        Zsh,
+    }
 }
 
 pub struct MyItem {
@@ -108,6 +125,10 @@ pub fn main() {
             eprintln!("Error in auto-upgrade: {}", e);
             std::process::exit(1);
         }
+        std::process::exit(0);
+    }
+    if flag_options.print_shell_function == Shell::Zsh {
+        println!("\n{}", ZSH_FUNCTION);
         std::process::exit(0);
     }
     let db_pass = ok_or_exit!(
@@ -189,7 +210,8 @@ pub fn main() {
 
     let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
 
-    std::thread::spawn(move || database::load_items(&conn, flag_options.display_mode, &tx_item));
+    let display_mode = flag_options.display_mode;
+    std::thread::spawn(move || database::load_items(&conn, display_mode, &tx_item));
 
     let (selected_items, query, accept_key) = Skim::run_with(&options, Some(rx_item))
         .map(|out| (out.selected_items, out.query, out.final_key))
@@ -207,19 +229,22 @@ pub fn main() {
         let action = &myitem.inner;
         let action_str = &(action.get_string)(&action.item);
         match accept_key {
+            Key::Ctrl('y') if flag_options.shell_integration_mode => println!("C\x00{}", action_str),
             Key::Ctrl('y') => copy_command_to_clipboard(action_str),
+            Key::AltEnter if flag_options.shell_integration_mode => println!("P\x00{}", action_str),
             Key::AltEnter =>
             // copy to command-line if run is not allowed for that action
                     // if !val_action.allowed_actions.contains(&AllowedAction::Run) =>
             {
                 write_command_line_to_terminal(action_str)
             }
+            Key::Enter if flag_options.shell_integration_mode => println!(
+                "R\x00{}\x00{}", action_str, &run_command_folder(&action)
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "".to_string())),
             Key::Enter => run_command(
                 action_str,
-                &Some(&action.item)
-                    .filter(|p| p.server_info.is_none()) // remote paths are not relevant!
-                    .and_then(|i| i.poi_info.as_ref())
-                    .map(|p| p.path.clone())
+                &run_command_folder(&action)
                     .unwrap_or_else(|| dirs::home_dir().unwrap()),
             ),
             _ => {}
@@ -240,6 +265,13 @@ pub fn main() {
         }
         _ => {}
     }
+}
+
+fn run_command_folder(action: &actions::Action) -> Option<PathBuf> {
+    Some(&action.item)
+        .filter(|p| p.server_info.is_none()) // remote paths are not relevant!
+        .and_then(|i| i.poi_info.as_ref())
+        .map(|p| p.path.clone())
 }
 
 fn check_db_version(conn: &SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {

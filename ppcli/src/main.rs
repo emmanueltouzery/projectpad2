@@ -8,6 +8,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
+use structopt::StructOpt;
 mod actions;
 mod autoupgrade;
 pub mod config;
@@ -18,6 +19,20 @@ mod secretservice;
 
 const MIN_SUPPORTED_DB_SCHEMA_VERSION: i32 = 21;
 const MAX_SUPPORTED_DB_SCHEMA_VERSION: i32 = 22;
+
+#[derive(StructOpt)]
+#[structopt(version = env!("CARGO_PKG_VERSION"))]
+struct Options {
+    /// Upgrade ppcli
+    #[structopt(long)]
+    upgrade: bool,
+    /// Disable color display
+    #[structopt(long="no-color", parse(from_flag = display_from_no_color))]
+    display_mode: DisplayMode,
+    /// Disable the new version check
+    #[structopt(long = "no-upgrade-check", parse(from_flag = std::ops::Not::not))]
+    upgrade_check: bool,
+}
 
 pub struct MyItem {
     display: String,
@@ -72,46 +87,11 @@ macro_rules! ok_or_exit {
     }};
 }
 
-struct Options {
-    display_mode: DisplayMode,
-    upgrade_check: bool,
-}
-
-fn handle_params() -> Options {
-    if env::args().skip(1).any(|p| p == "--version") {
-        println!("version {}", env!("CARGO_PKG_VERSION"));
-        std::process::exit(0);
-    }
-    if env::args().skip(1).any(|p| p == "--help") {
-        println!(
-            "{}",
-            vec![
-                " --version           Print version",
-                " --help              This documentation",
-                " --upgrade           Upgrade ppcli",
-                " --no-color          Disable color display",
-                " --no-upgrade-check  Disable the new version check"
-            ]
-            .join("\n")
-        );
-        std::process::exit(0);
-    }
-    if env::args().skip(1).any(|p| p == "--upgrade") {
-        if let Err(e) = autoupgrade::try_upgrade() {
-            eprintln!("Error in auto-upgrade: {}", e);
-            std::process::exit(1);
-        }
-        std::process::exit(0);
-    }
-    let display_mode = if env::args().skip(1).any(|p| p == "--no-color") {
+fn display_from_no_color(no_color: bool) -> DisplayMode {
+    if no_color {
         DisplayMode::Plain
     } else {
         DisplayMode::Color
-    };
-    let upgrade_check = !env::args().skip(1).any(|p| p == "--no-upgrade-check");
-    Options {
-        display_mode,
-        upgrade_check,
     }
 }
 
@@ -122,7 +102,14 @@ enum UpgradeAvailableData {
 }
 
 pub fn main() {
-    let flag_options = handle_params();
+    let flag_options = Options::from_args();
+    if flag_options.upgrade {
+        if let Err(e) = autoupgrade::try_upgrade() {
+            eprintln!("Error in auto-upgrade: {}", e);
+            std::process::exit(1);
+        }
+        std::process::exit(0);
+    }
     let db_pass = ok_or_exit!(
         secretservice::get_keyring_pass().and_then(|r| r.ok_or_else(|| "no matching credentials".into())),
         "Cannot find the database password in the OS keyring, aborting: did you run the projectpad GUI app to create a database first? {}",

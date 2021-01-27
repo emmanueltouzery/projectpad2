@@ -53,6 +53,8 @@ Normally you would type keywords (part of the project name, of the environment, 
 
 ![CLI2](https://raw.githubusercontent.com/wiki/emmanueltouzery/projectpad2/pics/cli2.svg)
 
+You can launch `ppcli` manually, or you can use its zsh integration: `ppcli --print-shell-function zsh >> ~/.zshrc`, and reload the shell. After doing that, and if `ppcli` is in the path, you can launch it using `control+space`, and any command you run through ppcli will be added to your CLI history.
+
 Note that even though you can enter ssh passwords in projectpad, no effort is made to hand them to ssh when logging in through ppcli. The recommended way to login to ssh servers without password is through ssh keys, but regardless password management remains valuable.
 
 [sqlcipher]: https://www.zetetic.net/sqlcipher/
@@ -64,4 +66,4 @@ The recommended way to install the applications is with flatpak for the projectp
 It's possible to share the projectpad database between computers using Dropbox or similar services. The database is a single file, you can find its location in the preferences dialog of the GUI application. It's possible to use symbolic links to make the database location point anywhere (for instance to the Dropbox directory), but if you use flatpak,
 you must grant the application access to the folder where the DB is stored, through a command like `flatpak override com.github.emmanueltouzery.projectpad --filesystem=~/Dropbox/projectpad/ --user`.
 
-Installation on OSX has not been attempted, it should work if you [install the rust compiler toolchain](https://rustup.rs/), gtk+3 and adwaita-icon-theme on homebrew, and the sqlcipher library with development headers. You could then run `cargo run --release --bin projectpad` and `cargo run --release --bin ppcli` in a git checkout. The binaries will be in `target/release` and are relocatable.
+Installation on OSX has not been attempted, it should work if you [install the rust compiler toolchain](https://rustup.rs/), gtk+3, gtksourceview3 and adwaita-icon-theme on homebrew, and the sqlcipher library with development headers. You could then run `cargo run --release --bin projectpad` and `cargo run --release --bin ppcli` in a git checkout. The binaries will be in `target/release` and are relocatable.

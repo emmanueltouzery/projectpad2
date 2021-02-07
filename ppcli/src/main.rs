@@ -1,8 +1,12 @@
+use crate::database::ExecutedAction;
+#[cfg(test)]
+use crate::database::{ActionType, LinkedItem};
 use database::DisplayMode;
 use diesel::prelude::*;
 use regex::Regex;
 use skim::prelude::*;
 use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::env;
 use std::io::Write;
 use std::path::Path;
@@ -194,7 +198,8 @@ pub fn main() {
             .unwrap();
     }
 
-    let history = config::read_history().unwrap_or_else(|_| vec![]);
+    let (history_strs, history_executed_actions) =
+        config::read_history().unwrap_or_else(|_| (vec![], vec![]));
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
         .expect(Some("ctrl-y,alt-enter".to_string()))
@@ -202,7 +207,9 @@ pub fn main() {
         // .multi(true)
         .preview(Some("")) // preview should be specified to enable preview window
         .preview_window(Some("up:2"))
-        .query_history(&history)
+        // .layout("reverse-list")
+        // .reverse(true)
+        .query_history(&history_strs)
         .exact(true)
         .case(CaseMatching::Ignore)
         .build()
@@ -211,20 +218,31 @@ pub fn main() {
     let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
 
     let display_mode = flag_options.display_mode;
-    std::thread::spawn(move || database::load_items(&conn, display_mode, &tx_item));
+    let ranked_items = get_ranked_items(&history_executed_actions);
+    std::thread::spawn(move || database::load_items(&conn, display_mode, &tx_item, &ranked_items));
 
     let (selected_items, query, accept_key) = Skim::run_with(&options, Some(rx_item))
         .map(|out| (out.selected_items, out.query, out.final_key))
         .unwrap_or_else(|| (Vec::new(), "".to_string(), Key::Enter));
 
     if let Some(item) = selected_items.get(0) {
-        if !query.is_empty() {
-            config::write_history(&history, &query, 100).unwrap();
-        }
-
         // this pattern from the skim apidocs for SkimItem, and also
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
+
+        if !query.is_empty() {
+            let item_of_interest = &myitem.inner.item;
+            config::write_history(
+                &history_strs,
+                &history_executed_actions,
+                (
+                    &query,
+                    ExecutedAction::new(item_of_interest.linked_item, myitem.inner.desc),
+                ),
+                100,
+            )
+            .unwrap();
+        }
 
         let action = &myitem.inner;
         let action_str = &(action.get_string)(&action.item);
@@ -265,6 +283,23 @@ pub fn main() {
         }
         _ => {}
     }
+}
+
+/// we want that between two with the same count the latest wins.
+/// so we rank by a tuple: first the number of uses of that command,
+/// second the index of the last use of that command.
+fn get_ranked_items(
+    history_executed_actions: &[ExecutedAction],
+) -> HashMap<ExecutedAction, (usize, usize)> {
+    history_executed_actions
+        .iter()
+        .enumerate()
+        .fold(HashMap::new(), |mut sofar, (i, cur)| {
+            let sofar_pair = sofar.entry(*cur).or_insert((0, i));
+            sofar_pair.0 += 1;
+            sofar_pair.1 = i;
+            sofar
+        })
 }
 
 fn run_command_folder(action: &actions::Action) -> Option<PathBuf> {
@@ -390,4 +425,17 @@ fn write_command_line_to_terminal(command_line: &str) {
 #[test]
 fn remove_ansi_escapes_prd() {
     assert_eq!("❚PRD", remove_ansi_escapes("\x1b[31m\x1b[1m❚P\x1b[0mRD"));
+}
+
+#[test]
+fn get_ranked_items_should_work() {
+    let action1 = ExecutedAction::new(LinkedItem::ServerId(6), ActionType::SshShell);
+    let action2 = ExecutedAction::new(LinkedItem::ServerPoiId(2), ActionType::FetchCfg);
+    let action3 = ExecutedAction::new(LinkedItem::ServerId(3), ActionType::SshShell);
+    assert_eq!(
+        vec![(action1, (3, 4)), (action3, (2, 5)), (action2, (1, 1))]
+            .into_iter()
+            .collect::<HashMap<_, _>>(),
+        get_ranked_items(&[action1, action2, action3, action1, action1, action3])
+    )
 }

@@ -1899,6 +1899,8 @@ dependencies = [
  "shell-words",
  "skim",
  "structopt",
+ "strum 0.20.0",
+ "strum_macros 0.20.1",
  "zbus",
  "zvariant",
  "zvariant_derive",

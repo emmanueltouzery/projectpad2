@@ -3,7 +3,10 @@ use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use projectpadsql::models::*;
 use skim::prelude::*;
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::string::ToString;
+use strum_macros::{Display, EnumString};
 
 #[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
 pub enum ItemType {
@@ -26,10 +29,16 @@ pub struct PoiInfo {
     pub path: PathBuf,
 }
 
+#[derive(PartialEq, Eq, Copy, Clone, PartialOrd, Ord, Hash, Debug)]
+pub enum LinkedItem {
+    ServerId(i32),
+    ServerPoiId(i32),
+    ProjectPoiId(i32),
+}
+
 #[derive(Debug, Clone)]
 pub struct ItemOfInterest {
-    pub id: i32,
-    pub sql_table: String,
+    pub linked_item: LinkedItem,
     pub project_name: String,
     pub env: Option<EnvironmentType>,
     pub item_type: ItemType,
@@ -74,8 +83,7 @@ fn filter_servers(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                 server_access_type,
             )| {
                 ItemOfInterest {
-                    id,
-                    sql_table: "server".to_string(),
+                    linked_item: LinkedItem::ServerId(id),
                     project_name,
                     env: Some(srv_env),
                     item_type: ItemType::ServerItemType(server_type),
@@ -114,8 +122,7 @@ fn filter_project_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
         .map(
             |(id, project_name, prj_poi_desc, item_text, prj_poi_interest_type, prj_path)| {
                 ItemOfInterest {
-                    id,
-                    sql_table: "project_point_of_interest".to_string(),
+                    linked_item: LinkedItem::ProjectPoiId(id),
                     project_name,
                     env: None,
                     item_type: ItemType::InterestItemType(prj_poi_interest_type),
@@ -175,8 +182,7 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                 run_on_val,
             )| {
                 ItemOfInterest {
-                    id,
-                    sql_table: "server_point_of_interest".to_string(),
+                    linked_item: LinkedItem::ServerPoiId(id),
                     project_name,
                     env: Some(srv_env),
                     item_type: ItemType::InterestItemType(srv_poi_interest_type),
@@ -198,11 +204,53 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
         .collect()
 }
 
-pub fn load_items(
+#[derive(Hash, PartialEq, Eq, EnumString, Display, Clone, Copy, PartialOrd, Ord, Debug)]
+pub enum ActionType {
+    #[strum(serialize = "tail log")]
+    TailLog,
+    #[strum(serialize = "less log")]
+    LessLog,
+    #[strum(serialize = "fetch log")]
+    FetchLog,
+    #[strum(serialize = "ssh folder")]
+    SshFolder,
+    #[strum(serialize = "ssh shell")]
+    SshShell,
+    #[strum(serialize = "go folder")]
+    GoFolder,
+    #[strum(serialize = "run cmd")]
+    RunCmd,
+    #[strum(serialize = "edit cfg")]
+    EditCfg,
+    #[strum(serialize = "less cfg")]
+    LessCfg,
+    #[strum(serialize = "fetch cfg")]
+    FetchCfg,
+}
+
+#[derive(Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Debug)]
+pub enum ExecutedAction {
+    Action {
+        item: LinkedItem,
+        action_desc: ActionType,
+    },
+    NoAction,
+}
+
+impl ExecutedAction {
+    pub fn new(item: LinkedItem, action_desc: ActionType) -> ExecutedAction {
+        ExecutedAction::Action { item, action_desc }
+    }
+}
+
+pub fn load_items<T>(
     conn: &SqliteConnection,
     display_mode: DisplayMode,
     item_sender: &Sender<Arc<dyn SkimItem>>,
-) {
+    ranked_items: &HashMap<ExecutedAction, T>,
+) where
+    T: Ord,
+{
     let mut items = filter_server_pois(&conn);
     items.extend(filter_project_pois(&conn));
     items.extend(filter_servers(&conn));
@@ -210,15 +258,26 @@ pub fn load_items(
         println!("No items to display. Keep in mind that ppcli will only display non RDP/non WWW servers, and point of interests");
         std::process::exit(0);
     }
-    items.sort_by(|a, b| {
-        b.project_name
-            .cmp(&a.project_name)
-            .then(b.server_info.cmp(&a.server_info))
-            .then(b.item_type.cmp(&a.item_type))
-            .then(b.item_text.cmp(&a.item_text))
-    });
+    // items.reverse();
     let cols_spec = vec![7, 3, 4, 30, 25, 10];
-    for action in items.into_iter().flat_map(actions::get_value) {
+    let mut actions: Vec<_> = items.into_iter().flat_map(actions::get_value).collect();
+    actions.sort_by(|a, b| {
+        let a_rank = ranked_items.get(&ExecutedAction::Action {
+            item: a.item.linked_item,
+            action_desc: a.desc,
+        });
+        let b_rank = ranked_items.get(&ExecutedAction::Action {
+            item: b.item.linked_item,
+            action_desc: b.desc,
+        });
+        b_rank
+            .cmp(&a_rank)
+            .then(b.item.project_name.cmp(&a.item.project_name))
+            .then(b.item.server_info.cmp(&a.item.server_info))
+            .then(b.item.item_type.cmp(&a.item.item_type))
+            .then(b.item.item_text.cmp(&a.item.item_text))
+    });
+    for action in actions {
         let _ = item_sender.send(Arc::new(crate::MyItem {
             display: render_row(&cols_spec, &action, display_mode),
             inner: action,

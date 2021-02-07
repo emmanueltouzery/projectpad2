@@ -200,6 +200,11 @@ pub fn main() {
 
     let (history_strs, history_executed_actions) =
         config::read_history().unwrap_or_else(|_| (vec![], vec![]));
+    let non_empty_history_strs: Vec<_> = history_strs
+        .iter()
+        .filter(|h| !h.is_empty())
+        .map(|s| s.to_owned())
+        .collect();
     let options = SkimOptionsBuilder::default()
         .bind(vec!["ctrl-p:previous-history", "ctrl-n:next-history"])
         .expect(Some("ctrl-y,alt-enter".to_string()))
@@ -209,7 +214,7 @@ pub fn main() {
         .preview_window(Some("up:2"))
         // .layout("reverse-list")
         // .reverse(true)
-        .query_history(&history_strs)
+        .query_history(&non_empty_history_strs)
         .exact(true)
         .case(CaseMatching::Ignore)
         .build()
@@ -230,19 +235,17 @@ pub fn main() {
         // https://stackoverflow.com/a/26128001/516188
         let myitem = (**item).as_any().downcast_ref::<MyItem>().unwrap();
 
-        if !query.is_empty() {
-            let item_of_interest = &myitem.inner.item;
-            config::write_history(
-                &history_strs,
-                &history_executed_actions,
-                (
-                    &query,
-                    ExecutedAction::new(item_of_interest.linked_item, myitem.inner.desc),
-                ),
-                100,
-            )
-            .unwrap();
-        }
+        let item_of_interest = &myitem.inner.item;
+        config::write_history(
+            &history_strs,
+            &history_executed_actions,
+            (
+                &query,
+                ExecutedAction::new(item_of_interest.linked_item, myitem.inner.desc),
+            ),
+            100,
+        )
+        .unwrap();
 
         let action = &myitem.inner;
         let action_str = &(action.get_string)(&action.item);

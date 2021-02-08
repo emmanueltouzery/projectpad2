@@ -45,6 +45,14 @@ pub fn upgrade_days_since_last_check() -> Result<u64, Box<dyn std::error::Error>
     }
 }
 
+/// two history files: for actions and user queries.
+/// the reason is that we want to de-deduplicate user query history,
+/// meaning if the user typed 3 times in a row, we want to have it only
+/// once in the history, so that you don't need to type in multiple times
+/// ctrl-p before you get the previous query. We also want to not store
+/// "blank" queries to the query history (if the user manually selected an entry
+/// without filtering). However because the actions sorting is
+/// based on number of occurences, we don't want to de-duplicate those.
 fn history_file_path() -> PathBuf {
     let mut path = projectpadsql::config_path();
     path.push("cli-history");

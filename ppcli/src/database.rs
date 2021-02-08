@@ -229,17 +229,14 @@ pub enum ActionType {
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Debug)]
-pub enum ExecutedAction {
-    Action {
-        item: LinkedItem,
-        action_desc: ActionType,
-    },
-    NoAction,
+pub struct ExecutedAction {
+    pub item: LinkedItem,
+    pub action_desc: ActionType,
 }
 
 impl ExecutedAction {
     pub fn new(item: LinkedItem, action_desc: ActionType) -> ExecutedAction {
-        ExecutedAction::Action { item, action_desc }
+        ExecutedAction { item, action_desc }
     }
 }
 
@@ -262,11 +259,11 @@ pub fn load_items<T>(
     let cols_spec = vec![7, 3, 4, 30, 25, 10];
     let mut actions: Vec<_> = items.into_iter().flat_map(actions::get_value).collect();
     actions.sort_by(|a, b| {
-        let a_rank = ranked_items.get(&ExecutedAction::Action {
+        let a_rank = ranked_items.get(&ExecutedAction {
             item: a.item.linked_item,
             action_desc: a.desc,
         });
-        let b_rank = ranked_items.get(&ExecutedAction::Action {
+        let b_rank = ranked_items.get(&ExecutedAction {
             item: b.item.linked_item,
             action_desc: b.desc,
         });

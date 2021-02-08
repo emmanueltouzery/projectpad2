@@ -1,10 +1,9 @@
 // bits lifted from the skim project
 use crate::database::ActionType;
 use crate::database::{ExecutedAction, LinkedItem};
-use std::borrow::Cow;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, ErrorKind};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
@@ -52,72 +51,103 @@ fn history_file_path() -> PathBuf {
     path
 }
 
-pub fn read_history() -> Result<(Vec<String>, Vec<ExecutedAction>), std::io::Error> {
-    let file = File::open(history_file_path())?;
-    let mut history_strs = vec![];
-    let mut history_linked_items = vec![];
-    for line in BufReader::new(file).lines() {
-        let (history_str, linked_item) = parse_history_line(&line?);
-        history_strs.push(history_str);
-        history_linked_items.push(linked_item);
-    }
-    Ok((history_strs, history_linked_items))
+fn actions_file_path() -> PathBuf {
+    let mut path = projectpadsql::config_path();
+    path.push("action-history");
+    path
 }
 
-fn parse_history_line(line: &str) -> (String, ExecutedAction) {
-    let elts: Vec<_> = line.splitn(4, ';').collect();
+pub fn read_action_history() -> Result<Vec<ExecutedAction>, std::io::Error> {
+    let actions_file = File::open(actions_file_path())?;
+    BufReader::new(actions_file)
+        .lines()
+        .map(|line| parse_action_history_line(&line?))
+        .collect()
+}
+
+pub fn read_string_history() -> Result<Vec<String>, std::io::Error> {
+    let hist_file = File::open(history_file_path())?;
+    BufReader::new(hist_file).lines().collect()
+}
+
+fn parse_action_history_line(line: &str) -> Result<ExecutedAction, std::io::Error> {
+    let elts: Vec<_> = line.split(';').collect();
     match (
         elts.len(),
         elts.get(0),
         elts.get(1).and_then(|i| i.parse::<i32>().ok()),
         elts.get(2).and_then(|a| ActionType::from_str(a).ok()),
     ) {
-        (4, Some(&"S"), Some(id), Some(action_desc)) => (
-            elts[3].to_owned(),
-            ExecutedAction::new(LinkedItem::ServerId(id), action_desc),
-        ),
-        (4, Some(&"P"), Some(id), Some(action_desc)) => (
-            elts[3].to_owned(),
-            ExecutedAction::new(LinkedItem::ProjectPoiId(id), action_desc),
-        ),
-        (4, Some(&"SP"), Some(id), Some(action_desc)) => (
-            elts[3].to_owned(),
-            ExecutedAction::new(LinkedItem::ServerPoiId(id), action_desc),
-        ),
-        _ => (line.to_owned(), ExecutedAction::NoAction),
+        (3, Some(&"S"), Some(id), Some(action_desc)) => {
+            Ok(ExecutedAction::new(LinkedItem::ServerId(id), action_desc))
+        }
+        (3, Some(&"P"), Some(id), Some(action_desc)) => Ok(ExecutedAction::new(
+            LinkedItem::ProjectPoiId(id),
+            action_desc,
+        )),
+        (3, Some(&"SP"), Some(id), Some(action_desc)) => Ok(ExecutedAction::new(
+            LinkedItem::ServerPoiId(id),
+            action_desc,
+        )),
+        _ => Err(std::io::Error::new(
+            ErrorKind::Other,
+            format!("couldn't parse {}", line),
+        )),
     }
 }
 
-fn serialize_history_line<'a>(line: (&'a String, &ExecutedAction)) -> Cow<'a, str> {
-    match line.1 {
-        ExecutedAction::NoAction => Cow::Borrowed(line.0),
-        ExecutedAction::Action {
+fn serialize_action_history_line(action: &ExecutedAction) -> String {
+    match action {
+        ExecutedAction {
             item: LinkedItem::ServerId(id),
             action_desc,
-        } => Cow::Owned(format!("S;{};{};{}", id, action_desc, line.0)),
-        ExecutedAction::Action {
+        } => format!("S;{};{}", id, action_desc),
+        ExecutedAction {
             item: LinkedItem::ProjectPoiId(id),
             action_desc,
-        } => Cow::Owned(format!("P;{};{};{}", id, action_desc, line.0)),
-        ExecutedAction::Action {
+        } => format!("P;{};{}", id, action_desc),
+        ExecutedAction {
             item: LinkedItem::ServerPoiId(id),
             action_desc,
-        } => Cow::Owned(format!("SP;{};{};{}", id, action_desc, line.0)),
+        } => format!("SP;{};{}", id, action_desc),
     }
 }
 
-pub fn write_history(
-    orig_history_strs: &[String],
+pub fn write_actions_history(
     orig_actions: &[ExecutedAction],
-    latest: (&str, ExecutedAction),
+    latest: ExecutedAction,
     limit: usize,
 ) -> Result<(), std::io::Error> {
-    let orig_history: Vec<_> = orig_history_strs.iter().zip(orig_actions.iter()).collect();
-    if orig_history.last().map(|(l, i)| (l.as_str(), **i)) == Some(latest) {
+    write_history(
+        &actions_file_path(),
+        &orig_actions
+            .iter()
+            .map(serialize_action_history_line)
+            .collect::<Vec<_>>(),
+        &serialize_action_history_line(&latest),
+        limit,
+    )
+}
+
+pub fn write_string_history(
+    orig_history: &[String],
+    latest: &str,
+    limit: usize,
+) -> Result<(), std::io::Error> {
+    if orig_history.last().map(|l| l.as_str()) == Some(latest) {
         // no point of having at the end of the history 5x the same command...
         return Ok(());
     }
-    let additional_lines = if latest.0.trim().is_empty() { 0 } else { 1 };
+    write_history(&history_file_path(), orig_history, latest, limit)
+}
+
+fn write_history(
+    pathbuf: &PathBuf,
+    orig_history: &[String],
+    latest: &str,
+    limit: usize,
+) -> Result<(), std::io::Error> {
+    let additional_lines = if latest.trim().is_empty() { 0 } else { 1 };
     let start_index = if orig_history.len() + additional_lines > limit {
         orig_history.len() + additional_lines - limit
     } else {
@@ -125,18 +155,10 @@ pub fn write_history(
     };
 
     let mut history = orig_history[start_index..].to_vec();
-    let latest_str = latest.0.to_string();
-    history.push((&latest_str, &latest.1));
+    history.push(latest.to_string());
 
-    let file = File::create(history_file_path())?;
+    let file = File::create(pathbuf)?;
     let mut file = BufWriter::new(file);
-    file.write_all(
-        history
-            .into_iter()
-            .map(serialize_history_line)
-            .collect::<Vec<_>>()
-            .join("\n")
-            .as_bytes(),
-    )?;
+    file.write_all(history.join("\n").as_bytes())?;
     Ok(())
 }

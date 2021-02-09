@@ -1,5 +1,14 @@
 # https://github.com/emmanueltouzery/projectpad2
 # shell integration for ppcli: control-space to run
+
+# two options were considered so that we can add ppcli-run commands
+# to the shell history:
+# 1. creating a temporary file, give the path to ppcli, ppcli writes
+#    the command that was run there
+# 2. this approach: in shell integration mode, ppcli doesn't run
+#    commands, but gives the shell all the info needed, and the
+#    shell runs the commands and writes to the history
+# I started with #2 and kept it as it was working OK.
 ppcli-run() {
     output=$(ppcli --shell-integration)
     # split by NUL https://stackoverflow.com/a/2269760/516188

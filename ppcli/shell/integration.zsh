@@ -16,7 +16,8 @@ ppcli-run() {
             print -s "$cmd" # https://stackoverflow.com/a/2816792/516188
             # need the </dev/tty and the stty so that ssh shells work
             # https://stackoverflow.com/questions/57539180/why-is-interactive-command-breaking-when-using-zsh-widget-to-execute-it#comment101556821_57539863
-            eval "stty echo; $cmd" </dev/tty
+            # i need the printf to avoid ~0 and ~1 around pasting https://unix.stackexchange.com/a/196574/36566
+            eval "stty sane; printf '\e[?2004l'; $cmd" </dev/tty
             cd $cur_folder
             # accept-line: give me a prompt, and that takes into account the
             # new history i've added with print -s (zle reset-prompt doesn't do that)

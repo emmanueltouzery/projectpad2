@@ -35,6 +35,9 @@ ppcli-run() {
             fi
             ;;
     esac
+    if [[ ! -z "$pieces[4]" ]]; then
+        echo "\n\nppcli has detected a new version is available.\nIt's recommended to upgrade by running:\n ppcli --upgrade\n new version URL: $pieces[4]"
+    fi
 }
 zle -N ppcli-run
 bindkey '^ ' ppcli-run

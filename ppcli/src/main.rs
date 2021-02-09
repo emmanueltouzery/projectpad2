@@ -125,9 +125,16 @@ enum UpgradeAvailableData {
 pub fn main() {
     let flag_options = Options::from_args();
     if flag_options.upgrade {
-        if let Err(e) = autoupgrade::try_upgrade() {
-            eprintln!("Error in auto-upgrade: {}", e);
-            std::process::exit(1);
+        match autoupgrade::try_upgrade() {
+            Ok(()) => {
+                // don't bug the user about this upgrade for
+                // some time now (even if the user rejected the upgrade)
+                let _ = config::upgrade_check_mark_done();
+            }
+            Err(e) => {
+                eprintln!("Error in auto-upgrade: {}", e);
+                std::process::exit(1);
+            }
         }
         std::process::exit(0);
     }
@@ -243,10 +250,20 @@ pub fn main() {
 
         let action = &myitem.inner;
         let action_str = &(action.get_string)(&action.item);
+        let upgrade_url = if flag_options.shell_integration_mode {
+            // in shell integration mode, we check for upgrades before handling
+            // the command, because we just print out the command, the shell
+            // will execute it.
+            handle_upgrade_info_and_get_download_url(&has_upgrade_rx)
+                .map(Cow::Owned)
+                .unwrap_or(Cow::Borrowed(""))
+        } else {
+            Cow::Borrowed("")
+        };
         match accept_key {
-            Key::Ctrl('y') if flag_options.shell_integration_mode => println!("C\x00{}", action_str),
+            Key::Ctrl('y') if flag_options.shell_integration_mode => println!("C\x00{}\x00\x00{}", action_str, upgrade_url),
             Key::Ctrl('y') => copy_command_to_clipboard(action_str),
-            Key::AltEnter if flag_options.shell_integration_mode => println!("P\x00{}", action_str),
+            Key::AltEnter if flag_options.shell_integration_mode => println!("P\x00{}\x00\x00{}", action_str, upgrade_url),
             Key::AltEnter =>
             // copy to command-line if run is not allowed for that action
                     // if !val_action.allowed_actions.contains(&AllowedAction::Run) =>
@@ -254,9 +271,9 @@ pub fn main() {
                 write_command_line_to_terminal(action_str)
             }
             Key::Enter if flag_options.shell_integration_mode => println!(
-                "R\x00{}\x00{}", action_str, &run_command_folder(&action)
+                "R\x00{}\x00{}\x00{}", action_str, &run_command_folder(&action)
                     .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "".to_string())),
+                    .unwrap_or_else(|| "".to_string()), upgrade_url),
             Key::Enter => run_command(
                 action_str,
                 &run_command_folder(&action)
@@ -265,20 +282,28 @@ pub fn main() {
             _ => {}
         }
     }
-
-    // try_recv, don't want to block there... don't want
-    // ppcli to block at the end of the runtime if it's run
-    // on a system without network for instance.
-    match has_upgrade_rx.try_recv() {
-        Ok(UpgradeAvailableData::HasUpgrade(download_url)) => {
+    if !flag_options.shell_integration_mode {
+        if let Some(download_url) = handle_upgrade_info_and_get_download_url(&has_upgrade_rx) {
             if let Ok(()) = autoupgrade::apply_upgrade(&download_url) {
                 let _ = config::upgrade_check_mark_done();
             }
         }
+    }
+}
+
+fn handle_upgrade_info_and_get_download_url(
+    has_upgrade_rx: &mpsc::Receiver<UpgradeAvailableData>,
+) -> Option<String> {
+    // try_recv, don't want to block there... don't want
+    // ppcli to block at the end of the runtime if it's run
+    // on a system without network for instance.
+    match has_upgrade_rx.try_recv() {
+        Ok(UpgradeAvailableData::HasUpgrade(download_url)) => Some(download_url),
         Ok(UpgradeAvailableData::CheckedNoUpgrade) => {
             let _ = config::upgrade_check_mark_done();
+            None
         }
-        _ => {}
+        _ => None,
     }
 }
 

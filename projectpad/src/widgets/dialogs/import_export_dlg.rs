@@ -14,6 +14,7 @@ use projectpadsql::models::Project;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::path;
 use std::sync::mpsc;
 
@@ -224,7 +225,9 @@ impl Widget for ImportExportDialog {
                     dialog.set_filter(&filter);
                     if dialog.run() == gtk::ResponseType::Accept {
                         match dialog.get_filename() {
-                            Some(fname) if fname.ends_with(".7z") => self.do_export(fname, pass),
+                            Some(fname) if fname.extension() == Some(OsStr::new("7z")) => {
+                                self.do_export(fname, pass)
+                            }
                             // need to make sure the user picks a filename ending in .7z, or we get
                             // a subtle issue in the flatpak: when you enter filename /a/b/c in the
                             // file picker, flatpak gives us access to /a/b/c and NOTHING ELSE.

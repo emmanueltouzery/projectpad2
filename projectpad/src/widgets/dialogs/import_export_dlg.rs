@@ -68,6 +68,7 @@ pub enum Msg {
     Close,
     NextClicked,
     GotPassword(String),
+    GotPasswordConfirm(String),
     FilePicked,
     ImportResult(Result<(), String>),
     ExportResult(Result<HashSet<String>, String>),
@@ -95,6 +96,7 @@ pub struct Model {
     export_result_sender: relm::Sender<Result<HashSet<String>, String>>,
     _projectlist_channel: relm::Channel<Result<Vec<Project>, String>>,
     projectlist_sender: relm::Sender<Result<Vec<Project>, String>>,
+    export_pass: Option<String>,
 }
 
 const CHILD_NAME_IMPORT: &str = "import";
@@ -158,6 +160,7 @@ impl Widget for ImportExportDialog {
             _export_result_channel,
             projectlist_sender,
             _projectlist_channel,
+            export_pass: None,
         }
     }
 
@@ -215,33 +218,27 @@ impl Widget for ImportExportDialog {
                     self.do_import(pass);
                 }
                 WizardState::ExportPickFile => {
-                    let dialog = gtk::FileChooserNativeBuilder::new()
-                        .action(gtk::FileChooserAction::Save)
-                        .title("Export to...")
-                        .modal(true)
-                        .build();
-                    let filter = gtk::FileFilter::new();
-                    filter.add_pattern("*.7z");
-                    dialog.set_filter(&filter);
-                    if dialog.run() == gtk::ResponseType::Accept {
-                        match dialog.get_filename() {
-                            Some(fname) if fname.extension() == Some(OsStr::new("7z")) => {
-                                self.do_export(fname, pass)
-                            }
-                            // need to make sure the user picks a filename ending in .7z, or we get
-                            // a subtle issue in the flatpak: when you enter filename /a/b/c in the
-                            // file picker, flatpak gives us access to /a/b/c and NOTHING ELSE.
-                            // attempting to write to /a/b/c.7z will fail, and we do want to have
-                            // the extension...
-                            _ => standard_dialogs::display_error(
-                                "Please pick a file name ending with .7z",
-                                None,
-                            ),
-                        }
+                    self.model.export_pass = Some(pass);
+                    self.export_password_confirm_entry
+                        .stream()
+                        .emit(password_field::Msg::RequestPassword);
+                }
+                _ => unreachable!(),
+            },
+            Msg::GotPasswordConfirm(pass) => {
+                if Some(pass.as_str()) != self.model.export_pass.as_deref() {
+                    self.show_export_error("New and confirm passwords don't match");
+                    return;
+                }
+                match self.model.wizard_state {
+                    WizardState::ExportPickFile => {
+                        self.open_export_save_dialog(pass);
+                    }
+                    _ => {
+                        unreachable!();
                     }
                 }
-                _ => panic!(),
-            },
+            }
             Msg::ImportResult(Result::Ok(())) => {
                 self.import_win.close();
                 self.model.relm.stream().emit(Msg::ImportApplied);
@@ -271,6 +268,32 @@ impl Widget for ImportExportDialog {
             Msg::ImportApplied => {}
             Msg::GotProjectList(Err(e)) => self.show_export_error(&e),
             Msg::GotProjectList(Ok(project_names)) => self.populate_project_list(project_names),
+        }
+    }
+
+    fn open_export_save_dialog(&self, pass: String) {
+        let dialog = gtk::FileChooserNativeBuilder::new()
+            .action(gtk::FileChooserAction::Save)
+            .title("Export to...")
+            .modal(true)
+            .build();
+        let filter = gtk::FileFilter::new();
+        filter.add_pattern("*.7z");
+        dialog.set_filter(&filter);
+        if dialog.run() == gtk::ResponseType::Accept {
+            match dialog.get_filename() {
+                Some(fname) if fname.extension() == Some(OsStr::new("7z")) => {
+                    self.do_export(fname, pass)
+                }
+                // need to make sure the user picks a filename ending in .7z, or we get
+                // a subtle issue in the flatpak: when you enter filename /a/b/c in the
+                // file picker, flatpak gives us access to /a/b/c and NOTHING ELSE.
+                // attempting to write to /a/b/c.7z will fail, and we do want to have
+                // the extension...
+                _ => {
+                    standard_dialogs::display_error("Please pick a file name ending with .7z", None)
+                }
+            }
         }
     }
 
@@ -494,7 +517,6 @@ impl Widget for ImportExportDialog {
                     gtk::Label {
                         text: "Password",
                         halign: gtk::Align::End,
-                        margin_top: 20,
                         cell: {
                             left_attach: 0,
                             top_attach: 3,
@@ -508,6 +530,23 @@ impl Widget for ImportExportDialog {
                             top_attach: 3,
                         },
                         PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPassword(pass.clone()),
+                    },
+                    gtk::Label {
+                        text: "Password confirm",
+                        halign: gtk::Align::End,
+                        cell: {
+                            left_attach: 0,
+                            top_attach: 4,
+                        },
+                    },
+                    #[name="export_password_confirm_entry"]
+                    PasswordField(("".to_string(), password_field::ActivatesDefault::Yes)) {
+                        hexpand: true,
+                        cell: {
+                            left_attach: 1,
+                            top_attach: 4,
+                        },
+                        PasswordFieldMsgPublishPassword(ref pass) => Msg::GotPasswordConfirm(pass.clone()),
                     },
                 }
             },

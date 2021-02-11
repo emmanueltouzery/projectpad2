@@ -1,6 +1,6 @@
 [package]
 name = "projectpadsql"
-version = "2.2.0"
+version = "2.2.2"
 authors = [ "Emmanuel Touzery" ]
 edition = "2018"
 

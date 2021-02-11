@@ -1,6 +1,6 @@
 [package]
 name = "projectpad"
-version = "2.2.0"
+version = "2.2.2"
 authors = ["Emmanuel Touzery <etouzery@gmail.com>"]
 edition = "2018"
 

@@ -13,7 +13,8 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectPoiItemListItem {
     fn init_view(&mut self) {
-        self.items_frame
+        self.widgets
+            .items_frame
             .get_style_context()
             .add_class("items_frame");
     }

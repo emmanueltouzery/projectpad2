@@ -215,14 +215,17 @@ fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
 #[widget]
 impl Widget for ServerItemListItem {
     fn init_view(&mut self) {
-        self.items_frame
+        self.widgets
+            .items_frame
             .get_style_context()
             .add_class("items_frame");
-        self.title
+        self.widgets
+            .title
             .get_style_context()
             .add_class("items_frame_title");
 
-        self.header_actions_btn
+        self.widgets
+            .header_actions_btn
             .set_popover(Some(&self.model.header_popover));
         self.load_server_item();
     }
@@ -382,7 +385,7 @@ impl Widget for ServerItemListItem {
             }
         };
         populate_grid(
-            self.items_grid.clone(),
+            self.widgets.items_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
             &extra_btns,
@@ -402,7 +405,7 @@ impl Widget for ServerItemListItem {
                 .take(3)
                 .collect::<Vec<_>>()
                 .join("\n");
-            self.items_grid.attach(
+            self.widgets.items_grid.attach(
                 &gtk::LabelBuilder::new()
                     .hexpand(true)
                     .single_line_mode(true)
@@ -416,7 +419,7 @@ impl Widget for ServerItemListItem {
                 2,
                 1,
             );
-            self.items_grid.show_all();
+            self.widgets.items_grid.show_all();
         }
     }
 
@@ -497,7 +500,9 @@ impl Widget for ServerItemListItem {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::CopyClicked(val) => {
-                if let Some(clip) = gtk::Clipboard::get_default(&self.items_grid.get_display()) {
+                if let Some(clip) =
+                    gtk::Clipboard::get_default(&self.widgets.items_grid.get_display())
+                {
                     clip.set_text(&val);
                 }
                 self.model
@@ -509,7 +514,7 @@ impl Widget for ServerItemListItem {
             Msg::ViewNote(_) => {}
             Msg::EditNote(note) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         note.server_id,
@@ -531,7 +536,7 @@ impl Widget for ServerItemListItem {
             }
             Msg::EditPoi(poi) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         poi.server_id,
@@ -551,7 +556,7 @@ impl Widget for ServerItemListItem {
             }
             Msg::EditDb(db) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         db.server_id,
@@ -571,7 +576,7 @@ impl Widget for ServerItemListItem {
             }
             Msg::EditWebsite(www) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         www.server_id,
@@ -593,7 +598,7 @@ impl Widget for ServerItemListItem {
             }
             Msg::EditUser(usr) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         usr.server_id,
@@ -679,7 +684,7 @@ impl Widget for ServerItemListItem {
                 standard_dialogs::confirm_deletion(
                     &format!("Delete server {}", message),
                     &format!("Are you sure you want to delete the server {} {}? This action cannot be undone.", message, &item_desc),
-                    self.items_frame.clone().upcast::<gtk::Widget>(),
+                    self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                     move || relm.stream().emit(evt.clone()),
                 );
             }

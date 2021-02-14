@@ -33,10 +33,11 @@ pub struct Model {
 #[widget]
 impl Widget for UnlockDbDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
 
         self.model.error_label.show();
-        self.error_infobar
+        self.widgets
+            .error_infobar
             .get_content_area()
             .add(&self.model.error_label);
     }
@@ -58,13 +59,14 @@ impl Widget for UnlockDbDialog {
 
     fn show_error(&self, msg: &str) {
         self.model.error_label.set_text(msg);
-        self.error_infobar.set_visible(true);
+        self.widgets.error_infobar.set_visible(true);
     }
 
     fn update(&mut self, event: Msg) {
         match event {
             Msg::OkPressed => {
-                self.password_entry
+                self.components
+                    .password_entry
                     .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
@@ -76,7 +78,8 @@ impl Widget for UnlockDbDialog {
                     self.show_error("The password must not be empty");
                 } else {
                     self.model.password = Some(pass);
-                    self.password_confirm_entry
+                    self.components
+                        .password_confirm_entry
                         .stream()
                         .emit(PasswordFieldMsg::RequestPassword);
                 }
@@ -86,7 +89,7 @@ impl Widget for UnlockDbDialog {
                     self.show_error("Passwords don't match");
                 } else {
                     let s = self.model.pass_valid_sender.clone();
-                    let is_save_to_keyring = self.save_password_check.get_active();
+                    let is_save_to_keyring = self.widgets.save_password_check.get_active();
                     let p = self.model.password.as_ref().unwrap().clone();
                     self.model
                         .db_sender

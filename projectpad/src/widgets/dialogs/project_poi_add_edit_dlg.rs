@@ -41,14 +41,14 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectPoiAddEditDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
         self.init_interest_type();
         self.init_group();
     }
 
     fn init_interest_type(&self) {
         init_interest_type_combo(
-            &self.interest_type,
+            &self.widgets.interest_type,
             self.model.interest_type.to_string().as_str(),
         );
     }
@@ -63,7 +63,7 @@ impl Widget for ProjectPoiAddEditDialog {
                     .unwrap();
             }))
             .unwrap();
-        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.widgets.group);
     }
 
     fn model(
@@ -119,7 +119,7 @@ impl Widget for ProjectPoiAddEditDialog {
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
-                    &self.group,
+                    &self.widgets.group,
                     &groups,
                     &self.model.group_name,
                 );
@@ -136,7 +136,8 @@ impl Widget for ProjectPoiAddEditDialog {
     }
 
     fn combo_read_interest_type(&self) -> InterestType {
-        self.interest_type
+        self.widgets
+            .interest_type
             .get_active_id()
             .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
             .expect("interest type not specified!?")
@@ -145,10 +146,10 @@ impl Widget for ProjectPoiAddEditDialog {
     fn update_project_poi(&self) {
         let project_poi_id = self.model.project_poi_id;
         let project_id = self.model.project_id;
-        let new_desc = self.desc_entry.get_text();
-        let new_path = self.path_entry.get_text();
-        let new_text = self.text_entry.get_text();
-        let new_group = self.group.get_active_text();
+        let new_desc = self.widgets.desc_entry.get_text();
+        let new_path = self.widgets.path_entry.get_text();
+        let new_text = self.widgets.text_entry.get_text();
+        let new_group = self.widgets.group.get_active_text();
         let new_interest_type = self.combo_read_interest_type();
         let s = self.model.project_poi_updated_sender.clone();
         self.model

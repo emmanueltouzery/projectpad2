@@ -64,20 +64,25 @@ fn set_db_password(db_conn: &SqliteConnection, pass: &str) -> Result<(), String>
 #[widget]
 impl Widget for ChangeDbPasswordDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
-        self.grid.set_margin_bottom(20);
-        self.current_pwd_header
+        dialog_helpers::style_grid(&self.widgets.grid);
+        self.widgets.grid.set_margin_bottom(20);
+        self.widgets
+            .current_pwd_header
             .get_style_context()
             .add_class("section_title");
-        self.new_pwd_header
+        self.widgets
+            .new_pwd_header
             .get_style_context()
             .add_class("section_title");
         self.init_infobar_overlay();
     }
 
     fn init_infobar_overlay(&self) {
-        self.infobar_overlay.add_overlay(&self.model.infobar);
-        self.infobar_overlay
+        self.widgets
+            .infobar_overlay
+            .add_overlay(&self.model.infobar);
+        self.widgets
+            .infobar_overlay
             .set_overlay_pass_through(&self.model.infobar, true);
     }
 
@@ -132,7 +137,8 @@ impl Widget for ChangeDbPasswordDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::OkPressed => {
-                self.current_password_entry
+                self.components
+                    .current_password_entry
                     .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
@@ -170,7 +176,8 @@ impl Widget for ChangeDbPasswordDialog {
             }
             Msg::CheckedOldPassword(true) => {
                 self.clear_error();
-                self.new_password_entry
+                self.components
+                    .new_password_entry
                     .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
@@ -179,7 +186,8 @@ impl Widget for ChangeDbPasswordDialog {
                     self.show_error("New password must not be empty");
                 } else {
                     self.model.new_password = Some(pass);
-                    self.confirm_password_entry
+                    self.components
+                        .confirm_password_entry
                         .stream()
                         .emit(PasswordFieldMsg::RequestPassword);
                 }

@@ -54,7 +54,7 @@ pub struct PickProjectpadItemParams {
 #[widget]
 impl Widget for PickProjectpadItemButton {
     fn init_view(&mut self) {
-        self.btn_box.get_style_context().add_class("linked");
+        self.widgets.btn_box.get_style_context().add_class("linked");
         self.update_display();
         if let Some(id) = self.model.item_id {
             self.fetch_item_name(id);
@@ -154,7 +154,7 @@ impl Widget for PickProjectpadItemButton {
 
     fn open_pickitem_modal(&mut self) {
         let dialog = standard_dialogs::modal_dialog(
-            self.pick_item_btn.clone().upcast::<gtk::Widget>(),
+            self.widgets.pick_item_btn.clone().upcast::<gtk::Widget>(),
             800,
             400,
             "Pick item".to_string(),
@@ -215,7 +215,7 @@ impl Widget for PickProjectpadItemButton {
         standard_dialogs::prepare_custom_dialog_component_ref(&dialog, comp);
 
         let search_entry = gtk::SearchEntryBuilder::new().text(&search_text).build();
-        let comp2 = comp.clone();
+        let comp2 = comp.stream().clone();
         search_entry.connect_changed(move |se| {
             comp2.stream().emit(search_view::Msg::FilterChanged(Some(
                 se.get_text().to_string(),
@@ -226,7 +226,7 @@ impl Widget for PickProjectpadItemButton {
 
         relm::connect!(comp@SearchViewMsg::SelectedItem(ref p), self.model.relm, Msg::ItemSelected(p.clone()));
 
-        let comp3 = comp.clone();
+        let comp3 = comp.stream().clone();
         dialog.connect_response(move |d, r| {
             if r == gtk::ResponseType::Ok {
                 comp3.stream().emit(search_view::Msg::RequestSelectedItem);

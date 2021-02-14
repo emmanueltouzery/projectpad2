@@ -28,12 +28,13 @@ pub struct Model {
 #[widget]
 impl Widget for FileContentsButton {
     fn init_view(&mut self) {
-        self.btn_box.get_style_context().add_class("linked");
+        self.widgets.btn_box.get_style_context().add_class("linked");
         self.update_auth_file();
     }
 
     fn update_auth_file(&self) {
-        self.auth_key_stack
+        self.widgets
+            .auth_key_stack
             .set_visible_child_name(if self.model.filename.is_some() {
                 "file"
             } else {

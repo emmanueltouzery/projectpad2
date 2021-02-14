@@ -138,12 +138,14 @@ impl Widget for Win {
         }
         let titlebar = &self.model.titlebar;
         let overlay_widget = self.model.tooltips_overlay.widget();
-        self.project_items_list
+        self.components
+            .project_items_list
             .widget()
             .get_style_context()
             .add_class("sidebar");
-        self.tooltip_overlay.add_overlay(overlay_widget);
-        self.tooltip_overlay
+        self.widgets.tooltip_overlay.add_overlay(overlay_widget);
+        self.widgets
+            .tooltip_overlay
             .set_overlay_pass_through(overlay_widget, true);
         overlay_widget.get_window().unwrap().set_pass_through(true);
         relm::connect!(titlebar@WinTitleBarMsg::SearchActiveChanged(is_active),
@@ -158,12 +160,13 @@ impl Widget for Win {
 
         self.unlock_db();
 
-        self.project_poi_contents
-            .stream()
-            .emit(ProjectPoiContentsMsg::GotHeaderBarHeight(
-                self.infobar_overlay
+        self.components.project_poi_contents.stream().emit(
+            ProjectPoiContentsMsg::GotHeaderBarHeight(
+                self.widgets
+                    .infobar_overlay
                     .translate_coordinates(
                         &self
+                            .widgets
                             .infobar_overlay
                             .get_toplevel()
                             .unwrap()
@@ -173,12 +176,16 @@ impl Widget for Win {
                     )
                     .unwrap()
                     .1,
-            ));
+            ),
+        );
     }
 
     fn init_infobar_overlay(&self) {
-        self.infobar_overlay.add_overlay(&self.model.infobar);
-        self.infobar_overlay
+        self.widgets
+            .infobar_overlay
+            .add_overlay(&self.model.infobar);
+        self.widgets
+            .infobar_overlay
             .set_overlay_pass_through(&self.model.infobar, true);
     }
 
@@ -261,7 +268,7 @@ impl Widget for Win {
 
     fn display_unlock_dialog(&mut self) {
         let dialog = standard_dialogs::modal_dialog(
-            self.window.clone().upcast::<gtk::Widget>(),
+            self.widgets.window.clone().upcast::<gtk::Widget>(),
             600,
             100,
             "Projectpad".to_string(),
@@ -298,10 +305,10 @@ impl Widget for Win {
         dialog
             .get_content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);
-        let c = dialog_contents.clone();
+        let s = dialog_contents.stream().clone();
         dialog.connect_response(move |d, r| {
             if r == gtk::ResponseType::Ok {
-                c.stream().emit(unlock_db_dlg::Msg::OkPressed);
+                s.emit(unlock_db_dlg::Msg::OkPressed);
             } else {
                 d.close();
             }
@@ -362,7 +369,9 @@ impl Widget for Win {
                     dialog.close();
                     self.model.unlock_db_component_dialog = None;
                 }
-                self.project_list.emit(ProjectListMsg::DbPrepared);
+                self.components
+                    .project_list
+                    .emit(ProjectListMsg::DbPrepared);
                 self.request_update_welcome_status();
             }
             Msg::CloseUnlockDb => {
@@ -371,29 +380,36 @@ impl Widget for Win {
                 }
             }
             Msg::ProjectActivated(project) => {
-                self.project_items_list
+                self.components
+                    .project_items_list
                     .emit(ProjectItemsListMsg::ActiveProjectChanged(project.clone()));
-                self.project_summary
+                self.components
+                    .project_summary
                     .emit(ProjectSummaryMsg::ProjectActivated(project));
             }
             Msg::EnvironmentChanged(env) => {
-                self.project_items_list
+                self.components
+                    .project_items_list
                     .emit(ProjectItemsListMsg::ActiveEnvironmentChanged(env));
             }
             Msg::ProjectItemSelected(pi) => {
-                self.normal_or_project_welcome_stack
+                self.widgets
+                    .normal_or_project_welcome_stack
                     .set_visible_child_name(if pi.is_some() {
                         CHILD_NAME_NORMAL
                     } else {
                         CHILD_NAME_WELCOME
                     });
-                self.project_poi_header
+                self.components
+                    .project_poi_header
                     .emit(ProjectPoiHeaderMsg::ProjectItemSelected(pi.clone()));
-                self.project_poi_contents
+                self.components
+                    .project_poi_contents
                     .emit(ProjectPoiContentsMsg::ProjectItemSelected(Box::new(pi)));
             }
             Msg::SearchActiveChanged(is_active) => {
-                self.normal_or_search_stack
+                self.widgets
+                    .normal_or_search_stack
                     .set_visible_child_name(if is_active {
                         CHILD_NAME_SEARCH
                     } else {
@@ -401,7 +417,8 @@ impl Widget for Win {
                     });
             }
             Msg::SearchTextChanged(search_text) => {
-                self.search_view
+                self.components
+                    .search_view
                     .emit(SearchViewMsg::FilterChanged(Some(search_text)));
             }
             Msg::DisplayItem(di) => {
@@ -415,19 +432,21 @@ impl Widget for Win {
             }
             Msg::KeyRelease(e) => {
                 if self.is_search_mode() {
-                    self.search_view.stream().emit(SearchViewMsg::KeyRelease(e));
+                    self.components
+                        .search_view
+                        .stream()
+                        .emit(SearchViewMsg::KeyRelease(e));
                     return;
                 }
             }
             Msg::ProjectItemUpdated(ref project_item) => {
-                self.project_items_list
-                    .stream()
-                    .emit(ProjectItemsListMsg::RefreshItemList(Some(
-                        project_item.clone(),
-                    )));
+                self.components.project_items_list.stream().emit(
+                    ProjectItemsListMsg::RefreshItemList(Some(project_item.clone())),
+                );
             }
             Msg::ProjectItemDeleted(ref _srv) => {
-                self.project_items_list
+                self.components
+                    .project_items_list
                     .stream()
                     .emit(ProjectItemsListMsg::RefreshItemList(None));
             }
@@ -436,13 +455,15 @@ impl Widget for Win {
                     dlg.close();
                     self.model.project_add_dialog = None;
                 }
-                self.project_list
+                self.components
+                    .project_list
                     .stream()
                     .emit(ProjectListMsg::ProjectListChanged);
                 self.request_update_welcome_status();
             }
             Msg::ProjectCountChanged(count) => {
-                self.normal_or_welcome_stack
+                self.widgets
+                    .normal_or_welcome_stack
                     .set_visible_child_name(if count > 0 {
                         CHILD_NAME_NORMAL
                     } else {
@@ -451,7 +472,7 @@ impl Widget for Win {
             }
             Msg::AddProject => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.window.clone().upcast::<gtk::Widget>(),
+                    self.widgets.window.clone().upcast::<gtk::Widget>(),
                     (self.model.db_sender.clone(), None, gtk::AccelGroup::new()),
                     MsgProjectAddEditDialog::OkPressed,
                     "Project",
@@ -479,7 +500,8 @@ impl Widget for Win {
                 self.model.infobar.set_revealed(false);
             }
             Msg::DarkThemeToggled => {
-                self.project_list
+                self.components
+                    .project_list
                     .stream()
                     .emit(ProjectListMsg::DarkThemeToggled);
             }
@@ -487,16 +509,23 @@ impl Widget for Win {
                 // the user modified search results
                 // we should refresh the main view else it
                 // could show outdated contents
-                self.project_list.stream().emit(ProjectListMsg::ForceReload);
+                self.components
+                    .project_list
+                    .stream()
+                    .emit(ProjectListMsg::ForceReload);
             }
             Msg::OpenSingleWebsiteLink => {
-                self.project_poi_contents
+                self.components
+                    .project_poi_contents
                     .stream()
                     .emit(ProjectPoiContentsMsg::OpenSingleWebsiteLink);
             }
             Msg::ImportApplied => {
                 // the user imported data, maybe new projects were added
-                self.project_list.stream().emit(ProjectListMsg::ForceReload);
+                self.components
+                    .project_list
+                    .stream()
+                    .emit(ProjectListMsg::ForceReload);
                 self.request_update_welcome_status();
             }
         }
@@ -526,7 +555,8 @@ impl Widget for Win {
 
     fn display_item(&self, di: Box<DisplayItemParams>) {
         let (project, project_item, server_item) = *di;
-        self.project_list
+        self.components
+            .project_list
             .emit(ProjectListMsg::ProjectSelectedFromElsewhere(project.id));
         let env = match &project_item {
             Some(ProjectItem::Server(s)) => Some(s.environment),
@@ -538,22 +568,20 @@ impl Widget for Win {
             _ => None,
         };
         if let Some(e) = env {
-            self.project_summary
-                .emit(ProjectSummaryMsg::ProjectEnvironmentSelectedFromElsewhere(
-                    (project.clone(), e),
-                ));
+            self.components.project_summary.emit(
+                ProjectSummaryMsg::ProjectEnvironmentSelectedFromElsewhere((project.clone(), e)),
+            );
         } else {
-            self.project_summary
+            self.components
+                .project_summary
                 .emit(ProjectSummaryMsg::ProjectActivated(project.clone()));
         }
-        self.project_items_list
-            .emit(ProjectItemsListMsg::ProjectItemSelectedFromElsewhere((
-                project,
-                env,
-                project_item,
-            )));
+        self.components.project_items_list.emit(
+            ProjectItemsListMsg::ProjectItemSelectedFromElsewhere((project, env, project_item)),
+        );
         if let Some(sitem) = server_item {
-            self.project_poi_contents
+            self.components
+                .project_poi_contents
                 .stream()
                 .emit(ProjectPoiContentsMsg::ScrollToServerItem(sitem));
         }
@@ -568,7 +596,7 @@ impl Widget for Win {
     }
 
     fn load_style(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let screen = self.window.get_screen().unwrap();
+        let screen = self.widgets.window.get_screen().unwrap();
         let css = gtk::CssProvider::new();
         css.load_from_data(CSS_DATA)?;
         gtk::StyleContext::add_provider_for_screen(
@@ -580,7 +608,8 @@ impl Widget for Win {
     }
 
     fn is_search_mode(&self) -> bool {
-        self.normal_or_search_stack
+        self.widgets
+            .normal_or_search_stack
             .get_visible_child_name()
             .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
             .is_some()
@@ -588,7 +617,8 @@ impl Widget for Win {
 
     fn handle_keypress(&self, e: gdk::EventKey) {
         if e.get_keyval() == gdk::keys::constants::Escape {
-            self.project_poi_contents
+            self.components
+                .project_poi_contents
                 .stream()
                 .emit(ProjectPoiContentsMsg::KeyboardEscape);
             self.model
@@ -602,18 +632,23 @@ impl Widget for Win {
             return;
         }
         if self.is_search_mode() {
-            self.search_view.stream().emit(SearchViewMsg::KeyPress(e));
+            self.components
+                .search_view
+                .stream()
+                .emit(SearchViewMsg::KeyPress(e));
             return;
         }
         if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
             match e.get_keyval().to_unicode() {
                 Some('y') => {
-                    self.project_poi_header
+                    self.components
+                        .project_poi_header
                         .stream()
                         .emit(ProjectPoiHeaderMsg::CopyPassword);
                 }
                 Some('e') => {
-                    self.project_poi_header
+                    self.components
+                        .project_poi_header
                         .stream()
                         .emit(ProjectPoiHeaderMsg::OpenLinkOrEditProjectNote);
                 }
@@ -624,22 +659,26 @@ impl Widget for Win {
                         .emit(WinTitleBarMsg::SearchEnable);
                 }
                 Some('f') => {
-                    self.project_poi_contents
+                    self.components
+                        .project_poi_contents
                         .stream()
                         .emit(ProjectPoiContentsMsg::KeyboardCtrlF);
                 }
                 Some('n') => {
-                    self.project_poi_contents
+                    self.components
+                        .project_poi_contents
                         .stream()
                         .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
                 }
                 Some('p') => {
-                    self.project_poi_contents
+                    self.components
+                        .project_poi_contents
                         .stream()
                         .emit(ProjectPoiContentsMsg::KeyboardCtrlP);
                 }
                 Some('k') => {
-                    self.search_view
+                    self.components
+                        .search_view
                         .emit(SearchViewMsg::FilterChanged(Some("".to_string())));
                     self.model
                         .titlebar
@@ -672,7 +711,8 @@ impl Widget for Win {
         } else if e.get_keyval() == gdk::keys::constants::Return
             || e.get_keyval() == gdk::keys::constants::KP_Enter
         {
-            self.project_poi_contents
+            self.components
+                .project_poi_contents
                 .stream()
                 .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
         } else if let Some(k) = e.get_keyval().to_unicode() {
@@ -684,6 +724,7 @@ impl Widget for Win {
                 // we don't want to trigger the global search if the
                 // note search text entry is focused.
                 if self
+                    .widgets
                     .window
                     .get_focus()
                     // is an entry focused?
@@ -703,7 +744,8 @@ impl Widget for Win {
                     .relm
                     .stream()
                     .emit(Msg::SearchActiveChanged(true));
-                self.search_view
+                self.components
+                    .search_view
                     .emit(SearchViewMsg::FilterChanged(Some(k.to_string())));
                 self.model
                     .titlebar

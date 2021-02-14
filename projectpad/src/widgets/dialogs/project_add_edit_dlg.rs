@@ -46,13 +46,16 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectAddEditDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
         self.init_infobar_overlay();
     }
 
     fn init_infobar_overlay(&self) {
-        self.infobar_overlay.add_overlay(&self.model.infobar);
-        self.infobar_overlay
+        self.widgets
+            .infobar_overlay
+            .add_overlay(&self.model.infobar);
+        self.widgets
+            .infobar_overlay
             .set_overlay_pass_through(&self.model.infobar, true);
     }
 
@@ -143,7 +146,7 @@ impl Widget for ProjectAddEditDialog {
 
     fn update_project(&self) {
         let project_id = self.model.project_id;
-        let new_name = self.name_entry.get_text();
+        let new_name = self.widgets.name_entry.get_text();
         let new_icon = self.model.icon.clone();
         let new_has_dev = self.model.has_dev;
         let new_has_stg = self.model.has_stg;

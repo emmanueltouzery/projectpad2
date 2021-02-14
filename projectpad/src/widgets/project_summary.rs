@@ -58,42 +58,51 @@ impl Widget for ProjectSummary {
     fn init_view(&mut self) {
         self.model.title.show_all();
 
-        self.buttons_box.get_style_context().add_class("linked");
+        self.widgets
+            .buttons_box
+            .get_style_context()
+            .add_class("linked");
 
-        self.radio_stg.join_group(Some(&self.radio_dev));
-        self.radio_uat.join_group(Some(&self.radio_stg));
-        self.radio_prd.join_group(Some(&self.radio_uat));
+        self.widgets
+            .radio_stg
+            .join_group(Some(&self.widgets.radio_dev));
+        self.widgets
+            .radio_uat
+            .join_group(Some(&self.widgets.radio_stg));
+        self.widgets
+            .radio_prd
+            .join_group(Some(&self.widgets.radio_uat));
 
         // must tie the signal handlers manually so i can block emission when we get
         // updated from outside
         let relm = self.model.relm.clone();
         self.model.btn_and_handler.push((
-            self.radio_dev.clone(),
-            self.radio_dev.connect_toggled(move |_| {
+            self.widgets.radio_dev.clone(),
+            self.widgets.radio_dev.connect_toggled(move |_| {
                 relm.stream()
                     .emit(Msg::EnvironmentToggled(EnvironmentType::EnvDevelopment))
             }),
         ));
         let relm = self.model.relm.clone();
         self.model.btn_and_handler.push((
-            self.radio_stg.clone(),
-            self.radio_stg.connect_toggled(move |_| {
+            self.widgets.radio_stg.clone(),
+            self.widgets.radio_stg.connect_toggled(move |_| {
                 relm.stream()
                     .emit(Msg::EnvironmentToggled(EnvironmentType::EnvStage))
             }),
         ));
         let relm = self.model.relm.clone();
         self.model.btn_and_handler.push((
-            self.radio_uat.clone(),
-            self.radio_uat.connect_toggled(move |_| {
+            self.widgets.radio_uat.clone(),
+            self.widgets.radio_uat.connect_toggled(move |_| {
                 relm.stream()
                     .emit(Msg::EnvironmentToggled(EnvironmentType::EnvUat))
             }),
         ));
         let relm = self.model.relm.clone();
         self.model.btn_and_handler.push((
-            self.radio_prd.clone(),
-            self.radio_prd.connect_toggled(move |_| {
+            self.widgets.radio_prd.clone(),
+            self.widgets.radio_prd.connect_toggled(move |_| {
                 relm.stream()
                     .emit(Msg::EnvironmentToggled(EnvironmentType::EnvProd))
             }),
@@ -137,7 +146,8 @@ impl Widget for ProjectSummary {
         popover_vbox.add(&popover_delete_btn);
         popover_vbox.show_all();
         self.model.header_popover.add(&popover_vbox);
-        self.header_actions_btn
+        self.widgets
+            .header_actions_btn
             .set_popover(Some(&self.model.header_popover));
     }
 
@@ -192,30 +202,30 @@ impl Widget for ProjectSummary {
                 self.model.relm.stream().emit(Msg::ProjectActivated(prj));
             }
             Msg::ProjectActivated(prj) => {
-                self.radio_dev.set_sensitive(prj.has_dev);
-                self.radio_stg.set_sensitive(prj.has_stage);
-                self.radio_uat.set_sensitive(prj.has_uat);
-                self.radio_prd.set_sensitive(prj.has_prod);
+                self.widgets.radio_dev.set_sensitive(prj.has_dev);
+                self.widgets.radio_stg.set_sensitive(prj.has_stage);
+                self.widgets.radio_uat.set_sensitive(prj.has_uat);
+                self.widgets.radio_prd.set_sensitive(prj.has_prod);
                 if prj.has_prod {
-                    self.radio_prd.set_active(true);
+                    self.widgets.radio_prd.set_active(true);
                     self.model
                         .relm
                         .stream()
                         .emit(Msg::EnvironmentChanged(EnvironmentType::EnvProd));
                 } else if prj.has_uat {
-                    self.radio_uat.set_active(true);
+                    self.widgets.radio_uat.set_active(true);
                     self.model
                         .relm
                         .stream()
                         .emit(Msg::EnvironmentChanged(EnvironmentType::EnvUat));
                 } else if prj.has_stage {
-                    self.radio_stg.set_active(true);
+                    self.widgets.radio_stg.set_active(true);
                     self.model
                         .relm
                         .stream()
                         .emit(Msg::EnvironmentChanged(EnvironmentType::EnvStage));
                 } else if prj.has_dev {
-                    self.radio_dev.set_active(true);
+                    self.widgets.radio_dev.set_active(true);
                     self.model
                         .relm
                         .stream()
@@ -229,22 +239,22 @@ impl Widget for ProjectSummary {
                 // activated. 'clicked' does the same, too.
                 // => must filter to re-emit only the one that gets activated.
                 // https://stackoverflow.com/questions/13385024/read-gtk-radio-button-signal-only-when-selected
-                EnvironmentType::EnvDevelopment if self.radio_dev.get_active() => self
+                EnvironmentType::EnvDevelopment if self.widgets.radio_dev.get_active() => self
                     .model
                     .relm
                     .stream()
                     .emit(Msg::EnvironmentChanged(EnvironmentType::EnvDevelopment)),
-                EnvironmentType::EnvStage if self.radio_stg.get_active() => self
+                EnvironmentType::EnvStage if self.widgets.radio_stg.get_active() => self
                     .model
                     .relm
                     .stream()
                     .emit(Msg::EnvironmentChanged(EnvironmentType::EnvStage)),
-                EnvironmentType::EnvUat if self.radio_uat.get_active() => self
+                EnvironmentType::EnvUat if self.widgets.radio_uat.get_active() => self
                     .model
                     .relm
                     .stream()
                     .emit(Msg::EnvironmentChanged(EnvironmentType::EnvUat)),
-                EnvironmentType::EnvProd if self.radio_prd.get_active() => self
+                EnvironmentType::EnvProd if self.widgets.radio_prd.get_active() => self
                     .model
                     .relm
                     .stream()
@@ -262,15 +272,15 @@ impl Widget for ProjectSummary {
                     btn.block_signal(handler_id);
                 }
                 match env {
-                    EnvironmentType::EnvProd => self.radio_prd.set_active(true),
-                    EnvironmentType::EnvUat => self.radio_uat.set_active(true),
-                    EnvironmentType::EnvStage => self.radio_stg.set_active(true),
-                    EnvironmentType::EnvDevelopment => self.radio_dev.set_active(true),
+                    EnvironmentType::EnvProd => self.widgets.radio_prd.set_active(true),
+                    EnvironmentType::EnvUat => self.widgets.radio_uat.set_active(true),
+                    EnvironmentType::EnvStage => self.widgets.radio_stg.set_active(true),
+                    EnvironmentType::EnvDevelopment => self.widgets.radio_dev.set_active(true),
                 }
-                self.radio_dev.set_sensitive(prj.has_dev);
-                self.radio_stg.set_sensitive(prj.has_stage);
-                self.radio_uat.set_sensitive(prj.has_uat);
-                self.radio_prd.set_sensitive(prj.has_prod);
+                self.widgets.radio_dev.set_sensitive(prj.has_dev);
+                self.widgets.radio_stg.set_sensitive(prj.has_stage);
+                self.widgets.radio_uat.set_sensitive(prj.has_uat);
+                self.widgets.radio_prd.set_sensitive(prj.has_prod);
                 self.set_project(prj);
                 for (btn, handler_id) in &self.model.btn_and_handler {
                     // unblock the event handlers
@@ -411,7 +421,10 @@ impl Widget for ProjectSummary {
                     "Are you sure you want to delete the project {}? This action cannot be undone.",
                     prj.name
                 ),
-                self.project_summary_root.clone().upcast::<gtk::Widget>(),
+                self.widgets
+                    .project_summary_root
+                    .clone()
+                    .upcast::<gtk::Widget>(),
                 move || relm.stream().emit(Msg::DeleteProject),
             );
         }
@@ -419,7 +432,10 @@ impl Widget for ProjectSummary {
 
     fn show_project_edit_dialog(&mut self) {
         let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-            self.project_summary_root.clone().upcast::<gtk::Widget>(),
+            self.widgets
+                .project_summary_root
+                .clone()
+                .upcast::<gtk::Widget>(),
             (
                 self.model.db_sender.clone(),
                 self.model.project.clone(),
@@ -444,9 +460,12 @@ impl Widget for ProjectSummary {
             self.model.cur_environment,
         ))
         .expect("error initializing the server add item modal");
-        let d_c = dialog_contents.clone();
+        let d_c = dialog_contents.stream().clone();
         let dialog = standard_dialogs::modal_dialog(
-            self.project_summary_root.clone().upcast::<gtk::Widget>(),
+            self.widgets
+                .project_summary_root
+                .clone()
+                .upcast::<gtk::Widget>(),
             600,
             200,
             "Add project item".to_string(),

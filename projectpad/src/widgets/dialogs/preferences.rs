@@ -60,14 +60,15 @@ pub struct Model {
 #[widget]
 impl Widget for Preferences {
     fn init_view(&mut self) {
-        self.remove_from_keyring
+        self.widgets
+            .remove_from_keyring
             .get_style_context()
             .add_class("destructive-action");
         self.load_keyring_pass_state();
         for title_widget in &[
-            &self.section_title1,
-            &self.section_title2,
-            &self.section_title3,
+            &self.widgets.section_title1,
+            &self.widgets.section_title2,
+            &self.widgets.section_title3,
         ] {
             title_widget.get_style_context().add_class("section_title");
         }
@@ -80,12 +81,14 @@ impl Widget for Preferences {
                 .build(),
         );
         remove_pass_btn_contents.show_all();
-        self.remove_from_keyring.add(&remove_pass_btn_contents);
+        self.widgets
+            .remove_from_keyring
+            .add(&remove_pass_btn_contents);
         let db_folder_pathbuf = projectpadsql::config_path();
         let db_folder_path = db_folder_pathbuf.to_string_lossy();
         let db_pathbuf = projectpadsql::database_path();
         let db_path = db_pathbuf.to_string_lossy();
-        self.db_location_label.set_markup(&format!(
+        self.widgets.db_location_label.set_markup(&format!(
             "The database file is in <a href=\"file://{}\">{}</a>",
             &db_folder_path, &db_path
         ));
@@ -142,7 +145,7 @@ impl Widget for Preferences {
                 self.model
                     .remove_pass_from_keyring_spinner
                     .set_visible(false);
-                self.remove_from_keyring.set_sensitive(t);
+                self.widgets.remove_from_keyring.set_sensitive(t);
             }
             Msg::DarkThemeToggled(t) => {
                 gtk::Settings::get_default()
@@ -177,12 +180,12 @@ impl Widget for Preferences {
                     relm::init::<ChangeDbPasswordDialog>(self.model.db_sender.clone())
                         .expect("error initializing the change db password dialog");
                 let dialog = standard_dialogs::modal_dialog(
-                    self.prefs_win.clone().upcast::<gtk::Widget>(),
+                    self.widgets.prefs_win.clone().upcast::<gtk::Widget>(),
                     600,
                     200,
                     "Change database password".to_string(),
                 );
-                let d_c = change_pwd_contents.clone();
+                let d_c = change_pwd_contents.stream().clone();
                 let (dialog, component, btn) = standard_dialogs::prepare_custom_dialog(
                     dialog,
                     change_pwd_contents,
@@ -201,7 +204,7 @@ impl Widget for Preferences {
             }
             Msg::KeyPress(key) => {
                 if key.get_keyval() == gdk::keys::constants::Escape {
-                    self.prefs_win.close();
+                    self.widgets.prefs_win.close();
                 }
             }
             Msg::ChangedPass(dialog) => {
@@ -216,7 +219,7 @@ impl Widget for Preferences {
 
     fn remove_pass_from_keyring(&mut self) {
         let dialog = gtk::MessageDialog::new(
-            Some(&self.prefs_win),
+            Some(&self.widgets.prefs_win),
             gtk::DialogFlags::all(),
             gtk::MessageType::Warning,
             gtk::ButtonsType::None,

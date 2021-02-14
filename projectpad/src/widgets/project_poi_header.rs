@@ -311,10 +311,11 @@ fn server_access_icon(srv: &Server) -> Icon {
 #[widget]
 impl Widget for ProjectPoiHeader {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.header_grid);
+        dialog_helpers::style_grid(&self.widgets.header_grid);
         self.load_project_item();
 
-        self.items_frame
+        self.widgets
+            .items_frame
             .get_style_context()
             .add_class("items_frame");
 
@@ -324,7 +325,8 @@ impl Widget for ProjectPoiHeader {
             .add_class("header_frame_title");
         self.model.title.show_all();
 
-        self.header_actions_btn
+        self.widgets
+            .header_actions_btn
             .set_popover(Some(&self.model.header_popover));
     }
 
@@ -363,7 +365,7 @@ impl Widget for ProjectPoiHeader {
     }
 
     fn copy_to_clipboard(&self, val: &str) {
-        if let Some(clip) = gtk::Clipboard::get_default(&self.header_grid.get_display()) {
+        if let Some(clip) = gtk::Clipboard::get_default(&self.widgets.header_grid.get_display()) {
             clip.set_text(&val);
         }
         self.model
@@ -404,7 +406,7 @@ impl Widget for ProjectPoiHeader {
                 match self.model.project_item.clone() {
                     Some(ProjectItem::Server(ref srv)) => {
                         let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                             dialog_helpers::prepare_dialog_param(
                                 self.model.db_sender.clone(),
                                 srv.project_id,
@@ -426,7 +428,7 @@ impl Widget for ProjectPoiHeader {
                     }
                     Some(ProjectItem::ProjectPointOfInterest(ref poi)) => {
                         let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                             dialog_helpers::prepare_dialog_param(
                                 self.model.db_sender.clone(),
                                 poi.project_id,
@@ -452,7 +454,7 @@ impl Widget for ProjectPoiHeader {
                     }
                     Some(ProjectItem::ServerLink(ref link)) => {
                         let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                            self.items_frame.clone().upcast::<gtk::Widget>(),
+                            self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
                             dialog_helpers::prepare_dialog_param(
                                 self.model.db_sender.clone(),
                                 link.project_id,
@@ -629,7 +631,7 @@ impl Widget for ProjectPoiHeader {
 
     fn edit_project_note(&mut self, note: ProjectNote) {
         let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-            self.items_frame.clone().upcast::<gtk::Widget>(),
+            self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
             dialog_helpers::prepare_dialog_param(
                 self.model.db_sender.clone(),
                 note.project_id,
@@ -658,7 +660,7 @@ impl Widget for ProjectPoiHeader {
                 "Are you sure you want to delete the {} {}? This action cannot be undone.",
                 item_type_desc, item_desc
             ),
-            self.items_frame.clone().upcast::<gtk::Widget>(),
+            self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
             move || relm.stream().emit(msg.clone()),
         );
     }
@@ -672,9 +674,9 @@ impl Widget for ProjectPoiHeader {
             },
         ))
         .expect("error initializing the server add item modal");
-        let d_c = dialog_contents.clone();
+        let d_c = dialog_contents.stream().clone();
         let dialog = standard_dialogs::modal_dialog(
-            self.items_frame.clone().upcast::<gtk::Widget>(),
+            self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
             600,
             200,
             "Add server item".to_string(),
@@ -831,18 +833,20 @@ impl Widget for ProjectPoiHeader {
         };
         match &self.model.project_item {
             Some(ProjectItem::Server(srv)) if srv.is_retired => {
-                self.titlebox
+                self.widgets
+                    .titlebox
                     .get_style_context()
                     .add_class("project_poi_header_titlebox_retired");
             }
             _ => {
-                self.titlebox
+                self.widgets
+                    .titlebox
                     .get_style_context()
                     .remove_class("project_poi_header_titlebox_retired");
             }
         };
         populate_grid(
-            self.header_grid.clone(),
+            self.widgets.header_grid.clone(),
             self.model.header_popover.clone(),
             &fields,
             &extra_btns,

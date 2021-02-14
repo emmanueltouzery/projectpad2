@@ -60,13 +60,17 @@ const CHILD_NAME_NOTE: &str = "note";
 #[widget]
 impl Widget for ProjectPoiContents {
     fn init_view(&mut self) {
-        let display = self.note_textview.get_display();
+        let display = self.widgets.note_textview.get_display();
         self.model.hand_cursor = gdk::Cursor::from_name(&display, "pointer");
         self.model.text_cursor = gdk::Cursor::from_name(&display, "text");
-        self.server_note_title
+        self.widgets
+            .server_note_title
             .get_style_context()
             .add_class("server_note_title");
-        self.note_frame.get_style_context().add_class("note_frame");
+        self.widgets
+            .note_frame
+            .get_style_context()
+            .add_class("note_frame");
         let search_bar = &self.model.search_bar;
         relm::connect!(
             search_bar@SearchBarMsg::SearchChanged(ref s),
@@ -81,7 +85,9 @@ impl Widget for ProjectPoiContents {
             self.model.relm,
             Msg::NoteSearchPrevious);
         let search_bar_widget = self.model.search_bar.widget();
-        self.note_search_overlay.add_overlay(search_bar_widget);
+        self.widgets
+            .note_search_overlay
+            .add_overlay(search_bar_widget);
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -101,7 +107,8 @@ impl Widget for ProjectPoiContents {
     }
 
     fn is_displaying_note(&self) -> bool {
-        self.contents_stack
+        self.widgets
+            .contents_stack
             .get_visible_child_name()
             .filter(|s| s.as_str() == CHILD_NAME_NOTE)
             .is_some()
@@ -114,7 +121,8 @@ impl Widget for ProjectPoiContents {
             }
             Msg::ProjectItemSelected(pi) => {
                 self.model.cur_project_item = *pi;
-                self.server_contents
+                self.components
+                    .server_contents
                     .emit(match &self.model.cur_project_item.as_ref() {
                         Some(ProjectItem::Server(srv)) => {
                             ServerPoiContentsMsg::ServerSelected(Some(srv.clone()))
@@ -129,32 +137,36 @@ impl Widget for ProjectPoiContents {
                         self.display_note(&note.contents);
                     }
                 }
-                self.contents_stack
-                    .set_visible_child_name(match self.model.cur_project_item {
+                self.widgets.contents_stack.set_visible_child_name(
+                    match self.model.cur_project_item {
                         Some(ProjectItem::ProjectNote(_)) => CHILD_NAME_NOTE,
                         _ => CHILD_NAME_SERVER, // server is a list of items, handles None well (no items)
-                    });
+                    },
+                );
             }
             Msg::ViewServerNote(n) => {
                 self.display_note(&n.contents);
-                self.server_note_title.set_text(&n.title);
-                self.server_note_back.set_visible(true);
-                self.contents_stack.set_visible_child_name(CHILD_NAME_NOTE);
+                self.widgets.server_note_title.set_text(&n.title);
+                self.widgets.server_note_back.set_visible(true);
+                self.widgets
+                    .contents_stack
+                    .set_visible_child_name(CHILD_NAME_NOTE);
             }
             Msg::ServerNoteBack => {
                 // self.model.note_contents = None;
-                self.server_note_title.set_text("");
-                self.server_note_back.set_visible(false);
-                self.contents_stack
+                self.widgets.server_note_title.set_text("");
+                self.widgets.server_note_back.set_visible(false);
+                self.widgets
+                    .contents_stack
                     .set_visible_child_name(CHILD_NAME_SERVER);
             }
             Msg::TextViewMoveCursor(x, y) => {
-                let (bx, by) = self.note_textview.window_to_buffer_coords(
+                let (bx, by) = self.widgets.note_textview.window_to_buffer_coords(
                     gtk::TextWindowType::Widget,
                     x as i32,
                     y as i32,
                 );
-                if let Some(iter) = self.note_textview.get_iter_at_location(bx, by) {
+                if let Some(iter) = self.widgets.note_textview.get_iter_at_location(bx, by) {
                     if Self::iter_is_link_or_password(&iter) {
                         self.text_note_set_cursor(&self.model.hand_cursor);
                     } else {
@@ -194,7 +206,8 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::ScrollToServerItem(si) => {
-                self.server_contents
+                self.components
+                    .server_contents
                     .stream()
                     .emit(ServerPoiContentsMsg::ScrollTo(
                         server_poi_contents::ScrollTarget::ServerItem(si),
@@ -207,13 +220,16 @@ impl Widget for ProjectPoiContents {
             }
             Msg::KeyboardCtrlN => {
                 if self.is_displaying_note() {
-                    search_bar::note_search_next(&self.note_textview, &self.model.note_search_text);
+                    search_bar::note_search_next(
+                        &self.widgets.note_textview,
+                        &self.model.note_search_text,
+                    );
                 }
             }
             Msg::KeyboardCtrlP => {
                 if self.is_displaying_note() {
                     search_bar::note_search_previous(
-                        &self.note_textview,
+                        &self.widgets.note_textview,
                         &self.model.note_search_text,
                     );
                 }
@@ -224,18 +240,25 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::NoteSearchChange(text) => {
-                search_bar::note_search_change(&self.note_textview, &text);
+                search_bar::note_search_change(&self.widgets.note_textview, &text);
                 self.model.note_search_text = Some(text);
             }
             Msg::NoteSearchNext => {
-                search_bar::note_search_next(&self.note_textview, &self.model.note_search_text);
+                search_bar::note_search_next(
+                    &self.widgets.note_textview,
+                    &self.model.note_search_text,
+                );
             }
             Msg::NoteSearchPrevious => {
-                search_bar::note_search_previous(&self.note_textview, &self.model.note_search_text);
+                search_bar::note_search_previous(
+                    &self.widgets.note_textview,
+                    &self.model.note_search_text,
+                );
             }
             Msg::OpenSingleWebsiteLink => {
                 if matches!(&self.model.cur_project_item, Some(ProjectItem::Server(_))) {
-                    self.server_contents
+                    self.components
+                        .server_contents
                         .stream()
                         .emit(ServerPoiContentsMsg::OpenSingleWebsiteLink);
                 }
@@ -257,12 +280,12 @@ impl Widget for ProjectPoiContents {
         let is_tap = evt.get_event_type() == gdk::EventType::TouchEnd;
         if is_click || is_tap {
             evt.get_coords().and_then(|(x, y)| {
-                let (bx, by) = self.note_textview.window_to_buffer_coords(
+                let (bx, by) = self.widgets.note_textview.window_to_buffer_coords(
                     gtk::TextWindowType::Widget,
                     x as i32,
                     y as i32,
                 );
-                self.note_textview.get_iter_at_location(bx, by)
+                self.widgets.note_textview.get_iter_at_location(bx, by)
             })
         } else {
             None
@@ -271,7 +294,7 @@ impl Widget for ProjectPoiContents {
 
     fn text_note_set_cursor(&self, cursor: &Option<gdk::Cursor>) {
         if let Some(w) =
-            gtk::TextViewExt::get_window(&self.note_textview, gtk::TextWindowType::Text)
+            gtk::TextViewExt::get_window(&self.widgets.note_textview, gtk::TextWindowType::Text)
         {
             w.set_cursor(cursor.as_ref());
         }
@@ -290,10 +313,10 @@ impl Widget for ProjectPoiContents {
     }
 
     fn display_note(&mut self, note_contents: &str) {
-        if let Some(hadj) = self.note_scroll.get_hadjustment() {
+        if let Some(hadj) = self.widgets.note_scroll.get_hadjustment() {
             hadj.set_value(0.0);
         }
-        if let Some(vadj) = self.note_scroll.get_vadjustment() {
+        if let Some(vadj) = self.widgets.note_scroll.get_vadjustment() {
             vadj.set_value(0.0);
         }
         let note_buffer_info = crate::notes::note_markdown_to_text_buffer(
@@ -302,7 +325,8 @@ impl Widget for ProjectPoiContents {
         );
         self.model.note_links = note_buffer_info.links;
         self.model.note_passwords = note_buffer_info.passwords;
-        self.note_textview
+        self.widgets
+            .note_textview
             .set_buffer(Some(&note_buffer_info.buffer));
         for anchor in &note_buffer_info.separator_anchors {
             let sep = gtk::SeparatorBuilder::new()
@@ -310,7 +334,7 @@ impl Widget for ProjectPoiContents {
                 .width_request(350)
                 .build();
             sep.show();
-            self.note_textview.add_child_at_anchor(&sep, anchor);
+            self.widgets.note_textview.add_child_at_anchor(&sep, anchor);
         }
     }
 
@@ -320,6 +344,7 @@ impl Widget for ProjectPoiContents {
         // are not fully initialized yet.
         let popover = gtk::Popover::new(Some(
             &self
+                .widgets
                 .contents_stack
                 .get_toplevel()
                 .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
@@ -333,6 +358,7 @@ impl Widget for ProjectPoiContents {
         let seat = display.get_default_seat().unwrap();
         let mouse_device = seat.get_pointer().unwrap();
         let window = self
+            .widgets
             .contents_stack
             .get_toplevel()
             .unwrap()
@@ -352,7 +378,7 @@ impl Widget for ProjectPoiContents {
         let popover_copy_btn = gtk::ModelButtonBuilder::new()
             .label("Copy password")
             .build();
-        let textview = self.note_textview.clone();
+        let textview = self.widgets.note_textview.clone();
         let p = password.to_string();
         let r = self.model.relm.clone();
         popover_copy_btn.connect_clicked(move |_| {

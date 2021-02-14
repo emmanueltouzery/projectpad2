@@ -39,9 +39,15 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectAddItemDialog {
     fn init_view(&mut self) {
-        self.add_project_poi.join_group(Some(&self.add_server));
-        self.add_project_note.join_group(Some(&self.add_server));
-        self.add_server_link.join_group(Some(&self.add_server));
+        self.widgets
+            .add_project_poi
+            .join_group(Some(&self.widgets.add_server));
+        self.widgets
+            .add_project_note
+            .join_group(Some(&self.widgets.add_server));
+        self.widgets
+            .add_server_link
+            .join_group(Some(&self.widgets.add_server));
     }
 
     fn model(
@@ -61,7 +67,7 @@ impl Widget for ProjectAddItemDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ShowSecondTab(ref dialog) => {
-                let (widget, title) = if self.add_server.get_active() {
+                let (widget, title) = if self.widgets.add_server.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -74,7 +80,7 @@ impl Widget for ProjectAddItemDialog {
                         ),
                         "Add Server",
                     )
-                } else if self.add_project_poi.get_active() {
+                } else if self.widgets.add_project_poi.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -87,7 +93,7 @@ impl Widget for ProjectAddItemDialog {
                         ),
                         "Add Project POI",
                     )
-                } else if self.add_project_note.get_active() {
+                } else if self.widgets.add_project_note.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -100,7 +106,7 @@ impl Widget for ProjectAddItemDialog {
                         ),
                         "Add Project note",
                     )
-                } else if self.add_server_link.get_active() {
+                } else if self.widgets.add_server_link.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -132,9 +138,9 @@ impl Widget for ProjectAddItemDialog {
                     _ => {}
                 };
                 self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
-                self.tabs_stack.add_named(widget, "dialog");
+                self.widgets.tabs_stack.add_named(widget, "dialog");
                 widget.show();
-                self.tabs_stack.set_visible_child_name("dialog");
+                self.widgets.tabs_stack.set_visible_child_name("dialog");
             }
             // meant for my parent
             Msg::ChangeDialogTitle(_) => {}

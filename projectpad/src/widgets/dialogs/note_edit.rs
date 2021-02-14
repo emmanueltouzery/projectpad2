@@ -54,7 +54,7 @@ impl Widget for NoteEdit {
                 .unwrap(),
         );
         buf.set_text(&self.model.contents);
-        self.note_textview.set_buffer(Some(&buf));
+        self.widgets.note_textview.set_buffer(Some(&buf));
         // println!(
         //     "{:?}",
         //     sourceview::LanguageManager::get_default()
@@ -62,16 +62,16 @@ impl Widget for NoteEdit {
         //         .get_language_ids()
         // );
         // buf.set_language(Some("markdown"));
-        self.add_tool_accelerator(&self.list_ul, 'u');
-        self.add_tool_accelerator(&self.list_ol, 'n');
-        self.add_tool_accelerator(&self.bold_btn, 'b');
-        self.add_tool_accelerator(&self.italic_btn, 'i');
-        self.add_tool_accelerator(&self.strikethrough_btn, 's');
-        self.add_tool_accelerator(&self.heading_btn, 'h');
-        self.add_tool_accelerator(&self.link_btn, 'l');
-        self.add_tool_accelerator(&self.password_btn, 'p');
-        self.add_tool_accelerator(&self.preformat_btn, 'f');
-        self.add_tool_accelerator(&self.blockquote_btn, 'q');
+        self.add_tool_accelerator(&self.widgets.list_ul, 'u');
+        self.add_tool_accelerator(&self.widgets.list_ol, 'n');
+        self.add_tool_accelerator(&self.widgets.bold_btn, 'b');
+        self.add_tool_accelerator(&self.widgets.italic_btn, 'i');
+        self.add_tool_accelerator(&self.widgets.strikethrough_btn, 's');
+        self.add_tool_accelerator(&self.widgets.heading_btn, 'h');
+        self.add_tool_accelerator(&self.widgets.link_btn, 'l');
+        self.add_tool_accelerator(&self.widgets.password_btn, 'p');
+        self.add_tool_accelerator(&self.widgets.preformat_btn, 'f');
+        self.add_tool_accelerator(&self.widgets.blockquote_btn, 'q');
 
         let search_bar = &self.model.search_bar;
         relm::connect!(
@@ -91,7 +91,9 @@ impl Widget for NoteEdit {
             self.model.relm,
             Msg::SearchBarReveal(show));
         let search_bar_widget = self.model.search_bar.widget();
-        self.note_search_overlay.add_overlay(search_bar_widget);
+        self.widgets
+            .note_search_overlay
+            .add_overlay(search_bar_widget);
     }
 
     fn add_tool_accelerator<T: IsA<gtk::Widget>>(&self, btn: &T, key: char) {
@@ -125,7 +127,7 @@ impl Widget for NoteEdit {
                         || e.get_keyval() == gdk::keys::constants::KP_Enter
                     {
                         search_bar::note_search_next(
-                            &self.note_textview,
+                            &self.widgets.note_textview,
                             &self.model.note_search_text,
                         );
                     } else {
@@ -135,13 +137,13 @@ impl Widget for NoteEdit {
                             }
                             Some('n') => {
                                 search_bar::note_search_next(
-                                    &self.note_textview,
+                                    &self.widgets.note_textview,
                                     &self.model.note_search_text,
                                 );
                             }
                             Some('p') => {
                                 search_bar::note_search_previous(
-                                    &self.note_textview,
+                                    &self.widgets.note_textview,
                                     &self.model.note_search_text,
                                 );
                             }
@@ -151,52 +153,58 @@ impl Widget for NoteEdit {
                 }
             }
             Msg::ListUl => {
-                Self::toggle_ul(&self.note_textview);
+                Self::toggle_ul(&self.widgets.note_textview);
             }
             Msg::ListOl => {
-                Self::toggle_ol(&self.note_textview);
+                Self::toggle_ol(&self.widgets.note_textview);
             }
             Msg::TextBold => {
-                Self::toggle_snippet(&self.note_textview, "**", "**");
+                Self::toggle_snippet(&self.widgets.note_textview, "**", "**");
             }
             Msg::TextItalic => {
-                Self::toggle_snippet(&self.note_textview, "*", "*");
+                Self::toggle_snippet(&self.widgets.note_textview, "*", "*");
             }
             Msg::TextStrikethrough => {
-                Self::toggle_snippet(&self.note_textview, "~~", "~~");
+                Self::toggle_snippet(&self.widgets.note_textview, "~~", "~~");
             }
             Msg::TextHeading => {
-                Self::toggle_heading(&self.note_textview);
+                Self::toggle_heading(&self.widgets.note_textview);
             }
             Msg::TextLink => {
-                Self::toggle_snippet(&self.note_textview, "[", "](url)");
+                Self::toggle_snippet(&self.widgets.note_textview, "[", "](url)");
             }
             Msg::TextPassword => {
-                Self::toggle_password(&self.note_textview);
+                Self::toggle_password(&self.widgets.note_textview);
             }
             Msg::TextPreformat => {
-                Self::toggle_preformat(&self.note_textview);
+                Self::toggle_preformat(&self.widgets.note_textview);
             }
             Msg::TextBlockquote => {
-                Self::toggle_blockquote(&self.note_textview);
+                Self::toggle_blockquote(&self.widgets.note_textview);
             }
             Msg::NoteSearchNext => {
-                search_bar::note_search_next(&self.note_textview, &self.model.note_search_text);
+                search_bar::note_search_next(
+                    &self.widgets.note_textview,
+                    &self.model.note_search_text,
+                );
             }
             Msg::SearchBarReveal(show) => {
                 if !show {
-                    self.note_textview.grab_focus();
+                    self.widgets.note_textview.grab_focus();
                 }
             }
             Msg::NoteSearchPrevious => {
-                search_bar::note_search_previous(&self.note_textview, &self.model.note_search_text);
+                search_bar::note_search_previous(
+                    &self.widgets.note_textview,
+                    &self.model.note_search_text,
+                );
             }
             Msg::NoteSearchChange(text) => {
-                search_bar::note_search_change(&self.note_textview, &text);
+                search_bar::note_search_change(&self.widgets.note_textview, &text);
                 self.model.note_search_text = Some(text);
             }
             Msg::RequestContents => {
-                let buf = self.note_textview.get_buffer().unwrap();
+                let buf = self.widgets.note_textview.get_buffer().unwrap();
                 let new_contents = buf
                     .get_text(&buf.get_start_iter(), &buf.get_end_iter(), false)
                     .unwrap()

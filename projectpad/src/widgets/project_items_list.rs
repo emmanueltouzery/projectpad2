@@ -53,8 +53,9 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectItemsList {
     fn init_view(&mut self) {
-        self.project_items_list
-            .set_focus_vadjustment(&self.scroll.get_vadjustment().unwrap());
+        self.widgets
+            .project_items_list
+            .set_focus_vadjustment(&self.widgets.scroll.get_vadjustment().unwrap());
         self.update_items_list();
     }
 
@@ -226,7 +227,7 @@ impl Widget for ProjectItemsList {
             }
             Msg::GotProjectItems(items) => {
                 let (items, _env, project_item) = *items;
-                if let Some(vadj) = self.scroll.get_vadjustment() {
+                if let Some(vadj) = self.widgets.scroll.get_vadjustment() {
                     vadj.set_value(0.0);
                 }
                 self.model.project_items = items.0;
@@ -246,8 +247,9 @@ impl Widget for ProjectItemsList {
                             Some(0)
                         }
                     });
-                let row = row_idx.and_then(|i| self.project_items_list.get_row_at_index(i as i32));
-                self.project_items_list.select_row(row.as_ref());
+                let row = row_idx
+                    .and_then(|i| self.widgets.project_items_list.get_row_at_index(i as i32));
+                self.widgets.project_items_list.select_row(row.as_ref());
                 // row_idx != 0 => workaround for Gtk-CRITICAL warnings at startup
                 // I think the GUI is not ready yet. If we're interested in the first
                 // row, nothing to do anyway
@@ -256,7 +258,7 @@ impl Widget for ProjectItemsList {
                     // they are not realized yet. The scrolling doesn't work unless
                     // we allow the gtk thread to realize the list items
                     // https://discourse.gnome.org/t/listbox-programmatically-scroll-to-row/3844
-                    let l = self.project_items_list.clone();
+                    let l = self.widgets.project_items_list.clone();
                     glib::idle_add_local(move || {
                         // need to fetch the row in the callback, if fetching
                         // it before i had issues with project POI items (somehow
@@ -339,16 +341,18 @@ impl Widget for ProjectItemsList {
     }
 
     fn update_items_list(&mut self) {
-        for child in self.project_items_list.get_children() {
-            self.project_items_list.remove(&child);
+        for child in self.widgets.project_items_list.get_children() {
+            self.widgets.project_items_list.remove(&child);
         }
         for project_item in &self.model.project_items {
             let _child = self
+                .widgets
                 .project_items_list
                 .add_widget::<ProjectPoiListItem>(Self::get_item_model(project_item));
         }
         let indexes = self.model.project_item_groups_start_indexes.clone();
-        self.project_items_list
+        self.widgets
+            .project_items_list
             .set_header_func(Some(Box::new(move |row, _h| {
                 if let Some(group_name) = indexes.get(&row.get_index()) {
                     let vbox = gtk::BoxBuilder::new()

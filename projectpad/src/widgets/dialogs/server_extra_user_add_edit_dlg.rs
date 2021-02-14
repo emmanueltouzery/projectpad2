@@ -52,12 +52,12 @@ pub struct Model {
 #[widget]
 impl Widget for ServerExtraUserAddEditDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
         self.init_group();
     }
 
     fn init_group(&self) {
-        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.widgets.group);
         dialog_helpers::fetch_server_groups(
             &self.model.groups_sender,
             self.model.server_id,
@@ -113,7 +113,7 @@ impl Widget for ServerExtraUserAddEditDialog {
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
-                    &self.group,
+                    &self.widgets.group,
                     &groups,
                     &self.model.group_name,
                 );
@@ -123,7 +123,8 @@ impl Widget for ServerExtraUserAddEditDialog {
                 self.model.auth_key = kv.1.clone();
             }
             Msg::OkPressed => {
-                self.password_entry
+                self.components
+                    .password_entry
                     .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
@@ -138,9 +139,9 @@ impl Widget for ServerExtraUserAddEditDialog {
     fn update_server_user(&self, new_password: String) {
         let server_id = self.model.server_id;
         let server_user_id = self.model.server_user_id;
-        let new_desc = self.desc_entry.get_text();
-        let new_group = self.group.get_active_text();
-        let new_username = self.username_entry.get_text();
+        let new_desc = self.widgets.desc_entry.get_text();
+        let new_group = self.widgets.group.get_active_text();
+        let new_username = self.widgets.username_entry.get_text();
         let new_authkey = self.model.auth_key.clone();
         let new_authkey_filename = self.model.auth_key_filename.clone();
         let s = self.model.server_user_updated_sender.clone();

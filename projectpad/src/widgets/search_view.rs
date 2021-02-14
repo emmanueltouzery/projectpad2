@@ -163,11 +163,11 @@ impl Widget for SearchView {
     fn init_view(&mut self) {
         self.model.action_popover = Some(
             gtk::PopoverBuilder::new()
-                .relative_to(&self.search_result_area)
+                .relative_to(&self.widgets.search_result_area)
                 .position(gtk::PositionType::Bottom)
                 .build(),
         );
-        let search_result_area_popdown = self.search_result_area.clone();
+        let search_result_area_popdown = self.widgets.search_result_area.clone();
         let item_with_depressed_popdown = self.model.item_with_depressed_action.clone();
         self.model
             .action_popover
@@ -177,42 +177,46 @@ impl Widget for SearchView {
                 item_with_depressed_popdown.borrow_mut().take();
                 search_result_area_popdown.queue_draw();
             });
-        self.search_result_area
+        self.widgets
+            .search_result_area
             .set_events(gdk::EventMask::ALL_EVENTS_MASK);
         let si = self.model.search_items.clone();
         let sel = self.model.selected_item.clone();
-        let search_scroll = self.search_scroll.clone();
+        let search_scroll = self.widgets.search_scroll.clone();
         let links = self.model.links.clone();
         let action_areas = self.model.action_areas.clone();
         let item_link_areas = self.model.item_link_areas.clone();
-        let search_result_area = self.search_result_area.clone();
+        let search_result_area = self.widgets.search_result_area.clone();
         let item_with_depressed = self.model.item_with_depressed_action.clone();
         let show_shortcuts = self.model.show_shortcuts.clone();
         let op_mode = self.model.operation_mode;
-        self.search_result_area.connect_draw(move |_, context| {
-            Self::draw_search_view(
-                context,
-                &links,
-                &action_areas,
-                &item_link_areas,
-                &si,
-                &search_result_area,
-                &search_scroll,
-                &item_with_depressed.borrow(),
-                &sel,
-                op_mode,
-                show_shortcuts.get(),
-            );
-            Inhibit(false)
-        });
+        self.widgets
+            .search_result_area
+            .connect_draw(move |_, context| {
+                Self::draw_search_view(
+                    context,
+                    &links,
+                    &action_areas,
+                    &item_link_areas,
+                    &si,
+                    &search_result_area,
+                    &search_scroll,
+                    &item_with_depressed.borrow(),
+                    &sel,
+                    op_mode,
+                    show_shortcuts.get(),
+                );
+                Inhibit(false)
+            });
         let links_mmove = self.model.links.clone();
         let item_links_mmove = self.model.item_link_areas.clone();
-        let search_result_area_mmove = self.search_result_area.clone();
+        let search_result_area_mmove = self.widgets.search_result_area.clone();
         let hand_cursor = gdk::Cursor::new_for_display(
-            &self.search_result_area.get_display(),
+            &self.widgets.search_result_area.get_display(),
             gdk::CursorType::Hand2,
         );
-        self.search_result_area
+        self.widgets
+            .search_result_area
             .connect_motion_notify_event(move |_, event_motion| {
                 let x = event_motion.get_position().0 as i32;
                 let y = event_motion.get_position().1 as i32;
@@ -230,12 +234,13 @@ impl Widget for SearchView {
         let links_btnclick = self.model.links.clone();
         let action_areas_btnclick = self.model.action_areas.clone();
         let item_link_areas_btnclick = self.model.item_link_areas.clone();
-        let search_result_area_btnclick = self.search_result_area.clone();
+        let search_result_area_btnclick = self.widgets.search_result_area.clone();
         let popover = self.model.action_popover.as_ref().unwrap().clone();
         let item_with_depressed_btnclick = self.model.item_with_depressed_action.clone();
         let relm = self.model.relm.clone();
         let search_item_types = self.model.search_item_types;
-        self.search_result_area
+        self.widgets
+            .search_result_area
             .connect_button_release_event(move |_, event_click| {
                 let x = event_click.get_position().0 as i32;
                 let y = event_click.get_position().1 as i32;
@@ -470,22 +475,22 @@ impl Widget for SearchView {
                     btn.set_sensitive(item.is_some());
                 }
                 self.model.selected_item.replace(item);
-                self.search_result_area.queue_draw();
+                self.widgets.search_result_area.queue_draw();
             }
             Msg::GotSearchResult(search_result) => {
                 self.refresh_display(Some(&search_result));
             }
             Msg::MouseScroll(direction, (_dx, dy)) => {
-                let old_val = self.search_scroll.get_value();
+                let old_val = self.widgets.search_scroll.get_value();
                 let new_val = old_val
                     + if direction == gdk::ScrollDirection::Up || dy < 0.0 {
                         -SCROLLBAR_WHEEL_DY
                     } else {
                         SCROLLBAR_WHEEL_DY
                     };
-                self.search_scroll.set_value(new_val);
+                self.widgets.search_scroll.set_value(new_val);
             }
-            Msg::ScrollChanged => self.search_result_area.queue_draw(),
+            Msg::ScrollChanged => self.widgets.search_result_area.queue_draw(),
             Msg::CopyClicked(val) => {
                 self.copy_to_clipboard(&val);
             }
@@ -537,7 +542,7 @@ impl Widget for SearchView {
             Msg::KeyRelease(e) => {
                 if self.model.show_shortcuts.get() {
                     self.model.show_shortcuts.set(false);
-                    self.search_result_area.queue_draw();
+                    self.widgets.search_result_area.queue_draw();
                 }
                 if let Some(index) = e
                     .get_keyval()
@@ -563,7 +568,9 @@ impl Widget for SearchView {
     }
 
     fn copy_to_clipboard(&self, val: &str) {
-        if let Some(clip) = gtk::Clipboard::get_default(&self.search_result_area.get_display()) {
+        if let Some(clip) =
+            gtk::Clipboard::get_default(&self.widgets.search_result_area.get_display())
+        {
             clip.set_text(val);
             self.model
                 .relm
@@ -650,7 +657,7 @@ impl Widget for SearchView {
             .contains(&e.get_keyval());
             if new_show_shortcuts != self.model.show_shortcuts.get() {
                 self.model.show_shortcuts.set(new_show_shortcuts);
-                self.search_result_area.queue_draw();
+                self.widgets.search_result_area.queue_draw();
             }
         }
     }
@@ -660,7 +667,10 @@ impl Widget for SearchView {
             // TODO tried to reduce duplication here, but gave up
             ProjectPadItem::Server(srv) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         srv.project_id,
@@ -682,7 +692,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ProjectPoi(prj_poi) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         prj_poi.project_id,
@@ -704,7 +717,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ProjectNote(prj_note) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         prj_note.project_id,
@@ -726,7 +742,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ServerLink(srv_link) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         srv_link.project_id,
@@ -748,7 +767,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ServerPoi(srv_poi) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         srv_poi.server_id,
@@ -768,7 +790,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ServerDatabase(srv_db) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         srv_db.server_id,
@@ -788,7 +813,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ServerExtraUserAccount(srv_usr) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         srv_usr.server_id,
@@ -810,7 +838,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ServerWebsite(srv_www) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         srv_www.server_id,
@@ -832,7 +863,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::ServerNote(srv_note) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     dialog_helpers::prepare_dialog_param(
                         self.model.db_sender.clone(),
                         srv_note.server_id,
@@ -854,7 +888,10 @@ impl Widget for SearchView {
             }
             ProjectPadItem::Project(prj) => {
                 let (dialog, component, _) = dialog_helpers::prepare_add_edit_item_dialog(
-                    self.search_result_area.clone().upcast::<gtk::Widget>(),
+                    self.widgets
+                        .search_result_area
+                        .clone()
+                        .upcast::<gtk::Widget>(),
                     (
                         self.model.db_sender.clone(),
                         Some(prj),
@@ -1041,16 +1078,18 @@ impl Widget for SearchView {
         }
         let upper = search_items.len() as i32 * SEARCH_RESULT_WIDGET_HEIGHT;
         if search_result.map(|r| r.reset_scroll).unwrap_or(false) {
-            self.search_scroll.set_adjustment(&gtk::Adjustment::new(
-                0.0,
-                0.0,
-                upper as f64,
-                10.0,
-                60.0,
-                self.search_result_area.get_allocation().height as f64,
-            ));
+            self.widgets
+                .search_scroll
+                .set_adjustment(&gtk::Adjustment::new(
+                    0.0,
+                    0.0,
+                    upper as f64,
+                    10.0,
+                    60.0,
+                    self.widgets.search_result_area.get_allocation().height as f64,
+                ));
         }
-        self.search_result_area.queue_draw();
+        self.widgets.search_result_area.queue_draw();
     }
 
     fn fetch_search_results(&self, reset_scroll: bool) {

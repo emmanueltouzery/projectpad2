@@ -101,6 +101,7 @@ impl Widget for ProjectList {
                 if let Some(idx) = self.model.projects.iter().position(|p| p.id == id) {
                     let child_widget = self.model.children_widgets[idx as usize].widget();
                     let y = -self
+                        .widgets
                         .scroll
                         .translate_coordinates(child_widget, 0, 0)
                         .unwrap()
@@ -146,12 +147,13 @@ impl Widget for ProjectList {
     }
 
     fn update_projects_list(&mut self) {
-        for child in self.project_list.get_children() {
-            self.project_list.remove(&child);
+        for child in self.widgets.project_list.get_children() {
+            self.widgets.project_list.remove(&child);
         }
         self.model.children_widgets.clear();
         for project in &self.model.projects {
             let child = self
+                .widgets
                 .project_list
                 .add_widget::<ProjectBadge>(project.clone());
             relm::connect!(
@@ -194,7 +196,7 @@ impl Widget for ProjectList {
             connect_clicked(_),
             Msg::AddProject
         );
-        self.project_list.add(&add_btn);
+        self.widgets.project_list.add(&add_btn);
         if let Some(pid) = self.model.active_project_id {
             if let Some(p) = self.model.projects.iter().find(|p| p.id == pid) {
                 self.model

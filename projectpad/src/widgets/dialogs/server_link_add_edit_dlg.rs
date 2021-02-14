@@ -56,7 +56,7 @@ pub struct Model {
 #[widget]
 impl Widget for ServerLinkAddEditDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
         self.init_group();
         self.fetch_project_name_and_id();
 
@@ -64,7 +64,8 @@ impl Widget for ServerLinkAddEditDialog {
             .label("You must select a server to link to")
             .build();
         must_pick_server_error_label.show();
-        self.must_pick_server_error
+        self.widgets
+            .must_pick_server_error
             .get_content_area()
             .add(&must_pick_server_error_label);
     }
@@ -79,10 +80,13 @@ impl Widget for ServerLinkAddEditDialog {
                     .unwrap();
             }))
             .unwrap();
-        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.widgets.group);
 
         self.reload_linked_groups();
-        dialog_helpers::init_group_control(&self.model.linked_groups_store, &self.linked_group);
+        dialog_helpers::init_group_control(
+            &self.model.linked_groups_store,
+            &self.widgets.linked_group,
+        );
     }
 
     fn reload_linked_groups(&self) {
@@ -179,7 +183,7 @@ impl Widget for ServerLinkAddEditDialog {
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
-                    &self.group,
+                    &self.widgets.group,
                     &groups,
                     &self.model.group_name,
                 );
@@ -187,13 +191,13 @@ impl Widget for ServerLinkAddEditDialog {
             Msg::GotLinkedGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.linked_groups_store,
-                    &self.linked_group,
+                    &self.widgets.linked_group,
                     &groups,
                     &self.model.linked_group_name,
                 );
             }
             Msg::GotProjectNameAndId((name, id)) => {
-                self.pick_srv_button.stream().emit(
+                self.components.pick_srv_button.stream().emit(
                     pick_projectpad_item_button::Msg::SetProjectNameAndId(Some((name, id))),
                 );
             }
@@ -217,13 +221,13 @@ impl Widget for ServerLinkAddEditDialog {
         let project_id = self.model.project_id;
         let server_link_id = self.model.server_link_id;
         if self.model.linked_server_id.is_none() {
-            self.must_pick_server_error.set_visible(true);
+            self.widgets.must_pick_server_error.set_visible(true);
             return;
         }
         let new_linked_server_id = self.model.linked_server_id.unwrap();
-        let new_desc = self.desc_entry.get_text();
-        let new_group = self.group.get_active_text();
-        let new_linked_group = self.linked_group.get_active_text();
+        let new_desc = self.widgets.desc_entry.get_text();
+        let new_group = self.widgets.group.get_active_text();
+        let new_linked_group = self.widgets.linked_group.get_active_text();
         let new_env_type = self.model.environment_type.unwrap();
         let s = self.model.server_link_updated_sender.clone();
         self.model

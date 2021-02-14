@@ -28,7 +28,8 @@ pub enum HeaderMsg {
 #[widget]
 impl Widget for Header {
     fn init_view(&mut self) {
-        self.next_btn
+        self.widgets
+            .next_btn
             .get_style_context()
             .add_class("suggested-action");
     }
@@ -39,7 +40,7 @@ impl Widget for Header {
         match event {
             HeaderMsg::CancelAction => {}
             HeaderMsg::NextAction => {}
-            HeaderMsg::EnableNext(enable) => self.next_btn.set_sensitive(enable),
+            HeaderMsg::EnableNext(enable) => self.widgets.next_btn.set_sensitive(enable),
         }
     }
 
@@ -105,26 +106,29 @@ const CHILD_NAME_EXPORT: &str = "export";
 #[widget]
 impl Widget for ImportExportDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
-        self.grid.set_margin_top(20);
-        dialog_helpers::style_grid(&self.grid_export);
-        self.grid_export.set_margin_top(20);
-        self.export_file_radio
-            .join_group(Some(&self.import_file_radio));
+        dialog_helpers::style_grid(&self.widgets.grid);
+        self.widgets.grid.set_margin_top(20);
+        dialog_helpers::style_grid(&self.widgets.grid_export);
+        self.widgets.grid_export.set_margin_top(20);
+        self.widgets
+            .export_file_radio
+            .join_group(Some(&self.widgets.import_file_radio));
         let h = &self.model.header;
         relm::connect!(h@HeaderMsg::NextAction, self.model.relm, Msg::NextClicked);
         relm::connect!(h@HeaderMsg::CancelAction, self.model.relm, Msg::Close);
         let filter = gtk::FileFilter::new();
         filter.add_pattern("*.7z");
-        self.import_picker_btn.set_filter(&filter);
+        self.widgets.import_picker_btn.set_filter(&filter);
 
         self.model.import_error_label.show();
-        self.import_error_infobar
+        self.widgets
+            .import_error_infobar
             .get_content_area()
             .add(&self.model.import_error_label);
 
         self.model.export_error_label.show();
-        self.export_error_infobar
+        self.widgets
+            .export_error_infobar
             .get_content_area()
             .add(&self.model.export_error_label);
     }
@@ -167,45 +171,51 @@ impl Widget for ImportExportDialog {
     fn show_import_error(&self, msg: &str) {
         self.model.import_error_label.set_text(msg);
         self.model.import_error_label.set_tooltip_text(Some(msg));
-        self.import_error_infobar.set_visible(true);
+        self.widgets.import_error_infobar.set_visible(true);
     }
 
     fn show_export_error(&self, msg: &str) {
         self.model.export_error_label.set_text(msg);
         self.model.export_error_label.set_tooltip_text(Some(msg));
-        self.export_error_infobar.set_visible(true);
+        self.widgets.export_error_infobar.set_visible(true);
     }
 
     fn update(&mut self, event: Msg) {
         match event {
             Msg::KeyPress(key) => {
                 if key.get_keyval() == gdk::keys::constants::Escape {
-                    self.import_win.close();
+                    self.widgets.import_win.close();
                 }
             }
-            Msg::Close => self.import_win.close(),
+            Msg::Close => self.widgets.import_win.close(),
             Msg::NextClicked => match self.model.wizard_state {
                 WizardState::Start => {
-                    if self.import_file_radio.get_active() {
+                    if self.widgets.import_file_radio.get_active() {
                         self.model
                             .header
                             .stream()
                             .emit(HeaderMsg::EnableNext(false));
-                        self.wizard_stack.set_visible_child_name(CHILD_NAME_IMPORT);
+                        self.widgets
+                            .wizard_stack
+                            .set_visible_child_name(CHILD_NAME_IMPORT);
                         self.model.wizard_state = WizardState::ImportPickFile;
                     } else {
                         self.fetch_project_list();
-                        self.wizard_stack.set_visible_child_name(CHILD_NAME_EXPORT);
+                        self.widgets
+                            .wizard_stack
+                            .set_visible_child_name(CHILD_NAME_EXPORT);
                         self.model.wizard_state = WizardState::ExportPickFile;
                     }
                 }
                 WizardState::ImportPickFile => {
-                    self.import_password_entry
+                    self.components
+                        .import_password_entry
                         .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
                 WizardState::ExportPickFile => {
-                    self.export_password_entry
+                    self.components
+                        .export_password_entry
                         .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
@@ -219,7 +229,8 @@ impl Widget for ImportExportDialog {
                 }
                 WizardState::ExportPickFile => {
                     self.model.export_pass = Some(pass);
-                    self.export_password_confirm_entry
+                    self.components
+                        .export_password_confirm_entry
                         .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
@@ -240,7 +251,7 @@ impl Widget for ImportExportDialog {
                 }
             }
             Msg::ImportResult(Result::Ok(())) => {
-                self.import_win.close();
+                self.widgets.import_win.close();
                 self.model.relm.stream().emit(Msg::ImportApplied);
             }
             Msg::ImportResult(Result::Err(e)) => {
@@ -249,7 +260,7 @@ impl Widget for ImportExportDialog {
             }
             Msg::ExportResult(Result::Ok(missing_dep_project_names)) => {
                 if missing_dep_project_names.is_empty() {
-                    self.import_win.close();
+                    self.widgets.import_win.close();
                 } else {
                     self.model.header.stream().emit(HeaderMsg::EnableNext(true));
                     standard_dialogs::display_error_str(
@@ -317,11 +328,11 @@ impl Widget for ImportExportDialog {
 
     fn populate_project_list(&mut self, projects: Vec<Project>) {
         self.model.displayed_projects = projects;
-        for child in self.project_list.get_children() {
-            self.project_list.remove(&child);
+        for child in self.widgets.project_list.get_children() {
+            self.widgets.project_list.remove(&child);
         }
         for project in &self.model.displayed_projects {
-            self.project_list.add(
+            self.widgets.project_list.add(
                 &gtk::LabelBuilder::new()
                     .label(&project.name)
                     .xalign(0.0)
@@ -329,9 +340,10 @@ impl Widget for ImportExportDialog {
                     .build(),
             );
         }
-        self.project_list
-            .select_row(self.project_list.get_row_at_index(0).as_ref());
-        self.project_list.show_all();
+        self.widgets
+            .project_list
+            .select_row(self.widgets.project_list.get_row_at_index(0).as_ref());
+        self.widgets.project_list.show_all();
     }
 
     fn do_import(&self, pass: String) {
@@ -339,7 +351,7 @@ impl Widget for ImportExportDialog {
             .header
             .stream()
             .emit(HeaderMsg::EnableNext(false));
-        match self.import_picker_btn.get_filename() {
+        match self.widgets.import_picker_btn.get_filename() {
             None => {
                 // shouldn't happen, but i don't want to crash
                 self.show_import_error("Please pick a file to import");
@@ -366,6 +378,7 @@ impl Widget for ImportExportDialog {
 
     fn do_export(&self, fname: path::PathBuf, pass: String) {
         let selected_projects: Vec<_> = self
+            .widgets
             .project_list
             .get_selected_rows()
             .into_iter()

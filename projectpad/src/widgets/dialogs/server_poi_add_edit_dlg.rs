@@ -72,7 +72,7 @@ pub struct Model {
 #[widget]
 impl Widget for ServerPoiAddEditDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
         self.init_interest_type();
         self.init_group();
         self.init_run_on();
@@ -80,7 +80,7 @@ impl Widget for ServerPoiAddEditDialog {
 
     fn init_interest_type(&self) {
         init_interest_type_combo(
-            &self.interest_type,
+            &self.widgets.interest_type,
             self.model.interest_type.to_string().as_str(),
         );
     }
@@ -98,15 +98,17 @@ impl Widget for ServerPoiAddEditDialog {
             .collect();
         entries.sort_by_key(|p| p.1);
         for (entry_type, entry_desc) in entries {
-            self.run_on
+            self.widgets
+                .run_on
                 .append(Some(&entry_type.to_string()), entry_desc);
         }
-        self.run_on
+        self.widgets
+            .run_on
             .set_active_id(Some(&self.model.run_on.to_string()));
     }
 
     fn init_group(&self) {
-        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.widgets.group);
         dialog_helpers::fetch_server_groups(
             &self.model.groups_sender,
             self.model.server_id,
@@ -174,7 +176,7 @@ impl Widget for ServerPoiAddEditDialog {
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
-                    &self.group,
+                    &self.widgets.group,
                     &groups,
                     &self.model.group_name,
                 );
@@ -193,7 +195,8 @@ impl Widget for ServerPoiAddEditDialog {
     }
 
     fn combo_read_interest_type(&self) -> InterestType {
-        self.interest_type
+        self.widgets
+            .interest_type
             .get_active_id()
             .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
             .expect("interest type not specified!?")
@@ -202,12 +205,13 @@ impl Widget for ServerPoiAddEditDialog {
     fn update_server_poi(&self) {
         let server_poi_id = self.model.server_poi_id;
         let server_id = self.model.server_id;
-        let new_desc = self.desc_entry.get_text();
-        let new_path = self.path_entry.get_text();
-        let new_text = self.text_entry.get_text();
-        let new_group = self.group.get_active_text();
+        let new_desc = self.widgets.desc_entry.get_text();
+        let new_path = self.widgets.path_entry.get_text();
+        let new_text = self.widgets.text_entry.get_text();
+        let new_group = self.widgets.group.get_active_text();
         let new_interest_type = self.combo_read_interest_type();
         let new_run_on = self
+            .widgets
             .run_on
             .get_active_id()
             .map(|s| RunOn::from_str(s.as_str()).expect("Error parsing the run_on!?"))

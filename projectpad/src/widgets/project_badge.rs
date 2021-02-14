@@ -33,8 +33,10 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
-        self.drawing_area.set_size_request(OUTER_SIZE, OUTER_SIZE);
-        self.drawing_area.add_events(
+        self.widgets
+            .drawing_area
+            .set_size_request(OUTER_SIZE, OUTER_SIZE);
+        self.widgets.drawing_area.add_events(
             gdk::EventMask::BUTTON_PRESS_MASK
                 | gdk::EventMask::ENTER_NOTIFY_MASK
                 | gdk::EventMask::LEAVE_NOTIFY_MASK,
@@ -44,7 +46,7 @@ impl Widget for ProjectBadge {
         let is_a = self.model.is_active.clone();
         let icon = self.model.project.icon.clone();
         let name = self.model.project.name.clone();
-        self.drawing_area.connect_draw(move |da, context| {
+        self.widgets.drawing_area.connect_draw(move |da, context| {
             let allocation = da.get_allocation();
             let b0 = buf.borrow();
             let is_buffer_good = Some((allocation.width, allocation.height))
@@ -237,7 +239,7 @@ impl Widget for ProjectBadge {
                     self.model.is_active.set(new_active);
                     // force a recompute of the display
                     self.model.backing_buffer.replace(None);
-                    self.drawing_area.queue_draw();
+                    self.widgets.drawing_area.queue_draw();
                 }
             }
             Msg::MouseEnter => {
@@ -255,7 +257,7 @@ impl Widget for ProjectBadge {
             Msg::DarkThemeToggled => {
                 // force a recompute of the display
                 self.model.backing_buffer.replace(None);
-                self.drawing_area.queue_draw();
+                self.widgets.drawing_area.queue_draw();
             }
             Msg::MouseEnterProject(_) => {}
             Msg::MouseLeaveProject(_) => {}

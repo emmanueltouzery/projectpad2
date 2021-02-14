@@ -56,17 +56,18 @@ pub struct Model {
 #[widget]
 impl Widget for ProjectNoteAddEditDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
         self.init_group();
         self.fetch_project_environments();
-        self.grid.set_property_width_request(700);
-        self.grid.set_property_height_request(500);
+        self.widgets.grid.set_property_width_request(700);
+        self.widgets.grid.set_property_height_request(500);
 
         let no_envs_error_label = gtk::LabelBuilder::new()
             .label("You must select at least one environment which is active on the parent project")
             .build();
         no_envs_error_label.show();
-        self.no_envs_error
+        self.widgets
+            .no_envs_error
             .get_content_area()
             .add(&no_envs_error_label);
     }
@@ -81,7 +82,7 @@ impl Widget for ProjectNoteAddEditDialog {
                     .unwrap();
             }))
             .unwrap();
-        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.widgets.group);
     }
 
     fn fetch_project_environments(&self) {
@@ -162,7 +163,7 @@ impl Widget for ProjectNoteAddEditDialog {
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
-                    &self.group,
+                    &self.widgets.group,
                     &groups,
                     &self.model.group_name,
                 );
@@ -171,7 +172,8 @@ impl Widget for ProjectNoteAddEditDialog {
                 self.model.project_environments = Some(prj_envs);
             }
             Msg::OkPressed => {
-                self.note_edit
+                self.components
+                    .note_edit
                     .stream()
                     .emit(note_edit::Msg::RequestContents);
             }
@@ -210,14 +212,14 @@ impl Widget for ProjectNoteAddEditDialog {
             false
         };
         if !has_envs {
-            self.no_envs_error.set_visible(true);
+            self.widgets.no_envs_error.set_visible(true);
             return;
         }
 
         let project_id = self.model.project_id;
         let project_note_id = self.model.project_note_id;
-        let new_title = self.title_entry.get_text();
-        let new_group = self.group.get_active_text();
+        let new_title = self.widgets.title_entry.get_text();
+        let new_group = self.widgets.group.get_active_text();
         let s = self.model.project_note_updated_sender.clone();
         self.model
             .db_sender

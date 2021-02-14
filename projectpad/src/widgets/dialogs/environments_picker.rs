@@ -23,7 +23,8 @@ pub struct Model {
 #[widget]
 impl Widget for EnvironmentsPicker {
     fn init_view(&mut self) {
-        self.environments_box
+        self.widgets
+            .environments_box
             .get_style_context()
             .add_class("linked");
     }

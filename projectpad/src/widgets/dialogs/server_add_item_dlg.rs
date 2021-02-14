@@ -67,10 +67,16 @@ macro_rules! plug_second_tab {
 #[widget]
 impl Widget for ServerAddItemDialog {
     fn init_view(&mut self) {
-        self.add_db.join_group(Some(&self.add_poi));
-        self.add_extra_user.join_group(Some(&self.add_poi));
-        self.add_website.join_group(Some(&self.add_poi));
-        self.add_note.join_group(Some(&self.add_poi));
+        self.widgets.add_db.join_group(Some(&self.widgets.add_poi));
+        self.widgets
+            .add_extra_user
+            .join_group(Some(&self.widgets.add_poi));
+        self.widgets
+            .add_website
+            .join_group(Some(&self.widgets.add_poi));
+        self.widgets
+            .add_note
+            .join_group(Some(&self.widgets.add_poi));
     }
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, i32)) -> Model {
@@ -86,7 +92,7 @@ impl Widget for ServerAddItemDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ShowSecondTab(ref dialog) => {
-                let (widget, title) = if self.add_poi.get_active() {
+                let (widget, title) = if self.widgets.add_poi.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -99,7 +105,7 @@ impl Widget for ServerAddItemDialog {
                         ),
                         "Add Server Point of Interest",
                     )
-                } else if self.add_db.get_active() {
+                } else if self.widgets.add_db.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -112,7 +118,7 @@ impl Widget for ServerAddItemDialog {
                         ),
                         "Add server database",
                     )
-                } else if self.add_extra_user.get_active() {
+                } else if self.widgets.add_extra_user.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -125,7 +131,7 @@ impl Widget for ServerAddItemDialog {
                         ),
                         "Add server extra user",
                     )
-                } else if self.add_website.get_active() {
+                } else if self.widgets.add_website.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -138,7 +144,7 @@ impl Widget for ServerAddItemDialog {
                         ),
                         "Add server website",
                     )
-                } else if self.add_note.get_active() {
+                } else if self.widgets.add_note.get_active() {
                     (
                         plug_second_tab!(
                             self,
@@ -155,9 +161,9 @@ impl Widget for ServerAddItemDialog {
                     panic!();
                 };
                 self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
-                self.tabs_stack.add_named(widget, "dialog");
+                self.widgets.tabs_stack.add_named(widget, "dialog");
                 widget.show();
-                self.tabs_stack.set_visible_child_name("dialog");
+                self.widgets.tabs_stack.set_visible_child_name("dialog");
             }
             Msg::OkPressed => match self.model.dialog_component.as_ref() {
                 Some(ServerAddEditDialogComponent::Poi(poi_c)) => {

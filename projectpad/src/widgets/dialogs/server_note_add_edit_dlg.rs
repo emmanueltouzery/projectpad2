@@ -43,14 +43,14 @@ pub struct Model {
 #[widget]
 impl Widget for ServerNoteAddEditDialog {
     fn init_view(&mut self) {
-        dialog_helpers::style_grid(&self.grid);
+        dialog_helpers::style_grid(&self.widgets.grid);
         self.init_group();
-        self.grid.set_property_width_request(700);
-        self.grid.set_property_height_request(500);
+        self.widgets.grid.set_property_width_request(700);
+        self.widgets.grid.set_property_height_request(500);
     }
 
     fn init_group(&self) {
-        dialog_helpers::init_group_control(&self.model.groups_store, &self.group);
+        dialog_helpers::init_group_control(&self.model.groups_store, &self.widgets.group);
         dialog_helpers::fetch_server_groups(
             &self.model.groups_sender,
             self.model.server_id,
@@ -104,13 +104,14 @@ impl Widget for ServerNoteAddEditDialog {
             Msg::GotGroups(groups) => {
                 dialog_helpers::fill_groups(
                     &self.model.groups_store,
-                    &self.group,
+                    &self.widgets.group,
                     &groups,
                     &self.model.group_name,
                 );
             }
             Msg::OkPressed => {
-                self.note_edit
+                self.components
+                    .note_edit
                     .stream()
                     .emit(note_edit::Msg::RequestContents);
             }
@@ -125,8 +126,8 @@ impl Widget for ServerNoteAddEditDialog {
     fn update_server_note(&self, new_contents: String) {
         let server_id = self.model.server_id;
         let server_note_id = self.model.server_note_id;
-        let new_title = self.title_entry.get_text();
-        let new_group = self.group.get_active_text();
+        let new_title = self.widgets.title_entry.get_text();
+        let new_group = self.widgets.group.get_active_text();
         let s = self.model.server_note_updated_sender.clone();
         self.model
             .db_sender

@@ -55,9 +55,10 @@ pub fn left_align_menu(menu: &gtk::ModelButton) {
 impl Widget for WinTitleBar {
     fn init_view(&mut self) {
         let relm = self.model.relm.clone();
-        self.model.search_toggle_signal = Some(self.search_toggle.connect_toggled(move |_| {
-            relm.stream().emit(Msg::SearchClicked);
-        }));
+        self.model.search_toggle_signal =
+            Some(self.widgets.search_toggle.connect_toggled(move |_| {
+                relm.stream().emit(Msg::SearchClicked);
+            }));
         self.init_menu_popover();
     }
 
@@ -128,7 +129,9 @@ impl Widget for WinTitleBar {
         vbox.add(&about_btn);
         vbox.show_all();
         self.model.menu_popover.add(&vbox);
-        self.menu_button.set_popover(Some(&self.model.menu_popover));
+        self.widgets
+            .menu_button
+            .set_popover(Some(&self.model.menu_popover));
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -149,24 +152,24 @@ impl Widget for WinTitleBar {
             Msg::DisplayShortcuts => self.display_shortcuts(),
             Msg::DisplayAbout => Self::display_about(),
             Msg::SearchClicked => {
-                let new_visible = self.search_toggle.get_active();
-                self.search_entry.grab_focus();
+                let new_visible = self.widgets.search_toggle.get_active();
+                self.widgets.search_entry.grab_focus();
                 self.model
                     .relm
                     .stream()
                     .emit(Msg::SearchActiveChanged(new_visible));
             }
             Msg::SearchEnable => {
-                self.search_toggle.set_active(true);
+                self.widgets.search_toggle.set_active(true);
                 self.model.relm.stream().emit(Msg::SearchClicked);
             }
             Msg::SearchActiveChanged(is_active) => {
-                self.search_toggle.set_active(is_active);
-                self.search_entry.set_visible(is_active);
+                self.widgets.search_toggle.set_active(is_active);
+                self.widgets.search_entry.set_visible(is_active);
             }
             Msg::SearchTextChanged(_) => {} // meant for my parent
             Msg::SearchTextChangedFromElsewhere((txt, _evt)) => {
-                if !self.search_toggle.get_active() {
+                if !self.widgets.search_toggle.get_active() {
                     // we want to block the signal of the search button toggle,
                     // because when you click the search button we set the focus
                     // and select the search text. if we did that when search
@@ -174,16 +177,18 @@ impl Widget for WinTitleBar {
                     // be lost when typing the second letter, due to the selection
                     // so we block the search button toggle signal & handle things
                     // by hand.
-                    self.search_toggle
+                    self.widgets
+                        .search_toggle
                         .block_signal(&self.model.search_toggle_signal.as_ref().unwrap());
-                    self.search_entry.set_visible(true);
-                    self.search_toggle.set_active(true);
-                    self.search_entry.grab_focus_without_selecting();
+                    self.widgets.search_entry.set_visible(true);
+                    self.widgets.search_toggle.set_active(true);
+                    self.widgets.search_entry.grab_focus_without_selecting();
 
-                    self.search_entry.set_text(&txt);
-                    self.search_toggle
+                    self.widgets.search_entry.set_text(&txt);
+                    self.widgets
+                        .search_toggle
                         .unblock_signal(&self.model.search_toggle_signal.as_ref().unwrap());
-                    self.search_entry.set_position(1);
+                    self.widgets.search_entry.set_position(1);
                 }
             }
             Msg::EnterOrUpdateSearchProject => {
@@ -192,7 +197,7 @@ impl Widget for WinTitleBar {
             Msg::DisplayHelp => {
                 if let Err(e) = gtk::show_uri_on_window(
                     Some(&standard_dialogs::get_main_window(
-                        self.header_bar.clone().upcast::<gtk::Widget>(),
+                        self.widgets.header_bar.clone().upcast::<gtk::Widget>(),
                     )),
                     "https://github.com/emmanueltouzery/projectpad2/wiki/Help",
                     0,
@@ -208,8 +213,9 @@ impl Widget for WinTitleBar {
     }
 
     fn display_preferences(&mut self) {
-        let main_win =
-            standard_dialogs::get_main_window(self.header_bar.clone().upcast::<gtk::Widget>());
+        let main_win = standard_dialogs::get_main_window(
+            self.widgets.header_bar.clone().upcast::<gtk::Widget>(),
+        );
         self.model.prefs_win = Some(
             init::<Preferences>((main_win.clone(), self.model.db_sender.clone()))
                 .expect("error initializing the preferences window"),
@@ -228,8 +234,9 @@ impl Widget for WinTitleBar {
     }
 
     fn display_import(&mut self) {
-        let main_win =
-            standard_dialogs::get_main_window(self.header_bar.clone().upcast::<gtk::Widget>());
+        let main_win = standard_dialogs::get_main_window(
+            self.widgets.header_bar.clone().upcast::<gtk::Widget>(),
+        );
         self.model.import_win = Some(
             init::<ImportExportDialog>(self.model.db_sender.clone())
                 .expect("error initializing the import export dialog"),
@@ -263,37 +270,44 @@ impl Widget for WinTitleBar {
             .unwrap();
         win.set_title("Keyboard Shortcuts");
         win.set_transient_for(Some(&standard_dialogs::get_main_window(
-            self.header_bar.clone().upcast::<gtk::Widget>(),
+            self.widgets.header_bar.clone().upcast::<gtk::Widget>(),
         )));
         win.show();
     }
 
     fn enter_or_update_search_project(&self) {
-        let cur_text = self.search_entry.get_text().to_string();
+        let cur_text = self.widgets.search_entry.get_text().to_string();
         if let Some(index) = cur_text.find(PROJECT_FILTER_PREFIX) {
             let start_idx = index + PROJECT_FILTER_PREFIX.len();
-            self.search_entry.set_position(start_idx as i32);
+            self.widgets.search_entry.set_position(start_idx as i32);
             let end_idx = cur_text[start_idx..]
                 .find(' ')
                 .map(|i| (start_idx + i) as i32)
                 .unwrap_or(-1);
-            self.search_entry.select_region(start_idx as i32, end_idx);
+            self.widgets
+                .search_entry
+                .select_region(start_idx as i32, end_idx);
         } else if cur_text.is_empty() {
-            self.search_entry.set_text(PROJECT_FILTER_PREFIX);
-            self.search_entry
+            self.widgets.search_entry.set_text(PROJECT_FILTER_PREFIX);
+            self.widgets
+                .search_entry
                 .set_position(PROJECT_FILTER_PREFIX.len() as i32);
         } else {
-            self.search_entry
+            self.widgets
+                .search_entry
                 .set_text(&format!("{} {}", cur_text, PROJECT_FILTER_PREFIX));
-            self.search_entry
+            self.widgets
+                .search_entry
                 .set_position(cur_text.len() as i32 + PROJECT_FILTER_PREFIX.len() as i32 + 1);
         }
-        self.search_toggle
+        self.widgets
+            .search_toggle
             .block_signal(&self.model.search_toggle_signal.as_ref().unwrap());
-        self.search_toggle.set_active(true);
-        self.search_entry.set_visible(true);
-        self.search_entry.grab_focus_without_selecting();
-        self.search_toggle
+        self.widgets.search_toggle.set_active(true);
+        self.widgets.search_entry.set_visible(true);
+        self.widgets.search_entry.grab_focus_without_selecting();
+        self.widgets
+            .search_toggle
             .unblock_signal(&self.model.search_toggle_signal.as_ref().unwrap());
     }
 

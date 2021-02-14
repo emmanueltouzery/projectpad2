@@ -97,15 +97,18 @@ pub struct Model {
 #[widget]
 impl Widget for ServerPoiContents {
     fn init_view(&mut self) {
-        self.contents_list
+        self.widgets
+            .contents_list
             .get_style_context()
             .add_class("item_list");
-        self.contents_scroll
+        self.widgets
+            .contents_scroll
             .get_style_context()
             .add_class("scrollgradient");
         self.update_contents_list();
-        self.contents_list
-            .set_focus_vadjustment(&self.contents_scroll.get_vadjustment().unwrap());
+        self.widgets
+            .contents_list
+            .set_focus_vadjustment(&self.widgets.contents_scroll.get_vadjustment().unwrap());
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -184,15 +187,15 @@ impl Widget for ServerPoiContents {
                     .iter()
                     .find(|(_cur_idx, cur_grp)| **cur_grp == gn)
                 {
-                    if let Some(row) = self.contents_list.get_row_at_index(*idx as i32) {
-                        if let Some(vscroll) = self.contents_scroll.get_vadjustment() {
+                    if let Some(row) = self.widgets.contents_list.get_row_at_index(*idx as i32) {
+                        if let Some(vscroll) = self.widgets.contents_scroll.get_vadjustment() {
                             if let Some((_x, y)) =
-                                row.translate_coordinates(&self.contents_list, 0, 0)
+                                row.translate_coordinates(&self.widgets.contents_list, 0, 0)
                             {
                                 vscroll.set_value(y.into());
                             }
                         }
-                        // self.contents_list.select_row(Some(&row));
+                        // self.widgets.contents_list.select_row(Some(&row));
                         // row.grab_focus();
                         found = true;
                     }
@@ -210,13 +213,15 @@ impl Widget for ServerPoiContents {
         let find_cb = Self::get_find_serveritem_cb(&si);
         let midx = self.model.server_items.iter().position(find_cb);
         if let Some(idx) = midx {
-            if let Some(row) = self.contents_list.get_row_at_index(idx as i32) {
-                if let Some(vscroll) = self.contents_scroll.get_vadjustment() {
-                    if let Some((_x, y)) = row.translate_coordinates(&self.contents_list, 0, 0) {
+            if let Some(row) = self.widgets.contents_list.get_row_at_index(idx as i32) {
+                if let Some(vscroll) = self.widgets.contents_scroll.get_vadjustment() {
+                    if let Some((_x, y)) =
+                        row.translate_coordinates(&self.widgets.contents_list, 0, 0)
+                    {
                         vscroll.set_value(y.into());
                     }
                 }
-                // self.contents_list.select_row(Some(&row));
+                // self.widgets.contents_list.select_row(Some(&row));
                 // row.grab_focus();
             }
         } else {
@@ -314,17 +319,20 @@ impl Widget for ServerPoiContents {
     }
 
     fn update_contents_list(&mut self) {
-        for child in self.contents_list.get_children() {
-            self.contents_list.remove(&child);
+        for child in self.widgets.contents_list.get_children() {
+            self.widgets.contents_list.remove(&child);
         }
         let mut children_components = vec![];
         for item in &self.model.server_items {
-            let component = self.contents_list.add_widget::<ServerItemListItem>((
-                self.model.db_sender.clone(),
-                item.clone(),
-                self.database_for_item(&item),
-                self.websites_for_item(&item),
-            ));
+            let component = self
+                .widgets
+                .contents_list
+                .add_widget::<ServerItemListItem>((
+                    self.model.db_sender.clone(),
+                    item.clone(),
+                    self.database_for_item(&item),
+                    self.websites_for_item(&item),
+                ));
             relm::connect!(
                 component@ServerItemListItemMsg::ViewNote(ref n),
                 self.model.relm, Msg::ViewNote(n.clone()));
@@ -340,7 +348,8 @@ impl Widget for ServerPoiContents {
             children_components.push(component);
         }
         let indexes = self.model.server_item_groups_start_indexes.clone();
-        self.contents_list
+        self.widgets
+            .contents_list
             .set_header_func(Some(Box::new(move |row, _h| {
                 if let Some(group_name) = indexes.get(&row.get_index()) {
                     let label = gtk::LabelBuilder::new()
@@ -403,10 +412,10 @@ impl Widget for ServerPoiContents {
             );
             vbox.add(&details);
             vbox.show_all();
-            self.contents_list.add(&vbox);
+            self.widgets.contents_list.add(&vbox);
         }
 
-        for child in self.contents_list.get_children() {
+        for child in self.widgets.contents_list.get_children() {
             // don't want the row background color to change when we hover
             // it with the mouse (activatable), or the focus dotted lines
             // around the rows to be drawn, for aesthetic reasons.

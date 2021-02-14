@@ -77,9 +77,15 @@ where
 impl Widget for SearchBar {
     fn init_view(&mut self) {
         // https://developer.gnome.org/Buttons/#Linked_buttons
-        self.search_box.get_style_context().add_class("linked");
+        self.widgets
+            .search_box
+            .get_style_context()
+            .add_class("linked");
 
-        self.frame.get_style_context().add_class("search_frame");
+        self.widgets
+            .frame
+            .get_style_context()
+            .add_class("search_frame");
     }
 
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
@@ -89,21 +95,20 @@ impl Widget for SearchBar {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::Reveal(r) => {
-                self.revealer.set_reveal_child(r);
+                self.widgets.revealer.set_reveal_child(r);
                 if r {
-                    self.search_entry.grab_focus();
+                    self.widgets.search_entry.grab_focus();
                 }
             }
             Msg::KeyRelease(e) => {
                 if e.get_keyval() == gdk::keys::constants::Escape
-                    && self.revealer.get_reveal_child()
+                    && self.widgets.revealer.get_reveal_child()
                 {
                     self.model.relm.stream().emit(Msg::Reveal(false));
                 } else if is_plaintext_key(&e) {
-                    self.model
-                        .relm
-                        .stream()
-                        .emit(Msg::SearchChanged(self.search_entry.get_text().to_string()));
+                    self.model.relm.stream().emit(Msg::SearchChanged(
+                        self.widgets.search_entry.get_text().to_string(),
+                    ));
                 }
             }
             // meant for my parent

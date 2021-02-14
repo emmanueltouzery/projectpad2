@@ -305,7 +305,7 @@ impl Widget for Win {
         dialog
             .get_content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);
-        let s = dialog_contents.stream().clone();
+        let s = dialog_contents.stream();
         dialog.connect_response(move |d, r| {
             if r == gtk::ResponseType::Ok {
                 s.emit(unlock_db_dlg::Msg::OkPressed);

@@ -215,7 +215,7 @@ impl Widget for PickProjectpadItemButton {
         standard_dialogs::prepare_custom_dialog_component_ref(&dialog, comp);
 
         let search_entry = gtk::SearchEntryBuilder::new().text(&search_text).build();
-        let comp2 = comp.stream().clone();
+        let comp2 = comp.stream();
         search_entry.connect_changed(move |se| {
             comp2.stream().emit(search_view::Msg::FilterChanged(Some(
                 se.get_text().to_string(),
@@ -226,7 +226,7 @@ impl Widget for PickProjectpadItemButton {
 
         relm::connect!(comp@SearchViewMsg::SelectedItem(ref p), self.model.relm, Msg::ItemSelected(p.clone()));
 
-        let comp3 = comp.stream().clone();
+        let comp3 = comp.stream();
         dialog.connect_response(move |d, r| {
             if r == gtk::ResponseType::Ok {
                 comp3.stream().emit(search_view::Msg::RequestSelectedItem);

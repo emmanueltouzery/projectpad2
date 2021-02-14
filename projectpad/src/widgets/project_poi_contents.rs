@@ -132,10 +132,10 @@ impl Widget for ProjectPoiContents {
                         }
                         _ => ServerPoiContentsMsg::ServerSelected(None),
                     });
-                if let Some(pi) = self.model.cur_project_item.clone() {
-                    if let ProjectItem::ProjectNote(ref note) = pi {
-                        self.display_note(&note.contents);
-                    }
+                if let Some(ProjectItem::ProjectNote(ref note)) =
+                    self.model.cur_project_item.clone()
+                {
+                    self.display_note(&note.contents);
                 }
                 self.widgets.contents_stack.set_visible_child_name(
                     match self.model.cur_project_item {

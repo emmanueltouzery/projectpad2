@@ -674,7 +674,7 @@ impl Widget for ProjectPoiHeader {
             },
         ))
         .expect("error initializing the server add item modal");
-        let d_c = dialog_contents.stream().clone();
+        let d_c = dialog_contents.stream();
         let dialog = standard_dialogs::modal_dialog(
             self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
             600,

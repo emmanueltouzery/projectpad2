@@ -185,7 +185,7 @@ impl Widget for Preferences {
                     200,
                     "Change database password".to_string(),
                 );
-                let d_c = change_pwd_contents.stream().clone();
+                let d_c = change_pwd_contents.stream();
                 let (dialog, component, btn) = standard_dialogs::prepare_custom_dialog(
                     dialog,
                     change_pwd_contents,

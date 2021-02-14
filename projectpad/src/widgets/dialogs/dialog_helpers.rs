@@ -118,7 +118,7 @@ where
     dialog.add_accel_group(accel_group);
     let dialog_contents =
         relm::init::<Dlg>(widget_param).expect("error initializing the server item add edit modal");
-    let d_c = dialog_contents.stream().clone();
+    let d_c = dialog_contents.stream();
     standard_dialogs::prepare_custom_dialog(dialog, dialog_contents, move |_| {
         d_c.emit(ok_pressed_event.clone());
     })

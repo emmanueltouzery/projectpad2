@@ -460,7 +460,7 @@ impl Widget for ProjectSummary {
             self.model.cur_environment,
         ))
         .expect("error initializing the server add item modal");
-        let d_c = dialog_contents.stream().clone();
+        let d_c = dialog_contents.stream();
         let dialog = standard_dialogs::modal_dialog(
             self.widgets
                 .project_summary_root

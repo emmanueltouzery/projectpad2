@@ -152,7 +152,7 @@ impl Widget for ServerWebsiteAddEditDialog {
                 );
             }
             Msg::GotProjectNameAndId((name, id)) => {
-                self.components.pick_db_button.stream().emit(
+                self.streams.pick_db_button.emit(
                     pick_projectpad_item_button::Msg::SetProjectNameAndId(Some((name, id))),
                 );
             }
@@ -163,9 +163,8 @@ impl Widget for ServerWebsiteAddEditDialog {
                 self.model.server_database_id = None;
             }
             Msg::OkPressed => {
-                self.components
+                self.streams
                     .password_entry
-                    .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::GotPassword(pass) => {

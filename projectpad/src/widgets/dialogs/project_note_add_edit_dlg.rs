@@ -172,10 +172,7 @@ impl Widget for ProjectNoteAddEditDialog {
                 self.model.project_environments = Some(prj_envs);
             }
             Msg::OkPressed => {
-                self.components
-                    .note_edit
-                    .stream()
-                    .emit(note_edit::Msg::RequestContents);
+                self.streams.note_edit.emit(note_edit::Msg::RequestContents);
             }
             Msg::EnvironmentToggled(EnvironmentType::EnvDevelopment) => {
                 self.model.has_dev = !self.model.has_dev;

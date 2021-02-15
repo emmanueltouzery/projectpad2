@@ -113,9 +113,8 @@ impl Widget for ServerDatabaseAddEditDialog {
                 );
             }
             Msg::OkPressed => {
-                self.components
+                self.streams
                     .password_entry
-                    .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::GotPassword(pass) => {

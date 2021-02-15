@@ -110,10 +110,7 @@ impl Widget for ServerNoteAddEditDialog {
                 );
             }
             Msg::OkPressed => {
-                self.components
-                    .note_edit
-                    .stream()
-                    .emit(note_edit::Msg::RequestContents);
+                self.streams.note_edit.emit(note_edit::Msg::RequestContents);
             }
             Msg::UpdateServerNote(new_contents) => {
                 self.update_server_note(new_contents);

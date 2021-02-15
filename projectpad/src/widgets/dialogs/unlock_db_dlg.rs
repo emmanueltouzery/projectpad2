@@ -65,9 +65,8 @@ impl Widget for UnlockDbDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::OkPressed => {
-                self.components
+                self.streams
                     .password_entry
-                    .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::GotPassword(pass) => {
@@ -78,9 +77,8 @@ impl Widget for UnlockDbDialog {
                     self.show_error("The password must not be empty");
                 } else {
                     self.model.password = Some(pass);
-                    self.components
+                    self.streams
                         .password_confirm_entry
-                        .stream()
                         .emit(PasswordFieldMsg::RequestPassword);
                 }
             }

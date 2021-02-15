@@ -208,15 +208,13 @@ impl Widget for ImportExportDialog {
                     }
                 }
                 WizardState::ImportPickFile => {
-                    self.components
+                    self.streams
                         .import_password_entry
-                        .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
                 WizardState::ExportPickFile => {
-                    self.components
+                    self.streams
                         .export_password_entry
-                        .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
             },
@@ -229,9 +227,8 @@ impl Widget for ImportExportDialog {
                 }
                 WizardState::ExportPickFile => {
                     self.model.export_pass = Some(pass);
-                    self.components
+                    self.streams
                         .export_password_confirm_entry
-                        .stream()
                         .emit(password_field::Msg::RequestPassword);
                 }
                 _ => unreachable!(),

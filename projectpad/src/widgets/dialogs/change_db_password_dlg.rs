@@ -137,9 +137,8 @@ impl Widget for ChangeDbPasswordDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::OkPressed => {
-                self.components
+                self.streams
                     .current_password_entry
-                    .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::HideInfobar => self.clear_error(),
@@ -176,9 +175,8 @@ impl Widget for ChangeDbPasswordDialog {
             }
             Msg::CheckedOldPassword(true) => {
                 self.clear_error();
-                self.components
+                self.streams
                     .new_password_entry
-                    .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::GotNewPassword(pass) => {
@@ -186,9 +184,8 @@ impl Widget for ChangeDbPasswordDialog {
                     self.show_error("New password must not be empty");
                 } else {
                     self.model.new_password = Some(pass);
-                    self.components
+                    self.streams
                         .confirm_password_entry
-                        .stream()
                         .emit(PasswordFieldMsg::RequestPassword);
                 }
             }

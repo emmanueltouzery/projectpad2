@@ -121,7 +121,7 @@ impl Widget for ProjectPoiContents {
             }
             Msg::ProjectItemSelected(pi) => {
                 self.model.cur_project_item = *pi;
-                self.components
+                self.streams
                     .server_contents
                     .emit(match &self.model.cur_project_item.as_ref() {
                         Some(ProjectItem::Server(srv)) => {
@@ -206,9 +206,8 @@ impl Widget for ProjectPoiContents {
                 }
             }
             Msg::ScrollToServerItem(si) => {
-                self.components
+                self.streams
                     .server_contents
-                    .stream()
                     .emit(ServerPoiContentsMsg::ScrollTo(
                         server_poi_contents::ScrollTarget::ServerItem(si),
                     ));
@@ -257,9 +256,8 @@ impl Widget for ProjectPoiContents {
             }
             Msg::OpenSingleWebsiteLink => {
                 if matches!(&self.model.cur_project_item, Some(ProjectItem::Server(_))) {
-                    self.components
+                    self.streams
                         .server_contents
-                        .stream()
                         .emit(ServerPoiContentsMsg::OpenSingleWebsiteLink);
                 }
             }

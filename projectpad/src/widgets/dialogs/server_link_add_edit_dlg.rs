@@ -197,7 +197,7 @@ impl Widget for ServerLinkAddEditDialog {
                 );
             }
             Msg::GotProjectNameAndId((name, id)) => {
-                self.components.pick_srv_button.stream().emit(
+                self.streams.pick_srv_button.emit(
                     pick_projectpad_item_button::Msg::SetProjectNameAndId(Some((name, id))),
                 );
             }

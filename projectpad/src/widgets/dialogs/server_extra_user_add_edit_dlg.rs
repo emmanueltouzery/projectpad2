@@ -123,9 +123,8 @@ impl Widget for ServerExtraUserAddEditDialog {
                 self.model.auth_key = kv.1.clone();
             }
             Msg::OkPressed => {
-                self.components
+                self.streams
                     .password_entry
-                    .stream()
                     .emit(PasswordFieldMsg::RequestPassword);
             }
             Msg::GotPassword(pass) => {

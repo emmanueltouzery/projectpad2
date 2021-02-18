@@ -13,7 +13,7 @@ shell-words = "1.0.0"
 projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "1.4.5", features = ["sqlite"] }
 
-skim = "0.9.3"
+skim = "0.9.4"
 regex = "1.4.2"
 structopt = "0.3.21"
 strum = "0.20.0"

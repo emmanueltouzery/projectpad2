@@ -48,6 +48,7 @@ pub enum Msg {
     ServerItemDeleted(ServerItem),
     RequestDisplayServerItem(ServerItem),
     ShowInfoBar(String),
+    ItemGroupChanged,
 }
 
 // String for details, because I can't pass Error across threads
@@ -633,6 +634,9 @@ impl Widget for ServerItemListItem {
                     .1
                     .close();
                 self.model.server_add_edit_dialog = None;
+                if self.model.server_item.group_name() != server_item.group_name() {
+                    self.model.relm.stream().emit(Msg::ItemGroupChanged);
+                }
                 self.model.server_item = server_item;
                 self.model.title = Self::get_title(&self.model.server_item);
                 self.load_server_item();
@@ -707,6 +711,7 @@ impl Widget for ServerItemListItem {
             Msg::ShowInfoBar(_) => {}
             Msg::ServerItemDeleted(_) => {}
             Msg::RequestDisplayServerItem(_) => {}
+            Msg::ItemGroupChanged => {}
         }
     }
 

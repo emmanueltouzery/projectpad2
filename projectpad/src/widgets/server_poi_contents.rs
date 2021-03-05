@@ -43,7 +43,7 @@ pub enum ServerItem {
 }
 
 impl ServerItem {
-    fn group_name(&self) -> Option<&str> {
+    pub fn group_name(&self) -> Option<&str> {
         match self {
             ServerItem::Website(w) => w.group_name.as_deref(),
             ServerItem::PointOfInterest(p) => p.group_name.as_deref(),
@@ -345,6 +345,9 @@ impl Widget for ServerPoiContents {
             relm::connect!(
                 component@ServerItemListItemMsg::ShowInfoBar(ref msg),
                            self.model.relm, Msg::ShowInfoBar(msg.clone()));
+            relm::connect!(
+                component@ServerItemListItemMsg::ItemGroupChanged,
+                           self.model.relm, Msg::RefreshItems);
             children_components.push(component);
         }
         let indexes = self.model.server_item_groups_start_indexes.clone();

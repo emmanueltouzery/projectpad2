@@ -55,6 +55,7 @@ pub enum Msg {
     CopyPassword,
     OpenLinkOrEditProjectNote,
     OpenSingleWebsiteLink,
+    GotLinkedServer(Server),
 }
 
 // String for details, because I can't pass Error across threads
@@ -66,6 +67,7 @@ pub struct Model {
     relm: relm::Relm<ProjectPoiHeader>,
     db_sender: mpsc::Sender<SqlFunc>,
     project_item: Option<ProjectItem>,
+    server_link_target: Option<Server>, // this is only populated when we display a ServerLink..
     header_popover: gtk::Popover,
     title: gtk::Label,
     project_add_edit_dialog: Option<(dialogs::ProjectAddEditDialogComponent, gtk::Dialog)>,
@@ -75,6 +77,8 @@ pub struct Model {
     project_item_deleted_sender: relm::Sender<DeleteResult>,
     _goto_server_channel: relm::Channel<GotoResult>,
     goto_server_sender: relm::Sender<GotoResult>,
+    _load_linkedserver_channel: relm::Channel<Server>,
+    load_linkedserver_sender: relm::Sender<Server>,
 }
 
 #[derive(Debug)]
@@ -225,7 +229,11 @@ pub fn populate_grid(
 }
 
 // i don't like bool parameters... well, just this once.
-pub fn get_project_item_fields(project_item: &ProjectItem, is_search_view: bool) -> Vec<GridItem> {
+pub fn get_project_item_fields(
+    project_item: &ProjectItem,
+    server_link_target: Option<&Server>,
+    is_search_view: bool,
+) -> Vec<GridItem> {
     match project_item {
         ProjectItem::Server(srv) => vec![
             GridItem::new(
@@ -258,6 +266,29 @@ pub fn get_project_item_fields(project_item: &ProjectItem, is_search_view: bool)
                     .filter(|_| !is_search_view),
             ),
         ],
+        ProjectItem::ServerLink(_link) if server_link_target.is_some() => {
+            let link_target = server_link_target.as_ref().unwrap();
+            let mut items = vec![GridItem::new(
+                "Links to",
+                None,
+                LabelText::PlainText(link_target.desc.clone()),
+                link_target.desc.clone(),
+                None,
+            )];
+            items.extend(
+                server_link_target
+                    .as_ref()
+                    .map(|s| {
+                        get_project_item_fields(
+                            &ProjectItem::Server((*s).clone()),
+                            server_link_target,
+                            is_search_view,
+                        )
+                    })
+                    .unwrap_or_else(Vec::new),
+            );
+            items
+        }
         ProjectItem::ProjectPointOfInterest(poi) => vec![
             GridItem::new(
                 "Interest Type",
@@ -344,6 +375,9 @@ impl Widget for ProjectPoiHeader {
         let stream2 = relm.stream().clone();
         let (_goto_server_channel, goto_server_sender) =
             relm::Channel::new(move |r: GotoResult| stream2.emit(Msg::GotoItem(r.0.clone(), r.1)));
+        let stream3 = relm.stream().clone();
+        let (_load_linkedserver_channel, load_linkedserver_sender) =
+            relm::Channel::new(move |s: Server| stream3.emit(Msg::GotLinkedServer(s.clone())));
         Model {
             relm: relm.clone(),
             db_sender,
@@ -361,6 +395,9 @@ impl Widget for ProjectPoiHeader {
             project_item_deleted_sender,
             _goto_server_channel,
             goto_server_sender,
+            _load_linkedserver_channel,
+            load_linkedserver_sender,
+            server_link_target: None,
         }
     }
 
@@ -621,6 +658,10 @@ impl Widget for ProjectPoiHeader {
                     _ => {}
                 }
             }
+            Msg::GotLinkedServer(srv) => {
+                self.model.server_link_target = Some(srv);
+                self.populate_header();
+            }
             // meant for my parent
             Msg::OpenSingleWebsiteLink => {}
             Msg::ShowInfoBar(_) => {}
@@ -769,6 +810,19 @@ impl Widget for ProjectPoiHeader {
                 .as_deref()
                 .unwrap_or(""),
         );
+        if let Some(ProjectItem::ServerLink(ref link)) = self.model.project_item {
+            let s = self.model.load_linkedserver_sender.clone();
+            let linked_server_id = link.linked_server_id;
+            self.model
+                .db_sender
+                .send(SqlFunc::new(move |sql_conn| {
+                    use projectpadsql::schema::server::dsl as srv;
+                    let server: Server =
+                        srv::server.find(linked_server_id).first(sql_conn).unwrap();
+                    s.send(server).unwrap();
+                }))
+                .unwrap();
+        }
     }
 
     fn project_item_desc(pi: &ProjectItem) -> &str {
@@ -785,7 +839,7 @@ impl Widget for ProjectPoiHeader {
             .model
             .project_item
             .as_ref()
-            .map(|pi| get_project_item_fields(pi, false))
+            .map(|pi| get_project_item_fields(pi, self.model.server_link_target.as_ref(), false))
             .unwrap_or_else(Vec::new);
         let edit_btn = if let Some(ProjectItem::ProjectNote(_)) = self.model.project_item.as_ref() {
             label_with_accelerator(

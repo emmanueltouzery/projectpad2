@@ -135,8 +135,10 @@ fn get_value_fetch_file(item: &ItemOfInterest) -> std::borrow::Cow<str> {
 // https://serverfault.com/a/738797/176574
 fn get_value_ssh_cd_in_folder(item: &ItemOfInterest) -> std::borrow::Cow<str> {
     if let Some(ssh_command) = try_prepare_ssh_command(item, SshCommandType::Ssh) {
+        // $SHELL is the shell of the machine i'm on now, may not be
+        // installed on the remove server, so fallback on 'sh'
         Cow::Owned(format!(
-            "{} -t \"cd {}; exec \\$SHELL --login\"",
+            "{} -t \"cd {}; \\$SHELL --login || sh --login\"",
             ssh_command,
             item.poi_info.as_ref().unwrap().path.to_str().unwrap()
         ))

@@ -374,16 +374,18 @@ fn export_env_group(
             // is this the first time we export this note?
             // YES => we export the full note
             // NO => we will display just "shared"
-            let is_first_env_for_this_note = matches!((
-                n.has_dev && project.has_dev,
-                n.has_stage && project.has_stage,
-                n.has_uat && project.has_uat,
-                env,
-             ),
-                (_, _, _, EnvironmentType::EnvDevelopment) |
-                (false, _, _, EnvironmentType::EnvStage) |
-                (false, false, _, EnvironmentType::EnvUat) |
-                (false, false, false, EnvironmentType::EnvProd));
+            let is_first_env_for_this_note = matches!(
+                (
+                    n.has_dev && project.has_dev,
+                    n.has_stage && project.has_stage,
+                    n.has_uat && project.has_uat,
+                    env,
+                ),
+                (_, _, _, EnvironmentType::EnvDevelopment)
+                    | (false, _, _, EnvironmentType::EnvStage)
+                    | (false, false, _, EnvironmentType::EnvUat)
+                    | (false, false, false, EnvironmentType::EnvProd)
+            );
             ProjectNoteImportExport {
                 title: n.title.clone(),
                 contents: n.contents,
@@ -715,7 +717,9 @@ mod tests {
             &SAMPLE_YAML_PROJECT[1..],
             // the replace is a workaround for a minor issue (trailing \n, i think)
             // that i'm not particularly interested in at this point
-            &raw_output.replace("          \nuat_environ", "uat_environ")
+            raw_output
+                .replace("          \nuat_environ", "uat_environ")
+                .trim_end()
         );
     }
 }

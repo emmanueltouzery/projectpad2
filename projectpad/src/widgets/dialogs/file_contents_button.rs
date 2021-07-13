@@ -28,7 +28,6 @@ pub struct Model {
 #[widget]
 impl Widget for FileContentsButton {
     fn init_view(&mut self) {
-        self.widgets.btn_box.get_style_context().add_class("linked");
         self.update_auth_file();
     }
 
@@ -202,7 +201,7 @@ impl Widget for FileContentsButton {
             },
             // if there is a file, a label with the filename,
             // and a button to remove the file
-            #[name="btn_box"]
+            #[style_class="linked"]
             gtk::Box {
                 orientation: gtk::Orientation::Horizontal,
                 child: {

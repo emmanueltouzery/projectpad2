@@ -63,14 +63,6 @@ impl Widget for ProjectPoiContents {
         let display = self.widgets.note_textview.get_display();
         self.model.hand_cursor = gdk::Cursor::from_name(&display, "pointer");
         self.model.text_cursor = gdk::Cursor::from_name(&display, "text");
-        self.widgets
-            .server_note_title
-            .get_style_context()
-            .add_class("server_note_title");
-        self.widgets
-            .note_frame
-            .get_style_context()
-            .add_class("note_frame");
         let search_bar = &self.model.search_bar;
         relm::connect!(
             search_bar@SearchBarMsg::SearchChanged(ref s),
@@ -433,6 +425,7 @@ impl Widget for ProjectPoiContents {
                         button_press_event(_, _) => (Msg::ServerNoteBack, Inhibit(false)),
                     },
                     #[name="server_note_title"]
+                    #[style_class="server_note_title"]
                     gtk::Label {
                     }
                 },
@@ -441,7 +434,7 @@ impl Widget for ProjectPoiContents {
                     child: {
                         expand: true,
                     },
-                    #[name="note_frame"]
+                    #[style_class="note_frame"]
                     gtk::Frame {
                         #[name="note_scroll"]
                         gtk::ScrolledWindow {

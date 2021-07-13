@@ -138,10 +138,6 @@ impl Widget for Win {
         }
         let titlebar = &self.model.titlebar;
         let overlay_widget = self.model.tooltips_overlay.widget();
-        self.widgets
-            .project_items_list
-            .get_style_context()
-            .add_class("sidebar");
         self.widgets.tooltip_overlay.add_overlay(overlay_widget);
         self.widgets
             .tooltip_overlay
@@ -783,6 +779,7 @@ impl Widget for Win {
                                                 orientation: gtk::Orientation::Vertical,
                                             },
                                             #[name="project_items_list"]
+                                            #[style_class="sidebar"]
                                             ProjectItemsList(self.model.db_sender.clone()) {
                                                 property_width_request: 260,
                                                 child: {

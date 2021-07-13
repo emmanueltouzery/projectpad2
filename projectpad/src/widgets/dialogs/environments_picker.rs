@@ -22,12 +22,7 @@ pub struct Model {
 
 #[widget]
 impl Widget for EnvironmentsPicker {
-    fn init_view(&mut self) {
-        self.widgets
-            .environments_box
-            .get_style_context()
-            .add_class("linked");
-    }
+    fn init_view(&mut self) {}
 
     fn model(_relm: &relm::Relm<Self>, selected_environments: SelectedEnvironments) -> Model {
         Model {
@@ -38,7 +33,7 @@ impl Widget for EnvironmentsPicker {
     fn update(&mut self, _event: Msg) {}
 
     view! {
-        #[name="environments_box"]
+        #[style_class="linked"]
         gtk::Box {
             #[name="radio_dev"]
             gtk::ToggleButton {

@@ -97,14 +97,6 @@ pub struct Model {
 #[widget]
 impl Widget for ServerPoiContents {
     fn init_view(&mut self) {
-        self.widgets
-            .contents_list
-            .get_style_context()
-            .add_class("item_list");
-        self.widgets
-            .contents_scroll
-            .get_style_context()
-            .add_class("scrollgradient");
         self.update_contents_list();
         self.widgets
             .contents_list
@@ -547,8 +539,10 @@ impl Widget for ServerPoiContents {
 
     view! {
         #[name="contents_scroll"]
+        #[style_class="scrollgradient"]
         gtk::ScrolledWindow {
             #[name="contents_list"]
+            #[style_class="item_list"]
             gtk::ListBox {
                 selection_mode: gtk::SelectionMode::None,
             }

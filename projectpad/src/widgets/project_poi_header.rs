@@ -345,11 +345,6 @@ impl Widget for ProjectPoiHeader {
         dialog_helpers::style_grid(&self.widgets.header_grid);
         self.load_project_item();
 
-        self.widgets
-            .items_frame
-            .get_style_context()
-            .add_class("items_frame");
-
         self.model
             .title
             .get_style_context()
@@ -917,6 +912,7 @@ impl Widget for ProjectPoiHeader {
 
     view! {
         #[name="items_frame"]
+        #[style_class="items_frame"]
         gtk::Frame {
             hexpand: true,
             margin_start: 10,

@@ -13,23 +13,6 @@ use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
 #[derive(Msg)]
-pub enum HeaderMsg {}
-
-#[widget]
-impl Widget for Header {
-    fn model() {}
-
-    fn update(&mut self, _event: HeaderMsg) {}
-
-    view! {
-        gtk::HeaderBar {
-            title: Some("Preferences"),
-            show_close_button: true,
-        }
-    }
-}
-
-#[derive(Msg)]
 pub enum Msg {
     DarkThemeToggled(bool),
     GotStorePassInKeyring(bool),
@@ -46,7 +29,6 @@ pub struct Model {
     relm: relm::Relm<Preferences>,
     db_sender: mpsc::Sender<SqlFunc>,
     prefer_dark_theme: bool,
-    header: Component<Header>,
     win: gtk::Window,
     config: Config,
     confirm_dialog: Option<gtk::MessageDialog>,
@@ -60,18 +42,7 @@ pub struct Model {
 #[widget]
 impl Widget for Preferences {
     fn init_view(&mut self) {
-        self.widgets
-            .remove_from_keyring
-            .get_style_context()
-            .add_class("destructive-action");
         self.load_keyring_pass_state();
-        for title_widget in &[
-            &self.widgets.section_title1,
-            &self.widgets.section_title2,
-            &self.widgets.section_title3,
-        ] {
-            title_widget.get_style_context().add_class("section_title");
-        }
         let remove_pass_btn_contents = gtk::BoxBuilder::new().build();
         self.model.remove_pass_from_keyring_spinner.start();
         remove_pass_btn_contents.add(&self.model.remove_pass_from_keyring_spinner);
@@ -97,7 +68,6 @@ impl Widget for Preferences {
     fn model(relm: &relm::Relm<Self>, params: (gtk::Window, mpsc::Sender<SqlFunc>)) -> Model {
         let (win, db_sender) = params;
         let config = Config::read_config();
-        let header = relm::init(()).expect("header");
         let stream = relm.stream().clone();
         let (_pass_keyring_channel, pass_keyring_sender) =
             relm::Channel::new(move |r: bool| stream.emit(Msg::GotStorePassInKeyring(r)));
@@ -105,7 +75,6 @@ impl Widget for Preferences {
             relm: relm.clone(),
             db_sender,
             prefer_dark_theme: config.prefer_dark_theme,
-            header,
             config,
             win,
             pass_keyring_sender,
@@ -261,7 +230,12 @@ impl Widget for Preferences {
     view! {
         #[name="prefs_win"]
         gtk::Window {
-            titlebar: Some(self.model.header.widget()),
+            titlebar: view! {
+                gtk::HeaderBar {
+                    title: Some("Preferences"),
+                    show_close_button: true,
+                }
+            },
             property_default_width: 600,
             property_default_height: 200,
             gtk::Box {
@@ -271,7 +245,7 @@ impl Widget for Preferences {
                 margin_end: 30,
                 margin_bottom: 20,
                 spacing: 6,
-                #[name="section_title1"]
+                #[style_class="section_title"]
                 gtk::Label {
                     text: "User interface",
                     xalign: 0.0,
@@ -281,12 +255,13 @@ impl Widget for Preferences {
                     active: self.model.prefer_dark_theme,
                     toggled(t) => Msg::DarkThemeToggled(t.get_active()),
                 },
-                #[name="section_title2"]
+                #[style_class="section_title"]
                 gtk::Label {
                     text: "Database password",
                     xalign: 0.0,
                 },
                 #[name="remove_from_keyring"]
+                #[style_class="destructive-action"]
                 gtk::Button {
                     halign: gtk::Align::Start,
                     sensitive: false,
@@ -298,7 +273,7 @@ impl Widget for Preferences {
                     halign: gtk::Align::Start,
                     clicked => Msg::ChangeDbPassword,
                 },
-                #[name="section_title3"]
+                #[style_class="section_title"]
                 gtk::Label {
                     text: "Database file",
                     xalign: 0.0,

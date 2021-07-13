@@ -27,12 +27,7 @@ pub enum HeaderMsg {
 
 #[widget]
 impl Widget for Header {
-    fn init_view(&mut self) {
-        self.widgets
-            .next_btn
-            .get_style_context()
-            .add_class("suggested-action");
-    }
+    fn init_view(&mut self) {}
 
     fn model() {}
 
@@ -52,6 +47,7 @@ impl Widget for Header {
                 clicked => HeaderMsg::CancelAction,
             },
             #[name="next_btn"]
+            #[style_class="suggested-action"]
             gtk::Button {
                 label: "Next",
                 child: {

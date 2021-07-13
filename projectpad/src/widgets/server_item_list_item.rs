@@ -217,15 +217,6 @@ fn get_db_grid_items(db: &ServerDatabase) -> Vec<GridItem> {
 impl Widget for ServerItemListItem {
     fn init_view(&mut self) {
         self.widgets
-            .items_frame
-            .get_style_context()
-            .add_class("items_frame");
-        self.widgets
-            .title
-            .get_style_context()
-            .add_class("items_frame_title");
-
-        self.widgets
             .header_actions_btn
             .set_popover(Some(&self.model.header_popover));
         self.load_server_item();
@@ -717,13 +708,14 @@ impl Widget for ServerItemListItem {
 
     view! {
         #[name="items_frame"]
+        #[style_class="items_frame"]
         gtk::Frame {
             margin_start: 20,
             margin_end: 20,
             margin_top: 20,
             gtk::Box {
                 orientation: gtk::Orientation::Vertical,
-                #[name="title"]
+                #[style_class="items_frame_title"]
                 gtk::Box {
                     orientation: gtk::Orientation::Horizontal,
                     gtk::Image {

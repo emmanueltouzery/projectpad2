@@ -75,18 +75,7 @@ where
 
 #[widget]
 impl Widget for SearchBar {
-    fn init_view(&mut self) {
-        // https://developer.gnome.org/Buttons/#Linked_buttons
-        self.widgets
-            .search_box
-            .get_style_context()
-            .add_class("linked");
-
-        self.widgets
-            .frame
-            .get_style_context()
-            .add_class("search_frame");
-    }
+    fn init_view(&mut self) {}
 
     fn model(relm: &relm::Relm<Self>, _: ()) -> Model {
         Model { relm: relm.clone() }
@@ -123,12 +112,13 @@ impl Widget for SearchBar {
         gtk::Revealer {
             valign: gtk::Align::Start,
             halign: gtk::Align::End,
-            #[name="frame"]
+            #[style_class="search_frame"]
             gtk::Frame {
                 hexpand: false,
                 vexpand: false,
                 margin_end: 15,
-                #[name="search_box"]
+                // https://developer.gnome.org/Buttons/#Linked_buttons
+                #[style_context="linked"]
                 gtk::Box {
                     #[name="search_entry"]
                     gtk::SearchEntry {

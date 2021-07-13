@@ -12,12 +12,7 @@ pub struct Model {
 
 #[widget]
 impl Widget for ProjectPoiItemListItem {
-    fn init_view(&mut self) {
-        self.widgets
-            .items_frame
-            .get_style_context()
-            .add_class("items_frame");
-    }
+    fn init_view(&mut self) {}
 
     fn model(_relm: &relm::Relm<Self>, project_poi_item: ProjectPoiItem) -> Model {
         Model { project_poi_item }
@@ -26,7 +21,7 @@ impl Widget for ProjectPoiItemListItem {
     fn update(&mut self, _event: Msg) {}
 
     view! {
-        #[name="items_frame"]
+        #[style_class="items_frame"]
         gtk::Frame {
             margin_start: 20,
             margin_end: 20,

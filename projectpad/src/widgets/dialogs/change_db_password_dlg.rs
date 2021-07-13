@@ -66,14 +66,6 @@ impl Widget for ChangeDbPasswordDialog {
     fn init_view(&mut self) {
         dialog_helpers::style_grid(&self.widgets.grid);
         self.widgets.grid.set_margin_bottom(20);
-        self.widgets
-            .current_pwd_header
-            .get_style_context()
-            .add_class("section_title");
-        self.widgets
-            .new_pwd_header
-            .get_style_context()
-            .add_class("section_title");
         self.init_infobar_overlay();
     }
 
@@ -235,7 +227,7 @@ impl Widget for ChangeDbPasswordDialog {
         gtk::Overlay {
             #[name="grid"]
             gtk::Grid {
-                #[name="current_pwd_header"]
+                #[style_class="section_title"]
                 gtk::Label {
                     text: "Current database password",
                     halign: gtk::Align::Start,
@@ -266,7 +258,7 @@ impl Widget for ChangeDbPasswordDialog {
                     PasswordFieldMsgPublishPassword(ref pass) => Msg::GotCurrentPassword(pass.clone()),
                     PasswordFieldMsgPasswordChanged(ref pass) => Msg::CurrentPasswordChange(pass.clone()),
                 },
-                #[name="new_pwd_header"]
+                #[style_class="section_title"]
                 gtk::Label {
                     text: "New database password",
                     halign: gtk::Align::Start,

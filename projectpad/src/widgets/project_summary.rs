@@ -59,11 +59,6 @@ impl Widget for ProjectSummary {
         self.model.title.show_all();
 
         self.widgets
-            .buttons_box
-            .get_style_context()
-            .add_class("linked");
-
-        self.widgets
             .radio_stg
             .join_group(Some(&self.widgets.radio_dev));
         self.widgets
@@ -518,7 +513,7 @@ impl Widget for ProjectSummary {
                     margin_end: 5,
                 },
             },
-            #[name="buttons_box"]
+            #[style_class="linked"]
             gtk::Box {
                 homogeneous: true,
                 margin_start: 5,

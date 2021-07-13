@@ -123,7 +123,10 @@ fn get_website_grid_items(
                     .map(|db| db.desc.clone())
                     .unwrap_or_else(|| "".to_string()),
             ),
-            website.username.clone(),
+            database
+                .as_ref()
+                .map(|db| db.desc.clone())
+                .unwrap_or_else(|| "".to_string()),
             None,
         ),
     ]

@@ -1106,24 +1106,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gtk-source-sys"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "010ad29f87606c4bc91fe4ab6762cab3d5155af7100e59c1af9c6d9aba5df689"
-dependencies = [
- "bitflags",
- "cairo-sys-rs",
- "gdk-pixbuf-sys",
- "gdk-sys",
- "gio-sys",
- "glib-sys",
- "gobject-sys",
- "gtk-sys",
- "libc",
- "pkg-config",
-]
-
-[[package]]
 name = "gtk-sys"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1967,7 +1949,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_yaml",
- "sourceview",
+ "sourceview4",
  "strum 0.20.0",
  "tar",
  "toml",
@@ -2564,16 +2546,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "sourceview"
-version = "0.9.0"
+name = "sourceview4"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6197ca40c697b552b8d27cfa9d8ee15267037ac071f4c1010749625ba2fc8f79"
+checksum = "67cf21c78ea4fd60f3c321209952304d54d9ee8d543eaa321ec9d687525d65b0"
 dependencies = [
  "bitflags",
  "cairo-rs",
  "gdk",
  "gdk-pixbuf",
- "gdk-pixbuf-sys",
  "gdk-sys",
  "gio",
  "gio-sys",
@@ -2581,10 +2562,28 @@ dependencies = [
  "glib-sys",
  "gobject-sys",
  "gtk",
- "gtk-source-sys",
  "gtk-sys",
  "libc",
  "pango",
+ "sourceview4-sys",
+]
+
+[[package]]
+name = "sourceview4-sys"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b24736d28cedce710e726ad2e511662e65f496ca54615724686fd14ad3bd490"
+dependencies = [
+ "cairo-sys-rs",
+ "gdk-pixbuf-sys",
+ "gdk-sys",
+ "gio-sys",
+ "glib-sys",
+ "gobject-sys",
+ "gtk-sys",
+ "libc",
+ "pkg-config",
+ "system-deps",
 ]
 
 [[package]]

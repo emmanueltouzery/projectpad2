@@ -310,7 +310,7 @@ pub fn get_project_item_fields(
                 server_poi_add_edit_dlg::poi_get_text_label(poi.interest_type),
                 None,
                 LabelText::PlainText(poi.text.clone()),
-                poi.path.clone(),
+                poi.text.clone(),
                 None,
             ),
         ],

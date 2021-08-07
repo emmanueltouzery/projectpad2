@@ -403,8 +403,7 @@ fn import_server(
     group_name: Option<&str>,
     server: &ServerWithItemsImportExport,
 ) -> ImportResult<Vec<UnprocessedWebsite>> {
-    use projectpadsql::schema::server::dsl as srv;
-    let auth_key_contents = match (
+    let read_attachment = |key_fname| match (
         &server.server.data_path,
         server.server.server.auth_key_filename.as_ref(),
     ) {
@@ -412,9 +411,40 @@ fn import_server(
             let mut path = import_folder.to_path_buf();
             path.push(data_path);
             path.push(key_fname);
-            Some(fs::read(path)?)
+            Some(fs::read(path))
         }
         _ => None,
+    };
+    import_server_attach(
+        sql_conn,
+        read_attachment,
+        project_id,
+        env,
+        group_name,
+        server,
+    )
+}
+
+pub fn import_server_attach(
+    sql_conn: &diesel::SqliteConnection,
+    read_attachment: impl Fn(String) -> Option<Result<Vec<u8>, std::io::Error>>,
+    project_id: i32,
+    env: EnvironmentType,
+    group_name: Option<&str>,
+    server: &ServerWithItemsImportExport,
+) -> ImportResult<Vec<UnprocessedWebsite>> {
+    use projectpadsql::schema::server::dsl as srv;
+    let auth_key_contents = match server
+        .server
+        .server
+        .auth_key_filename
+        .as_ref()
+        .cloned()
+        .and_then(read_attachment)
+    {
+        Some(Ok(v)) => Some(v),
+        Some(Err(e)) => return Err(e.into()),
+        None => None,
     };
     let changeset = (
         srv::desc.eq(&server.server.server.desc), // TODO -ETOOMANYSERVERS

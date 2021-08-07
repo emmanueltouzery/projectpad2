@@ -88,6 +88,10 @@ impl Widget for ProjectAddItemDialog {
         match event {
             Msg::ShowSecondTab(ref dialog) if self.widgets.add_server_clipboard.get_active() => {
                 if let Some(server_import) = self.read_server_import_export_clipboard() {
+                    self.model
+                        .db_sender
+                        .send(SqlFunc::new(move |sql_conn| {}))
+                        .unwrap();
                     // TODO import::import_server()?
                 }
             }

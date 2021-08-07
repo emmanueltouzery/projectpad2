@@ -13,12 +13,14 @@ use super::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
 use super::server_link_add_edit_dlg::ServerLinkAddEditDialog;
 use super::ProjectAddEditDialogComponent;
 use crate::export::ServerImportExportClipboard;
+use crate::import;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::ProjectItem;
 use gtk::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::path::PathBuf;
 use std::sync::mpsc;
 
 #[derive(Msg)]
@@ -88,11 +90,30 @@ impl Widget for ProjectAddItemDialog {
         match event {
             Msg::ShowSecondTab(ref dialog) if self.widgets.add_server_clipboard.get_active() => {
                 if let Some(server_import) = self.read_server_import_export_clipboard() {
+                    let project_id = self.model.project_id;
+                    let environment_type = self.model.environment_type;
                     self.model
                         .db_sender
-                        .send(SqlFunc::new(move |sql_conn| {}))
+                        .send(SqlFunc::new(move |sql_conn| {
+                            // TODO error handling
+                            let unprocessed_websites = import::import_server_attach(
+                                sql_conn,
+                                |attach_key| {
+                                    server_import
+                                        .extra_files
+                                        .get(&PathBuf::from(attach_key))
+                                        .map(|v| Result::Ok(v.clone()))
+                                },
+                                project_id,
+                                environment_type,
+                                None,
+                                &server_import.server_data,
+                            );
+                            for unprocessed_website in unprocessed_websites {
+                                import::import_server_website(sql_conn, &unprocessed_website)?;
+                            }
+                        }))
                         .unwrap();
-                    // TODO import::import_server()?
                 }
             }
             Msg::ShowSecondTab(ref dialog) => {

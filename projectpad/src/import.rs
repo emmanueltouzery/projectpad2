@@ -206,7 +206,7 @@ fn sort_by_deps<T>(projects: Vec<(T, ProjectImportExport)>) -> Vec<(T, ProjectIm
     result
 }
 
-struct UnprocessedWebsite {
+pub struct UnprocessedWebsite {
     server_id: i32,
     group_name: Option<String>,
     website: ServerWebsiteImportExport,
@@ -440,7 +440,7 @@ pub fn import_server_attach(
         .auth_key_filename
         .as_ref()
         .cloned()
-        .and_then(read_attachment)
+        .and_then(&read_attachment)
     {
         Some(Ok(v)) => Some(v),
         Some(Err(e)) => return Err(e.into()),
@@ -464,9 +464,15 @@ pub fn import_server_attach(
     let server_id = insert_row(sql_conn, diesel::insert_into(srv::server).values(changeset))
         .map_err(to_boxed_stderr)?;
 
-    import_server_items(sql_conn, import_folder, server_id, None, &server.items)?;
+    import_server_items(sql_conn, &read_attachment, server_id, None, &server.items)?;
     for (group_name, items) in &server.items_in_groups {
-        import_server_items(sql_conn, import_folder, server_id, Some(group_name), items)?;
+        import_server_items(
+            sql_conn,
+            &read_attachment,
+            server_id,
+            Some(group_name),
+            items,
+        )?;
     }
 
     let mut unprocessed_websites: Vec<_> = server
@@ -491,7 +497,7 @@ pub fn import_server_attach(
 
 fn import_server_items(
     sql_conn: &diesel::SqliteConnection,
-    import_folder: &Path,
+    read_attachment: impl Fn(String) -> Option<Result<Vec<u8>, std::io::Error>>,
     server_id: i32,
     group_name: Option<&str>,
     items: &ServerGroupImportExport,
@@ -546,14 +552,10 @@ fn import_server_items(
     }
     for user in &items.server_extra_users {
         use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
-        let auth_key_contents = match (&user.data_path, user.auth_key_filename.as_ref()) {
-            (Some(data_path), Some(key_fname)) => {
-                let mut path = import_folder.to_path_buf();
-                path.push(data_path);
-                path.push(key_fname);
-                Some(fs::read(path)?)
-            }
-            _ => None,
+        let auth_key_contents = match user.auth_key_filename.clone().and_then(&read_attachment) {
+            Some(Ok(c)) => Some(c),
+            Some(Err(e)) => return Err(e.into()),
+            None => None,
         };
         let changeset = (
             srv_usr::desc.eq(&user.desc),
@@ -574,7 +576,7 @@ fn import_server_items(
     Ok(())
 }
 
-fn import_server_website(
+pub fn import_server_website(
     sql_conn: &diesel::SqliteConnection,
     website_info: &UnprocessedWebsite,
 ) -> ImportResult<()> {

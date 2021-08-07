@@ -12,6 +12,7 @@ use super::server_link_add_edit_dlg;
 use super::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
 use super::server_link_add_edit_dlg::ServerLinkAddEditDialog;
 use super::ProjectAddEditDialogComponent;
+use crate::export::ServerImportExportClipboard;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::ProjectItem;
 use gtk::prelude::*;
@@ -48,6 +49,25 @@ impl Widget for ProjectAddItemDialog {
         self.widgets
             .add_server_link
             .join_group(Some(&self.widgets.add_server));
+        self.widgets
+            .add_server_clipboard
+            .join_group(Some(&self.widgets.add_server));
+
+        self.widgets.add_server_clipboard.set_sensitive(false);
+        if self.read_server_import_export_clipboard().is_some() {
+            self.widgets.add_server_clipboard.set_sensitive(true);
+        }
+    }
+
+    fn read_server_import_export_clipboard(&self) -> Option<ServerImportExportClipboard> {
+        if let Some(clip) = gtk::Clipboard::get_default(&self.widgets.tabs_stack.get_display()) {
+            if clip.wait_is_text_available() {
+                if let Some(txt) = clip.wait_for_text() {
+                    return serde_yaml::from_str::<ServerImportExportClipboard>(&txt).ok();
+                }
+            }
+        }
+        None
     }
 
     fn model(
@@ -66,6 +86,11 @@ impl Widget for ProjectAddItemDialog {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::ShowSecondTab(ref dialog) if self.widgets.add_server_clipboard.get_active() => {
+                if let Some(server_import) = self.read_server_import_export_clipboard() {
+                    // TODO import::import_server()?
+                }
+            }
             Msg::ShowSecondTab(ref dialog) => {
                 let (widget, title) = if self.widgets.add_server.get_active() {
                     (
@@ -189,6 +214,10 @@ impl Widget for ProjectAddItemDialog {
                 #[name="add_server_link"]
                 gtk::RadioButton {
                     label: "Add server link",
+                },
+                #[name="add_server_clipboard"]
+                gtk::RadioButton {
+                    label: "Add server from clipboard",
                 },
             }
         }

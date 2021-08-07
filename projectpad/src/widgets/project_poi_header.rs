@@ -14,6 +14,8 @@ use super::dialogs::server_poi_add_edit_dlg;
 use super::dialogs::standard_dialogs;
 use super::project_items_list::ProjectItem;
 use super::wintitlebar::left_align_menu;
+use crate::export;
+use crate::export::ServerImportExportClipboard;
 use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use crate::sql_util;
@@ -26,6 +28,7 @@ use projectpadsql::models::{
 };
 use relm::Widget;
 use relm_derive::{widget, Msg};
+use std::collections::HashMap;
 use std::sync::mpsc;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -35,6 +38,7 @@ pub enum ActionTypes {
     Delete,
     AddItem,
     GotoItem,
+    CopyServer,
 }
 
 #[derive(Msg, Clone)]
@@ -56,6 +60,7 @@ pub enum Msg {
     OpenLinkOrEditProjectNote,
     OpenSingleWebsiteLink,
     GotLinkedServer(Server),
+    CopyToClipboard(String),
 }
 
 // String for details, because I can't pass Error across threads
@@ -79,6 +84,8 @@ pub struct Model {
     goto_server_sender: relm::Sender<GotoResult>,
     _load_linkedserver_channel: relm::Channel<Server>,
     load_linkedserver_sender: relm::Sender<Server>,
+    _copy_clipboard_channel: relm::Channel<String>,
+    copy_clipboard_sender: relm::Sender<String>,
 }
 
 #[derive(Debug)]
@@ -373,6 +380,9 @@ impl Widget for ProjectPoiHeader {
         let stream3 = relm.stream().clone();
         let (_load_linkedserver_channel, load_linkedserver_sender) =
             relm::Channel::new(move |s: Server| stream3.emit(Msg::GotLinkedServer(s.clone())));
+        let stream4 = relm.stream().clone();
+        let (_copy_clipboard_channel, copy_clipboard_sender) =
+            relm::Channel::new(move |s: String| stream4.emit(Msg::CopyToClipboard(s.clone())));
         Model {
             relm: relm.clone(),
             db_sender,
@@ -392,6 +402,8 @@ impl Widget for ProjectPoiHeader {
             goto_server_sender,
             _load_linkedserver_channel,
             load_linkedserver_sender,
+            _copy_clipboard_channel,
+            copy_clipboard_sender,
             server_link_target: None,
         }
     }
@@ -545,6 +557,27 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::AddItem, _)) => {
                 self.show_server_add_item_dialog();
             }
+            Msg::HeaderActionClicked((ActionTypes::CopyServer, _)) => {
+                if let Some(ProjectItem::Server(ref srv)) = self.model.project_item {
+                    let server = srv.clone();
+                    let s = self.model.copy_clipboard_sender.clone();
+                    self.model
+                        .db_sender
+                        .send(SqlFunc::new(move |sql_conn| {
+                            let mut extra_files = HashMap::new();
+                            let server_data =
+                                export::export_server(sql_conn, server.clone(), &mut extra_files)
+                                    .unwrap();
+                            let clip_data = ServerImportExportClipboard {
+                                server_data,
+                                extra_files,
+                            };
+                            let data = export::generate_yaml(&clip_data);
+                            s.send(data).unwrap();
+                        }))
+                        .unwrap();
+                }
+            }
             Msg::ProjectItemRefresh(project_item) => {
                 if let Some((_, dialog)) = self.model.project_add_edit_dialog.as_ref() {
                     dialog.close();
@@ -657,6 +690,7 @@ impl Widget for ProjectPoiHeader {
                 self.model.server_link_target = Some(srv);
                 self.populate_header();
             }
+            Msg::CopyToClipboard(msg) => self.copy_to_clipboard(&msg),
             // meant for my parent
             Msg::OpenSingleWebsiteLink => {}
             Msg::ShowInfoBar(_) => {}
@@ -860,6 +894,15 @@ impl Widget for ProjectPoiHeader {
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::AddItem, "".to_string()))
         );
+        let copy_server_btn = gtk::ModelButtonBuilder::new()
+            .label("Copy server to clipboard")
+            .build();
+        relm::connect!(
+            self.model.relm,
+            &copy_server_btn,
+            connect_clicked(_),
+            Msg::HeaderActionClicked((ActionTypes::CopyServer, "".to_string()))
+        );
         let goto_btn = gtk::ModelButtonBuilder::new().label("Go to").build();
         relm::connect!(
             self.model.relm,
@@ -875,7 +918,7 @@ impl Widget for ProjectPoiHeader {
             Msg::HeaderActionClicked((ActionTypes::Delete, "".to_string()))
         );
         let extra_btns = match &self.model.project_item {
-            Some(ProjectItem::Server(_)) => vec![add_btn, edit_btn, delete_btn],
+            Some(ProjectItem::Server(_)) => vec![add_btn, edit_btn, delete_btn, copy_server_btn],
             Some(ProjectItem::ServerLink(_)) => vec![edit_btn, goto_btn, delete_btn],
             Some(_) => vec![edit_btn, delete_btn],
             _ => vec![],

@@ -6,6 +6,7 @@ use projectpadsql::models::{
 };
 use projectpadsql::sqlite_is;
 use regex::Regex;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
@@ -257,7 +258,7 @@ fn write_7z(
     }
 }
 
-fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {
+pub fn generate_yaml<T: ?Sized + serde::Serialize>(value: &T) -> String {
     // https://github.com/dtolnay/serde-yaml/issues/174
     // I really want notes to be exported with literal blocks,
     // but the library doesn't do that yet, so i'll post-process.
@@ -452,7 +453,13 @@ fn export_env_group(
     })
 }
 
-fn export_server(
+#[derive(Serialize, Deserialize)]
+pub struct ServerImportExportClipboard {
+    pub server_data: ServerWithItemsImportExport,
+    pub extra_files: HashMap<PathBuf, Vec<u8>>,
+}
+
+pub fn export_server(
     sql_conn: &diesel::SqliteConnection,
     server: Server,
     extra_files: &mut HashMap<PathBuf, Vec<u8>>,

@@ -21,6 +21,7 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     ProjectActivated(Project),
+    CurrentProjectUpdated,
     ProjectUpdated(Project),
     EnvironmentToggled(EnvironmentType), // implementation detail
     EnvironmentChanged(EnvironmentType),
@@ -186,13 +187,15 @@ impl Widget for ProjectSummary {
 
     fn update(&mut self, event: Msg) {
         match event {
+            Msg::CurrentProjectUpdated => {
+                self.model.relm.stream().emit(Msg::ProjectUpdated(
+                    self.model.project.as_ref().unwrap().clone(),
+                ));
+            }
             Msg::ProjectUpdated(prj) => {
-                self.model
-                    .project_add_edit_dialog
-                    .as_ref()
-                    .unwrap()
-                    .1
-                    .close();
+                if let Some(dlg) = self.model.project_add_edit_dialog.as_ref() {
+                    dlg.1.close();
+                }
                 self.model.project_add_edit_dialog = None;
                 self.model.relm.stream().emit(Msg::ProjectActivated(prj));
             }
@@ -455,6 +458,7 @@ impl Widget for ProjectSummary {
             self.model.cur_environment,
         ))
         .expect("error initializing the server add item modal");
+        //
         let d_c = dialog_contents.stream();
         let dialog = standard_dialogs::modal_dialog(
             self.widgets
@@ -482,6 +486,11 @@ impl Widget for ProjectSummary {
             component@project_add_item_dlg::Msg::ActionCompleted(ref pi),
             self.model.relm,
             Msg::ProjectAddItemActionCompleted(pi.clone())
+        );
+        relm::connect!(
+            component@project_add_item_dlg::Msg::ServerImportApplied,
+            self.model.relm,
+            Msg::CurrentProjectUpdated
         );
         relm::connect!(
             component@project_add_item_dlg::Msg::ChangeDialogTitle(title),

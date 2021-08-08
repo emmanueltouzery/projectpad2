@@ -11,6 +11,7 @@ use super::server_add_edit_dlg::ServerAddEditDialog;
 use super::server_link_add_edit_dlg;
 use super::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
 use super::server_link_add_edit_dlg::ServerLinkAddEditDialog;
+use super::standard_dialogs;
 use super::ProjectAddEditDialogComponent;
 use crate::export::ServerImportExportClipboard;
 use crate::import;
@@ -29,7 +30,11 @@ pub enum Msg {
     ChangeDialogTitle(&'static str),
     OkPressed,
     ActionCompleted(Box<ProjectItem>), // large enum variant => box it
+    ServerImportApplied,
 }
+
+// String for details, because I can't pass Error across threads
+type PasteResult = Result<(), String>;
 
 pub struct Model {
     relm: relm::Relm<ProjectAddItemDialog>,
@@ -37,6 +42,9 @@ pub struct Model {
     project_id: i32,
     environment_type: EnvironmentType,
     dialog_component: Option<ProjectAddEditDialogComponent>,
+
+    _paste_processed_channel: relm::Channel<PasteResult>,
+    paste_processed_sender: relm::Sender<PasteResult>,
 }
 
 #[widget]
@@ -77,12 +85,20 @@ impl Widget for ProjectAddItemDialog {
         params: (mpsc::Sender<SqlFunc>, i32, EnvironmentType),
     ) -> Model {
         let (db_sender, project_id, environment_type) = params;
+        let stream = relm.stream().clone();
+        let (_paste_processed_channel, paste_processed_sender) =
+            relm::Channel::new(move |r: PasteResult| match r {
+                Ok(()) => stream.emit(Msg::ServerImportApplied),
+                Err(e) => standard_dialogs::display_error_str("Error pasting server", Some(e)),
+            });
         Model {
             relm: relm.clone(),
             db_sender,
             project_id,
             environment_type,
             dialog_component: None,
+            _paste_processed_channel,
+            paste_processed_sender,
         }
     }
 
@@ -92,6 +108,7 @@ impl Widget for ProjectAddItemDialog {
                 if let Some(server_import) = self.read_server_import_export_clipboard() {
                     let project_id = self.model.project_id;
                     let environment_type = self.model.environment_type;
+                    let s = self.model.paste_processed_sender.clone();
                     self.model
                         .db_sender
                         .send(SqlFunc::new(move |sql_conn| {
@@ -109,9 +126,27 @@ impl Widget for ProjectAddItemDialog {
                                 None,
                                 &server_import.server_data,
                             );
-                            for unprocessed_website in unprocessed_websites {
-                                import::import_server_website(sql_conn, &unprocessed_website)?;
+                            match unprocessed_websites {
+                                Err(e) => s
+                                    .send(Err(format!("Error pasting server: {:?}", e)))
+                                    .unwrap(),
+                                Ok(w) => {
+                                    for unprocessed_website in w {
+                                        if let Err(e) = import::import_server_website(
+                                            sql_conn,
+                                            &unprocessed_website,
+                                        ) {
+                                            s.send(Err(format!(
+                                                "Error pasting server website: {:?}",
+                                                e
+                                            )))
+                                            .unwrap();
+                                            return;
+                                        }
+                                    }
+                                }
                             }
+                            s.send(Ok(())).unwrap();
                         }))
                         .unwrap();
                 }
@@ -211,6 +246,7 @@ impl Widget for ProjectAddItemDialog {
             },
             // meant for my parent
             Msg::ActionCompleted(_) => {}
+            Msg::ServerImportApplied => {}
         }
     }
 

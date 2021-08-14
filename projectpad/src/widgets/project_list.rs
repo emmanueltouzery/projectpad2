@@ -68,6 +68,11 @@ impl Widget for ProjectList {
             }
             Msg::ProjectActivated((ref project, _)) => {
                 self.model.active_project_id = Some(project.id);
+                for badge in &self.model.children_widgets {
+                    badge
+                        .stream()
+                        .emit(ProjectBadgeMsg::ActiveProjectChanged(project.id));
+                }
             }
             Msg::GotProjects(prjs) => {
                 self.model.projects = prjs;
@@ -171,11 +176,6 @@ impl Widget for ProjectList {
                 self.model.relm,
                 Msg::MouseLeaveProject(id)
             );
-            let relm = &self.model.relm;
-            relm::connect!(
-                relm@Msg::ProjectActivated(ref project),
-                child,
-                ProjectBadgeMsg::ActiveProjectChanged(project.0.id));
             self.model.children_widgets.push(child);
         }
         let add_btn = gtk::ButtonBuilder::new()

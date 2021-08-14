@@ -9,7 +9,7 @@ use projectpadsql::models::{
     EnvironmentType, InterestType, Project, ProjectNote, ProjectPointOfInterest, Server,
     ServerAccessType, ServerLink, ServerType,
 };
-use relm::{ContainerWidget, Widget};
+use relm::{Component, ContainerWidget, Widget};
 use relm_derive::{widget, Msg};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc;
@@ -48,6 +48,8 @@ pub struct Model {
     project_item_groups_start_indexes: HashMap<i32, String>,
     _channel: relm::Channel<ChannelData>,
     sender: relm::Sender<ChannelData>,
+
+    children_project_pois: Vec<Component<ProjectPoiListItem>>,
 }
 
 #[widget]
@@ -70,6 +72,7 @@ impl Widget for ProjectItemsList {
             environment: EnvironmentType::EnvProd,
             project_items: Vec::new(),
             project_item_groups_start_indexes: HashMap::new(),
+            children_project_pois: vec![],
             sender,
             _channel: channel,
             db_sender,
@@ -344,11 +347,13 @@ impl Widget for ProjectItemsList {
         for child in self.widgets.project_items_list.get_children() {
             self.widgets.project_items_list.remove(&child);
         }
+        self.model.children_project_pois.clear();
         for project_item in &self.model.project_items {
-            let _child = self
-                .widgets
-                .project_items_list
-                .add_widget::<ProjectPoiListItem>(Self::get_item_model(project_item));
+            self.model.children_project_pois.push(
+                self.widgets
+                    .project_items_list
+                    .add_widget::<ProjectPoiListItem>(Self::get_item_model(project_item)),
+            );
         }
         let indexes = self.model.project_item_groups_start_indexes.clone();
         self.widgets

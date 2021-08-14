@@ -21,7 +21,6 @@ use std::sync::mpsc;
 #[derive(Msg)]
 pub enum Msg {
     ProjectActivated(Project),
-    CurrentProjectUpdated,
     ProjectUpdated(Project),
     EnvironmentToggled(EnvironmentType), // implementation detail
     EnvironmentChanged(EnvironmentType),
@@ -187,11 +186,6 @@ impl Widget for ProjectSummary {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::CurrentProjectUpdated => {
-                self.model.relm.stream().emit(Msg::ProjectUpdated(
-                    self.model.project.as_ref().unwrap().clone(),
-                ));
-            }
             Msg::ProjectUpdated(prj) => {
                 if let Some(dlg) = self.model.project_add_edit_dialog.as_ref() {
                     dlg.1.close();

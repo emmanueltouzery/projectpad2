@@ -423,7 +423,7 @@ fn import_server(
         group_name,
         server,
     )
-    .map(|(srv_id, unpr_w)| unpr_w)
+    .map(|(_srv_id, unpr_w)| unpr_w)
 }
 
 pub fn import_server_attach(

@@ -488,11 +488,6 @@ impl Widget for ProjectSummary {
             Msg::ProjectAddItemActionCompleted(pi.clone())
         );
         relm::connect!(
-            component@project_add_item_dlg::Msg::ServerImportApplied,
-            self.model.relm,
-            Msg::CurrentProjectUpdated
-        );
-        relm::connect!(
             component@project_add_item_dlg::Msg::ChangeDialogTitle(title),
             self.model.relm,
             Msg::ProjectAddItemChangeTitleTitle(title)

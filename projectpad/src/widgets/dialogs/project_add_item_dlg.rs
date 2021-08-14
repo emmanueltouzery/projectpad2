@@ -32,7 +32,6 @@ pub enum Msg {
     ChangeDialogTitle(&'static str),
     OkPressed,
     ActionCompleted(Box<ProjectItem>), // large enum variant => box it
-    ServerImportApplied,
 }
 
 // String for details, because I can't pass Error across threads
@@ -106,7 +105,7 @@ impl Widget for ProjectAddItemDialog {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::ShowSecondTab(ref dialog) if self.widgets.add_server_clipboard.get_active() => {
+            Msg::ShowSecondTab(ref _dialog) if self.widgets.add_server_clipboard.get_active() => {
                 if let Some(server_import) = self.read_server_import_export_clipboard() {
                     let project_id = self.model.project_id;
                     let environment_type = self.model.environment_type;
@@ -252,7 +251,6 @@ impl Widget for ProjectAddItemDialog {
             },
             // meant for my parent
             Msg::ActionCompleted(_) => {}
-            Msg::ServerImportApplied => {}
         }
     }
 

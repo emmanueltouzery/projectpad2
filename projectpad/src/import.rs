@@ -423,6 +423,7 @@ fn import_server(
         group_name,
         server,
     )
+    .map(|(srv_id, unpr_w)| unpr_w)
 }
 
 pub fn import_server_attach(
@@ -432,7 +433,7 @@ pub fn import_server_attach(
     env: EnvironmentType,
     group_name: Option<&str>,
     server: &ServerWithItemsImportExport,
-) -> ImportResult<Vec<UnprocessedWebsite>> {
+) -> ImportResult<(i32, Vec<UnprocessedWebsite>)> {
     use projectpadsql::schema::server::dsl as srv;
     let auth_key_contents = match server
         .server
@@ -492,7 +493,7 @@ pub fn import_server_attach(
             website: www.clone(),
         })
     }));
-    Ok(unprocessed_websites)
+    Ok((server_id, unprocessed_websites))
 }
 
 fn import_server_items(

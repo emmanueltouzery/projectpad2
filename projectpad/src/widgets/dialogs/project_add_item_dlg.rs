@@ -17,8 +17,10 @@ use crate::export::ServerImportExportClipboard;
 use crate::import;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::ProjectItem;
+use diesel::prelude::*;
 use gtk::prelude::*;
 use projectpadsql::models::EnvironmentType;
+use projectpadsql::models::Server;
 use relm::Widget;
 use relm_derive::{widget, Msg};
 use std::path::PathBuf;
@@ -34,7 +36,7 @@ pub enum Msg {
 }
 
 // String for details, because I can't pass Error across threads
-type PasteResult = Result<(), String>;
+type PasteResult = Result<Server, String>;
 
 pub struct Model {
     relm: relm::Relm<ProjectAddItemDialog>,
@@ -88,7 +90,7 @@ impl Widget for ProjectAddItemDialog {
         let stream = relm.stream().clone();
         let (_paste_processed_channel, paste_processed_sender) =
             relm::Channel::new(move |r: PasteResult| match r {
-                Ok(()) => stream.emit(Msg::ServerImportApplied),
+                Ok(srv) => stream.emit(Msg::ActionCompleted(Box::new(ProjectItem::Server(srv)))),
                 Err(e) => standard_dialogs::display_error_str("Error pasting server", Some(e)),
             });
         Model {
@@ -112,8 +114,8 @@ impl Widget for ProjectAddItemDialog {
                     self.model
                         .db_sender
                         .send(SqlFunc::new(move |sql_conn| {
-                            // TODO error handling
-                            let unprocessed_websites = import::import_server_attach(
+                            use projectpadsql::schema::server::dsl as srv;
+                            let import_res = import::import_server_attach(
                                 sql_conn,
                                 |attach_key| {
                                     server_import
@@ -126,12 +128,12 @@ impl Widget for ProjectAddItemDialog {
                                 None,
                                 &server_import.server_data,
                             );
-                            match unprocessed_websites {
+                            match import_res {
                                 Err(e) => s
                                     .send(Err(format!("Error pasting server: {:?}", e)))
                                     .unwrap(),
-                                Ok(w) => {
-                                    for unprocessed_website in w {
+                                Ok((srv_id, unprocessed_websites)) => {
+                                    for unprocessed_website in unprocessed_websites {
                                         if let Err(e) = import::import_server_website(
                                             sql_conn,
                                             &unprocessed_website,
@@ -144,9 +146,13 @@ impl Widget for ProjectAddItemDialog {
                                             return;
                                         }
                                     }
+                                    let srv = srv::server
+                                        .filter(srv::id.eq(srv_id))
+                                        .first::<Server>(sql_conn)
+                                        .unwrap();
+                                    s.send(Ok(srv)).unwrap();
                                 }
                             }
-                            s.send(Ok(())).unwrap();
                         }))
                         .unwrap();
                 }

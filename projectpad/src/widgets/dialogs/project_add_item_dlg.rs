@@ -106,55 +106,7 @@ impl Widget for ProjectAddItemDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::ShowSecondTab(ref _dialog) if self.widgets.add_server_clipboard.get_active() => {
-                if let Some(server_import) = self.read_server_import_export_clipboard() {
-                    let project_id = self.model.project_id;
-                    let environment_type = self.model.environment_type;
-                    let s = self.model.paste_processed_sender.clone();
-                    self.model
-                        .db_sender
-                        .send(SqlFunc::new(move |sql_conn| {
-                            use projectpadsql::schema::server::dsl as srv;
-                            let import_res = import::import_server_attach(
-                                sql_conn,
-                                |attach_key| {
-                                    server_import
-                                        .extra_files
-                                        .get(&PathBuf::from(attach_key))
-                                        .map(|v| Result::Ok(v.clone()))
-                                },
-                                project_id,
-                                environment_type,
-                                None,
-                                &server_import.server_data,
-                            );
-                            match import_res {
-                                Err(e) => s
-                                    .send(Err(format!("Error pasting server: {:?}", e)))
-                                    .unwrap(),
-                                Ok((srv_id, unprocessed_websites)) => {
-                                    for unprocessed_website in unprocessed_websites {
-                                        if let Err(e) = import::import_server_website(
-                                            sql_conn,
-                                            &unprocessed_website,
-                                        ) {
-                                            s.send(Err(format!(
-                                                "Error pasting server website: {:?}",
-                                                e
-                                            )))
-                                            .unwrap();
-                                            return;
-                                        }
-                                    }
-                                    let srv = srv::server
-                                        .filter(srv::id.eq(srv_id))
-                                        .first::<Server>(sql_conn)
-                                        .unwrap();
-                                    s.send(Ok(srv)).unwrap();
-                                }
-                            }
-                        }))
-                        .unwrap();
-                }
+                self.paste_server();
             }
             Msg::ShowSecondTab(ref dialog) => {
                 let (widget, title) = if self.widgets.add_server.get_active() {
@@ -251,6 +203,54 @@ impl Widget for ProjectAddItemDialog {
             },
             // meant for my parent
             Msg::ActionCompleted(_) => {}
+        }
+    }
+
+    fn paste_server(&mut self) {
+        if let Some(server_import) = self.read_server_import_export_clipboard() {
+            let project_id = self.model.project_id;
+            let environment_type = self.model.environment_type;
+            let s = self.model.paste_processed_sender.clone();
+            self.model
+                .db_sender
+                .send(SqlFunc::new(move |sql_conn| {
+                    use projectpadsql::schema::server::dsl as srv;
+                    let import_res = import::import_server_attach(
+                        sql_conn,
+                        |attach_key| {
+                            server_import
+                                .extra_files
+                                .get(&PathBuf::from(attach_key))
+                                .map(|v| Result::Ok(v.clone()))
+                        },
+                        project_id,
+                        environment_type,
+                        None,
+                        &server_import.server_data,
+                    );
+                    match import_res {
+                        Err(e) => s
+                            .send(Err(format!("Error pasting server: {:?}", e)))
+                            .unwrap(),
+                        Ok((srv_id, unprocessed_websites)) => {
+                            for unprocessed_website in unprocessed_websites {
+                                if let Err(e) =
+                                    import::import_server_website(sql_conn, &unprocessed_website)
+                                {
+                                    s.send(Err(format!("Error pasting server website: {:?}", e)))
+                                        .unwrap();
+                                    return;
+                                }
+                            }
+                            let srv = srv::server
+                                .filter(srv::id.eq(srv_id))
+                                .first::<Server>(sql_conn)
+                                .unwrap();
+                            s.send(Ok(srv)).unwrap();
+                        }
+                    }
+                }))
+                .unwrap();
         }
     }
 

@@ -403,17 +403,15 @@ fn import_server(
     group_name: Option<&str>,
     server: &ServerWithItemsImportExport,
 ) -> ImportResult<Vec<UnprocessedWebsite>> {
-    let read_attachment = |key_fname| match (
-        &server.server.data_path,
-        server.server.server.auth_key_filename.as_ref(),
-    ) {
-        (Some(data_path), Some(key_fname)) => {
+    let read_attachment = |key_fname| {
+        if let Some(data_path) = &server.server.data_path {
             let mut path = import_folder.to_path_buf();
             path.push(data_path);
             path.push(key_fname);
             Some(fs::read(path))
+        } else {
+            None
         }
-        _ => None,
     };
     import_server_attach(
         sql_conn,

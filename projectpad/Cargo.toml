@@ -20,7 +20,7 @@ gio = "0.9.1"
 cairo-rs = { version = "0.9.1", features = ["png"] }
 gdk = "0.13.2"
 projectpadsql = { path = "../projectpadsql" }
-diesel = { version = "1.4.5", features = ["sqlite"] }
+diesel = { version = "1.4.7", features = ["sqlite"] }
 pango = "0.9.1"
 pulldown-cmark = { version = "0.8.0", default-features = false }
 itertools = "0.10.0"

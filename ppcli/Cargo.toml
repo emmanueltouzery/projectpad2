@@ -11,7 +11,7 @@ libc = "0.2.81"
 dirs = "3.0.1"
 shell-words = "1.0.0"
 projectpadsql = { path = "../projectpadsql" }
-diesel = { version = "1.4.5", features = ["sqlite"] }
+diesel = { version = "1.4.7", features = ["sqlite"] }
 
 skim = "0.9.4"
 regex = "1.4.2"

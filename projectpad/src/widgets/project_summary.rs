@@ -515,6 +515,9 @@ impl Widget for ProjectSummary {
             },
             #[style_class="linked"]
             gtk::Box {
+                // very similar to the "EnvironmentPicker" widget that I have,
+                // but since I'm doing low-level event blocking here, I decided to
+                // duplicate this rather.
                 homogeneous: true,
                 margin_start: 5,
                 margin_end: 5,

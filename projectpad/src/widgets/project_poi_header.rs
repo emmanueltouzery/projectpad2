@@ -1,5 +1,8 @@
 use super::dialogs;
 use super::dialogs::dialog_helpers;
+use super::dialogs::project_item_move_dlg;
+use super::dialogs::project_item_move_dlg::Msg as ProjectItemMoveDlgMsg;
+use super::dialogs::project_item_move_dlg::ProjectItemMoveDialog;
 use super::dialogs::project_note_add_edit_dlg;
 use super::dialogs::project_note_add_edit_dlg::Msg as MsgProjectNoteAddEditDialog;
 use super::dialogs::project_poi_add_edit_dlg;
@@ -33,6 +36,7 @@ pub enum ActionTypes {
     Edit,
     Copy,
     Delete,
+    Move,
     AddItem,
     GotoItem,
 }
@@ -50,12 +54,13 @@ pub enum Msg {
     ServerAddItemActionCompleted,
     ServerAddItemChangeTitleTitle(&'static str),
     ProjectItemUpdated(Option<ProjectItem>),
-    GotoItem(Project, Server),
+    GotoItem(Project, ProjectItem),
     ShowInfoBar(String),
     CopyPassword,
     OpenLinkOrEditProjectNote,
     OpenSingleWebsiteLink,
     GotLinkedServer(Server),
+    MoveApplied(Result<(Project, ProjectItem, project_item_move_dlg::ProjectUpdated), String>),
 }
 
 // String for details, because I can't pass Error across threads
@@ -70,6 +75,7 @@ pub struct Model {
     server_link_target: Option<Server>, // this is only populated when we display a ServerLink..
     header_popover: gtk::Popover,
     title: gtk::Label,
+    project_item_move_dialog: Option<(relm::Component<ProjectItemMoveDialog>, gtk::Dialog)>,
     project_add_edit_dialog: Option<(dialogs::ProjectAddEditDialogComponent, gtk::Dialog)>,
     server_add_item_dialog_component: Option<relm::Component<ServerAddItemDialog>>,
     server_add_item_dialog: Option<gtk::Dialog>,
@@ -369,7 +375,9 @@ impl Widget for ProjectPoiHeader {
             });
         let stream2 = relm.stream().clone();
         let (_goto_server_channel, goto_server_sender) =
-            relm::Channel::new(move |r: GotoResult| stream2.emit(Msg::GotoItem(r.0.clone(), r.1)));
+            relm::Channel::new(move |r: GotoResult| {
+                stream2.emit(Msg::GotoItem(r.0.clone(), ProjectItem::Server(r.1)))
+            });
         let stream3 = relm.stream().clone();
         let (_load_linkedserver_channel, load_linkedserver_sender) =
             relm::Channel::new(move |s: Server| stream3.emit(Msg::GotLinkedServer(s.clone())));
@@ -383,6 +391,7 @@ impl Widget for ProjectPoiHeader {
                 .margin_bottom(8)
                 .hexpand(true)
                 .build(),
+            project_item_move_dialog: None,
             project_add_edit_dialog: None,
             server_add_item_dialog: None,
             server_add_item_dialog_component: None,
@@ -509,6 +518,13 @@ impl Widget for ProjectPoiHeader {
                     None => {}
                 };
             }
+            Msg::HeaderActionClicked((ActionTypes::Move, _))
+                if self.model.project_item.is_some() =>
+            {
+                // unwrap: if is_some() in the if in the match
+                self.display_projectitem_move_dialog(self.model.project_item.clone().unwrap());
+            }
+            Msg::HeaderActionClicked((ActionTypes::Move, _)) => {}
             Msg::HeaderActionClicked((ActionTypes::Delete, _)) => {
                 match self.model.project_item.as_ref() {
                     Some(ProjectItem::Server(srv)) => {
@@ -657,12 +673,56 @@ impl Widget for ProjectPoiHeader {
                 self.model.server_link_target = Some(srv);
                 self.populate_header();
             }
+            Msg::MoveApplied(Ok((p, pi, _project_updated))) => {
+                self.model.relm.stream().emit(Msg::GotoItem(p, pi));
+            }
+            Msg::MoveApplied(Err(e)) => {
+                self.model
+                    .relm
+                    .stream()
+                    .emit(Msg::ShowInfoBar(format!("Error moving item: {:?}", e)));
+            }
             // meant for my parent
             Msg::OpenSingleWebsiteLink => {}
             Msg::ShowInfoBar(_) => {}
             Msg::ProjectItemUpdated(_pi) => {}
             Msg::GotoItem(_, _) => {}
         }
+    }
+
+    fn display_projectitem_move_dialog(&mut self, project_item: ProjectItem) {
+        let dialog = standard_dialogs::modal_dialog(
+            self.widgets.items_frame.clone().upcast::<gtk::Widget>(),
+            600,
+            450,
+            "Move project item".to_string(),
+        );
+        let dialog_contents =
+            relm::init::<ProjectItemMoveDialog>((self.model.db_sender.clone(), project_item))
+                .expect("error initializing the move project item modal");
+        let d_c = dialog_contents.stream();
+
+        let move_btn = dialog
+            .add_button("Move", gtk::ResponseType::Ok)
+            .downcast::<gtk::Button>()
+            .expect("error reading the dialog move button");
+        move_btn.set_property_has_default(true);
+        move_btn.get_style_context().add_class("suggested-action");
+
+        standard_dialogs::prepare_custom_dialog_component_ref(&dialog, &dialog_contents);
+
+        relm::connect!(d_c@ProjectItemMoveDlgMsg::MoveApplied(ref p), self.model.relm, Msg::MoveApplied(p.clone()));
+
+        self.model.project_item_move_dialog = Some((dialog_contents, dialog.clone()));
+        dialog.connect_response(move |d, r| {
+            if r == gtk::ResponseType::Ok {
+                d_c.emit(ProjectItemMoveDlgMsg::MoveActionTriggered);
+                d.close();
+            } else {
+                d.close();
+            }
+        });
+        dialog.show();
     }
 
     fn edit_project_note(&mut self, note: ProjectNote) {
@@ -874,10 +934,17 @@ impl Widget for ProjectPoiHeader {
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::Delete, "".to_string()))
         );
+        let move_btn = gtk::ModelButtonBuilder::new().label("Move...").build();
+        relm::connect!(
+            self.model.relm,
+            &move_btn,
+            connect_clicked(_),
+            Msg::HeaderActionClicked((ActionTypes::Move, "".to_string()))
+        );
         let extra_btns = match &self.model.project_item {
-            Some(ProjectItem::Server(_)) => vec![add_btn, edit_btn, delete_btn],
-            Some(ProjectItem::ServerLink(_)) => vec![edit_btn, goto_btn, delete_btn],
-            Some(_) => vec![edit_btn, delete_btn],
+            Some(ProjectItem::Server(_)) => vec![add_btn, edit_btn, delete_btn, move_btn],
+            Some(ProjectItem::ServerLink(_)) => vec![edit_btn, goto_btn, delete_btn, move_btn],
+            Some(_) => vec![edit_btn, delete_btn, move_btn],
             _ => vec![],
         };
         match &self.model.project_item {

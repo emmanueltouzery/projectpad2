@@ -1,6 +1,7 @@
 use super::dialogs::dialog_helpers;
 use super::dialogs::project_add_edit_dlg::Msg as MsgProjectAddEditDialog;
 use super::dialogs::project_add_edit_dlg::ProjectAddEditDialog;
+use super::dialogs::project_item_move_dlg;
 use super::dialogs::standard_dialogs;
 use super::dialogs::unlock_db_dlg;
 use super::dialogs::unlock_db_dlg::Msg as MsgUnlockDbDlg;
@@ -18,6 +19,7 @@ use super::project_poi_contents::Msg::ShowInfoBar as ProjectPoiContentsMsgShowIn
 use super::project_poi_contents::ProjectPoiContents;
 use super::project_poi_header::Msg as ProjectPoiHeaderMsg;
 use super::project_poi_header::Msg::GotoItem as ProjectPoiHeaderGotoItemMsg;
+use super::project_poi_header::Msg::MoveApplied as ProjectPoiHeaderMoveApplied;
 use super::project_poi_header::Msg::OpenSingleWebsiteLink as ProjectPoiHeaderOpenSingleWebsiteLink;
 use super::project_poi_header::Msg::ProjectItemDeleted as ProjectPoiHeaderProjectItemDeletedMsg;
 use super::project_poi_header::Msg::ProjectItemRefresh as ProjectPoiHeaderProjectItemRefreshMsg;
@@ -847,11 +849,12 @@ impl Widget for Win {
                                             ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
                                             ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
                                             ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
-                                            ProjectPoiHeaderGotoItemMsg(ref project, ref srv) => Msg::DisplayItem(Box::new(
-                                                (project.clone(), Some(ProjectItem::Server(srv.clone())), None))),
+                                            ProjectPoiHeaderGotoItemMsg(ref project, ref pi) => Msg::DisplayItem(Box::new(
+                                                (project.clone(), Some(pi.clone()), None))),
                                             ProjectPoiHeaderShowInfoBar(ref msg) =>
                                                 Msg::ShowInfoBar(msg.clone()),
-                                            ProjectPoiHeaderOpenSingleWebsiteLink => Msg::OpenSingleWebsiteLink
+                                            ProjectPoiHeaderOpenSingleWebsiteLink => Msg::OpenSingleWebsiteLink,
+                                            ProjectPoiHeaderMoveApplied(Ok((_, _, project_item_move_dlg::ProjectUpdated::Yes))) => Msg::ProjectListChanged,
                                         },
                                         #[name="project_poi_contents"]
                                         ProjectPoiContents(self.model.db_sender.clone()) {

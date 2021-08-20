@@ -3,6 +3,7 @@ pub mod dialog_helpers;
 #[macro_use]
 pub mod server_add_item_dlg;
 mod change_db_password_dlg;
+mod environment_picker;
 mod environments_picker;
 mod file_contents_button;
 pub mod import_export_dlg;
@@ -11,6 +12,7 @@ mod pick_projectpad_item_button;
 pub mod preferences;
 pub mod project_add_edit_dlg;
 pub mod project_add_item_dlg;
+pub mod project_item_move_dlg;
 pub mod project_note_add_edit_dlg;
 pub mod project_poi_add_edit_dlg;
 pub mod server_add_edit_dlg;

@@ -200,37 +200,37 @@ pub fn draw_child(
     style_context.add_class(extra_css_class);
     let x = item_context.padding.left as f64 + LEFT_RIGHT_MARGIN as f64;
     match &item {
-        ProjectPadItem::Project(p) => draw_project(drawing_context, item_context, item, &p),
+        ProjectPadItem::Project(p) => draw_project(drawing_context, item_context, item, p),
         ProjectPadItem::Server(s) => draw_server(
             drawing_context,
             item_context,
             item,
             LEFT_RIGHT_MARGIN as f64,
-            &s,
+            s,
         ),
         ProjectPadItem::ServerNote(n) => {
-            draw_server_note(drawing_context, item_context, item, x, &n, cur_server)
+            draw_server_note(drawing_context, item_context, item, x, n, cur_server)
         }
         ProjectPadItem::ProjectNote(n) => {
-            draw_project_note(drawing_context, item_context, item, x, &n)
+            draw_project_note(drawing_context, item_context, item, x, n)
         }
         ProjectPadItem::ServerWebsite(w) => {
-            draw_server_website(drawing_context, item_context, item, x, &w, cur_server)
+            draw_server_website(drawing_context, item_context, item, x, w, cur_server)
         }
         ProjectPadItem::ServerExtraUserAccount(u) => {
-            draw_server_extra_user(drawing_context, item_context, item, x, &u, cur_server)
+            draw_server_extra_user(drawing_context, item_context, item, x, u, cur_server)
         }
         ProjectPadItem::ServerPoi(p) => {
-            draw_server_poi(drawing_context, item_context, item, x, &p, cur_server)
+            draw_server_poi(drawing_context, item_context, item, x, p, cur_server)
         }
         ProjectPadItem::ProjectPoi(p) => {
-            draw_project_poi(drawing_context, item_context, item, x, &p)
+            draw_project_poi(drawing_context, item_context, item, x, p)
         }
         ProjectPadItem::ServerDatabase(d) => {
-            draw_server_database(drawing_context, item_context, item, x, &d, cur_server)
+            draw_server_database(drawing_context, item_context, item, x, d, cur_server)
         }
         ProjectPadItem::ServerLink(s) => {
-            draw_linked_server(drawing_context, item_context, item, x, &s)
+            draw_linked_server(drawing_context, item_context, item, x, s)
         }
     }
     style_context.remove_class(extra_css_class);
@@ -272,7 +272,7 @@ fn draw_project(
             super::project_badge::ProjectBadge::draw_icon(
                 &drawing_context.context,
                 PROJECT_ICON_SIZE,
-                &icon,
+                icon,
             );
             drawing_context
                 .context
@@ -581,7 +581,7 @@ fn draw_server(
             drawing_context,
             x + padding.left as f64,
             y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64 + margin.top as f64,
-            &match server.environment {
+            match server.environment {
                 EnvironmentType::EnvUat => "uat",
                 EnvironmentType::EnvProd => "prod",
                 EnvironmentType::EnvStage => "stg",

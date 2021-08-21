@@ -179,7 +179,7 @@ impl Widget for WinTitleBar {
                     // by hand.
                     self.widgets
                         .search_toggle
-                        .block_signal(&self.model.search_toggle_signal.as_ref().unwrap());
+                        .block_signal(self.model.search_toggle_signal.as_ref().unwrap());
                     self.widgets.search_entry.set_visible(true);
                     self.widgets.search_toggle.set_active(true);
                     self.widgets.search_entry.grab_focus_without_selecting();
@@ -187,7 +187,7 @@ impl Widget for WinTitleBar {
                     self.widgets.search_entry.set_text(&txt);
                     self.widgets
                         .search_toggle
-                        .unblock_signal(&self.model.search_toggle_signal.as_ref().unwrap());
+                        .unblock_signal(self.model.search_toggle_signal.as_ref().unwrap());
                     self.widgets.search_entry.set_position(1);
                 }
             }
@@ -302,13 +302,13 @@ impl Widget for WinTitleBar {
         }
         self.widgets
             .search_toggle
-            .block_signal(&self.model.search_toggle_signal.as_ref().unwrap());
+            .block_signal(self.model.search_toggle_signal.as_ref().unwrap());
         self.widgets.search_toggle.set_active(true);
         self.widgets.search_entry.set_visible(true);
         self.widgets.search_entry.grab_focus_without_selecting();
         self.widgets
             .search_toggle
-            .unblock_signal(&self.model.search_toggle_signal.as_ref().unwrap());
+            .unblock_signal(self.model.search_toggle_signal.as_ref().unwrap());
     }
 
     view! {

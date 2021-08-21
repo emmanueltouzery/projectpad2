@@ -138,7 +138,7 @@ pub fn populate_popover(
         .build();
     for extra_btn in extra_btns {
         popover_vbox.add(extra_btn);
-        left_align_menu(&extra_btn);
+        left_align_menu(extra_btn);
     }
     let fields_to_copy: Vec<_> = fields
         .iter()
@@ -150,8 +150,8 @@ pub fn populate_popover(
     for item in fields_to_copy.iter() {
         let label = &format!("Copy {}", item.label_name);
         let popover_btn = match &item.shortcut {
-            None => gtk::ModelButtonBuilder::new().label(&label).build(),
-            Some((key, modifiers)) => label_with_accelerator(label, &key, *modifiers),
+            None => gtk::ModelButtonBuilder::new().label(label).build(),
+            Some((key, modifiers)) => label_with_accelerator(label, key, *modifiers),
         };
         left_align_menu(&popover_btn);
         register_copy_btn(&popover_btn, item.raw_value.clone());
@@ -167,7 +167,7 @@ fn label_with_accelerator(
     modifiers: gdk::ModifierType,
 ) -> gtk::ModelButton {
     let lbl = gtk::ModelButtonBuilder::new().build();
-    let accel_lbl = gtk::AccelLabelBuilder::new().label(&label).build();
+    let accel_lbl = gtk::AccelLabelBuilder::new().label(label).build();
     accel_lbl.set_accel(**key, modifiers);
     accel_lbl.set_hexpand(true);
     accel_lbl.set_xalign(0.0);
@@ -195,7 +195,7 @@ pub fn populate_grid(
     for item in fields {
         if !item.markup.is_empty() {
             let label = gtk::LabelBuilder::new()
-                .label(&item.label_name)
+                .label(item.label_name)
                 .halign(gtk::Align::End) // right align as per gnome HIG
                 .build();
             header_grid.attach(&label, 0, i, 1, 1);
@@ -215,7 +215,7 @@ pub fn populate_grid(
                 // property_icon_size: 1, // gtk::IconSize::Menu,
                 gbox.add(
                     &gtk::ImageBuilder::new()
-                        .icon_name(&icon.name())
+                        .icon_name(icon.name())
                         .icon_size(1)
                         .margin_end(5)
                         .build(),
@@ -244,8 +244,8 @@ pub fn get_project_item_fields(
         ProjectItem::Server(srv) => vec![
             GridItem::new(
                 "Address",
-                Some(server_access_icon(&srv)),
-                server_ip_display(&srv),
+                Some(server_access_icon(srv)),
+                server_ip_display(srv),
                 srv.ip.clone(),
                 None,
             ),
@@ -371,7 +371,7 @@ impl Widget for ProjectPoiHeader {
         let (_project_item_deleted_channel, project_item_deleted_sender) =
             relm::Channel::new(move |r: DeleteResult| match r {
                 Ok(pi) => stream.emit(Msg::ProjectItemDeleted(pi)),
-                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+                Err((msg, e)) => standard_dialogs::display_error_str(msg, e),
             });
         let stream2 = relm.stream().clone();
         let (_goto_server_channel, goto_server_sender) =
@@ -380,7 +380,7 @@ impl Widget for ProjectPoiHeader {
             });
         let stream3 = relm.stream().clone();
         let (_load_linkedserver_channel, load_linkedserver_sender) =
-            relm::Channel::new(move |s: Server| stream3.emit(Msg::GotLinkedServer(s.clone())));
+            relm::Channel::new(move |s: Server| stream3.emit(Msg::GotLinkedServer(s)));
         Model {
             relm: relm.clone(),
             db_sender,
@@ -407,7 +407,7 @@ impl Widget for ProjectPoiHeader {
 
     fn copy_to_clipboard(&self, val: &str) {
         if let Some(clip) = gtk::Clipboard::get_default(&self.widgets.header_grid.get_display()) {
-            clip.set_text(&val);
+            clip.set_text(val);
         }
         self.model
             .relm

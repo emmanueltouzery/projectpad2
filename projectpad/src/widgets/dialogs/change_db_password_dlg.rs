@@ -79,7 +79,7 @@ impl Widget for ChangeDbPasswordDialog {
     }
 
     fn show_error(&self, msg: &str) {
-        self.model.infobar_label.set_text(&msg);
+        self.model.infobar_label.set_text(msg);
         self.model.infobar.set_revealed(true);
         relm::timeout(self.model.relm.stream(), 1500, || Msg::HideInfobar);
     }

@@ -216,7 +216,7 @@ pub struct NoteBufferInfo {
 pub fn note_markdown_to_quick_preview(input: &str) -> String {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
-    let parser = Parser::new_ext(&input, options);
+    let parser = Parser::new_ext(input, options);
     let events_with_passwords = get_events_with_passwords(parser);
     let mut result = "".to_string();
     for event in events_with_passwords {
@@ -237,7 +237,7 @@ pub fn note_markdown_to_quick_preview(input: &str) -> String {
 pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> NoteBufferInfo {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
-    let parser = Parser::new_ext(&input, options);
+    let parser = Parser::new_ext(input, options);
     let mut list_cur_idx = None;
     let mut in_item = false; // paragraphs inside bullets don't look nice
     let mut active_tags = HashMap::new();

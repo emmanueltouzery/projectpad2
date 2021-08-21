@@ -387,7 +387,7 @@ impl Widget for ServerItemListItem {
             &|btn: &gtk::ModelButton, str_val: String| {
                 relm::connect!(
                     self.model.relm,
-                    &btn,
+                    btn,
                     connect_clicked(_),
                     Msg::CopyClicked(str_val.clone())
                 );
@@ -457,7 +457,7 @@ impl Widget for ServerItemListItem {
                 Ok(server_item) => {
                     stream.emit(Msg::ServerItemDeleted(server_item));
                 }
-                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+                Err((msg, e)) => standard_dialogs::display_error_str(msg, e),
             });
         Model {
             relm: relm.clone(),

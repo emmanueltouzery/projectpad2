@@ -170,7 +170,7 @@ impl Widget for ProjectBadge {
 
         match icon {
             // the 'if' works around an issue reading from SQL. should be None if it's empty!!
-            Some(icon) if !icon.is_empty() => Self::draw_icon(&context, allocation_width, &icon),
+            Some(icon) if !icon.is_empty() => Self::draw_icon(&context, allocation_width, icon),
             _ => Self::draw_label(&context, allocation_width, &name[..2]),
         }
         buf

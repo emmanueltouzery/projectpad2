@@ -24,7 +24,7 @@ pub fn fill_groups(
     for group in groups {
         let iter = groups_store.append();
         groups_store.set_value(&iter, 0, &glib::Value::from(&group));
-        group_widget.append_text(&group);
+        group_widget.append_text(group);
     }
 
     if let Some(t) = cur_group_name.as_deref() {

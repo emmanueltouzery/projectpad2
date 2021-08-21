@@ -18,7 +18,7 @@ type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 pub fn export_projects(
     sql_conn: &diesel::SqliteConnection,
     projects: &[Project],
-    fname: &path::PathBuf,
+    fname: &Path,
     password: &str,
 ) -> ExportResult<HashSet<String>> {
     let mut project_id_to_folder_name = compute_project_to_folder_name(projects);
@@ -35,7 +35,7 @@ pub fn export_projects(
             .remove(&p.id)
             .expect("failed getting project folder name");
         project_exports.push((
-            export_project(sql_conn, &p, &mut extra_files, &project_folder)?,
+            export_project(sql_conn, p, &mut extra_files, &project_folder)?,
             project_folder,
         ));
     }
@@ -201,7 +201,7 @@ pub fn seven_z_command() -> ExportResult<&'static str> {
 fn write_7z(
     projects_data: &[(ProjectImportExport, PathBuf)],
     extra_files: &HashMap<PathBuf, Vec<u8>>,
-    fname: &path::PathBuf,
+    fname: &Path,
     password: &str,
 ) -> ExportResult<()> {
     let tmp_export = temp_folder()?;
@@ -461,7 +461,7 @@ fn export_server(
     let group_names = projectpadsql::get_server_group_names(sql_conn, server.id);
     let mut items_in_groups = HashMap::new();
     for gn in &group_names {
-        let items = export_server_items(sql_conn, extra_files, &server, Some(&gn))?;
+        let items = export_server_items(sql_conn, extra_files, &server, Some(gn))?;
         items_in_groups.insert(gn.clone(), items);
     }
     let data_path = match (&server.auth_key, &server.auth_key_filename) {
@@ -471,7 +471,7 @@ fn export_server(
             } else {
                 escape_filename(&server.desc.clone())
             };
-            let sub_path = find_unique_data_path(path_base, &extra_files);
+            let sub_path = find_unique_data_path(path_base, extra_files);
             let mut path = PathBuf::from(&sub_path);
             path.push(fname);
             extra_files.insert(path, key.clone());
@@ -591,7 +591,7 @@ fn export_server_extra_user(
             } else {
                 escape_filename(&user.desc.clone())
             };
-            let sub_path = find_unique_data_path(path_base, &extra_files);
+            let sub_path = find_unique_data_path(path_base, extra_files);
             let mut path = PathBuf::from(&sub_path);
             path.push(fname);
             extra_files.insert(path, key.clone());

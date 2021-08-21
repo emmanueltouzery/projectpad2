@@ -69,7 +69,7 @@ where
             .get_buffer()
             .unwrap()
             .get_start_iter()
-            .forward_search(&text, gtk::TextSearchFlags::all(), None),
+            .forward_search(text, gtk::TextSearchFlags::all(), None),
     );
 }
 

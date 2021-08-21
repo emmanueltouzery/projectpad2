@@ -103,7 +103,6 @@ impl Widget for ProjectItemMoveDialog {
         let applied_sender = self.model.move_applied_sender.clone();
         if let Some(prj) = selected_project {
             let project_item = self.model.project_item.clone();
-            let prj = prj.clone();
             self.model
                 .db_sender
                 .send(SqlFunc::new(move |sql_conn| {

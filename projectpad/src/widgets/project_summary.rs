@@ -151,7 +151,7 @@ impl Widget for ProjectSummary {
         let (_project_deleted_channel, project_deleted_sender) =
             relm::Channel::new(move |r: DeleteResult| match r {
                 Ok(p) => stream.emit(Msg::ProjectDeleted(p)),
-                Err((msg, e)) => standard_dialogs::display_error_str(&msg, e),
+                Err((msg, e)) => standard_dialogs::display_error_str(msg, e),
             });
         Model {
             project: None,

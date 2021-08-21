@@ -271,12 +271,12 @@ pub fn main() {
                 write_command_line_to_terminal(action_str)
             }
             Key::Enter if flag_options.shell_integration_mode => println!(
-                "R\x00{}\x00{}\x00{}", action_str, &run_command_folder(&action)
+                "R\x00{}\x00{}\x00{}", action_str, &run_command_folder(action)
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_else(|| "".to_string()), upgrade_url),
             Key::Enter => run_command(
                 action_str,
-                &run_command_folder(&action)
+                &run_command_folder(action)
                     .unwrap_or_else(|| dirs::home_dir().unwrap()),
             ),
             _ => {}

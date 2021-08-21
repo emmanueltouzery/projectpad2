@@ -4,6 +4,7 @@ use crate::database::{ExecutedAction, LinkedItem};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, ErrorKind};
+use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
@@ -150,7 +151,7 @@ pub fn write_string_history(
 }
 
 fn write_history(
-    pathbuf: &PathBuf,
+    pathbuf: &Path,
     orig_history: &[String],
     latest: &str,
     limit: usize,

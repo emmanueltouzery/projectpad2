@@ -191,7 +191,7 @@ fn sort_by_deps<T>(projects: Vec<(T, ProjectImportExport)>) -> Vec<(T, ProjectIm
     while !deps_to_projects.is_empty() {
         let (deps_ok, deps_remaining) = deps_to_projects
             .into_iter()
-            .partition::<Vec<_>, _>(|(d, _p)| covered_deps.is_superset(&d));
+            .partition::<Vec<_>, _>(|(d, _p)| covered_deps.is_superset(d));
         if deps_ok.is_empty() {
             // the remaining projects, if any, will never be resolved
             deps_to_projects = deps_remaining;
@@ -240,7 +240,7 @@ fn import_project_env_first_pass(
             sql_conn,
             import_folder,
             project_id,
-            &items,
+            items,
             env,
             Some(group),
         )?);

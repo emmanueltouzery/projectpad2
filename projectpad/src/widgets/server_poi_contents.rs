@@ -322,8 +322,8 @@ impl Widget for ServerPoiContents {
                 .add_widget::<ServerItemListItem>((
                     self.model.db_sender.clone(),
                     item.clone(),
-                    self.database_for_item(&item),
-                    self.websites_for_item(&item),
+                    self.database_for_item(item),
+                    self.websites_for_item(item),
                 ));
             relm::connect!(
                 component@ServerItemListItemMsg::ViewNote(ref n),

@@ -321,7 +321,7 @@ impl Widget for Win {
         self.model
             .db_sender
             .send(SqlFunc::new(move |db_conn| {
-                migrate_db_if_needed(&db_conn).unwrap();
+                migrate_db_if_needed(db_conn).unwrap();
                 db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
                 s.send(()).unwrap();
             }))

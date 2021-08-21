@@ -624,7 +624,7 @@ impl Widget for SearchView {
                 .collect::<Vec<_>>();
             // is there only one match...
             if let [url] = &urls[..] {
-                if let Result::Err(e) = gtk::show_uri_on_window(None::<&gtk::Window>, &url, 0) {
+                if let Result::Err(e) = gtk::show_uri_on_window(None::<&gtk::Window>, url, 0) {
                     eprintln!("Error opening link: {}", e);
                 }
             }
@@ -1121,7 +1121,7 @@ impl Widget for SearchView {
                     .db_sender
                     .send(SqlFunc::new(move |sql_conn| {
                         s.send(run_search_filter(
-                            &sql_conn,
+                            sql_conn,
                             search_item_types,
                             &f,
                             &project_pattern,

@@ -72,7 +72,7 @@ impl Widget for FileContentsButton {
                     .build();
                 let filter = gtk::FileFilter::new();
                 if let Some(ext) = self.model.file_extension.as_ref() {
-                    filter.add_pattern(&ext);
+                    filter.add_pattern(ext);
                 } else {
                     filter.add_pattern("*.*");
                 }
@@ -168,7 +168,7 @@ impl Widget for FileContentsButton {
                 corrected_fname.push_str(&ext[1..]);
             }
             let mut file = File::create(folder.join(corrected_fname))?;
-            file.write_all(&data)
+            file.write_all(data)
         } else {
             Ok(())
         }

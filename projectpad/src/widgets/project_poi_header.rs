@@ -711,7 +711,7 @@ impl Widget for ProjectPoiHeader {
 
         standard_dialogs::prepare_custom_dialog_component_ref(&dialog, &dialog_contents);
 
-        relm::connect!(d_c@ProjectItemMoveDlgMsg::MoveApplied(ref p), self.model.relm, Msg::MoveApplied(p.clone()));
+        relm::connect!(d_c@ProjectItemMoveDlgMsg::MoveApplied(ref p), self.model.relm, Msg::MoveApplied(p.as_ref().clone()));
 
         self.model.project_item_move_dialog = Some((dialog_contents, dialog.clone()));
         dialog.connect_response(move |d, r| {

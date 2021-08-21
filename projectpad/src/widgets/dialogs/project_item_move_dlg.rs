@@ -22,7 +22,7 @@ pub enum Msg {
     GotProjectList(Result<Vec<Project>, String>),
     EnvironmentSelected(EnvironmentType),
     MoveActionTriggered,
-    MoveApplied(Result<(Project, ProjectItem, ProjectUpdated), String>),
+    MoveApplied(Box<Result<(Project, ProjectItem, ProjectUpdated), String>>),
 }
 
 pub struct Model {
@@ -53,7 +53,7 @@ impl Widget for ProjectItemMoveDialog {
         let (cur_project_id, environment) = Self::get_project_env(&project_item);
         let stream1 = relm.stream().clone();
         let (_move_applied_channel, move_applied_sender) =
-            relm::Channel::new(move |r| stream1.emit(Msg::MoveApplied(r)));
+            relm::Channel::new(move |r| stream1.emit(Msg::MoveApplied(Box::new(r))));
         let stream2 = relm.stream().clone();
         let (_projectlist_channel, projectlist_sender) =
             relm::Channel::new(move |r| stream2.emit(Msg::GotProjectList(r)));

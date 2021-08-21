@@ -290,13 +290,10 @@ impl Widget for NoteEdit {
             let lines: Vec<_> = selected_text.lines().collect();
             let next_selection: String = if lines.iter().all(|l| l.starts_with("> ")) {
                 // remove the blockquote
-                lines.iter().map(|l| &l[2..]).intersperse("\n").collect()
+                Itertools::intersperse(lines.iter().map(|l| &l[2..]), "\n").collect()
             } else {
                 // add the blockquote
-                lines
-                    .iter()
-                    .map(|l| format!("> {}", l))
-                    .intersperse("\n".to_string())
+                Itertools::intersperse(lines.iter().map(|l| format!("> {}", l)), "\n".to_string())
                     .collect()
             };
             buf.delete(&mut start_iter, &mut iter);

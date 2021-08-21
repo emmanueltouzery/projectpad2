@@ -421,13 +421,12 @@ impl Widget for NoteEdit {
             iter.set_offset(start_offset);
             buf.insert(&mut iter, before);
             iter.set_offset(start_offset);
+            iter.set_offset(start_offset + before_len);
             if start_offset < end_offset {
                 // restore the selection
-                iter.set_offset(start_offset + before_len);
                 let iter_end = buf.get_iter_at_offset(end_offset + before_len);
                 buf.select_range(&iter, &iter_end);
             } else {
-                iter.set_offset(start_offset + before_len);
                 buf.place_cursor(&iter);
             }
         }

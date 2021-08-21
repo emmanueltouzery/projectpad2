@@ -1,6 +1,6 @@
 // bits lifted from the skim project
 use crate::database::ActionType;
-use crate::database::{ExecutedAction, LinkedItem};
+use crate::database::{ExecutedAction, LinkedItemId};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, ErrorKind};
@@ -88,14 +88,14 @@ fn parse_action_history_line(line: &str) -> Result<ExecutedAction, std::io::Erro
         elts.get(2).and_then(|a| ActionType::from_str(a).ok()),
     ) {
         (3, Some(&"S"), Some(id), Some(action_desc)) => {
-            Ok(ExecutedAction::new(LinkedItem::ServerId(id), action_desc))
+            Ok(ExecutedAction::new(LinkedItemId::Server(id), action_desc))
         }
         (3, Some(&"P"), Some(id), Some(action_desc)) => Ok(ExecutedAction::new(
-            LinkedItem::ProjectPoiId(id),
+            LinkedItemId::ProjectPoi(id),
             action_desc,
         )),
         (3, Some(&"SP"), Some(id), Some(action_desc)) => Ok(ExecutedAction::new(
-            LinkedItem::ServerPoiId(id),
+            LinkedItemId::ServerPoi(id),
             action_desc,
         )),
         _ => Err(std::io::Error::new(
@@ -108,15 +108,15 @@ fn parse_action_history_line(line: &str) -> Result<ExecutedAction, std::io::Erro
 fn serialize_action_history_line(action: &ExecutedAction) -> String {
     match action {
         ExecutedAction {
-            item: LinkedItem::ServerId(id),
+            item: LinkedItemId::Server(id),
             action_desc,
         } => format!("S;{};{}", id, action_desc),
         ExecutedAction {
-            item: LinkedItem::ProjectPoiId(id),
+            item: LinkedItemId::ProjectPoi(id),
             action_desc,
         } => format!("P;{};{}", id, action_desc),
         ExecutedAction {
-            item: LinkedItem::ServerPoiId(id),
+            item: LinkedItemId::ServerPoi(id),
             action_desc,
         } => format!("SP;{};{}", id, action_desc),
     }

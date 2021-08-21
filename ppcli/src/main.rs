@@ -451,9 +451,9 @@ fn remove_ansi_escapes_prd() {
 
 #[test]
 fn get_ranked_items_should_work() {
-    let action1 = ExecutedAction::new(LinkedItem::ServerId(6), ActionType::SshShell);
-    let action2 = ExecutedAction::new(LinkedItem::ServerPoiId(2), ActionType::FetchCfg);
-    let action3 = ExecutedAction::new(LinkedItem::ServerId(3), ActionType::SshShell);
+    let action1 = ExecutedAction::new(LinkedItemId::Server(6), ActionType::SshShell);
+    let action2 = ExecutedAction::new(LinkedItemId::ServerPoi(2), ActionType::FetchCfg);
+    let action3 = ExecutedAction::new(LinkedItemId::Server(3), ActionType::SshShell);
     assert_eq!(
         vec![(action1, (3, 4)), (action3, (2, 5)), (action2, (1, 1))]
             .into_iter()

@@ -1,5 +1,5 @@
 use crate::database::ActionType;
-use crate::database::{ItemOfInterest, ItemType, LinkedItem};
+use crate::database::{ItemOfInterest, ItemType, LinkedItemId};
 use projectpadsql::models::{InterestType, RunOn, ServerAccessType};
 use std::borrow::Cow;
 
@@ -231,7 +231,7 @@ pub fn get_value(item: ItemOfInterest) -> Vec<Action> {
                 item,
             }]
         }
-        i if matches!(i.linked_item, LinkedItem::ServerId(_)) && is_ssh_access(i) => {
+        i if matches!(i.linked_item, LinkedItemId::Server(_)) && is_ssh_access(i) => {
             vec![Action::new(
                 ActionType::SshShell,
                 get_value_server_ssh,

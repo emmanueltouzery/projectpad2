@@ -310,8 +310,7 @@ impl Widget for ProjectItemMoveDialog {
             self.widgets.project_list.remove(&child);
         }
         let mut selected_idx = 0;
-        let mut idx = 0;
-        for project in &self.model.displayed_projects {
+        for (idx, project) in self.model.displayed_projects.iter().enumerate() {
             self.widgets.project_list.add(
                 &gtk::LabelBuilder::new()
                     .label(&project.name)
@@ -322,12 +321,11 @@ impl Widget for ProjectItemMoveDialog {
             if project.id == self.model.cur_project_id {
                 selected_idx = idx;
             }
-            idx += 1;
         }
         self.widgets.project_list.select_row(
             self.widgets
                 .project_list
-                .get_row_at_index(selected_idx)
+                .get_row_at_index(selected_idx as i32)
                 .as_ref(),
         );
         self.widgets.project_list.show_all();

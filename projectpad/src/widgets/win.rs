@@ -428,7 +428,6 @@ impl Widget for Win {
             Msg::KeyRelease(e) => {
                 if self.is_search_mode() {
                     self.streams.search_view.emit(SearchViewMsg::KeyRelease(e));
-                    return;
                 }
             }
             Msg::ProjectItemUpdated(ref project_item) => {

@@ -30,15 +30,15 @@ pub struct PoiInfo {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, PartialOrd, Ord, Hash, Debug)]
-pub enum LinkedItem {
-    ServerId(i32),
-    ServerPoiId(i32),
-    ProjectPoiId(i32),
+pub enum LinkedItemId {
+    Server(i32),
+    ServerPoi(i32),
+    ProjectPoi(i32),
 }
 
 #[derive(Debug, Clone)]
 pub struct ItemOfInterest {
-    pub linked_item: LinkedItem,
+    pub linked_item: LinkedItemId,
     pub project_name: String,
     pub env: Option<EnvironmentType>,
     pub item_type: ItemType,
@@ -83,7 +83,7 @@ fn filter_servers(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                 server_access_type,
             )| {
                 ItemOfInterest {
-                    linked_item: LinkedItem::ServerId(id),
+                    linked_item: LinkedItemId::Server(id),
                     project_name,
                     env: Some(srv_env),
                     item_type: ItemType::ServerItemType(server_type),
@@ -122,7 +122,7 @@ fn filter_project_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
         .map(
             |(id, project_name, prj_poi_desc, item_text, prj_poi_interest_type, prj_path)| {
                 ItemOfInterest {
-                    linked_item: LinkedItem::ProjectPoiId(id),
+                    linked_item: LinkedItemId::ProjectPoi(id),
                     project_name,
                     env: None,
                     item_type: ItemType::InterestItemType(prj_poi_interest_type),
@@ -182,7 +182,7 @@ fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
                 run_on_val,
             )| {
                 ItemOfInterest {
-                    linked_item: LinkedItem::ServerPoiId(id),
+                    linked_item: LinkedItemId::ServerPoi(id),
                     project_name,
                     env: Some(srv_env),
                     item_type: ItemType::InterestItemType(srv_poi_interest_type),
@@ -230,12 +230,12 @@ pub enum ActionType {
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Debug)]
 pub struct ExecutedAction {
-    pub item: LinkedItem,
+    pub item: LinkedItemId,
     pub action_desc: ActionType,
 }
 
 impl ExecutedAction {
-    pub fn new(item: LinkedItem, action_desc: ActionType) -> ExecutedAction {
+    pub fn new(item: LinkedItemId, action_desc: ActionType) -> ExecutedAction {
         ExecutedAction { item, action_desc }
     }
 }

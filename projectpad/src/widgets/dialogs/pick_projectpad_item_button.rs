@@ -229,10 +229,8 @@ impl Widget for PickProjectpadItemButton {
         dialog.connect_response(move |d, r| {
             if r == gtk::ResponseType::Ok {
                 comp3.stream().emit(search_view::Msg::RequestSelectedItem);
-                d.close();
-            } else {
-                d.close();
             }
+            d.close();
         });
 
         dialog.show();

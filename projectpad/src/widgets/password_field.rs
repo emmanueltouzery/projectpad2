@@ -63,8 +63,8 @@ impl Widget for PasswordField {
         relm::connect!(
             self.model.relm,
             popover_reveal_btn,
-            connect_clicked(ref btn),
-            Msg::RevealPassword((*btn).clone())
+            connect_clicked(btn),
+            Msg::RevealPassword(btn.clone())
         );
         popover_vbox.add(&popover_reveal_btn);
         let popover_copy_btn = gtk::ModelButtonBuilder::new().label("Copy").build();

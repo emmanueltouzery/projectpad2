@@ -717,10 +717,8 @@ impl Widget for ProjectPoiHeader {
         dialog.connect_response(move |d, r| {
             if r == gtk::ResponseType::Ok {
                 d_c.emit(ProjectItemMoveDlgMsg::MoveActionTriggered);
-                d.close();
-            } else {
-                d.close();
             }
+            d.close();
         });
         dialog.show();
     }

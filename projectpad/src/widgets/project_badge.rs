@@ -157,7 +157,7 @@ impl Widget for ProjectBadge {
             );
             context.stroke();
         } else {
-            context.set_line_width(1.0 * output_scale as f64);
+            context.set_line_width(2.0 * output_scale as f64);
         }
         context.arc(
             (allocation_width / 2).into(),

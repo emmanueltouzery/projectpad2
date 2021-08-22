@@ -20,6 +20,7 @@ pub enum Msg {
     MouseEnterProject(i32),
     MouseLeaveProject(i32),
     DarkThemeToggled,
+    ScaleFactorChange,
 }
 
 pub struct Model {
@@ -67,8 +68,11 @@ impl Widget for ProjectBadge {
                 )));
                 buf.borrow()
             };
-            // paint the backing buffer
-            context.set_source_surface(surface_ref.as_ref().unwrap(), 0.0, 0.0);
+            // paint the backing buffer -
+            let s = surface_ref.as_ref().unwrap();
+            let output_scale = da.get_scale_factor();
+            s.set_device_scale(output_scale as f64, output_scale as f64);
+            context.set_source_surface(s, 0.0, 0.0);
             context.paint();
             Inhibit(false)
         });
@@ -90,9 +94,12 @@ impl Widget for ProjectBadge {
         is_active: bool,
         icon: &Option<Vec<u8>>,
         name: &str,
-        allocation_width: i32,
-        allocation_height: i32,
+        allocation_width_: i32,
+        allocation_height_: i32,
     ) -> cairo::ImageSurface {
+        let output_scale = drawing_area.get_scale_factor();
+        let allocation_width = allocation_width_ * output_scale;
+        let allocation_height = allocation_height_ * output_scale;
         let buf =
             cairo::ImageSurface::create(cairo::Format::ARgb32, allocation_width, allocation_height)
                 .expect("cairo backing buffer");
@@ -141,16 +148,17 @@ impl Widget for ProjectBadge {
         let fg_color = style_context.lookup_color("theme_fg_color").unwrap();
         context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
         if is_active {
-            context.set_line_width(6.0);
+            context.set_line_width(6.0 * output_scale as f64);
             context.set_line_cap(cairo::LineCap::Round);
-            context.move_to(10.0, allocation_height as f64 - 5.0);
+            context.move_to(10.0, allocation_height as f64 - 5.0 * output_scale as f64);
             context.line_to(
-                allocation_width as f64 - 10.0,
-                allocation_height as f64 - 5.0,
+                allocation_width as f64 - 10.0 * output_scale as f64,
+                allocation_height as f64 - 5.0 * output_scale as f64,
             );
             context.stroke();
+        } else {
+            context.set_line_width(1.0 * output_scale as f64);
         }
-
         context.arc(
             (allocation_width / 2).into(),
             (allocation_width / 2).into(),
@@ -254,7 +262,7 @@ impl Widget for ProjectBadge {
                     .stream()
                     .emit(Msg::MouseLeaveProject(self.model.project.id));
             }
-            Msg::DarkThemeToggled => {
+            Msg::DarkThemeToggled | Msg::ScaleFactorChange => {
                 // force a recompute of the display
                 self.model.backing_buffer.replace(None);
                 self.widgets.drawing_area.queue_draw();
@@ -270,6 +278,7 @@ impl Widget for ProjectBadge {
             button_press_event(_, _) => (Msg::Click, Inhibit(false)),
             enter_notify_event(_, _) => (Msg::MouseEnter, Inhibit(false)),
             leave_notify_event(_, _) => (Msg::MouseLeave, Inhibit(false)),
+            property_scale_factor_notify => Msg::ScaleFactorChange,
         }
     }
 }

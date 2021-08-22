@@ -17,7 +17,6 @@ relm = { git = "https://github.com/antoyo/relm", rev = "1e4dee58f2536857420756b5
 relm-derive = { git = "https://github.com/antoyo/relm", rev = "1e4dee58f2536857420756b533f0673e60beffa7" }
 glib = "0.10.3"
 gio = "0.9.1"
-cairo-rs = { version = "0.9.1", features = ["png"] }
 gdk = "0.13.2"
 projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "1.4.7", features = ["sqlite"] }
@@ -36,6 +35,10 @@ dirs = "3.0.1"
 keyring = "0.10.1"
 serde_yaml = "0.8.17"
 regex = "1.4.3"
+
+[dependencies.cairo-rs]
+version = "0.9.1"
+features = ["png", "v1_14"]
 
 [dependencies.gtk]
 version = "0.9.2"

@@ -313,6 +313,7 @@ fn draw_server_item_common(
     }
     draw_icon(
         &drawing_context.style_context,
+        drawing_context.search_result_area.get_scale_factor(),
         &drawing_context.context,
         icon,
         x + padding.left as f64,
@@ -806,6 +807,7 @@ fn draw_action(
     style_context.remove_class("search_result_action_btn");
     draw_icon(
         style_context,
+        drawing_context.search_result_area.get_scale_factor(),
         context,
         icon,
         x + padding.left as f64,
@@ -819,6 +821,7 @@ fn draw_action(
 
 fn draw_icon(
     style_context: &gtk::StyleContext,
+    output_scale: i32,
     context: &cairo::Context,
     icon: &Icon,
     x: f64,
@@ -834,16 +837,19 @@ fn draw_icon(
         .expect("get icon theme")
         .load_icon(
             icon.name(),
-            ACTION_ICON_SIZE,
+            ACTION_ICON_SIZE * output_scale,
             gtk::IconLookupFlags::FORCE_SYMBOLIC,
         )
         .expect("load icon1")
         .expect("load icon2");
 
     // 2. create a cairo surface, paint the pixbuf on it...
-    let surf =
-        cairo::ImageSurface::create(cairo::Format::ARgb32, ACTION_ICON_SIZE, ACTION_ICON_SIZE)
-            .expect("ImageSurface");
+    let surf = cairo::ImageSurface::create(
+        cairo::Format::ARgb32,
+        ACTION_ICON_SIZE * output_scale,
+        ACTION_ICON_SIZE * output_scale,
+    )
+    .expect("ImageSurface");
     let surf_context = cairo::Context::new(&surf);
     surf_context.set_source_pixbuf(&pixbuf, 0.0, 0.0);
     surf_context.paint();
@@ -856,6 +862,7 @@ fn draw_icon(
         fore_color.blue,
         fore_color.alpha,
     );
+    surf.set_device_scale(output_scale as f64, output_scale as f64);
 
     // 4. use the surface we created with the icon as a mask
     // (the alpha channel of the surface is mixed with the context

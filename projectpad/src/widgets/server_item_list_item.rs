@@ -129,6 +129,13 @@ fn get_website_grid_items(
                 .unwrap_or_else(|| "".to_string()),
             None,
         ),
+        GridItem::new(
+            "Text",
+            None,
+            LabelText::PlainText(website.text.clone()),
+            website.text.clone(),
+            None,
+        ),
     ]
 }
 
@@ -144,6 +151,13 @@ fn get_poi_grid_items(poi: &ServerPointOfInterest) -> Vec<GridItem> {
         ),
         GridItem::new(
             poi_get_text_label(poi.interest_type),
+            None,
+            LabelText::PlainText(poi.text.clone()),
+            poi.text.clone(),
+            None,
+        ),
+        GridItem::new(
+            "Text",
             None,
             LabelText::PlainText(poi.text.clone()),
             poi.text.clone(),

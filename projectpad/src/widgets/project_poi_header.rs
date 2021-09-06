@@ -271,6 +271,13 @@ pub fn get_project_item_fields(
                 Some((gdk::keys::constants::Y, gdk::ModifierType::CONTROL_MASK))
                     .filter(|_| !is_search_view),
             ),
+            GridItem::new(
+                "Text",
+                None,
+                LabelText::PlainText(srv.text.clone()),
+                srv.text.clone(),
+                None,
+            ),
         ],
         ProjectItem::ServerLink(_link) if server_link_target.is_some() => {
             let link_target = server_link_target.as_ref().unwrap();

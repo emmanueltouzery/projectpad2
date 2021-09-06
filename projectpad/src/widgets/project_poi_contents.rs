@@ -27,6 +27,8 @@ pub enum Msg {
     ServerNoteBack,
     TextViewMoveCursor(f64, f64),
     TextViewEventAfter(gdk::Event),
+    TextViewButtonPressEvent(gdk::EventButton),
+    TextViewPopulatePopup(gtk::Widget),
     RequestDisplayServerItem(ServerItem),
     NoteSearchChange(String),
     NoteSearchPrevious,
@@ -37,6 +39,8 @@ pub enum Msg {
     KeyboardEscape,
     ShowInfoBar(String),
     ScrollToServerItem(ServerItem),
+    NoteScroll,
+    NoteCopyCode,
     OpenSingleWebsiteLink,
 }
 
@@ -52,6 +56,9 @@ pub struct Model {
     text_cursor: Option<gdk::Cursor>,
     search_bar: relm::Component<SearchBar>,
     note_search_text: Option<String>,
+    click_pos: Option<(f64, f64)>,
+    copy_btn: gtk::Button,
+    copy_btn_iter_offset: Option<i32>,
 }
 
 const CHILD_NAME_SERVER: &str = "server";
@@ -80,9 +87,38 @@ impl Widget for ProjectPoiContents {
         self.widgets
             .note_search_overlay
             .add_overlay(search_bar_widget);
+        self.widgets
+            .note_search_overlay
+            .add_overlay(&self.model.copy_btn);
+        let note_vadj = self.widgets.note_scroll.get_vadjustment().unwrap();
+        relm::connect!(
+            self.model.relm,
+            note_vadj,
+            connect_value_changed(_),
+            Msg::NoteScroll
+        );
+        relm::connect!(
+            self.model.relm,
+            self.model.copy_btn,
+            connect_clicked(_),
+            Msg::NoteCopyCode
+        );
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
+        let copy_btn = gtk::ButtonBuilder::new()
+            .label("Copy code block")
+            .always_show_image(true)
+            .image(&gtk::Image::from_icon_name(
+                Some("edit-copy-symbolic"),
+                gtk::IconSize::Menu,
+            ))
+            .hexpand(false)
+            .vexpand(false)
+            .halign(gtk::Align::Start)
+            .valign(gtk::Align::Start)
+            .opacity(0.6)
+            .build();
         Model {
             relm: relm.clone(),
             db_sender,
@@ -95,6 +131,9 @@ impl Widget for ProjectPoiContents {
             text_cursor: None,
             search_bar: relm::init::<SearchBar>(()).expect("searchbar init"),
             note_search_text: None,
+            click_pos: None,
+            copy_btn,
+            copy_btn_iter_offset: None,
         }
     }
 
@@ -153,20 +192,7 @@ impl Widget for ProjectPoiContents {
                     .set_visible_child_name(CHILD_NAME_SERVER);
             }
             Msg::TextViewMoveCursor(x, y) => {
-                let (bx, by) = self.widgets.note_textview.window_to_buffer_coords(
-                    gtk::TextWindowType::Widget,
-                    x as i32,
-                    y as i32,
-                );
-                if let Some(iter) = self.widgets.note_textview.get_iter_at_location(bx, by) {
-                    if Self::iter_is_link_or_password(&iter) {
-                        self.text_note_set_cursor(&self.model.hand_cursor);
-                    } else {
-                        self.text_note_set_cursor(&self.model.text_cursor);
-                    }
-                } else {
-                    self.text_note_set_cursor(&self.model.text_cursor);
-                }
+                self.textview_move_cursor(x, y);
             }
             Msg::TextViewEventAfter(evt) => {
                 if let Some(iter) = self.text_note_event_get_position_if_click_or_tap(&evt) {
@@ -197,12 +223,38 @@ impl Widget for ProjectPoiContents {
                     }
                 }
             }
+            Msg::TextViewButtonPressEvent(event) => {
+                self.model.click_pos = Some(event.get_position());
+            }
+            Msg::TextViewPopulatePopup(widget) => {
+                self.textview_populate_popup(widget);
+            }
             Msg::ScrollToServerItem(si) => {
                 self.streams
                     .server_contents
                     .emit(ServerPoiContentsMsg::ScrollTo(
                         server_poi_contents::ScrollTarget::ServerItem(si),
                     ));
+            }
+            Msg::NoteScroll => {
+                self.model.copy_btn.hide();
+            }
+            Msg::NoteCopyCode => {
+                if let Some(offset) = self.model.copy_btn_iter_offset {
+                    let buffer = self.widgets.note_textview.get_buffer().unwrap();
+                    let start = buffer.get_iter_at_offset(offset);
+                    let tag_table = buffer.get_tag_table().unwrap();
+                    let tag_code = tag_table.lookup(crate::notes::TAG_CODE).unwrap();
+                    let mut end = buffer.get_iter_at_offset(offset);
+                    end.forward_to_tag_toggle(Some(&tag_code));
+                    if let Some(txt) = buffer.get_text(&start, &end, false) {
+                        Self::copy_to_clipboard(
+                            &self.model.relm,
+                            &self.widgets.note_textview,
+                            &txt,
+                        );
+                    }
+                }
             }
             Msg::KeyboardCtrlF => {
                 if self.is_displaying_note() {
@@ -260,6 +312,110 @@ impl Widget for ProjectPoiContents {
         }
     }
 
+    fn textview_move_cursor(&mut self, x: f64, y: f64) {
+        let (bx, by) = self.widgets.note_textview.window_to_buffer_coords(
+            gtk::TextWindowType::Widget,
+            x as i32,
+            y as i32,
+        );
+        if let Some(iter) = self.widgets.note_textview.get_iter_at_location(bx, by) {
+            if Self::iter_is_link_or_password(&iter) {
+                self.text_note_set_cursor(&self.model.hand_cursor);
+            } else if let Some(iter) = self.widgets.note_textview.get_iter_at_location(bx, by) {
+                let is_code = Self::iter_matches_tags(&iter, &[crate::notes::TAG_CODE]);
+                if is_code {
+                    self.textview_move_cursor_over_code(iter);
+                }
+            } else {
+                self.text_note_set_cursor(&self.model.text_cursor);
+            }
+        } else {
+            self.text_note_set_cursor(&self.model.text_cursor);
+        }
+    }
+
+    fn textview_move_cursor_over_code(&mut self, iter: gtk::TextIter) {
+        let buffer = self.widgets.note_textview.get_buffer().unwrap();
+        let offset = iter.get_offset();
+        let tag_table = buffer.get_tag_table().unwrap();
+        let tag_code = tag_table.lookup(crate::notes::TAG_CODE).unwrap();
+        let mut start = buffer.get_iter_at_offset(offset);
+        start.backward_to_tag_toggle(Some(&tag_code));
+        let mut end = buffer.get_iter_at_offset(offset);
+        end.forward_to_tag_toggle(Some(&tag_code));
+        if end.get_offset() - start.get_offset() < 40 {
+            // we are only interested in larger text blocks
+            self.model.copy_btn.hide();
+            return;
+        }
+        let location = self.widgets.note_textview.get_iter_location(&start);
+        let (_x, orig_y) = self.widgets.note_textview.buffer_to_window_coords(
+            gtk::TextWindowType::Text,
+            location.x,
+            location.y,
+        );
+
+        // the button will be positioned more on the right of the textview
+        let btn_x = self.widgets.note_textview.get_allocation().width
+            - self.model.copy_btn.get_allocation().width
+            - 10;
+
+        // does the location where i would put the button contain code?
+        let does_btn_location_covers_code = self
+            .widgets
+            .note_textview
+            .get_iter_at_location(btn_x, location.y)
+            .filter(|btn_iter| Self::iter_matches_tags(btn_iter, &[crate::notes::TAG_CODE]))
+            .is_some();
+        let y = if does_btn_location_covers_code {
+            // yes => move the button to be a little higher
+            orig_y - self.model.copy_btn.get_allocation().height
+        } else {
+            orig_y
+        };
+        if y > 0 {
+            self.model.copy_btn_iter_offset = Some(start.get_offset());
+            self.model.copy_btn.set_margin_top(y);
+            self.model.copy_btn.set_margin_start(btn_x);
+            self.model.copy_btn.show_all();
+        }
+    }
+
+    fn textview_populate_popup(&mut self, widget: gtk::Widget) {
+        if let Ok(menu) = widget.downcast::<gtk::Menu>() {
+            if let Some((x, y)) = self.model.click_pos {
+                let (bx, by) = self.widgets.note_textview.window_to_buffer_coords(
+                    gtk::TextWindowType::Widget,
+                    x as i32,
+                    y as i32,
+                );
+                if let Some(iter) = self.widgets.note_textview.get_iter_at_location(bx, by) {
+                    let is_code = Self::iter_matches_tags(&iter, &[crate::notes::TAG_CODE]);
+                    if is_code {
+                        let copy_btn = gtk::MenuItemBuilder::new().label("Copy code block").build();
+                        let textview = self.widgets.note_textview.clone();
+                        let relm = self.model.relm.clone();
+                        let buffer = self.widgets.note_textview.get_buffer().unwrap();
+                        let tag_table = buffer.get_tag_table().unwrap();
+                        let tag_code = tag_table.lookup(crate::notes::TAG_CODE).unwrap();
+                        copy_btn.connect_activate(move |_| {
+                            let offset = iter.get_offset();
+                            let mut start = buffer.get_iter_at_offset(offset);
+                            start.backward_to_tag_toggle(Some(&tag_code));
+                            let mut end = buffer.get_iter_at_offset(offset);
+                            end.forward_to_tag_toggle(Some(&tag_code));
+                            if let Some(txt) = buffer.get_text(&start, &end, false) {
+                                Self::copy_to_clipboard(&relm, &textview, &txt);
+                            }
+                        });
+                        copy_btn.show_all();
+                        menu.add(&copy_btn);
+                    }
+                }
+            }
+        }
+    }
+
     // inspired by the gtk3-demo TextView/Hypertext code
     fn text_note_event_get_position_if_click_or_tap(
         &self,
@@ -291,11 +447,14 @@ impl Widget for ProjectPoiContents {
     }
 
     fn iter_is_link_or_password(iter: &gtk::TextIter) -> bool {
+        Self::iter_matches_tags(iter, &[crate::notes::TAG_LINK, crate::notes::TAG_PASSWORD])
+    }
+
+    fn iter_matches_tags(iter: &gtk::TextIter, tags: &[&str]) -> bool {
         iter.get_tags().iter().any(|t| {
             if let Some(prop_name) = t.get_property_name() {
                 let prop_name_str = prop_name.as_str();
-                prop_name_str == crate::notes::TAG_LINK
-                    || prop_name_str == crate::notes::TAG_PASSWORD
+                tags.contains(&prop_name_str)
             } else {
                 false
             }
@@ -372,11 +531,7 @@ impl Widget for ProjectPoiContents {
         let p = password.to_string();
         let r = self.model.relm.clone();
         popover_copy_btn.connect_clicked(move |_| {
-            if let Some(clip) = gtk::Clipboard::get_default(&textview.get_display()) {
-                clip.set_text(&p);
-                r.stream()
-                    .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
-            }
+            Self::copy_to_clipboard(&r, &textview, &p);
         });
         left_align_menu(&popover_copy_btn);
         popover_vbox.add(&popover_copy_btn);
@@ -398,6 +553,14 @@ impl Widget for ProjectPoiContents {
         // then 'reveal'
         // reveal presumably shows & hides a gtk infobar
         // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
+    }
+
+    fn copy_to_clipboard(relm: &relm::Relm<Self>, textview: &gtk::TextView, text: &str) {
+        if let Some(clip) = gtk::Clipboard::get_default(&textview.get_display()) {
+            clip.set_text(text);
+            relm.stream()
+                .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
+        }
     }
 
     view! {
@@ -447,7 +610,9 @@ impl Widget for ProjectPoiContents {
                                 left_margin: 5,
                                 right_margin: 5,
                                 motion_notify_event(_, event) => (Msg::TextViewMoveCursor(event.get_position().0, event.get_position().1), Inhibit(false)),
-                                event_after(_, event) => Msg::TextViewEventAfter(event.clone())
+                                event_after(_, event) => Msg::TextViewEventAfter(event.clone()),
+                                button_press_event(_, event) => (Msg::TextViewButtonPressEvent(event.clone()), Inhibit(false)),
+                                populate_popup(_, menu) => Msg::TextViewPopulatePopup(menu.clone()),
                             }
                         }
                     },

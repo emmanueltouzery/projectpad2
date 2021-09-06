@@ -72,7 +72,7 @@ const TAG_STRIKETHROUGH: &str = "strikethrough";
 const TAG_HEADER1: &str = "header1";
 const TAG_HEADER2: &str = "header2";
 const TAG_HEADER3: &str = "header3";
-const TAG_CODE: &str = "code";
+pub const TAG_CODE: &str = "code";
 pub const TAG_LINK: &str = "link";
 pub const TAG_PASSWORD: &str = "password";
 const TAG_LIST_ITEM: &str = "list_item";
@@ -241,7 +241,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
     let mut list_cur_idx = None;
     let mut in_item = false; // paragraphs inside bullets don't look nice
     let mut active_tags = HashMap::new();
-    let mut separator_anchors = Vec::new();
+    let mut separator_anchors = vec![];
 
     let buffer = gtk::TextBuffer::new(Some(table));
     let mut end_iter = buffer.get_end_iter();

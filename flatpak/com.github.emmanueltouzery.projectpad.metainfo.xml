@@ -39,6 +39,21 @@ https://hughsie.github.io/oars/index.html
 -->
   <content_rating type="oars-1.0" />
   <releases>
+    <release version="2.3.0" date="2021-09-10">
+      <description>
+        <ul>
+          <li>Upgrade dependencies, mostly relm 0.21, gtksourceview 3->4</li>
+          <li>Code cleanups</li>
+          <li>When a server item group changes, must refresh the whole list</li>
+          <li>Server link: display details about the server we link to in the header</li>
+          <li>Fix bugs: "Copy Database" used to copy the username, copy POI path used to copy the text</li>
+          <li>Ability to move project items: servers, server links, project notes, project point of interests can now be moved from one project/environment to another one. Server links to the moved item will continue working.</li>
+          <li>Fix hidpi issues with icons in projects and search</li>
+          <li>Notes: on hover a button will appear on top of note code blocks to offer to copy their contents to the clipboard, and a new context menu entry will offer to copy code blocks too</li>
+          <li>Headers: server 'text', server item 'text' are now displayed inline in headers if they're populated</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.2.2" date="2021-02-11">
       <description>
         <ul>

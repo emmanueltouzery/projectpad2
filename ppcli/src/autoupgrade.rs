@@ -38,8 +38,18 @@ pub fn apply_upgrade(download_url: &str) -> UResult<()> {
 }
 
 fn ppcli_path() -> UResult<String> {
-    let path = env::args().next().ok_or("can't get the current app path")?;
-    let full_path = std::fs::canonicalize(&path)?;
+    // https://stackoverflow.com/a/4025426/516188 linuxism...
+    let full_path = match std::fs::read_link("/proc/self/exe") {
+        Ok(p) => Ok(p),
+        Err(_) => {
+            // presumably, not linux... get argv[0] and assume it's the
+            // path of the executable.
+            let path = env::args().next().ok_or("can't get the current app path")?;
+            // TODO the user did not necessarily launch through the full path
+            // should go through 'which' if path doesn't exist on disk.
+            std::fs::canonicalize(&path)
+        }
+    }?;
     let parent = full_path
         .parent()
         .ok_or("can't get the parent folder of the ppcli install")?;

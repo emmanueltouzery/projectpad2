@@ -1,6 +1,6 @@
 use crate::database::ExecutedAction;
 #[cfg(test)]
-use crate::database::{ActionType, LinkedItem};
+use crate::database::{ActionType, LinkedItemId};
 use database::DisplayMode;
 use diesel::prelude::*;
 use regex::Regex;

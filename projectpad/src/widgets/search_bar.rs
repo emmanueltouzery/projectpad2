@@ -118,7 +118,7 @@ impl Widget for SearchBar {
                 vexpand: false,
                 margin_end: 15,
                 // https://developer.gnome.org/Buttons/#Linked_buttons
-                #[style_context="linked"]
+                #[style_class="linked"]
                 gtk::Box {
                     #[name="search_entry"]
                     gtk::SearchEntry {

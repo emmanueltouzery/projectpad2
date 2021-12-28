@@ -466,13 +466,10 @@ impl Widget for ProjectSummary {
             200,
             "Add project item".to_string(),
         );
-        let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
-            dialog.clone(),
-            dialog_contents,
-            move |_ok_btn| {
+        let (dialog, component, ok_btn) =
+            standard_dialogs::prepare_custom_dialog(dialog, dialog_contents, move |_ok_btn| {
                 d_c.emit(project_add_item_dlg::Msg::OkPressed);
-            },
-        );
+            });
         component
             .stream()
             .emit(project_add_item_dlg::Msg::DialogSet(dialog.clone()));

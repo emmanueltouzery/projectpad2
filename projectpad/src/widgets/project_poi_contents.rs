@@ -462,6 +462,7 @@ impl Widget for ProjectPoiContents {
     }
 
     fn display_note(&mut self, note_contents: &str) {
+        self.model.copy_btn.hide();
         if let Some(hadj) = self.widgets.note_scroll.get_hadjustment() {
             hadj.set_value(0.0);
         }

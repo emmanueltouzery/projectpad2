@@ -138,7 +138,7 @@ impl Widget for ProjectAddItemDialog {
                     _ => {}
                 };
                 self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
-                self.widgets.tabs_stack.add_named(widget, "dialog");
+                self.widgets.tabs_stack.add_named(&widget, "dialog");
                 widget.show();
                 self.widgets.tabs_stack.set_visible_child_name("dialog");
             }

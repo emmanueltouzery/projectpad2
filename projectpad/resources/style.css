@@ -182,6 +182,14 @@
   padding-top: 10px;
 }
 
+.add_btn_title {
+  font-weight: bold;
+}
+
+.add_btn_subtitle {
+  color: gray;
+}
+
 label accelerator {
   color: gray;
 }

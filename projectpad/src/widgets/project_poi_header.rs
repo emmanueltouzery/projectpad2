@@ -52,7 +52,7 @@ pub enum Msg {
     DeleteCurrentProjectNote(ProjectNote),
     DeleteCurrentServerLink(ServerLink),
     ServerAddItemActionCompleted,
-    ServerAddItemChangeTitleTitle(&'static str),
+    ServerAddItemChangeTitleTitle(&'static str, gtk::Button),
     ProjectItemUpdated(Option<ProjectItem>),
     GotoItem(Project, ProjectItem),
     ShowInfoBar(String),
@@ -640,12 +640,13 @@ impl Widget for ProjectPoiHeader {
                     .stream()
                     .emit(Msg::ProjectItemUpdated(self.model.project_item.clone()));
             }
-            Msg::ServerAddItemChangeTitleTitle(title) => {
+            Msg::ServerAddItemChangeTitleTitle(title, btn) => {
                 self.model
                     .server_add_item_dialog
                     .as_ref()
                     .unwrap()
                     .set_title(title);
+                btn.set_visible(true);
             }
             Msg::CopyPassword => {
                 if let Some(ProjectItem::Server(srv)) = self.model.project_item.as_ref() {
@@ -785,16 +786,14 @@ impl Widget for ProjectPoiHeader {
         let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
             dialog.clone(),
             dialog_contents,
-            move |ok_btn| {
-                if ok_btn.get_label() == Some("Next".into()) {
-                    d_c.emit(server_add_item_dlg::Msg::ShowSecondTab(dialog.clone()));
-                    ok_btn.set_label("Done");
-                } else {
-                    d_c.emit(server_add_item_dlg::Msg::OkPressed);
-                }
+            move |_ok_btn| {
+                d_c.emit(server_add_item_dlg::Msg::OkPressed);
             },
         );
-        ok_btn.set_label("Next");
+        component
+            .stream()
+            .emit(server_add_item_dlg::Msg::DialogSet(dialog.clone()));
+        ok_btn.set_visible(false);
         relm::connect!(
             component@server_add_item_dlg::Msg::ActionCompleted(ref _si),
             self.model.relm,
@@ -803,7 +802,7 @@ impl Widget for ProjectPoiHeader {
         relm::connect!(
             component@server_add_item_dlg::Msg::ChangeDialogTitle(title),
             self.model.relm,
-            Msg::ServerAddItemChangeTitleTitle(title)
+            Msg::ServerAddItemChangeTitleTitle(title, ok_btn.clone())
         );
         self.model.server_add_item_dialog_component = Some(component);
         self.model.server_add_item_dialog = Some(dialog.clone());

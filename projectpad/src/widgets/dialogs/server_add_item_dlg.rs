@@ -15,8 +15,11 @@ use super::server_website_add_edit_dlg;
 use super::server_website_add_edit_dlg::Msg as MsgServerWebsiteAddEditDialog;
 use super::server_website_add_edit_dlg::ServerWebsiteAddEditDialog;
 use super::ServerAddEditDialogComponent;
+use crate::icons::*;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::server_poi_contents::ServerItem;
+use crate::widgets::title_subtitle_btn::Msg::Clicked;
+use crate::widgets::title_subtitle_btn::TitleSubtitleBtn;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -24,10 +27,15 @@ use std::sync::mpsc;
 
 #[derive(Msg, Debug)]
 pub enum Msg {
-    ShowSecondTab(gtk::Dialog),
+    DialogSet(gtk::Dialog),
     OkPressed,
     ActionCompleted(ServerItem),
     ChangeDialogTitle(&'static str),
+    AddServerPoi,
+    AddDatabase,
+    AddExtraUser,
+    AddWebsite,
+    AddNote,
 }
 
 pub struct Model {
@@ -35,6 +43,7 @@ pub struct Model {
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     dialog_component: Option<ServerAddEditDialogComponent>,
+    dialog: Option<gtk::Dialog>,
 }
 
 // i would really like to use a function not a macro here, but
@@ -61,23 +70,14 @@ macro_rules! plug_second_tab {
             .as_ref()
             .unwrap()
             .get_widget()
+            .clone()
+            .upcast::<gtk::Widget>()
     }};
     }
 
 #[widget]
 impl Widget for ServerAddItemDialog {
-    fn init_view(&mut self) {
-        self.widgets.add_db.join_group(Some(&self.widgets.add_poi));
-        self.widgets
-            .add_extra_user
-            .join_group(Some(&self.widgets.add_poi));
-        self.widgets
-            .add_website
-            .join_group(Some(&self.widgets.add_poi));
-        self.widgets
-            .add_note
-            .join_group(Some(&self.widgets.add_poi));
-    }
+    fn init_view(&mut self) {}
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, i32)) -> Model {
         let (db_sender, server_id) = params;
@@ -86,84 +86,90 @@ impl Widget for ServerAddItemDialog {
             db_sender,
             server_id,
             dialog_component: None,
+            dialog: None,
         }
+    }
+
+    fn move_to_second_tab(&mut self, widget: &gtk::Widget, title: &'static str) {
+        self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
+        self.widgets.tabs_stack.add_named(widget, "dialog");
+        widget.set_valign(gtk::Align::Center);
+        widget.show();
+        self.widgets.tabs_stack.set_visible_child_name("dialog");
+        // TODO ideally i'd like to shrink the dialog vertically as the new
+        // tab may be less tall than the previous one. But I didn't manage to
+        // achieve that.
     }
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::ShowSecondTab(ref dialog) => {
-                let (widget, title) = if self.widgets.add_poi.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.server_id,
-                            ServerPoiAddEditDialog,
-                            MsgServerPoiAddEditDialog::ServerPoiUpdated,
-                            ServerAddEditDialogComponent::Poi,
-                            ServerItem::PointOfInterest,
-                        ),
-                        "Add Server Point of Interest",
-                    )
-                } else if self.widgets.add_db.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.server_id,
-                            ServerDatabaseAddEditDialog,
-                            MsgServerDatabaseAddEditDialog::ServerDbUpdated,
-                            ServerAddEditDialogComponent::Db,
-                            ServerItem::Database,
-                        ),
-                        "Add server database",
-                    )
-                } else if self.widgets.add_extra_user.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.server_id,
-                            ServerExtraUserAddEditDialog,
-                            MsgServerExtraUserAddEditDialog::ServerUserUpdated,
-                            ServerAddEditDialogComponent::User,
-                            ServerItem::ExtraUserAccount,
-                        ),
-                        "Add server extra user",
-                    )
-                } else if self.widgets.add_website.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.server_id,
-                            ServerWebsiteAddEditDialog,
-                            MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
-                            ServerAddEditDialogComponent::Website,
-                            |w_db: Box<(_, _)>| { ServerItem::Website((*w_db).0) },
-                        ),
-                        "Add server website",
-                    )
-                } else if self.widgets.add_note.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.server_id,
-                            ServerNoteAddEditDialog,
-                            MsgServerNoteAddEditDialog::ServerNoteUpdated,
-                            ServerAddEditDialogComponent::Note,
-                            ServerItem::Note,
-                        ),
-                        "Add server note",
-                    )
-                } else {
-                    panic!();
-                };
-                self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
-                self.widgets.tabs_stack.add_named(widget, "dialog");
-                widget.show();
-                self.widgets.tabs_stack.set_visible_child_name("dialog");
+            Msg::DialogSet(d) => {
+                self.model.dialog = Some(d);
+            }
+            Msg::AddServerPoi => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.server_id,
+                    ServerPoiAddEditDialog,
+                    MsgServerPoiAddEditDialog::ServerPoiUpdated,
+                    ServerAddEditDialogComponent::Poi,
+                    ServerItem::PointOfInterest,
+                );
+                self.move_to_second_tab(&widget, "Add Server Point of Interest")
+            }
+            Msg::AddDatabase => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.server_id,
+                    ServerDatabaseAddEditDialog,
+                    MsgServerDatabaseAddEditDialog::ServerDbUpdated,
+                    ServerAddEditDialogComponent::Db,
+                    ServerItem::Database,
+                );
+                self.move_to_second_tab(&widget, "Add server database")
+            }
+            Msg::AddExtraUser => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.server_id,
+                    ServerExtraUserAddEditDialog,
+                    MsgServerExtraUserAddEditDialog::ServerUserUpdated,
+                    ServerAddEditDialogComponent::User,
+                    ServerItem::ExtraUserAccount,
+                );
+                self.move_to_second_tab(&widget, "Add server extra user")
+            }
+            Msg::AddWebsite => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.server_id,
+                    ServerWebsiteAddEditDialog,
+                    MsgServerWebsiteAddEditDialog::ServerWwwUpdated,
+                    ServerAddEditDialogComponent::Website,
+                    |w_db: Box<(_, _)>| { ServerItem::Website((*w_db).0) },
+                );
+                self.move_to_second_tab(&widget, "Add server website")
+            }
+            Msg::AddNote => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.server_id,
+                    ServerNoteAddEditDialog,
+                    MsgServerNoteAddEditDialog::ServerNoteUpdated,
+                    ServerAddEditDialogComponent::Note,
+                    ServerItem::Note,
+                );
+                self.move_to_second_tab(&widget, "Add server note")
             }
             Msg::OkPressed => match self.model.dialog_component.as_ref() {
                 Some(ServerAddEditDialogComponent::Poi(poi_c)) => {
@@ -200,25 +206,42 @@ impl Widget for ServerAddItemDialog {
                 margin_bottom: 15,
                 spacing: 10,
                 orientation: gtk::Orientation::Vertical,
-                #[name="add_poi"]
-                gtk::RadioButton {
-                    label: "Add point of interest",
+                TitleSubtitleBtn(
+                    Icon::POINT_OF_INTEREST,
+                    "Add point of interest",
+                    "a command to run or a relevant file or folder located on that server."
+                    ) {
+                    Clicked => Msg::AddServerPoi,
                 },
-                #[name="add_website"]
-                gtk::RadioButton {
-                    label: "Add website",
+                TitleSubtitleBtn(
+                    Icon::HTTP,
+                    "Add website",
+                    "a service (website or not) that's reachable over the network that lives \
+                                       on that server."
+                    ) {
+                    Clicked => Msg::AddWebsite,
                 },
-                #[name="add_db"]
-                gtk::RadioButton {
-                    label: "Add database",
+                TitleSubtitleBtn(
+                    Icon::DATABASE,
+                    "Add database",
+                    "a database that lives on that server."
+                    ) {
+                    Clicked => Msg::AddDatabase,
                 },
-                #[name="add_extra_user"]
-                gtk::RadioButton {
-                    label: "Add extra user",
+                TitleSubtitleBtn(
+                    Icon::USER,
+                    "Add extra user",
+                    "username and password or \
+                        authentication key, somehow tied to this server."
+                    ) {
+                    Clicked => Msg::AddExtraUser,
                 },
-                #[name="add_note"]
-                gtk::RadioButton {
-                    label: "Add note",
+                TitleSubtitleBtn(
+                    Icon::NOTE,
+                    "Add note",
+                    "markdown-formatted text containing free-form text."
+                    ) {
+                    Clicked => Msg::AddNote,
                 },
             }
         }

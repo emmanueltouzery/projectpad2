@@ -16,6 +16,7 @@ pub mod search_view;
 mod search_view_render;
 mod server_item_list_item;
 mod server_poi_contents;
+pub mod title_subtitle_btn;
 mod tooltips_overlay;
 pub mod win;
 mod wintitlebar;

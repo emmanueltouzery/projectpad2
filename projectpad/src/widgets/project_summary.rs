@@ -31,7 +31,7 @@ pub enum Msg {
     DeleteProject,
     ProjectDeleted(Project),
     ProjectAddItemActionCompleted(Box<ProjectItem>),
-    ProjectAddItemChangeTitleTitle(&'static str),
+    ProjectAddItemChangeTitleTitle(&'static str, gtk::Button),
     ProjectItemAdded(ProjectItem),
 }
 
@@ -292,12 +292,13 @@ impl Widget for ProjectSummary {
                     .stream()
                     .emit(Msg::ProjectItemAdded(*project_item));
             }
-            Msg::ProjectAddItemChangeTitleTitle(title) => {
+            Msg::ProjectAddItemChangeTitleTitle(title, ok_btn) => {
                 self.model
                     .project_add_item_dialog
                     .as_ref()
                     .unwrap()
                     .set_title(title);
+                ok_btn.set_visible(true);
             }
             Msg::AddProjectItem => {
                 self.show_project_add_item_dialog();
@@ -468,16 +469,14 @@ impl Widget for ProjectSummary {
         let (dialog, component, ok_btn) = standard_dialogs::prepare_custom_dialog(
             dialog.clone(),
             dialog_contents,
-            move |ok_btn| {
-                if ok_btn.get_label() == Some("Next".into()) {
-                    d_c.emit(project_add_item_dlg::Msg::ShowSecondTab(dialog.clone()));
-                    ok_btn.set_label("Done");
-                } else {
-                    d_c.emit(project_add_item_dlg::Msg::OkPressed);
-                }
+            move |_ok_btn| {
+                d_c.emit(project_add_item_dlg::Msg::OkPressed);
             },
         );
-        ok_btn.set_label("Next");
+        component
+            .stream()
+            .emit(project_add_item_dlg::Msg::DialogSet(dialog.clone()));
+        ok_btn.set_visible(false);
         relm::connect!(
             component@project_add_item_dlg::Msg::ActionCompleted(ref pi),
             self.model.relm,
@@ -486,7 +485,7 @@ impl Widget for ProjectSummary {
         relm::connect!(
             component@project_add_item_dlg::Msg::ChangeDialogTitle(title),
             self.model.relm,
-            Msg::ProjectAddItemChangeTitleTitle(title)
+            Msg::ProjectAddItemChangeTitleTitle(title, ok_btn.clone())
         );
         self.model.project_add_item_component = Some(component);
         self.model.project_add_item_dialog = Some(dialog.clone());

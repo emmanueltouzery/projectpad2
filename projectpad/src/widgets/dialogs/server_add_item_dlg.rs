@@ -93,12 +93,12 @@ impl Widget for ServerAddItemDialog {
     fn move_to_second_tab(&mut self, widget: &gtk::Widget, title: &'static str) {
         self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
         self.widgets.tabs_stack.add_named(widget, "dialog");
+        // TODO ideally i'd like to shrink the dialog vertically as the new
+        // tab may be less tall than the previous one. But I didn't manage to
+        // achieve that. So I center the component vertically at least.
         widget.set_valign(gtk::Align::Center);
         widget.show();
         self.widgets.tabs_stack.set_visible_child_name("dialog");
-        // TODO ideally i'd like to shrink the dialog vertically as the new
-        // tab may be less tall than the previous one. But I didn't manage to
-        // achieve that.
     }
 
     fn update(&mut self, event: Msg) {

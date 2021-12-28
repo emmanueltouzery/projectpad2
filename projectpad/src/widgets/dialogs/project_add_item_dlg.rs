@@ -12,8 +12,11 @@ use super::server_link_add_edit_dlg;
 use super::server_link_add_edit_dlg::Msg as MsgServerLinkAddEditDialog;
 use super::server_link_add_edit_dlg::ServerLinkAddEditDialog;
 use super::ProjectAddEditDialogComponent;
+use crate::icons::Icon;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::ProjectItem;
+use crate::widgets::title_subtitle_btn::Msg::Clicked;
+use crate::widgets::title_subtitle_btn::TitleSubtitleBtn;
 use gtk::prelude::*;
 use projectpadsql::models::EnvironmentType;
 use relm::Widget;
@@ -22,7 +25,11 @@ use std::sync::mpsc;
 
 #[derive(Msg)]
 pub enum Msg {
-    ShowSecondTab(gtk::Dialog),
+    DialogSet(gtk::Dialog),
+    AddServer,
+    AddProjectPoi,
+    AddProjectNote,
+    AddServerLink,
     ChangeDialogTitle(&'static str),
     OkPressed,
     ActionCompleted(Box<ProjectItem>), // large enum variant => box it
@@ -31,6 +38,7 @@ pub enum Msg {
 pub struct Model {
     relm: relm::Relm<ProjectAddItemDialog>,
     db_sender: mpsc::Sender<SqlFunc>,
+    dialog: Option<gtk::Dialog>,
     project_id: i32,
     environment_type: EnvironmentType,
     dialog_component: Option<ProjectAddEditDialogComponent>,
@@ -38,17 +46,7 @@ pub struct Model {
 
 #[widget]
 impl Widget for ProjectAddItemDialog {
-    fn init_view(&mut self) {
-        self.widgets
-            .add_project_poi
-            .join_group(Some(&self.widgets.add_server));
-        self.widgets
-            .add_project_note
-            .join_group(Some(&self.widgets.add_server));
-        self.widgets
-            .add_server_link
-            .join_group(Some(&self.widgets.add_server));
-    }
+    fn init_view(&mut self) {}
 
     fn model(
         relm: &relm::Relm<Self>,
@@ -60,87 +58,93 @@ impl Widget for ProjectAddItemDialog {
             db_sender,
             project_id,
             environment_type,
+            dialog: None,
             dialog_component: None,
         }
     }
 
+    fn move_to_second_tab(&mut self, widget: &gtk::Widget, title: &'static str) {
+        match self.model.dialog_component.as_ref() {
+            Some(ProjectAddEditDialogComponent::ServerLink(lnk)) => {
+                lnk.stream()
+                    .emit(MsgServerLinkAddEditDialog::SetEnvironmentType(
+                        self.model.environment_type,
+                    ))
+            }
+            Some(ProjectAddEditDialogComponent::Server(srv)) => {
+                srv.stream()
+                    .emit(MsgServerAddEditDialog::SetEnvironmentType(
+                        self.model.environment_type,
+                    ))
+            }
+            _ => {}
+        };
+        self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
+        self.widgets.tabs_stack.add_named(widget, "dialog");
+        // TODO ideally i'd like to shrink the dialog vertically as the new
+        // tab may be less tall than the previous one. But I didn't manage to
+        // achieve that. So I center the component vertically at least.
+        widget.set_valign(gtk::Align::Center);
+        widget.show();
+        self.widgets.tabs_stack.set_visible_child_name("dialog");
+    }
+
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::ShowSecondTab(ref dialog) => {
-                let (widget, title) = if self.widgets.add_server.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.project_id,
-                            ServerAddEditDialog,
-                            MsgServerAddEditDialog::ServerUpdated,
-                            ProjectAddEditDialogComponent::Server,
-                            |s| Box::new(ProjectItem::Server(s)),
-                        ),
-                        "Add Server",
-                    )
-                } else if self.widgets.add_project_poi.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.project_id,
-                            ProjectPoiAddEditDialog,
-                            MsgProjectPoiAddEditDialog::PoiUpdated,
-                            ProjectAddEditDialogComponent::ProjectPoi,
-                            |p| Box::new(ProjectItem::ProjectPointOfInterest(p)),
-                        ),
-                        "Add Project POI",
-                    )
-                } else if self.widgets.add_project_note.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.project_id,
-                            ProjectNoteAddEditDialog,
-                            MsgProjectNoteAddEditDialog::ProjectNoteUpdated,
-                            ProjectAddEditDialogComponent::ProjectNote,
-                            |n| Box::new(ProjectItem::ProjectNote(n)),
-                        ),
-                        "Add Project note",
-                    )
-                } else if self.widgets.add_server_link.get_active() {
-                    (
-                        plug_second_tab!(
-                            self,
-                            dialog,
-                            self.model.project_id,
-                            ServerLinkAddEditDialog,
-                            MsgServerLinkAddEditDialog::ServerLinkUpdated,
-                            ProjectAddEditDialogComponent::ServerLink,
-                            |l| Box::new(ProjectItem::ServerLink(l)),
-                        ),
-                        "Add server link",
-                    )
-                } else {
-                    panic!();
-                };
-                match self.model.dialog_component.as_ref() {
-                    Some(ProjectAddEditDialogComponent::ServerLink(lnk)) => {
-                        lnk.stream()
-                            .emit(MsgServerLinkAddEditDialog::SetEnvironmentType(
-                                self.model.environment_type,
-                            ))
-                    }
-                    Some(ProjectAddEditDialogComponent::Server(srv)) => {
-                        srv.stream()
-                            .emit(MsgServerAddEditDialog::SetEnvironmentType(
-                                self.model.environment_type,
-                            ))
-                    }
-                    _ => {}
-                };
-                self.model.relm.stream().emit(Msg::ChangeDialogTitle(title));
-                self.widgets.tabs_stack.add_named(&widget, "dialog");
-                widget.show();
-                self.widgets.tabs_stack.set_visible_child_name("dialog");
+            Msg::DialogSet(d) => {
+                self.model.dialog = Some(d);
+            }
+            Msg::AddServer => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.project_id,
+                    ServerAddEditDialog,
+                    MsgServerAddEditDialog::ServerUpdated,
+                    ProjectAddEditDialogComponent::Server,
+                    |s| Box::new(ProjectItem::Server(s)),
+                );
+                self.move_to_second_tab(&widget, "Add Server");
+            }
+            Msg::AddProjectPoi => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.project_id,
+                    ProjectPoiAddEditDialog,
+                    MsgProjectPoiAddEditDialog::PoiUpdated,
+                    ProjectAddEditDialogComponent::ProjectPoi,
+                    |p| Box::new(ProjectItem::ProjectPointOfInterest(p)),
+                );
+                self.move_to_second_tab(&widget, "Add Project POI");
+            }
+            Msg::AddProjectNote => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.project_id,
+                    ProjectNoteAddEditDialog,
+                    MsgProjectNoteAddEditDialog::ProjectNoteUpdated,
+                    ProjectAddEditDialogComponent::ProjectNote,
+                    |n| Box::new(ProjectItem::ProjectNote(n)),
+                );
+                self.move_to_second_tab(&widget, "Add Project note");
+            }
+            Msg::AddServerLink => {
+                let dlg = self.model.dialog.as_ref().unwrap();
+                let widget = plug_second_tab!(
+                    self,
+                    dlg,
+                    self.model.project_id,
+                    ServerLinkAddEditDialog,
+                    MsgServerLinkAddEditDialog::ServerLinkUpdated,
+                    ProjectAddEditDialogComponent::ServerLink,
+                    |l| Box::new(ProjectItem::ServerLink(l)),
+                );
+                self.move_to_second_tab(&widget, "Add server link");
             }
             // meant for my parent
             Msg::ChangeDialogTitle(_) => {}
@@ -174,21 +178,33 @@ impl Widget for ProjectAddItemDialog {
                 margin_bottom: 15,
                 spacing: 10,
                 orientation: gtk::Orientation::Vertical,
-                #[name="add_server"]
-                gtk::RadioButton {
-                    label: "Add server",
+                TitleSubtitleBtn(
+                    Icon::SERVER,
+                    "Add server",
+                    "machines or virtual machines, with their own IP.",
+                    ) {
+                    Clicked => Msg::AddServer,
                 },
-                #[name="add_project_poi"]
-                gtk::RadioButton {
-                    label: "Add point of interest",
+                TitleSubtitleBtn(
+                    Icon::POINT_OF_INTEREST,
+                    "Add point of interest",
+                    "commands to run or relevant files or folders.",
+                    ) {
+                    Clicked => Msg::AddProjectPoi,
                 },
-                #[name="add_project_note"]
-                gtk::RadioButton {
-                    label: "Add project note",
+                TitleSubtitleBtn(
+                    Icon::NOTE,
+                    "Add project note",
+                    "markdown-formatted text containing free-form text."
+                    ) {
+                    Clicked => Msg::AddProjectNote,
                 },
-                #[name="add_server_link"]
-                gtk::RadioButton {
-                    label: "Add server link",
+                TitleSubtitleBtn(
+                    Icon::SERVER_LINK,
+                    "Add server link",
+                    "when a server is shared, we can enter it just once and 'link' to it."
+                    ) {
+                    Clicked => Msg::AddServerLink,
                 },
             }
         }

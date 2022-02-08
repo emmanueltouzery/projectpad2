@@ -31,6 +31,12 @@ pub struct Model {
     is_active: Rc<Cell<bool>>,
 }
 
+pub fn handle_cairo_result<T>(res: &Result<T, cairo::Error>) {
+    if let Err(e) = res {
+        eprintln!("Cairo error: {:#?}", e);
+    }
+}
+
 #[widget]
 impl Widget for ProjectBadge {
     fn init_view(&mut self) {
@@ -57,7 +63,7 @@ impl Widget for ProjectBadge {
             } else {
                 drop(b0);
                 // need to set up the backing buffer
-                buf.replace(Some(Self::prepare_backing_buffer(
+                let new_buf = Self::prepare_backing_buffer(
                     da,
                     &fsw,
                     is_a.get(),
@@ -65,15 +71,17 @@ impl Widget for ProjectBadge {
                     &name,
                     allocation.width(),
                     allocation.height(),
-                )));
+                );
+                handle_cairo_result(&new_buf);
+                buf.replace(new_buf.ok());
                 buf.borrow()
             };
             // paint the backing buffer -
             let s = surface_ref.as_ref().unwrap();
             let output_scale = da.scale_factor();
             s.set_device_scale(output_scale as f64, output_scale as f64);
-            context.set_source_surface(s, 0.0, 0.0);
-            context.paint();
+            handle_cairo_result(&context.set_source_surface(s, 0.0, 0.0));
+            handle_cairo_result(&context.paint());
             Inhibit(false)
         });
     }
@@ -96,7 +104,7 @@ impl Widget for ProjectBadge {
         name: &str,
         allocation_width_: i32,
         allocation_height_: i32,
-    ) -> cairo::ImageSurface {
+    ) -> Result<cairo::ImageSurface, cairo::Error> {
         let output_scale = drawing_area.scale_factor();
         let allocation_width = allocation_width_ * output_scale;
         let allocation_height = allocation_height_ * output_scale;
@@ -155,7 +163,7 @@ impl Widget for ProjectBadge {
                 allocation_width as f64 - 10.0 * output_scale as f64,
                 allocation_height as f64 - 5.0 * output_scale as f64,
             );
-            context.stroke();
+            context.stroke()?;
         } else {
             context.set_line_width(2.0 * output_scale as f64);
         }
@@ -166,22 +174,23 @@ impl Widget for ProjectBadge {
             0.0,
             2.0 * PI,
         );
-        context.stroke_preserve();
+        context.stroke_preserve()?;
         let bg_color = style_context.lookup_color("theme_bg_color").unwrap();
         // so the goal here is to push the contrast. if the background color
         // is darker (<0.5) we go for pure black; if it's brighter, we go
         // for pure white.
         let bg_base = if bg_color.red() < 0.5 { 0.0 } else { 1.0 };
         context.set_source_rgb(bg_base, bg_base, bg_base);
-        context.fill();
+        context.fill()?;
         context.set_source_rgb(fg_color.red(), fg_color.green(), fg_color.blue());
 
-        match icon {
+        let drawing_res = match icon {
             // the 'if' works around an issue reading from SQL. should be None if it's empty!!
             Some(icon) if !icon.is_empty() => Self::draw_icon(&context, allocation_width, icon),
             _ => Self::draw_label(&context, allocation_width, &name[..2]),
-        }
-        buf
+        };
+        handle_cairo_result(&drawing_res);
+        Ok(buf)
     }
 
     fn compute_font_size(context: &cairo::Context, width: f64) -> f64 {
@@ -194,8 +203,12 @@ impl Widget for ProjectBadge {
         size
     }
 
-    pub fn draw_icon(context: &cairo::Context, allocation_width: i32, icon: &[u8]) {
-        context.save();
+    pub fn draw_icon(
+        context: &cairo::Context,
+        allocation_width: i32,
+        icon: &[u8],
+    ) -> Result<(), cairo::Error> {
+        context.save()?;
         match cairo::ImageSurface::create_from_png(&mut Cursor::new(icon)).ok() {
             Some(surface) => {
                 let p = PADDING as f64;
@@ -209,25 +222,33 @@ impl Widget for ProjectBadge {
                 } else {
                     (p + (aw - aw * w / h) / 2.0, p)
                 };
-                context.set_source_surface(&surface, offsetx / scale_ratio, offsety / scale_ratio);
-                context.paint();
+                context.set_source_surface(
+                    &surface,
+                    offsetx / scale_ratio,
+                    offsety / scale_ratio,
+                )?;
+                context.paint()?;
             }
             _ => {
                 eprintln!("failed reading png {}", icon.len());
             }
         }
-        context.restore();
+        context.restore()
     }
 
-    fn draw_label(context: &cairo::Context, allocation_width: i32, contents: &str) {
+    fn draw_label(
+        context: &cairo::Context,
+        allocation_width: i32,
+        contents: &str,
+    ) -> Result<(), cairo::Error> {
         // context.set_source_rgb(1.0, 1.0, 1.0);
-        let text_extents = context.text_extents(contents).unwrap();
+        let text_extents = context.text_extents(contents)?;
         context.move_to(
             (allocation_width / 2) as f64 - text_extents.width / 2.0 - text_extents.x_bearing,
             (allocation_width / 2) as f64 - text_extents.y_bearing - text_extents.height / 2.0,
         );
         context.text_path(contents);
-        context.fill();
+        context.fill()
     }
 
     fn update(&mut self, event: Msg) {

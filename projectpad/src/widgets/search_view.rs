@@ -406,12 +406,14 @@ impl Widget for SearchView {
             };
             search_view_render::draw_child(&drawing_context, &mut item_context, item, cur_server);
             if show_shortcuts && item_idx < 10 {
-                super::search_view_render::draw_shortcut(
-                    (item_idx + 1) % 10,
-                    context,
-                    search_result_area,
-                    y - y_to_display,
-                );
+                super::project_badge::handle_cairo_result(
+                    &super::search_view_render::draw_shortcut(
+                        (item_idx + 1) % 10,
+                        context,
+                        search_result_area,
+                        y - y_to_display,
+                    ),
+                )
             }
             y += SEARCH_RESULT_WIDGET_HEIGHT;
             item_idx += 1;

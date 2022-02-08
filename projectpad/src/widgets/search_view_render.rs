@@ -136,7 +136,7 @@ pub fn draw_shortcut(
     context: &cairo::Context,
     search_result_area: &gtk::DrawingArea,
     y: i32,
-) {
+) -> Result<(), cairo::Error> {
     let pango_context = search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(&format!("{}", index));
@@ -170,9 +170,9 @@ pub fn draw_shortcut(
     );
     context.close_path();
     context.set_source_rgb(0.0, 0.0, 0.0);
-    context.stroke_preserve();
+    context.stroke_preserve()?;
     context.set_source_rgb(1.0, 1.0, 1.0);
-    context.fill();
+    context.fill()?;
     context.reset_clip();
     gtk::render_layout(
         &search_result_area.style_context(),
@@ -181,6 +181,7 @@ pub fn draw_shortcut(
         topleft_y,
         &layout,
     );
+    Ok(())
 }
 
 pub fn draw_child(
@@ -270,10 +271,12 @@ fn draw_project(
                 + SEARCH_RESULT_WIDGET_HEIGHT as f64
                 - PROJECT_ICON_SIZE as f64;
             drawing_context.context.translate(translate_x, translate_y);
-            super::project_badge::ProjectBadge::draw_icon(
-                &drawing_context.context,
-                PROJECT_ICON_SIZE,
-                icon,
+            super::project_badge::handle_cairo_result(
+                &super::project_badge::ProjectBadge::draw_icon(
+                    &drawing_context.context,
+                    PROJECT_ICON_SIZE,
+                    icon,
+                ),
             );
             drawing_context
                 .context
@@ -312,14 +315,14 @@ fn draw_server_item_common(
             .style_context
             .remove_class("server_item_header_titlebox_retired");
     }
-    draw_icon(
+    super::project_badge::handle_cairo_result(&draw_icon(
         &drawing_context.style_context,
         drawing_context.search_result_area.scale_factor(),
         &drawing_context.context,
         icon,
         x + padding.left as f64,
         y + margin.top as f64 + padding.top as f64,
-    );
+    ));
     let title_rect = draw_title(
         drawing_context,
         item_context,
@@ -803,14 +806,14 @@ fn draw_action(
     };
     draw_button(context, item_type, flags, x, y, w, h);
     style_context.remove_class("search_result_action_btn");
-    draw_icon(
+    super::project_badge::handle_cairo_result(&draw_icon(
         style_context,
         drawing_context.search_result_area.scale_factor(),
         context,
         icon,
         x + padding.left as f64,
         y + padding.top as f64,
-    );
+    ));
     action_areas.push((
         Area::new(x as i32, y as i32, w as i32, h as i32),
         item.clone(),
@@ -824,7 +827,7 @@ fn draw_icon(
     icon: &Icon,
     x: f64,
     y: f64,
-) {
+) -> Result<(), cairo::Error> {
     // we know we use symbolic (single color) icons.
     // i want to paint them in the theme's foreground color
     // (important for dark themes).
@@ -850,7 +853,7 @@ fn draw_icon(
     .expect("ImageSurface");
     let surf_context = cairo::Context::new(&surf).unwrap();
     surf_context.set_source_pixbuf(&pixbuf, 0.0, 0.0);
-    surf_context.paint();
+    surf_context.paint()?;
 
     // 3. set the foreground color of our context to the theme's fg color
     let fore_color = style_context.color(gtk::StateFlags::NORMAL);
@@ -865,5 +868,5 @@ fn draw_icon(
     // 4. use the surface we created with the icon as a mask
     // (the alpha channel of the surface is mixed with the context
     // color to paint)
-    context.mask_surface(&surf, x, y);
+    context.mask_surface(&surf, x, y)
 }

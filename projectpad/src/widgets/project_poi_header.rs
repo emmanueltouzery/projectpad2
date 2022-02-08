@@ -863,7 +863,6 @@ impl Widget for ProjectPoiHeader {
                 .project_item
                 .as_ref()
                 .map(Self::project_item_desc)
-                .as_deref()
                 .unwrap_or(""),
         );
         if let Some(ProjectItem::ServerLink(ref link)) = self.model.project_item {

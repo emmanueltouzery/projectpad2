@@ -181,7 +181,6 @@ impl Widget for FileContentsButton {
             // I used to use FileChooserButton here, but I couldn't
             // make it use the native file picker, the file extension
             // filters weren't working when being used in a flatpak.
-            #[name="picker_btn"]
             gtk::Button {
                 child: {
                     name: Some("no_file")

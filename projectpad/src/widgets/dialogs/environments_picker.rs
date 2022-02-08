@@ -35,28 +35,24 @@ impl Widget for EnvironmentsPicker {
     view! {
         #[style_class="linked"]
         gtk::Box {
-            #[name="radio_dev"]
             gtk::ToggleButton {
                 label: "Dev",
                 hexpand: true,
                 active: self.model.selected_environments.has_dev,
                 toggled => Msg::EnvironmentToggled(EnvironmentType::EnvDevelopment),
             },
-            #[name="radio_stg"]
             gtk::ToggleButton {
                 label: "Stg",
                 hexpand: true,
                 active: self.model.selected_environments.has_stg,
                 toggled => Msg::EnvironmentToggled(EnvironmentType::EnvStage),
             },
-            #[name="radio_uat"]
             gtk::ToggleButton {
                 label: "Uat",
                 hexpand: true,
                 active: self.model.selected_environments.has_uat,
                 toggled => Msg::EnvironmentToggled(EnvironmentType::EnvUat),
             },
-            #[name="radio_prd"]
             gtk::ToggleButton {
                 label: "Prod",
                 hexpand: true,

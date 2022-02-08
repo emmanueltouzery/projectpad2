@@ -1,5 +1,4 @@
 use super::super::keyring_helpers;
-use gtk::traits::SettingsExt;
 use super::super::password_field;
 use super::super::password_field::Msg as PasswordFieldMsg;
 use super::change_db_password_dlg;
@@ -9,6 +8,7 @@ use super::standard_dialogs;
 use crate::config::Config;
 use crate::sql_thread::SqlFunc;
 use gtk::prelude::*;
+use gtk::traits::SettingsExt;
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -268,7 +268,6 @@ impl Widget for Preferences {
                     sensitive: false,
                     clicked => Msg::RemovePasswordFromKeyring,
                 },
-                #[name="change_password"]
                 gtk::Button {
                     label: "Change database password",
                     halign: gtk::Align::Start,

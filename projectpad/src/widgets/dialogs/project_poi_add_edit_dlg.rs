@@ -96,7 +96,7 @@ impl Widget for ProjectPoiAddEditDialog {
             project_id,
             _groups_channel: groups_channel,
             groups_sender,
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _project_poi_updated_channel: project_poi_updated_channel,
             project_poi_updated_sender,
             project_poi_id: poi.map(|s| s.id),
@@ -138,7 +138,7 @@ impl Widget for ProjectPoiAddEditDialog {
     fn combo_read_interest_type(&self) -> InterestType {
         self.widgets
             .interest_type
-            .get_active_id()
+            .active_id()
             .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
             .expect("interest type not specified!?")
     }
@@ -146,10 +146,10 @@ impl Widget for ProjectPoiAddEditDialog {
     fn update_project_poi(&self) {
         let project_poi_id = self.model.project_poi_id;
         let project_id = self.model.project_id;
-        let new_desc = self.widgets.desc_entry.get_text();
-        let new_path = self.widgets.path_entry.get_text();
-        let new_text = self.widgets.text_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
+        let new_desc = self.widgets.desc_entry.text();
+        let new_path = self.widgets.path_entry.text();
+        let new_text = self.widgets.text_entry.text();
+        let new_group = self.widgets.group.active_text();
         let new_interest_type = self.combo_read_interest_type();
         let s = self.model.project_poi_updated_sender.clone();
         self.model

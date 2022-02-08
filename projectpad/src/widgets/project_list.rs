@@ -152,7 +152,7 @@ impl Widget for ProjectList {
     }
 
     fn update_projects_list(&mut self) {
-        for child in self.widgets.project_list.get_children() {
+        for child in self.widgets.project_list.children() {
             self.widgets.project_list.remove(&child);
         }
         self.model.children_widgets.clear();
@@ -178,7 +178,7 @@ impl Widget for ProjectList {
             );
             self.model.children_widgets.push(child);
         }
-        let add_btn = gtk::ButtonBuilder::new()
+        let add_btn = gtk::builders::ButtonBuilder::new()
             .always_show_image(true)
             .image(&gtk::Image::from_icon_name(
                 Some("list-add-symbolic"),
@@ -188,7 +188,7 @@ impl Widget for ProjectList {
             .build();
         add_btn.show();
         if self.model.projects.is_empty() {
-            add_btn.get_style_context().add_class("suggested-action");
+            add_btn.style_context().add_class("suggested-action");
         }
         relm::connect!(
             self.model.relm,

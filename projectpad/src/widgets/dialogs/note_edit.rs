@@ -48,9 +48,9 @@ pub struct Model {
 impl Widget for NoteEdit {
     fn init_view(&mut self) {
         let buf = sourceview4::Buffer::with_language(
-            &sourceview4::LanguageManager::get_default()
+            &sourceview4::LanguageManager::default()
                 .unwrap()
-                .get_language("markdown")
+                .language("markdown")
                 .unwrap(),
         );
         buf.set_text(&self.model.contents);
@@ -120,18 +120,18 @@ impl Widget for NoteEdit {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::KeyRelease(e) => {
-                if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
-                    if e.get_keyval() == gdk::keys::constants::Escape {
+                if !(e.state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
+                    if e.keyval() == gdk::keys::constants::Escape {
                         self.model.search_bar.emit(search_bar::Msg::Reveal(false));
-                    } else if e.get_keyval() == gdk::keys::constants::Return
-                        || e.get_keyval() == gdk::keys::constants::KP_Enter
+                    } else if e.keyval() == gdk::keys::constants::Return
+                        || e.keyval() == gdk::keys::constants::KP_Enter
                     {
                         search_bar::note_search_next(
                             &self.widgets.note_textview,
                             &self.model.note_search_text,
                         );
                     } else {
-                        match e.get_keyval().to_unicode() {
+                        match e.keyval().to_unicode() {
                             Some('f') => {
                                 self.model.search_bar.emit(search_bar::Msg::Reveal(true));
                             }
@@ -204,9 +204,9 @@ impl Widget for NoteEdit {
                 self.model.note_search_text = Some(text);
             }
             Msg::RequestContents => {
-                let buf = self.widgets.note_textview.get_buffer().unwrap();
+                let buf = self.widgets.note_textview.buffer().unwrap();
                 let new_contents = buf
-                    .get_text(&buf.get_start_iter(), &buf.get_end_iter(), false)
+                    .text(&buf.start_iter(), &buf.end_iter(), false)
                     .unwrap()
                     .to_string();
                 self.model
@@ -220,18 +220,15 @@ impl Widget for NoteEdit {
     }
 
     fn toggle_password(note_textview: &sourceview4::View) {
-        let buf = note_textview.get_buffer().unwrap();
-        let sel_bounds = buf.get_selection_bounds();
+        let buf = note_textview.buffer().unwrap();
+        let sel_bounds = buf.selection_bounds();
         if sel_bounds.is_none() {
             // no selection
             Self::toggle_snippet(note_textview, "[pass`", "`]");
             return;
         }
         let (start_iter, end_iter) = sel_bounds.unwrap();
-        let selected_text = buf
-            .get_text(&start_iter, &end_iter, false)
-            .unwrap()
-            .to_string();
+        let selected_text = buf.text(&start_iter, &end_iter, false).unwrap().to_string();
         let mut separator = "`".to_string();
         while selected_text.contains(&separator) {
             separator.push('`');
@@ -247,18 +244,15 @@ impl Widget for NoteEdit {
     }
 
     fn toggle_preformat(note_textview: &sourceview4::View) {
-        let buf = note_textview.get_buffer().unwrap();
-        let sel_bounds = buf.get_selection_bounds();
+        let buf = note_textview.buffer().unwrap();
+        let sel_bounds = buf.selection_bounds();
         if sel_bounds.is_none() {
             // no selection
             Self::toggle_snippet(note_textview, "`", "`");
             return;
         }
         let (start_iter, end_iter) = sel_bounds.unwrap();
-        let selected_text = buf
-            .get_text(&start_iter, &end_iter, false)
-            .unwrap()
-            .to_string();
+        let selected_text = buf.text(&start_iter, &end_iter, false).unwrap().to_string();
         if selected_text.contains('\n') {
             // multiline
             Self::toggle_snippet(note_textview, "\n```\n", "\n```\n");
@@ -269,24 +263,24 @@ impl Widget for NoteEdit {
     }
 
     fn toggle_blockquote(note_textview: &sourceview4::View) {
-        let buf = note_textview.get_buffer().unwrap();
-        let (start_offset, end_offset) = match buf.get_selection_bounds() {
+        let buf = note_textview.buffer().unwrap();
+        let (start_offset, end_offset) = match buf.selection_bounds() {
             None => {
                 // no selection
-                let cursor_iter = buf.get_iter_at_mark(&buf.get_insert().unwrap());
-                let offset = cursor_iter.get_offset();
+                let cursor_iter = buf.iter_at_mark(&buf.get_insert().unwrap());
+                let offset = cursor_iter.offset();
                 (offset, offset)
             }
             Some((sel_start_iter, sel_end_iter)) => {
                 // selection
-                (sel_start_iter.get_offset(), sel_end_iter.get_offset())
+                (sel_start_iter.offset(), sel_end_iter.offset())
             }
         };
-        let mut iter = buf.get_iter_at_offset(end_offset);
+        let mut iter = buf.iter_at_offset(end_offset);
         if start_offset != end_offset {
             // there is a selection
-            let mut start_iter = buf.get_iter_at_offset(start_offset);
-            let selected_text = buf.get_text(&start_iter, &iter, false).unwrap().to_string();
+            let mut start_iter = buf.iter_at_offset(start_offset);
+            let selected_text = buf.text(&start_iter, &iter, false).unwrap().to_string();
             let lines: Vec<_> = selected_text.lines().collect();
             let next_selection: String = if lines.iter().all(|l| l.starts_with("> ")) {
                 // remove the blockquote
@@ -304,18 +298,12 @@ impl Widget for NoteEdit {
             // revalidates it to point to the end of the inserted text.
             // => start_iter now points to the end of the inserted text
             // iter.set_offset(start_offset); <-- for some reason iter is invalidated & even set_offset can't recover it
-            buf.select_range(&buf.get_iter_at_offset(start_offset), &start_iter);
+            buf.select_range(&buf.iter_at_offset(start_offset), &start_iter);
         } else {
             // no selection
-            iter.backward_chars(iter.get_line_offset());
-            let mut iter2 = buf.get_iter_at_offset(iter.get_offset() + 2);
-            if buf
-                .get_text(&iter, &iter2, false)
-                .unwrap()
-                .to_string()
-                .as_str()
-                == "> "
-            {
+            iter.backward_chars(iter.line_offset());
+            let mut iter2 = buf.iter_at_offset(iter.offset() + 2);
+            if buf.text(&iter, &iter2, false).unwrap().to_string().as_str() == "> " {
                 buf.delete(&mut iter, &mut iter2);
             } else {
                 buf.insert(&mut iter, "> ");
@@ -337,21 +325,15 @@ impl Widget for NoteEdit {
     }
 
     fn toggle_line_start(note_textview: &sourceview4::View, starts: &[&str]) {
-        let buf = note_textview.get_buffer().unwrap();
+        let buf = note_textview.buffer().unwrap();
         let mut to_insert: &str = starts.get(0).unwrap();
         let mut clear_chars = 0;
-        let mut iter = buf.get_iter_at_offset(buf.get_property_cursor_position());
-        iter.backward_chars(iter.get_line_offset());
-        let mut iter2 = buf.get_start_iter();
+        let mut iter = buf.iter_at_offset(buf.cursor_position());
+        iter.backward_chars(iter.line_offset());
+        let mut iter2 = buf.start_iter();
         for (i, header) in starts.iter().enumerate() {
-            iter2.set_offset(iter.get_offset() + header.len() as i32);
-            if buf
-                .get_text(&iter, &iter2, false)
-                .unwrap()
-                .to_string()
-                .as_str()
-                == *header
-            {
+            iter2.set_offset(iter.offset() + header.len() as i32);
+            if buf.text(&iter, &iter2, false).unwrap().to_string().as_str() == *header {
                 // this pattern is in use, next time
                 // we want to move to the next pattern
                 to_insert = if i + 1 >= starts.len() {
@@ -364,7 +346,7 @@ impl Widget for NoteEdit {
             }
         }
         if clear_chars > 0 {
-            iter2.set_offset(iter.get_offset() + clear_chars);
+            iter2.set_offset(iter.offset() + clear_chars);
             buf.delete(&mut iter, &mut iter2);
         }
         buf.insert(&mut iter, to_insert);
@@ -373,37 +355,37 @@ impl Widget for NoteEdit {
     fn toggle_snippet(note_textview: &sourceview4::View, before: &str, after: &str) {
         let before_len = before.len() as i32;
         let after_len = after.len() as i32;
-        let buf = note_textview.get_buffer().unwrap();
-        let (start_offset, end_offset) = match buf.get_selection_bounds() {
+        let buf = note_textview.buffer().unwrap();
+        let (start_offset, end_offset) = match buf.selection_bounds() {
             None => {
                 // no selection
-                let cursor_iter = buf.get_iter_at_mark(&buf.get_insert().unwrap());
-                let offset = cursor_iter.get_offset();
+                let cursor_iter = buf.iter_at_mark(&buf.get_insert().unwrap());
+                let offset = cursor_iter.offset();
                 (offset, offset)
             }
             Some((sel_start_iter, sel_end_iter)) => {
                 // selection
-                (sel_start_iter.get_offset(), sel_end_iter.get_offset())
+                (sel_start_iter.offset(), sel_end_iter.offset())
             }
         };
-        let mut iter = buf.get_iter_at_offset(end_offset);
+        let mut iter = buf.iter_at_offset(end_offset);
 
         // if the selection is [**test**] and the user clicked bold, should we
         // un-toggle, meaning change the contents to [test]?
         let is_untoggle = start_offset >= before_len && {
-            let mut iter2 = buf.get_iter_at_offset(end_offset + after_len);
-            if buf.get_text(&iter2, &iter, false).unwrap() != after {
+            let mut iter2 = buf.iter_at_offset(end_offset + after_len);
+            if buf.text(&iter2, &iter, false).unwrap() != after {
                 false
             } else {
-                let iter1 = buf.get_iter_at_offset(start_offset);
+                let iter1 = buf.iter_at_offset(start_offset);
                 iter2.set_offset(start_offset - before_len);
-                buf.get_text(&iter1, &iter2, false).unwrap() == before
+                buf.text(&iter1, &iter2, false).unwrap() == before
             }
         };
 
         if is_untoggle {
             // untoggle => remove the 'before' and 'after' strings
-            let mut iter2 = buf.get_iter_at_offset(end_offset + after_len);
+            let mut iter2 = buf.iter_at_offset(end_offset + after_len);
             buf.delete(&mut iter, &mut iter2);
             iter.set_offset(start_offset - before_len);
             iter2.set_offset(start_offset);
@@ -421,7 +403,7 @@ impl Widget for NoteEdit {
             iter.set_offset(start_offset + before_len);
             if start_offset < end_offset {
                 // restore the selection
-                let iter_end = buf.get_iter_at_offset(end_offset + before_len);
+                let iter_end = buf.iter_at_offset(end_offset + before_len);
                 buf.select_range(&iter, &iter_end);
             } else {
                 buf.place_cursor(&iter);
@@ -524,11 +506,11 @@ fn tests_init() {
 
 #[cfg(test)]
 fn assert_tv_contents_eq(expected: &'static str, buf: &gtk::TextBuffer) {
-    let start_iter = buf.get_start_iter();
-    let end_iter = buf.get_end_iter();
+    let start_iter = buf.start_iter();
+    let end_iter = buf.end_iter();
     assert_eq!(
         expected,
-        buf.get_text(&start_iter, &end_iter, false)
+        buf.text(&start_iter, &end_iter, false)
             .unwrap()
             .to_string()
             .as_str()
@@ -540,74 +522,74 @@ fn toggle_snippet_should_add_bold() {
     tests_init();
     let tv = sourceview4::View::new();
     NoteEdit::toggle_snippet(&tv, "**", "**");
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     assert_tv_contents_eq("****", &buf);
-    assert_eq!(2, buf.get_property_cursor_position());
+    assert_eq!(2, buf.cursor_position());
 }
 
 #[test]
 fn toggle_snippet_should_untoggle_bold() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("****");
-    let initial_iter = buf.get_iter_at_offset(2);
+    let initial_iter = buf.iter_at_offset(2);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_snippet(&tv, "**", "**");
     assert_tv_contents_eq("", &buf);
-    assert_eq!(0, buf.get_property_cursor_position());
+    assert_eq!(0, buf.cursor_position());
 }
 
 #[test]
 fn toggle_snippet_should_untoggle_link() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("[](url)");
-    let initial_iter = buf.get_iter_at_offset(1);
+    let initial_iter = buf.iter_at_offset(1);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_snippet(&tv, "[", "](url)");
     assert_tv_contents_eq("", &buf);
-    assert_eq!(0, buf.get_property_cursor_position());
+    assert_eq!(0, buf.cursor_position());
 }
 
 #[test]
 fn toggle_snippet_with_selection_should_wrap_selection() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("my amazing test");
-    let select_start_iter = buf.get_iter_at_offset(3);
-    let select_end_iter = buf.get_iter_at_offset(10);
+    let select_start_iter = buf.iter_at_offset(3);
+    let select_end_iter = buf.iter_at_offset(10);
     buf.select_range(&select_start_iter, &select_end_iter);
     NoteEdit::toggle_snippet(&tv, "**", "**");
     assert_tv_contents_eq("my **amazing** test", &buf);
-    let selection_after = buf.get_selection_bounds().unwrap();
-    assert_eq!(5, selection_after.0.get_offset());
-    assert_eq!(12, selection_after.1.get_offset());
+    let selection_after = buf.selection_bounds().unwrap();
+    assert_eq!(5, selection_after.0.offset());
+    assert_eq!(12, selection_after.1.offset());
 }
 
 #[test]
 fn toggle_snippet_with_selection_should_untoggle_selection() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("my **amazing** test");
-    let select_start_iter = buf.get_iter_at_offset(5);
-    let select_end_iter = buf.get_iter_at_offset(12);
+    let select_start_iter = buf.iter_at_offset(5);
+    let select_end_iter = buf.iter_at_offset(12);
     buf.select_range(&select_start_iter, &select_end_iter);
     NoteEdit::toggle_snippet(&tv, "**", "**");
     assert_tv_contents_eq("my amazing test", &buf);
-    let selection_after = buf.get_selection_bounds().unwrap();
-    assert_eq!(3, selection_after.0.get_offset());
-    assert_eq!(10, selection_after.1.get_offset());
+    let selection_after = buf.selection_bounds().unwrap();
+    assert_eq!(3, selection_after.0.offset());
+    assert_eq!(10, selection_after.1.offset());
 }
 
 #[test]
 fn toggle_heading_should_set_heading() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     NoteEdit::toggle_heading(&tv);
     assert_tv_contents_eq(" # ", &buf);
 }
@@ -616,9 +598,9 @@ fn toggle_heading_should_set_heading() {
 fn toggle_heading_should_move_to_next_heading() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\n # my **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(10);
+    let initial_iter = buf.iter_at_offset(10);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_heading(&tv);
     assert_tv_contents_eq("line1\n ## my **amazing** test", &buf);
@@ -628,9 +610,9 @@ fn toggle_heading_should_move_to_next_heading() {
 fn toggle_heading_should_wipe_heading_at_end_of_cycle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text(" - line1\nmy **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(2);
+    let initial_iter = buf.iter_at_offset(2);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_heading(&tv);
     assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
@@ -640,9 +622,9 @@ fn toggle_heading_should_wipe_heading_at_end_of_cycle() {
 fn toggle_blockquote_with_no_selection_should_toggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(2);
+    let initial_iter = buf.iter_at_offset(2);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_blockquote(&tv);
     assert_tv_contents_eq("> line1\nmy **amazing** test", &buf);
@@ -652,9 +634,9 @@ fn toggle_blockquote_with_no_selection_should_toggle() {
 fn toggle_blockquote_with_no_selection_should_untoggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\n> my **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(10);
+    let initial_iter = buf.iter_at_offset(10);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_blockquote(&tv);
     assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
@@ -664,12 +646,12 @@ fn toggle_blockquote_with_no_selection_should_untoggle() {
 fn toggle_blockquote_with_selection_should_toggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(2);
+    let initial_iter = buf.iter_at_offset(2);
     buf.place_cursor(&initial_iter);
-    let select_start_iter = buf.get_start_iter();
-    let select_end_iter = buf.get_end_iter();
+    let select_start_iter = buf.start_iter();
+    let select_end_iter = buf.end_iter();
     buf.select_range(&select_start_iter, &select_end_iter);
     NoteEdit::toggle_blockquote(&tv);
     assert_tv_contents_eq("> line1\n> my **amazing** test", &buf);
@@ -679,12 +661,12 @@ fn toggle_blockquote_with_selection_should_toggle() {
 fn toggle_blockquote_with_selection_should_untoggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("> line1\n> my **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(2);
+    let initial_iter = buf.iter_at_offset(2);
     buf.place_cursor(&initial_iter);
-    let select_start_iter = buf.get_start_iter();
-    let select_end_iter = buf.get_end_iter();
+    let select_start_iter = buf.start_iter();
+    let select_end_iter = buf.end_iter();
     buf.select_range(&select_start_iter, &select_end_iter);
     NoteEdit::toggle_blockquote(&tv);
     assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
@@ -694,37 +676,37 @@ fn toggle_blockquote_with_selection_should_untoggle() {
 fn toggle_password_with_no_selection_should_toggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(2);
+    let initial_iter = buf.iter_at_offset(2);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_password(&tv);
     assert_tv_contents_eq("li[pass``]ne1\nmy **amazing** test", &buf);
-    assert_eq!(8, buf.get_property_cursor_position());
+    assert_eq!(8, buf.cursor_position());
 }
 
 #[test]
 fn toggle_password_with_no_selection_should_untoggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("li[pass``]ne1\nmy **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(8);
+    let initial_iter = buf.iter_at_offset(8);
     buf.place_cursor(&initial_iter);
     NoteEdit::toggle_password(&tv);
     assert_tv_contents_eq("line1\nmy **amazing** test", &buf);
-    assert_eq!(2, buf.get_property_cursor_position());
+    assert_eq!(2, buf.cursor_position());
 }
 
 #[test]
 fn toggle_password_with_selection_should_toggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\nmy **amazing** test");
-    let initial_iter = buf.get_iter_at_offset(9);
+    let initial_iter = buf.iter_at_offset(9);
     buf.place_cursor(&initial_iter);
-    let select_end_iter = buf.get_iter_at_offset(20);
+    let select_end_iter = buf.iter_at_offset(20);
     buf.select_range(&initial_iter, &select_end_iter);
     NoteEdit::toggle_password(&tv);
     assert_tv_contents_eq("line1\nmy [pass`**amazing**`] test", &buf);
@@ -734,11 +716,11 @@ fn toggle_password_with_selection_should_toggle() {
 fn toggle_password_with_selection_should_toggle_with_spaces_if_leading_backtick() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\nmy `*amazing** test");
-    let initial_iter = buf.get_iter_at_offset(9);
+    let initial_iter = buf.iter_at_offset(9);
     buf.place_cursor(&initial_iter);
-    let select_end_iter = buf.get_iter_at_offset(20);
+    let select_end_iter = buf.iter_at_offset(20);
     buf.select_range(&initial_iter, &select_end_iter);
     NoteEdit::toggle_password(&tv);
     assert_tv_contents_eq("line1\nmy [pass`` `*amazing** ``] test", &buf);
@@ -748,11 +730,11 @@ fn toggle_password_with_selection_should_toggle_with_spaces_if_leading_backtick(
 fn toggle_password_with_selection_should_untoggle() {
     tests_init();
     let tv = sourceview4::View::new();
-    let buf = tv.get_buffer().unwrap();
+    let buf = tv.buffer().unwrap();
     buf.set_text("line1\nmy [pass`**amazing**`] test");
-    let initial_iter = buf.get_iter_at_offset(15);
+    let initial_iter = buf.iter_at_offset(15);
     buf.place_cursor(&initial_iter);
-    let select_end_iter = buf.get_iter_at_offset(26);
+    let select_end_iter = buf.iter_at_offset(26);
     buf.select_range(&initial_iter, &select_end_iter);
     NoteEdit::toggle_password(&tv);
     assert_tv_contents_eq("line1\nmy **amazing** test", &buf);

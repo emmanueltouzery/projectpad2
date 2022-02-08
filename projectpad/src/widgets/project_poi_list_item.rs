@@ -23,7 +23,7 @@ impl Widget for ProjectPoiListItem {
     view! {
         gtk::Box {
             // not sure why the -5 is needed. some padding on the parent ListBoxRow or something?
-            property_width_request: 260-5,
+            width_request: 260-5,
             spacing: 10,
             border_width: 10,
             orientation: gtk::Orientation::Vertical,
@@ -35,7 +35,7 @@ impl Widget for ProjectPoiListItem {
                     },
                 spacing: 10,
                 gtk::Image {
-                    property_icon_name: Some(self.model.icon.name()),
+                    icon_name: Some(self.model.icon.name()),
                     // https://github.com/gtk-rs/gtk/issues/837
                     // property_icon_size: 4, // gtk::IconSize::Dnd
                     pixel_size: 24,

@@ -59,16 +59,16 @@ impl Widget for ProjectNoteAddEditDialog {
         dialog_helpers::style_grid(&self.widgets.grid);
         self.init_group();
         self.fetch_project_environments();
-        self.widgets.grid.set_property_width_request(700);
-        self.widgets.grid.set_property_height_request(500);
+        self.widgets.grid.set_width_request(700);
+        self.widgets.grid.set_height_request(500);
 
-        let no_envs_error_label = gtk::LabelBuilder::new()
+        let no_envs_error_label = gtk::builders::LabelBuilder::new()
             .label("You must select at least one environment which is active on the parent project")
             .build();
         no_envs_error_label.show();
         self.widgets
             .no_envs_error
-            .get_content_area()
+            .content_area()
             .add(&no_envs_error_label);
     }
 
@@ -138,7 +138,7 @@ impl Widget for ProjectNoteAddEditDialog {
             project_note_id: pn.map(|d| d.id),
             _groups_channel: groups_channel,
             groups_sender,
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _project_note_updated_channel: project_note_updated_channel,
             project_note_updated_sender,
             _project_environments_channel: project_environments_channel,
@@ -215,8 +215,8 @@ impl Widget for ProjectNoteAddEditDialog {
 
         let project_id = self.model.project_id;
         let project_note_id = self.model.project_note_id;
-        let new_title = self.widgets.title_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
+        let new_title = self.widgets.title_entry.text();
+        let new_group = self.widgets.group.active_text();
         let s = self.model.project_note_updated_sender.clone();
         self.model
             .db_sender

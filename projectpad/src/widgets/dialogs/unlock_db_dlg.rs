@@ -38,7 +38,7 @@ impl Widget for UnlockDbDialog {
         self.model.error_label.show();
         self.widgets
             .error_infobar
-            .get_content_area()
+            .content_area()
             .add(&self.model.error_label);
     }
 
@@ -50,7 +50,7 @@ impl Widget for UnlockDbDialog {
         Model {
             db_sender,
             is_new_db,
-            error_label: gtk::LabelBuilder::new().label("").build(),
+            error_label: gtk::builders::LabelBuilder::new().label("").build(),
             pass_valid_sender,
             _pass_valid_channel: pass_valid_channel,
             password: None,
@@ -87,7 +87,7 @@ impl Widget for UnlockDbDialog {
                     self.show_error("Passwords don't match");
                 } else {
                     let s = self.model.pass_valid_sender.clone();
-                    let is_save_to_keyring = self.widgets.save_password_check.get_active();
+                    let is_save_to_keyring = self.widgets.save_password_check.is_active();
                     let p = self.model.password.as_ref().unwrap().clone();
                     self.model
                         .db_sender

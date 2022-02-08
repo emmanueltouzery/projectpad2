@@ -151,7 +151,7 @@ impl Widget for ServerAddEditDialog {
             db_sender,
             _groups_channel: groups_channel,
             groups_sender,
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _server_updated_channel: server_updated_channel,
             server_updated_sender,
             project_id,
@@ -213,24 +213,24 @@ impl Widget for ServerAddEditDialog {
         let new_env_type = self.model.environment_type.unwrap();
         let server_id = self.model.server_id;
         let project_id = self.model.project_id;
-        let new_desc = self.widgets.desc_entry.get_text();
-        let new_is_retired = self.widgets.is_retired_check.get_active();
-        let new_address = self.widgets.address_entry.get_text();
-        let new_text = self.widgets.text_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
-        let new_username = self.widgets.username_entry.get_text();
+        let new_desc = self.widgets.desc_entry.text();
+        let new_is_retired = self.widgets.is_retired_check.is_active();
+        let new_address = self.widgets.address_entry.text();
+        let new_text = self.widgets.text_entry.text();
+        let new_group = self.widgets.group.active_text();
+        let new_username = self.widgets.username_entry.text();
         let new_authkey = self.model.auth_key.clone();
         let new_authkey_filename = self.model.auth_key_filename.clone();
         let new_servertype = self
             .widgets
             .server_type
-            .get_active_id()
+            .active_id()
             .map(|s| ServerType::from_str(s.as_str()).expect("Error parsing the server type!?"))
             .expect("server type not specified!?");
         let new_server_accesstype = self
             .widgets
             .server_access_type
-            .get_active_id()
+            .active_id()
             .map(|s| {
                 ServerAccessType::from_str(s.as_str())
                     .expect("Error parsing the server access type!?")

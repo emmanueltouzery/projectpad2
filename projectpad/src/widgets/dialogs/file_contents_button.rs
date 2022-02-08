@@ -65,7 +65,7 @@ impl Widget for FileContentsButton {
                     .emit(Msg::FileChanged((None, None)));
             }
             Msg::PickFile => {
-                let dialog = gtk::FileChooserNativeBuilder::new()
+                let dialog = gtk::builders::FileChooserNativeBuilder::new()
                     .action(gtk::FileChooserAction::Open)
                     .title("Select file")
                     .modal(true)
@@ -78,7 +78,7 @@ impl Widget for FileContentsButton {
                 }
                 dialog.set_filter(&filter);
                 if dialog.run() == gtk::ResponseType::Accept {
-                    match dialog.get_filename().and_then(|f| {
+                    match dialog.filename().and_then(|f| {
                         let path = Path::new(&f);
                         let fname = path
                             .file_name()
@@ -121,7 +121,7 @@ impl Widget for FileContentsButton {
             Msg::FileChanged(_) => {}
             Msg::SaveAuthFile => {
                 // native file picker to save files, so it works also within flatpak
-                let dialog = gtk::FileChooserNativeBuilder::new()
+                let dialog = gtk::builders::FileChooserNativeBuilder::new()
                     .title("Select destination folder")
                     .action(gtk::FileChooserAction::SelectFolder)
                     .accept_label("Save")
@@ -131,7 +131,7 @@ impl Widget for FileContentsButton {
                 let filename = self.model.filename.clone();
 
                 if dialog.run() == gtk::ResponseType::Accept {
-                    match dialog.get_filename() {
+                    match dialog.filename() {
                         Some(f) => {
                             if let Err(e) = Self::write_auth_key(
                                 &file_contents,
@@ -194,7 +194,7 @@ impl Widget for FileContentsButton {
                         hexpand: true,
                     },
                     gtk::Image {
-                        property_icon_name: Some("document-open-symbolic"),
+                        icon_name: Some("document-open-symbolic"),
                     },
                 },
                 button_press_event(_, _) => (Msg::PickFile, Inhibit(false)),

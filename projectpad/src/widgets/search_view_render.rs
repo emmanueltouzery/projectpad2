@@ -50,12 +50,12 @@ fn draw_button(
     if item_type == ItemType::Child {
         // if it's a child, i use the button style when it's
         // in a list, which is more discrete.
-        path.append_type(glib::Type::Invalid);
+        path.append_type(glib::Type::INVALID);
         path.iter_set_object_name(-3, Some("list"));
-        path.append_type(glib::Type::Invalid);
+        path.append_type(glib::Type::INVALID);
         path.iter_set_object_name(-2, Some("row"));
     }
-    path.append_type(glib::Type::Invalid);
+    path.append_type(glib::Type::INVALID);
     path.iter_set_object_name(-1, Some("button"));
     style_context.set_state(flags);
     style_context.set_path(&path);
@@ -72,9 +72,9 @@ fn draw_button(
 fn selected_label_style_context() -> gtk::StyleContext {
     let scontext = gtk::StyleContext::new();
     let path = gtk::WidgetPath::new();
-    path.append_type(glib::Type::Invalid);
+    path.append_type(glib::Type::INVALID);
     path.iter_set_object_name(-2, Some("label"));
-    path.append_type(glib::Type::Invalid);
+    path.append_type(glib::Type::INVALID);
     path.iter_set_object_name(-1, Some("selection"));
     scontext.set_state(gtk::StateFlags::SELECTED);
     scontext.set_path(&path);
@@ -94,7 +94,7 @@ fn draw_box(
         ..
     } = drawing_context;
     let ItemContext { action_areas, .. } = item_context;
-    let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+    let margin = style_context.margin(gtk::StateFlags::NORMAL);
 
     let scontext: gtk::StyleContext;
     let bg_context = if item_context.is_selected {
@@ -105,7 +105,7 @@ fn draw_box(
     };
     let box_x = margin.left as f64 + hierarchy_offset;
     let box_y = item_context.y + margin.top as f64;
-    let box_width = drawing_context.search_result_area.get_allocation().width as f64
+    let box_width = drawing_context.search_result_area.allocation().width() as f64
         - margin.left as f64
         - margin.right as f64
         - hierarchy_offset * 2.0;
@@ -140,14 +140,14 @@ pub fn draw_shortcut(
     let pango_context = search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(&format!("{}", index));
-    let extents = layout.get_extents().1;
+    let extents = layout.extents().1;
     let topleft_x = (LEFT_RIGHT_MARGIN
-        - extents.width / pango::SCALE
+        - extents.width() / pango::SCALE
         - KEYBOARD_SHORTCUT_HINT_LEFT_MARGIN) as f64;
     let topleft_y =
-        (y + SEARCH_RESULT_WIDGET_HEIGHT / 2 - extents.height / pango::SCALE / 2) as f64;
-    let circle_width = (extents.width / pango::SCALE) as f64;
-    let circle_height = (extents.height / pango::SCALE) as f64;
+        (y + SEARCH_RESULT_WIDGET_HEIGHT / 2 - extents.height() / pango::SCALE / 2) as f64;
+    let circle_width = (extents.width() / pango::SCALE) as f64;
+    let circle_height = (extents.height() / pango::SCALE) as f64;
 
     // this rectangle & clip is a workaround.
     // without that, i get a connecting line between this
@@ -175,7 +175,7 @@ pub fn draw_shortcut(
     context.fill();
     context.reset_clip();
     gtk::render_layout(
-        &search_result_area.get_style_context(),
+        &search_result_area.style_context(),
         context,
         topleft_x,
         topleft_y,
@@ -262,8 +262,9 @@ fn draw_project(
 
     if let Some(icon) = &project.icon {
         if !icon.is_empty() {
-            let translate_x =
-                x + (title_extents.width / pango::SCALE) as f64 + item_context.padding.left as f64;
+            let translate_x = x
+                + (title_extents.width() / pango::SCALE) as f64
+                + item_context.padding.left as f64;
             let translate_y = item_context.y
                 + item_context.padding.top as f64
                 + SEARCH_RESULT_WIDGET_HEIGHT as f64
@@ -292,8 +293,8 @@ fn draw_server_item_common(
 ) -> (gtk::Border, gtk::Border, pango::Rectangle) {
     let y = item_context.y;
     let style_context = &drawing_context.style_context;
-    let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
-    let margin = style_context.get_margin(gtk::StateFlags::NORMAL);
+    let padding = style_context.padding(gtk::StateFlags::NORMAL);
+    let margin = style_context.margin(gtk::StateFlags::NORMAL);
     let is_retired = server.map(|s| s.is_retired).unwrap_or(false);
     if is_retired {
         drawing_context
@@ -313,7 +314,7 @@ fn draw_server_item_common(
     }
     draw_icon(
         &drawing_context.style_context,
-        drawing_context.search_result_area.get_scale_factor(),
+        drawing_context.search_result_area.scale_factor(),
         &drawing_context.context,
         icon,
         x + padding.left as f64,
@@ -366,7 +367,7 @@ fn draw_server_website(
         x + padding.left as f64,
         item_context.y
             + margin.top as f64
-            + (title_rect.height / pango::SCALE) as f64
+            + (title_rect.height() / pango::SCALE) as f64
             + padding.top as f64,
         item_context.links,
     );
@@ -396,7 +397,7 @@ fn draw_server_extra_user(
         x + padding.left as f64,
         item_context.y
             + margin.top as f64
-            + (title_rect.height / pango::SCALE) as f64
+            + (title_rect.height() / pango::SCALE) as f64
             + padding.top as f64,
     );
 }
@@ -425,7 +426,7 @@ fn draw_server_poi(
         x + padding.left as f64,
         item_context.y
             + margin.top as f64
-            + (title_rect.height / pango::SCALE) as f64
+            + (title_rect.height() / pango::SCALE) as f64
             + padding.top as f64,
     );
 }
@@ -453,7 +454,7 @@ fn draw_project_poi(
         x + padding.left as f64,
         item_context.y
             + margin.top as f64
-            + (title_rect.height / pango::SCALE) as f64
+            + (title_rect.height() / pango::SCALE) as f64
             + padding.top as f64,
     );
 }
@@ -482,7 +483,7 @@ fn draw_server_database(
         x + padding.left as f64,
         item_context.y
             + margin.top as f64
-            + (title_rect.height / pango::SCALE) as f64
+            + (title_rect.height() / pango::SCALE) as f64
             + padding.top as f64,
     );
 }
@@ -553,7 +554,7 @@ fn draw_server(
     let x = item_context.padding.left as f64 + LEFT_RIGHT_MARGIN as f64;
     let margin = drawing_context
         .style_context
-        .get_margin(gtk::StateFlags::NORMAL);
+        .margin(gtk::StateFlags::NORMAL);
     if server.is_retired {
         drawing_context
             .style_context
@@ -581,7 +582,9 @@ fn draw_server(
         let env_rect = draw_environment(
             drawing_context,
             x + padding.left as f64,
-            y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64 + margin.top as f64,
+            y + (title_rect.height() / pango::SCALE) as f64
+                + padding.top as f64
+                + margin.top as f64,
             match server.environment {
                 EnvironmentType::EnvUat => "uat",
                 EnvironmentType::EnvProd => "prod",
@@ -593,8 +596,8 @@ fn draw_server(
             draw_link(
                 drawing_context,
                 &server.ip,
-                (env_rect.x + env_rect.width) as f64,
-                y + (title_rect.height / pango::SCALE) as f64 + padding.top as f64,
+                (env_rect.x() + env_rect.width()) as f64,
+                y + (title_rect.height() / pango::SCALE) as f64 + padding.top as f64,
                 item_context.links,
             );
         }
@@ -620,13 +623,13 @@ fn draw_environment(
     let style_context = &drawing_context.style_context;
     let label_classname = format!("environment_label_{}", env_name);
     style_context.add_class(&label_classname);
-    let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+    let padding = style_context.padding(gtk::StateFlags::NORMAL);
     let pango_context = drawing_context.search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(&env_name.to_uppercase());
-    let rect = layout.get_extents().1;
-    let text_w = (rect.width / pango::SCALE) as f64;
-    let text_h = (rect.height / pango::SCALE) as f64;
+    let rect = layout.extents().1;
+    let text_w = (rect.width() / pango::SCALE) as f64;
+    let text_h = (rect.height() / pango::SCALE) as f64;
 
     let total_width = text_w + padding.left as f64 + padding.right as f64;
     let total_height = text_h + padding.top as f64 + padding.bottom as f64;
@@ -643,12 +646,7 @@ fn draw_environment(
         &layout,
     );
     style_context.remove_class(&label_classname);
-    gtk::Rectangle {
-        x: x as i32,
-        y: y as i32,
-        width: total_width as i32,
-        height: total_height as i32,
-    }
+    gtk::Rectangle::new(x as i32, y as i32, total_width as i32, total_height as i32)
 }
 
 fn draw_title(
@@ -682,7 +680,7 @@ fn draw_title(
     layout.set_ellipsize(pango::EllipsizeMode::End);
     layout.set_width(350 * pango::SCALE);
     let extra_y = if let Some(h) = height {
-        let layout_height = layout.get_extents().1.height as f64 / pango::SCALE as f64;
+        let layout_height = layout.extents().1.height() as f64 / pango::SCALE as f64;
         (h as f64 - layout_height) / 2.0
     } else {
         0.0
@@ -692,14 +690,14 @@ fn draw_title(
     gtk::render_layout(style_context, &drawing_context.context, left, top, &layout);
     style_context.remove_class(clazz);
 
-    let extents = layout.get_extents().1;
+    let extents = layout.extents().1;
 
     item_link_areas.push((
         Area::new(
             left as i32,
             top as i32,
-            extents.width as i32 / pango::SCALE,
-            extents.height as i32 / pango::SCALE,
+            extents.width() as i32 / pango::SCALE,
+            extents.height() as i32 / pango::SCALE,
         ),
         item.clone(),
     ));
@@ -715,7 +713,7 @@ fn draw_basic_layout(
 ) -> (pango::Rectangle, f64, f64) {
     let context = &drawing_context.context;
     let style_context = &drawing_context.style_context;
-    let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+    let padding = style_context.padding(gtk::StateFlags::NORMAL);
     let pango_context = drawing_context.search_result_area.create_pango_context();
     let layout = pango::Layout::new(&pango_context);
     layout.set_text(text);
@@ -725,7 +723,7 @@ fn draw_basic_layout(
     let top = y + padding.top as f64;
     gtk::render_layout(style_context, context, left, top, &layout);
 
-    (layout.get_extents().1, left, top)
+    (layout.extents().1, left, top)
 }
 
 fn draw_link(
@@ -744,8 +742,8 @@ fn draw_link(
         Area::new(
             left as i32,
             top as i32,
-            extents.width / pango::SCALE,
-            extents.height / pango::SCALE,
+            extents.width() / pango::SCALE,
+            extents.height() / pango::SCALE,
         ),
         text.to_string(),
     ));
@@ -781,7 +779,7 @@ fn draw_action(
         action_areas,
         ..
     } = item_context;
-    let x = drawing_context.search_result_area.get_allocation().width as f64
+    let x = drawing_context.search_result_area.allocation().width() as f64
         - ACTION_ICON_OFFSET_FROM_RIGHT
         - LEFT_RIGHT_MARGIN as f64;
     drawing_context
@@ -789,7 +787,7 @@ fn draw_action(
         .add_class("search_result_action_btn");
     let padding = drawing_context
         .style_context
-        .get_padding(gtk::StateFlags::NORMAL);
+        .padding(gtk::StateFlags::NORMAL);
     let w = ACTION_ICON_SIZE as f64 + (padding.left + padding.right) as f64;
     let h = ACTION_ICON_SIZE as f64 + (padding.top + padding.bottom) as f64;
     let flags = if Some(&*item) == item_with_depressed_action.as_ref() {
@@ -807,7 +805,7 @@ fn draw_action(
     style_context.remove_class("search_result_action_btn");
     draw_icon(
         style_context,
-        drawing_context.search_result_area.get_scale_factor(),
+        drawing_context.search_result_area.scale_factor(),
         context,
         icon,
         x + padding.left as f64,
@@ -833,7 +831,7 @@ fn draw_icon(
     // the way that I found is to paint a mask.
 
     // 1. load the icon as a pixbuf...
-    let pixbuf = gtk::IconTheme::get_default()
+    let pixbuf = gtk::IconTheme::default()
         .expect("get icon theme")
         .load_icon(
             icon.name(),
@@ -850,17 +848,17 @@ fn draw_icon(
         ACTION_ICON_SIZE * output_scale,
     )
     .expect("ImageSurface");
-    let surf_context = cairo::Context::new(&surf);
+    let surf_context = cairo::Context::new(&surf).unwrap();
     surf_context.set_source_pixbuf(&pixbuf, 0.0, 0.0);
     surf_context.paint();
 
     // 3. set the foreground color of our context to the theme's fg color
-    let fore_color = style_context.get_color(gtk::StateFlags::NORMAL);
+    let fore_color = style_context.color(gtk::StateFlags::NORMAL);
     context.set_source_rgba(
-        fore_color.red,
-        fore_color.green,
-        fore_color.blue,
-        fore_color.alpha,
+        fore_color.red(),
+        fore_color.green(),
+        fore_color.blue(),
+        fore_color.alpha(),
     );
     surf.set_device_scale(output_scale as f64, output_scale as f64);
 

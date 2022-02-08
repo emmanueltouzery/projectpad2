@@ -48,10 +48,10 @@ impl Widget for ProjectBadge {
         let icon = self.model.project.icon.clone();
         let name = self.model.project.name.clone();
         self.widgets.drawing_area.connect_draw(move |da, context| {
-            let allocation = da.get_allocation();
+            let allocation = da.allocation();
             let b0 = buf.borrow();
-            let is_buffer_good = Some((allocation.width, allocation.height))
-                == b0.as_ref().map(|b| (b.get_width(), b.get_height()));
+            let is_buffer_good = Some((allocation.width(), allocation.height()))
+                == b0.as_ref().map(|b| (b.width(), b.height()));
             let surface_ref = if is_buffer_good {
                 b0
             } else {
@@ -63,14 +63,14 @@ impl Widget for ProjectBadge {
                     is_a.get(),
                     &icon,
                     &name,
-                    allocation.width,
-                    allocation.height,
+                    allocation.width(),
+                    allocation.height(),
                 )));
                 buf.borrow()
             };
             // paint the backing buffer -
             let s = surface_ref.as_ref().unwrap();
-            let output_scale = da.get_scale_factor();
+            let output_scale = da.scale_factor();
             s.set_device_scale(output_scale as f64, output_scale as f64);
             context.set_source_surface(s, 0.0, 0.0);
             context.paint();
@@ -97,13 +97,13 @@ impl Widget for ProjectBadge {
         allocation_width_: i32,
         allocation_height_: i32,
     ) -> cairo::ImageSurface {
-        let output_scale = drawing_area.get_scale_factor();
+        let output_scale = drawing_area.scale_factor();
         let allocation_width = allocation_width_ * output_scale;
         let allocation_height = allocation_height_ * output_scale;
         let buf =
             cairo::ImageSurface::create(cairo::Format::ARgb32, allocation_width, allocation_height)
                 .expect("cairo backing buffer");
-        let context = cairo::Context::new(&buf);
+        let context = cairo::Context::new(&buf).unwrap();
 
         // code to make the badge text bold, but i feel it doesn't work out
         // if let Some(family) = context.get_font_face().toy_get_family() {
@@ -126,7 +126,7 @@ impl Widget for ProjectBadge {
         }
         context.set_antialias(cairo::Antialias::Best);
 
-        let style_context = drawing_area.get_style_context();
+        let style_context = drawing_area.style_context();
 
         gtk::render_background(
             &style_context,
@@ -146,7 +146,7 @@ impl Widget for ProjectBadge {
         );
 
         let fg_color = style_context.lookup_color("theme_fg_color").unwrap();
-        context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
+        context.set_source_rgb(fg_color.red(), fg_color.green(), fg_color.blue());
         if is_active {
             context.set_line_width(6.0 * output_scale as f64);
             context.set_line_cap(cairo::LineCap::Round);
@@ -171,10 +171,10 @@ impl Widget for ProjectBadge {
         // so the goal here is to push the contrast. if the background color
         // is darker (<0.5) we go for pure black; if it's brighter, we go
         // for pure white.
-        let bg_base = if bg_color.red < 0.5 { 0.0 } else { 1.0 };
+        let bg_base = if bg_color.red() < 0.5 { 0.0 } else { 1.0 };
         context.set_source_rgb(bg_base, bg_base, bg_base);
         context.fill();
-        context.set_source_rgb(fg_color.red, fg_color.green, fg_color.blue);
+        context.set_source_rgb(fg_color.red(), fg_color.green(), fg_color.blue());
 
         match icon {
             // the 'if' works around an issue reading from SQL. should be None if it's empty!!
@@ -187,7 +187,7 @@ impl Widget for ProjectBadge {
     fn compute_font_size(context: &cairo::Context, width: f64) -> f64 {
         let mut size = 5.0;
         context.set_font_size(size);
-        while context.text_extents("HU").width < width * 0.8 {
+        while context.text_extents("HU").unwrap().width < width * 0.8 {
             context.set_font_size(size);
             size += 1.0;
         }
@@ -200,8 +200,8 @@ impl Widget for ProjectBadge {
             Some(surface) => {
                 let p = PADDING as f64;
                 let aw = (allocation_width - PADDING * 2) as f64;
-                let w = surface.get_width() as f64;
-                let h = surface.get_height() as f64;
+                let w = surface.width() as f64;
+                let h = surface.height() as f64;
                 let scale_ratio = f64::min(aw / w, aw / h);
                 context.scale(scale_ratio, scale_ratio);
                 let (offsetx, offsety) = if w > h {
@@ -221,7 +221,7 @@ impl Widget for ProjectBadge {
 
     fn draw_label(context: &cairo::Context, allocation_width: i32, contents: &str) {
         // context.set_source_rgb(1.0, 1.0, 1.0);
-        let text_extents = context.text_extents(contents);
+        let text_extents = context.text_extents(contents).unwrap();
         context.move_to(
             (allocation_width / 2) as f64 - text_extents.width / 2.0 - text_extents.x_bearing,
             (allocation_width / 2) as f64 - text_extents.y_bearing - text_extents.height / 2.0,
@@ -278,7 +278,7 @@ impl Widget for ProjectBadge {
             button_press_event(_, _) => (Msg::Click, Inhibit(false)),
             enter_notify_event(_, _) => (Msg::MouseEnter, Inhibit(false)),
             leave_notify_event(_, _) => (Msg::MouseLeave, Inhibit(false)),
-            property_scale_factor_notify => Msg::ScaleFactorChange,
+            scale_factor_notify => Msg::ScaleFactorChange,
         }
     }
 }

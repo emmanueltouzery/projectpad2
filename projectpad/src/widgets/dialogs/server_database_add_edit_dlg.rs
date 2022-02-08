@@ -84,7 +84,7 @@ impl Widget for ServerDatabaseAddEditDialog {
             db_sender,
             server_id,
             server_db_id: sd.map(|d| d.id),
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _groups_channel: groups_channel,
             groups_sender,
             _server_db_updated_channel: server_db_updated_channel,
@@ -128,11 +128,11 @@ impl Widget for ServerDatabaseAddEditDialog {
     fn update_server_db(&self, new_password: String) {
         let server_id = self.model.server_id;
         let server_db_id = self.model.server_db_id;
-        let new_desc = self.widgets.desc_entry.get_text();
-        let new_name = self.widgets.name_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
-        let new_text = self.widgets.text_entry.get_text();
-        let new_username = self.widgets.username_entry.get_text();
+        let new_desc = self.widgets.desc_entry.text();
+        let new_name = self.widgets.name_entry.text();
+        let new_group = self.widgets.group.active_text();
+        let new_text = self.widgets.text_entry.text();
+        let new_username = self.widgets.username_entry.text();
         let s = self.model.server_db_updated_sender.clone();
         self.model
             .db_sender

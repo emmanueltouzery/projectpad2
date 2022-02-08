@@ -119,13 +119,13 @@ impl Widget for ImportExportDialog {
         self.model.import_error_label.show();
         self.widgets
             .import_error_infobar
-            .get_content_area()
+            .content_area()
             .add(&self.model.import_error_label);
 
         self.model.export_error_label.show();
         self.widgets
             .export_error_infobar
-            .get_content_area()
+            .content_area()
             .add(&self.model.export_error_label);
     }
 
@@ -145,11 +145,11 @@ impl Widget for ImportExportDialog {
             db_sender,
             header,
             wizard_state: WizardState::Start,
-            import_error_label: gtk::LabelBuilder::new()
+            import_error_label: gtk::builders::LabelBuilder::new()
                 .label("")
                 .ellipsize(pango::EllipsizeMode::End)
                 .build(),
-            export_error_label: gtk::LabelBuilder::new()
+            export_error_label: gtk::builders::LabelBuilder::new()
                 .label("")
                 .ellipsize(pango::EllipsizeMode::End)
                 .build(),
@@ -179,14 +179,14 @@ impl Widget for ImportExportDialog {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::KeyPress(key) => {
-                if key.get_keyval() == gdk::keys::constants::Escape {
+                if key.keyval() == gdk::keys::constants::Escape {
                     self.widgets.import_win.close();
                 }
             }
             Msg::Close => self.widgets.import_win.close(),
             Msg::NextClicked => match self.model.wizard_state {
                 WizardState::Start => {
-                    if self.widgets.import_file_radio.get_active() {
+                    if self.widgets.import_file_radio.is_active() {
                         self.model
                             .header
                             .stream()
@@ -276,7 +276,7 @@ impl Widget for ImportExportDialog {
     }
 
     fn open_export_save_dialog(&self, pass: String) {
-        let dialog = gtk::FileChooserNativeBuilder::new()
+        let dialog = gtk::builders::FileChooserNativeBuilder::new()
             .action(gtk::FileChooserAction::Save)
             .title("Export to...")
             .modal(true)
@@ -285,7 +285,7 @@ impl Widget for ImportExportDialog {
         filter.add_pattern("*.7z");
         dialog.set_filter(&filter);
         if dialog.run() == gtk::ResponseType::Accept {
-            match dialog.get_filename() {
+            match dialog.filename() {
                 Some(fname) if fname.extension() == Some(OsStr::new("7z")) => {
                     self.do_export(fname, pass)
                 }
@@ -321,12 +321,12 @@ impl Widget for ImportExportDialog {
 
     fn populate_project_list(&mut self, projects: Vec<Project>) {
         self.model.displayed_projects = projects;
-        for child in self.widgets.project_list.get_children() {
+        for child in self.widgets.project_list.children() {
             self.widgets.project_list.remove(&child);
         }
         for project in &self.model.displayed_projects {
             self.widgets.project_list.add(
-                &gtk::LabelBuilder::new()
+                &gtk::builders::LabelBuilder::new()
                     .label(&project.name)
                     .xalign(0.0)
                     .margin(5)
@@ -335,7 +335,7 @@ impl Widget for ImportExportDialog {
         }
         self.widgets
             .project_list
-            .select_row(self.widgets.project_list.get_row_at_index(0).as_ref());
+            .select_row(self.widgets.project_list.row_at_index(0).as_ref());
         self.widgets.project_list.show_all();
     }
 
@@ -344,7 +344,7 @@ impl Widget for ImportExportDialog {
             .header
             .stream()
             .emit(HeaderMsg::EnableNext(false));
-        match self.widgets.import_picker_btn.get_filename() {
+        match self.widgets.import_picker_btn.filename() {
             None => {
                 // shouldn't happen, but i don't want to crash
                 self.show_import_error("Please pick a file to import");
@@ -373,12 +373,12 @@ impl Widget for ImportExportDialog {
         let selected_projects: Vec<_> = self
             .widgets
             .project_list
-            .get_selected_rows()
+            .selected_rows()
             .into_iter()
             .flat_map(|row| {
                 self.model
                     .displayed_projects
-                    .get(row.get_index() as usize)
+                    .get(row.index() as usize)
                     .cloned()
             })
             .collect();
@@ -403,8 +403,8 @@ impl Widget for ImportExportDialog {
         #[name="import_win"]
         gtk::Window {
             titlebar: Some(self.model.header.widget()),
-            property_default_width: 600,
-            property_default_height: 300, // need more height for the export due to the project list
+            default_width: 600,
+            default_height: 300, // need more height for the export due to the project list
             #[name="wizard_stack"]
             gtk::Stack {
                 gtk::Box {

@@ -8,7 +8,7 @@ pub fn init_group_control(groups_store: &gtk::ListStore, group: &gtk::ComboBoxTe
     completion.set_model(Some(groups_store));
     completion.set_text_column(0);
     group
-        .get_child()
+        .child()
         .unwrap()
         .dynamic_cast::<gtk::Entry>()
         .unwrap()
@@ -29,7 +29,7 @@ pub fn fill_groups(
 
     if let Some(t) = cur_group_name.as_deref() {
         group_widget
-            .get_child()
+            .child()
             .unwrap()
             .dynamic_cast::<gtk::Entry>()
             .unwrap()

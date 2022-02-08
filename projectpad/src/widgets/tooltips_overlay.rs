@@ -23,18 +23,18 @@ impl Widget for TooltipsOverlay {
             .connect_draw(move |area, context| {
                 if let Some(tooltip) = &tooltip.borrow().clone() {
                     let label = tooltip.0.clone();
-                    let style_context = area.get_style_context();
+                    let style_context = area.style_context();
                     style_context.add_class("project_name_tooltip");
-                    let padding = style_context.get_padding(gtk::StateFlags::NORMAL);
+                    let padding = style_context.padding(gtk::StateFlags::NORMAL);
                     let pango_context = area.create_pango_context();
                     let layout = pango::Layout::new(&pango_context);
                     layout.set_text(&label);
                     layout.set_ellipsize(pango::EllipsizeMode::End);
                     layout.set_width(350 * pango::SCALE);
 
-                    let rect = layout.get_extents().1;
-                    let text_w = (rect.width / pango::SCALE) as f64;
-                    let text_h = (rect.height / pango::SCALE) as f64;
+                    let rect = layout.extents().1;
+                    let text_w = (rect.width() / pango::SCALE) as f64;
+                    let text_h = (rect.height() / pango::SCALE) as f64;
 
                     let total_width = text_w + padding.left as f64 + padding.right as f64;
                     let total_height = text_h + padding.top as f64 + padding.bottom as f64;

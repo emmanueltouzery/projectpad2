@@ -145,7 +145,7 @@ impl Widget for ServerPoiAddEditDialog {
             db_sender,
             server_id,
             server_poi_id: poi.map(|s| s.id),
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _groups_channel: groups_channel,
             groups_sender,
             description: poi
@@ -197,7 +197,7 @@ impl Widget for ServerPoiAddEditDialog {
     fn combo_read_interest_type(&self) -> InterestType {
         self.widgets
             .interest_type
-            .get_active_id()
+            .active_id()
             .map(|s| InterestType::from_str(s.as_str()).expect("Error parsing the interest type!?"))
             .expect("interest type not specified!?")
     }
@@ -205,15 +205,15 @@ impl Widget for ServerPoiAddEditDialog {
     fn update_server_poi(&self) {
         let server_poi_id = self.model.server_poi_id;
         let server_id = self.model.server_id;
-        let new_desc = self.widgets.desc_entry.get_text();
-        let new_path = self.widgets.path_entry.get_text();
-        let new_text = self.widgets.text_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
+        let new_desc = self.widgets.desc_entry.text();
+        let new_path = self.widgets.path_entry.text();
+        let new_text = self.widgets.text_entry.text();
+        let new_group = self.widgets.group.active_text();
         let new_interest_type = self.combo_read_interest_type();
         let new_run_on = self
             .widgets
             .run_on
-            .get_active_id()
+            .active_id()
             .map(|s| RunOn::from_str(s.as_str()).expect("Error parsing the run_on!?"))
             .expect("run_on not specified!?");
         let s = self.model.server_poi_updated_sender.clone();

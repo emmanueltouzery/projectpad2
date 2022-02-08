@@ -162,7 +162,7 @@ impl Widget for PickProjectpadItemButton {
             .add_button("Save", gtk::ResponseType::Ok)
             .downcast::<gtk::Button>()
             .expect("error reading the dialog save button");
-        save_btn.get_style_context().add_class("suggested-action");
+        save_btn.style_context().add_class("suggested-action");
         let dialog_contents = relm::init::<search_view::SearchView>((
             self.model.db_sender.clone(),
             Some("".to_string()),
@@ -213,14 +213,16 @@ impl Widget for PickProjectpadItemButton {
             .emit(search_view::Msg::SelectItem(self.model.item.clone()));
         standard_dialogs::prepare_custom_dialog_component_ref(&dialog, comp);
 
-        let search_entry = gtk::SearchEntryBuilder::new().text(&search_text).build();
+        let search_entry = gtk::builders::SearchEntryBuilder::new()
+            .text(&search_text)
+            .build();
         let comp2 = comp.stream();
         search_entry.connect_changed(move |se| {
-            comp2.stream().emit(search_view::Msg::FilterChanged(Some(
-                se.get_text().to_string(),
-            )));
+            comp2
+                .stream()
+                .emit(search_view::Msg::FilterChanged(Some(se.text().to_string())));
         });
-        dialog.get_header_bar().unwrap().pack_end(&search_entry);
+        dialog.header_bar().unwrap().pack_end(&search_entry);
         search_entry.show();
 
         relm::connect!(comp@SearchViewMsg::SelectedItem(ref p), self.model.relm, Msg::ItemSelected(p.clone()));

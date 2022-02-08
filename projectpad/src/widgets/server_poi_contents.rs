@@ -100,7 +100,7 @@ impl Widget for ServerPoiContents {
         self.update_contents_list();
         self.widgets
             .contents_list
-            .set_focus_vadjustment(&self.widgets.contents_scroll.get_vadjustment().unwrap());
+            .set_focus_vadjustment(&self.widgets.contents_scroll.vadjustment());
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
@@ -179,13 +179,12 @@ impl Widget for ServerPoiContents {
                     .iter()
                     .find(|(_cur_idx, cur_grp)| **cur_grp == gn)
                 {
-                    if let Some(row) = self.widgets.contents_list.get_row_at_index(*idx as i32) {
-                        if let Some(vscroll) = self.widgets.contents_scroll.get_vadjustment() {
-                            if let Some((_x, y)) =
-                                row.translate_coordinates(&self.widgets.contents_list, 0, 0)
-                            {
-                                vscroll.set_value(y.into());
-                            }
+                    if let Some(row) = self.widgets.contents_list.row_at_index(*idx as i32) {
+                        let vscroll = self.widgets.contents_scroll.vadjustment();
+                        if let Some((_x, y)) =
+                            row.translate_coordinates(&self.widgets.contents_list, 0, 0)
+                        {
+                            vscroll.set_value(y.into());
                         }
                         // self.widgets.contents_list.select_row(Some(&row));
                         // row.grab_focus();
@@ -205,13 +204,11 @@ impl Widget for ServerPoiContents {
         let find_cb = Self::get_find_serveritem_cb(&si);
         let midx = self.model.server_items.iter().position(find_cb);
         if let Some(idx) = midx {
-            if let Some(row) = self.widgets.contents_list.get_row_at_index(idx as i32) {
-                if let Some(vscroll) = self.widgets.contents_scroll.get_vadjustment() {
-                    if let Some((_x, y)) =
-                        row.translate_coordinates(&self.widgets.contents_list, 0, 0)
-                    {
-                        vscroll.set_value(y.into());
-                    }
+            if let Some(row) = self.widgets.contents_list.row_at_index(idx as i32) {
+                let vscroll = self.widgets.contents_scroll.vadjustment();
+                if let Some((_x, y)) = row.translate_coordinates(&self.widgets.contents_list, 0, 0)
+                {
+                    vscroll.set_value(y.into());
                 }
                 // self.widgets.contents_list.select_row(Some(&row));
                 // row.grab_focus();
@@ -311,7 +308,7 @@ impl Widget for ServerPoiContents {
     }
 
     fn update_contents_list(&mut self) {
-        for child in self.widgets.contents_list.get_children() {
+        for child in self.widgets.contents_list.children() {
             self.widgets.contents_list.remove(&child);
         }
         let mut children_components = vec![];
@@ -346,15 +343,15 @@ impl Widget for ServerPoiContents {
         self.widgets
             .contents_list
             .set_header_func(Some(Box::new(move |row, _h| {
-                if let Some(group_name) = indexes.get(&row.get_index()) {
-                    let label = gtk::LabelBuilder::new()
+                if let Some(group_name) = indexes.get(&row.index()) {
+                    let label = gtk::builders::LabelBuilder::new()
                         .label(group_name)
                         .xalign(0.0)
                         .build();
-                    label.get_style_context().add_class("server_item_header");
+                    label.style_context().add_class("server_item_header");
                     row.set_header(Some(&label));
                 } else {
-                    row.set_header::<gtk::ListBoxRow>(None)
+                    row.set_header(None::<&gtk::ListBoxRow>)
                 }
             })));
         // need to keep the component alive else the event handling dies
@@ -362,21 +359,21 @@ impl Widget for ServerPoiContents {
 
         if self.model.cur_server_id.is_some() && self.model.server_items.is_empty() {
             // show a little intro text
-            let vbox = gtk::BoxBuilder::new()
+            let vbox = gtk::builders::BoxBuilder::new()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let intro_label = gtk::LabelBuilder::new()
+            let intro_label = gtk::builders::LabelBuilder::new()
                 .label("<big>This server doesn't have any items</big>")
                 .xalign(0.0)
                 .margin(10)
                 .use_markup(true)
                 .build();
             vbox.add(&intro_label);
-            let details = gtk::ExpanderBuilder::new()
+            let details = gtk::builders::ExpanderBuilder::new()
                 .label("Server item types")
                 .build();
             details.add(
-                &gtk::LabelBuilder::new()
+                &gtk::builders::LabelBuilder::new()
                     .label("You can add multiple item types to a server. To do that, use the gear icon \
                             next to the server name. Let's review all the available item types:\n\n\
                             • <u>Point of interest</u> - a command to run or a relevant file or folder \
@@ -410,7 +407,7 @@ impl Widget for ServerPoiContents {
             self.widgets.contents_list.add(&vbox);
         }
 
-        for child in self.widgets.contents_list.get_children() {
+        for child in self.widgets.contents_list.children() {
             // don't want the row background color to change when we hover
             // it with the mouse (activatable), or the focus dotted lines
             // around the rows to be drawn, for aesthetic reasons.

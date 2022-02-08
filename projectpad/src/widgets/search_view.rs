@@ -65,12 +65,7 @@ impl Area {
     }
 
     fn to_rect(&self) -> gtk::Rectangle {
-        gtk::Rectangle {
-            x: self.x,
-            y: self.y,
-            width: self.width,
-            height: self.height,
-        }
+        gtk::Rectangle::new(self.x, self.y, self.width, self.height)
     }
 }
 
@@ -162,7 +157,7 @@ pub enum OperationMode {
 impl Widget for SearchView {
     fn init_view(&mut self) {
         self.model.action_popover = Some(
-            gtk::PopoverBuilder::new()
+            gtk::builders::PopoverBuilder::new()
                 .relative_to(&self.widgets.search_result_area)
                 .position(gtk::PositionType::Bottom)
                 .build(),
@@ -211,21 +206,21 @@ impl Widget for SearchView {
         let links_mmove = self.model.links.clone();
         let item_links_mmove = self.model.item_link_areas.clone();
         let search_result_area_mmove = self.widgets.search_result_area.clone();
-        let hand_cursor = gdk::Cursor::new_for_display(
-            &self.widgets.search_result_area.get_display(),
+        let hand_cursor = gdk::Cursor::for_display(
+            &self.widgets.search_result_area.display(),
             gdk::CursorType::Hand2,
         );
         self.widgets
             .search_result_area
             .connect_motion_notify_event(move |_, event_motion| {
-                let x = event_motion.get_position().0 as i32;
-                let y = event_motion.get_position().1 as i32;
+                let x = event_motion.position().0 as i32;
+                let y = event_motion.position().1 as i32;
                 let links = links_mmove.borrow();
                 let item_links = item_links_mmove.borrow();
                 search_result_area_mmove
-                    .get_parent_window()
+                    .parent_window()
                     .unwrap()
-                    .set_cursor(Some(&hand_cursor).filter(|_| {
+                    .set_cursor(hand_cursor.as_ref().filter(|_| {
                         links.iter().any(|l| l.0.contains(x, y))
                             || item_links.iter().any(|il| il.0.contains(x, y))
                     }));
@@ -242,17 +237,17 @@ impl Widget for SearchView {
         self.widgets
             .search_result_area
             .connect_button_release_event(move |_, event_click| {
-                let x = event_click.get_position().0 as i32;
-                let y = event_click.get_position().1 as i32;
+                let x = event_click.position().0 as i32;
+                let y = event_click.position().1 as i32;
                 let window = search_result_area_btnclick
-                    .get_toplevel()
+                    .toplevel()
                     .and_then(|w| w.downcast::<gtk::Window>().ok());
                 let links = links_btnclick.borrow();
                 let item_links = item_link_areas_btnclick.borrow();
                 let action_areas = action_areas_btnclick.borrow();
                 if let Some(link) = links.iter().find(|l| l.0.contains(x, y)) {
                     if let Result::Err(err) =
-                        gtk::show_uri_on_window(window.as_ref(), &link.1, event_click.get_time())
+                        gtk::show_uri_on_window(window.as_ref(), &link.1, event_click.time())
                     {
                         eprintln!("Error opening the link: {}", err);
                     }
@@ -302,7 +297,9 @@ impl Widget for SearchView {
         } else {
             vec![]
         };
-        let open_btn = gtk::ModelButtonBuilder::new().label("Open").build();
+        let open_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Open")
+            .build();
         let ppitem = projectpad_item.clone();
         relm::connect!(
             relm,
@@ -310,7 +307,9 @@ impl Widget for SearchView {
             connect_clicked(_),
             Msg::OpenItem(ppitem.clone())
         );
-        let edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+        let edit_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Edit")
+            .build();
         let ppitem2 = projectpad_item.clone();
         relm::connect!(
             relm,
@@ -356,14 +355,14 @@ impl Widget for SearchView {
         item_link_areas.clear();
         let search_items = si.borrow();
         // https://gtk-rs.org/docs/gtk/trait.WidgetExt.html#tymethod.connect_draw
-        let y_to_display = search_scroll.get_value() as i32;
+        let y_to_display = search_scroll.value() as i32;
         gtk::render_background(
-            &search_result_area.get_style_context(),
+            &search_result_area.style_context(),
             context,
             0.0,
             0.0,
-            search_result_area.get_allocation().width.into(),
-            search_result_area.get_allocation().height.into(),
+            search_result_area.allocation().width().into(),
+            search_result_area.allocation().height().into(),
         );
         let mut y = 0;
         let mut item_idx = 0;
@@ -377,11 +376,11 @@ impl Widget for SearchView {
             }
         }
         search_result_area
-            .get_style_context()
+            .style_context()
             .add_class("search_result_frame");
         let sel_i: Option<ProjectPadItem> = sel_item.borrow().clone();
         while item_idx < search_items.len()
-            && y < y_to_display + search_result_area.get_allocation().height
+            && y < y_to_display + search_result_area.allocation().height()
         {
             let item = &search_items[item_idx];
             if let ProjectPadItem::Server(srv) = item {
@@ -389,12 +388,12 @@ impl Widget for SearchView {
             }
             let drawing_context = search_view_render::DrawingContext {
                 search_result_area: search_result_area.clone(),
-                style_context: search_result_area.get_style_context().clone(),
+                style_context: search_result_area.style_context().clone(),
                 context: context.clone(),
             };
             let padding = drawing_context
                 .style_context
-                .get_padding(gtk::StateFlags::NORMAL);
+                .padding(gtk::StateFlags::NORMAL);
             let mut item_context = search_view_render::ItemContext {
                 is_selected: sel_i.as_ref() == Some(item),
                 padding,
@@ -418,7 +417,7 @@ impl Widget for SearchView {
             item_idx += 1;
         }
         search_result_area
-            .get_style_context()
+            .style_context()
             .remove_class("search_result_frame");
     }
 
@@ -481,7 +480,7 @@ impl Widget for SearchView {
                 self.refresh_display(Some(&search_result));
             }
             Msg::MouseScroll(direction, (_dx, dy)) => {
-                let old_val = self.widgets.search_scroll.get_value();
+                let old_val = self.widgets.search_scroll.value();
                 let new_val = old_val
                     + if direction == gdk::ScrollDirection::Up || dy < 0.0 {
                         -SCROLLBAR_WHEEL_DY
@@ -545,17 +544,17 @@ impl Widget for SearchView {
                     self.widgets.search_result_area.queue_draw();
                 }
                 if let Some(index) = e
-                    .get_keyval()
+                    .keyval()
                     .to_unicode()
                     .and_then(|letter| letter.to_digit(10))
                     .map(|i| if i == 0 { 9_usize } else { i as usize - 1 })
                 {
                     let items = self.model.search_items.borrow();
                     if let Some(item) = items.get(index) {
-                        if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
+                        if !(e.state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
                             self.model.relm.stream().emit(Msg::OpenItem(item.clone()));
                         }
-                        if !(e.get_state() & gdk::ModifierType::MOD1_MASK).is_empty() {
+                        if !(e.state() & gdk::ModifierType::MOD1_MASK).is_empty() {
                             self.model.relm.stream().emit(Msg::EditItem(item.clone()));
                         }
                     }
@@ -568,9 +567,7 @@ impl Widget for SearchView {
     }
 
     fn copy_to_clipboard(&self, val: &str) {
-        if let Some(clip) =
-            gtk::Clipboard::get_default(&self.widgets.search_result_area.get_display())
-        {
+        if let Some(clip) = gtk::Clipboard::default(&self.widgets.search_result_area.display()) {
             clip.set_text(val);
             self.model
                 .relm
@@ -580,9 +577,9 @@ impl Widget for SearchView {
     }
 
     fn handle_keypress(&self, e: gdk::EventKey) {
-        let has_ctrl = !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty();
-        if e.get_keyval() == gdk::keys::constants::Return
-            || e.get_keyval() == gdk::keys::constants::KP_Enter
+        let has_ctrl = !(e.state() & gdk::ModifierType::CONTROL_MASK).is_empty();
+        if e.keyval() == gdk::keys::constants::Return
+            || e.keyval() == gdk::keys::constants::KP_Enter
         {
             let items = self.model.search_items.borrow();
             let level1_items: Vec<_> = items
@@ -604,7 +601,7 @@ impl Widget for SearchView {
                 ([_], [_], [thrd]) => open(thrd),
                 _ => {}
             }
-        } else if has_ctrl && e.get_keyval().to_unicode() == Some('e') {
+        } else if has_ctrl && e.keyval().to_unicode() == Some('e') {
             let items = self.model.search_items.borrow();
             let urls = items
                 .iter()
@@ -628,7 +625,7 @@ impl Widget for SearchView {
                     eprintln!("Error opening link: {}", e);
                 }
             }
-        } else if has_ctrl && e.get_keyval().to_unicode() == Some('y') {
+        } else if has_ctrl && e.keyval().to_unicode() == Some('y') {
             let items = self.model.search_items.borrow();
             let passwords = items
                 .iter()
@@ -654,7 +651,7 @@ impl Widget for SearchView {
                 gdk::keys::constants::Alt_L,
                 gdk::keys::constants::Alt_R,
             ]
-            .contains(&e.get_keyval());
+            .contains(&e.keyval());
             if new_show_shortcuts != self.model.show_shortcuts.get() {
                 self.model.show_shortcuts.set(new_show_shortcuts);
                 self.widgets.search_result_area.queue_draw();
@@ -1086,7 +1083,7 @@ impl Widget for SearchView {
                     upper as f64,
                     10.0,
                     60.0,
-                    self.widgets.search_result_area.get_allocation().height as f64,
+                    self.widgets.search_result_area.allocation().height() as f64,
                 ));
         }
         self.widgets.search_result_area.queue_draw();
@@ -1141,7 +1138,7 @@ impl Widget for SearchView {
                 child: {
                     expand: true
                 },
-                scroll_event(_, event) => (Msg::MouseScroll(event.get_direction(), event.get_delta()), Inhibit(false)),
+                scroll_event(_, event) => (Msg::MouseScroll(event.direction(), event.delta()), Inhibit(false)),
                 // motion_notify_event(_, event) => (MoveCursor(event.get_position()), Inhibit(false))
             },
             #[name="search_scroll"]

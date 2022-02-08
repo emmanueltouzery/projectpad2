@@ -60,13 +60,13 @@ impl Widget for ServerLinkAddEditDialog {
         self.init_group();
         self.fetch_project_name_and_id();
 
-        let must_pick_server_error_label = gtk::LabelBuilder::new()
+        let must_pick_server_error_label = gtk::builders::LabelBuilder::new()
             .label("You must select a server to link to")
             .build();
         must_pick_server_error_label.show();
         self.widgets
             .must_pick_server_error
-            .get_content_area()
+            .content_area()
             .add(&must_pick_server_error_label);
     }
 
@@ -164,10 +164,10 @@ impl Widget for ServerLinkAddEditDialog {
             _projectname_id_channel: projectname_id_channel,
             _groups_channel: groups_channel,
             groups_sender,
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _linked_groups_channel: linked_groups_channel,
             linked_groups_sender,
-            linked_groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            linked_groups_store: gtk::ListStore::new(&[String::static_type()]),
             _server_link_updated_channel: server_link_updated_channel,
             server_link_updated_sender,
             description: sl.map(|d| d.desc.clone()).unwrap_or_else(|| "".to_string()),
@@ -225,9 +225,9 @@ impl Widget for ServerLinkAddEditDialog {
             return;
         }
         let new_linked_server_id = self.model.linked_server_id.unwrap();
-        let new_desc = self.widgets.desc_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
-        let new_linked_group = self.widgets.linked_group.get_active_text();
+        let new_desc = self.widgets.desc_entry.text();
+        let new_group = self.widgets.group.active_text();
+        let new_linked_group = self.widgets.linked_group.active_text();
         let new_env_type = self.model.environment_type.unwrap();
         let s = self.model.server_link_updated_sender.clone();
         self.model

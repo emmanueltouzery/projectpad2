@@ -73,15 +73,15 @@ impl Widget for ProjectAddEditDialog {
             });
         let name = p.map(|p| p.name.clone()).unwrap_or_else(|| "".to_string());
         let icon = p.and_then(|p| p.icon.clone()).filter(|i| !i.is_empty());
-        let infobar = gtk::InfoBarBuilder::new()
+        let infobar = gtk::builders::InfoBarBuilder::new()
             .revealed(false)
             .message_type(gtk::MessageType::Info)
             .valign(gtk::Align::Start)
             .build();
 
-        let infobar_label = gtk::LabelBuilder::new().label("").build();
+        let infobar_label = gtk::builders::LabelBuilder::new().label("").build();
         infobar_label.show();
-        infobar.get_content_area().add(&infobar_label);
+        infobar.content_area().add(&infobar_label);
         infobar.show();
         Model {
             relm: relm.clone(),
@@ -146,7 +146,7 @@ impl Widget for ProjectAddEditDialog {
 
     fn update_project(&self) {
         let project_id = self.model.project_id;
-        let new_name = self.widgets.name_entry.get_text();
+        let new_name = self.widgets.name_entry.text();
         let new_icon = self.model.icon.clone();
         let new_has_dev = self.model.has_dev;
         let new_has_stg = self.model.has_stg;

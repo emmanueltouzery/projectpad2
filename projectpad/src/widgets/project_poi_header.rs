@@ -128,10 +128,10 @@ pub fn populate_popover(
     fields: &[GridItem],
     register_copy_btn: &dyn Fn(&gtk::ModelButton, String),
 ) {
-    for child in actions_popover.get_children() {
+    for child in actions_popover.children() {
         actions_popover.remove(&child);
     }
-    let popover_vbox = gtk::BoxBuilder::new()
+    let popover_vbox = gtk::builders::BoxBuilder::new()
         .margin(10)
         .width_request(180) // without that the "copy password" accelerator isn't shown!
         .orientation(gtk::Orientation::Vertical)
@@ -145,12 +145,14 @@ pub fn populate_popover(
         .filter(|cur_item| !cur_item.raw_value.is_empty())
         .collect();
     if !fields_to_copy.is_empty() {
-        popover_vbox.add(&gtk::SeparatorBuilder::new().build());
+        popover_vbox.add(&gtk::builders::SeparatorBuilder::new().build());
     }
     for item in fields_to_copy.iter() {
         let label = &format!("Copy {}", item.label_name);
         let popover_btn = match &item.shortcut {
-            None => gtk::ModelButtonBuilder::new().label(label).build(),
+            None => gtk::builders::ModelButtonBuilder::new()
+                .label(label)
+                .build(),
             Some((key, modifiers)) => label_with_accelerator(label, key, *modifiers),
         };
         left_align_menu(&popover_btn);
@@ -166,13 +168,13 @@ fn label_with_accelerator(
     key: &gdk::keys::Key,
     modifiers: gdk::ModifierType,
 ) -> gtk::ModelButton {
-    let lbl = gtk::ModelButtonBuilder::new().build();
-    let accel_lbl = gtk::AccelLabelBuilder::new().label(label).build();
+    let lbl = gtk::builders::ModelButtonBuilder::new().build();
+    let accel_lbl = gtk::builders::AccelLabelBuilder::new().label(label).build();
     accel_lbl.set_accel(**key, modifiers);
     accel_lbl.set_hexpand(true);
     accel_lbl.set_xalign(0.0);
     accel_lbl.show_all();
-    lbl.get_child()
+    lbl.child()
         .unwrap()
         .downcast::<gtk::Box>()
         .unwrap()
@@ -187,21 +189,21 @@ pub fn populate_grid(
     extra_btns: &[gtk::ModelButton],
     register_copy_btn: &dyn Fn(&gtk::ModelButton, String),
 ) {
-    for child in header_grid.get_children() {
+    for child in header_grid.children() {
         header_grid.remove(&child);
     }
 
     let mut i = 0;
     for item in fields {
         if !item.markup.is_empty() {
-            let label = gtk::LabelBuilder::new()
+            let label = gtk::builders::LabelBuilder::new()
                 .label(item.label_name)
                 .halign(gtk::Align::End) // right align as per gnome HIG
                 .build();
             header_grid.attach(&label, 0, i, 1, 1);
-            label.get_style_context().add_class("item_label");
+            label.style_context().add_class("item_label");
 
-            let label = gtk::LabelBuilder::new()
+            let label = gtk::builders::LabelBuilder::new()
                 .use_markup(true) // for 'address' we put the link for instance
                 .label(&item.markup)
                 .xalign(0.0)
@@ -210,13 +212,11 @@ pub fn populate_grid(
                 .build();
 
             if let Some(icon) = &item.icon {
-                let gbox = gtk::BoxBuilder::new().build();
-                // https://github.com/gtk-rs/gtk/issues/837
-                // property_icon_size: 1, // gtk::IconSize::Menu,
+                let gbox = gtk::builders::BoxBuilder::new().build();
                 gbox.add(
-                    &gtk::ImageBuilder::new()
+                    &gtk::builders::ImageBuilder::new()
                         .icon_name(icon.name())
-                        .icon_size(1)
+                        .icon_size(gtk::IconSize::Menu)
                         .margin_end(5)
                         .build(),
                 );
@@ -360,7 +360,7 @@ impl Widget for ProjectPoiHeader {
 
         self.model
             .title
-            .get_style_context()
+            .style_context()
             .add_class("header_frame_title");
         self.model.title.show_all();
 
@@ -393,7 +393,7 @@ impl Widget for ProjectPoiHeader {
             db_sender,
             project_item,
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
-            title: gtk::LabelBuilder::new()
+            title: gtk::builders::LabelBuilder::new()
                 .margin_top(8)
                 .margin_bottom(8)
                 .hexpand(true)
@@ -413,7 +413,7 @@ impl Widget for ProjectPoiHeader {
     }
 
     fn copy_to_clipboard(&self, val: &str) {
-        if let Some(clip) = gtk::Clipboard::get_default(&self.widgets.header_grid.get_display()) {
+        if let Some(clip) = gtk::Clipboard::default(&self.widgets.header_grid.display()) {
             clip.set_text(val);
         }
         self.model
@@ -714,8 +714,8 @@ impl Widget for ProjectPoiHeader {
             .add_button("Move", gtk::ResponseType::Ok)
             .downcast::<gtk::Button>()
             .expect("error reading the dialog move button");
-        move_btn.set_property_has_default(true);
-        move_btn.get_style_context().add_class("suggested-action");
+        move_btn.set_has_default(true);
+        move_btn.style_context().add_class("suggested-action");
 
         standard_dialogs::prepare_custom_dialog_component_ref(&dialog, &dialog_contents);
 
@@ -904,7 +904,9 @@ impl Widget for ProjectPoiHeader {
                 gdk::ModifierType::CONTROL_MASK,
             )
         } else {
-            gtk::ModelButtonBuilder::new().label("Edit").build()
+            gtk::builders::ModelButtonBuilder::new()
+                .label("Edit")
+                .build()
         };
         relm::connect!(
             self.model.relm,
@@ -912,7 +914,7 @@ impl Widget for ProjectPoiHeader {
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::Edit, "".to_string()))
         );
-        let add_btn = gtk::ModelButtonBuilder::new()
+        let add_btn = gtk::builders::ModelButtonBuilder::new()
             .label("Add server item...")
             .build();
         relm::connect!(
@@ -921,21 +923,27 @@ impl Widget for ProjectPoiHeader {
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::AddItem, "".to_string()))
         );
-        let goto_btn = gtk::ModelButtonBuilder::new().label("Go to").build();
+        let goto_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Go to")
+            .build();
         relm::connect!(
             self.model.relm,
             &goto_btn,
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::GotoItem, "".to_string()))
         );
-        let delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+        let delete_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Delete")
+            .build();
         relm::connect!(
             self.model.relm,
             &delete_btn,
             connect_clicked(_),
             Msg::HeaderActionClicked((ActionTypes::Delete, "".to_string()))
         );
-        let move_btn = gtk::ModelButtonBuilder::new().label("Move...").build();
+        let move_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Move...")
+            .build();
         relm::connect!(
             self.model.relm,
             &move_btn,
@@ -952,13 +960,13 @@ impl Widget for ProjectPoiHeader {
             Some(ProjectItem::Server(srv)) if srv.is_retired => {
                 self.widgets
                     .titlebox
-                    .get_style_context()
+                    .style_context()
                     .add_class("project_poi_header_titlebox_retired");
             }
             _ => {
                 self.widgets
                     .titlebox
-                    .get_style_context()
+                    .style_context()
                     .remove_class("project_poi_header_titlebox_retired");
             }
         };

@@ -1,4 +1,4 @@
-use glib::translate::ToGlib;
+use glib::translate::IntoGlib;
 use gtk::prelude::*;
 use pulldown_cmark::{Event, Options, Parser, Tag};
 use std::collections::HashMap;
@@ -85,52 +85,52 @@ const TAG_BLOCKQUOTE3: &str = "blockquote3";
 pub fn build_tag_table() -> gtk::TextTagTable {
     let tag_table = gtk::TextTagTable::new();
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_BOLD)
             .wrap_mode(gtk::WrapMode::Word)
-            .weight(pango::Weight::Bold.to_glib())
+            .weight(pango::Weight::Bold.into_glib())
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_STRIKETHROUGH)
             .wrap_mode(gtk::WrapMode::Word)
             .strikethrough(true)
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_ITALICS)
             .wrap_mode(gtk::WrapMode::Word)
             .style(pango::Style::Italic)
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_HEADER1)
-            .weight(pango::Weight::Bold.to_glib())
+            .weight(pango::Weight::Bold.into_glib())
             .wrap_mode(gtk::WrapMode::Word)
             .scale(pango::SCALE_XX_LARGE)
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_HEADER2)
-            .weight(pango::Weight::Bold.to_glib())
+            .weight(pango::Weight::Bold.into_glib())
             .wrap_mode(gtk::WrapMode::Word)
             .scale(pango::SCALE_X_LARGE)
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_HEADER3)
-            .weight(pango::Weight::Bold.to_glib())
+            .weight(pango::Weight::Bold.into_glib())
             .wrap_mode(gtk::WrapMode::Word)
             .scale(pango::SCALE_LARGE)
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_LINK)
             .underline(pango::Underline::Single)
             .wrap_mode(gtk::WrapMode::Word)
@@ -138,21 +138,21 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_PASSWORD)
             .wrap_mode(gtk::WrapMode::Word)
             .foreground("orange")
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_CODE)
             .family("monospace")
             .wrap_mode(gtk::WrapMode::None)
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_BLOCKQUOTE1)
             .wrap_mode(gtk::WrapMode::Word)
             .left_margin(30)
@@ -160,7 +160,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_BLOCKQUOTE2)
             .wrap_mode(gtk::WrapMode::Word)
             .left_margin(40)
@@ -168,7 +168,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_BLOCKQUOTE3)
             .wrap_mode(gtk::WrapMode::Word)
             .left_margin(50)
@@ -182,7 +182,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
     tab_ar.set_tab(0, pango::TabAlign::Left, 0);
     tab_ar.set_tab(1, pango::TabAlign::Left, 14);
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_LIST_ITEM)
             .indent(-14)
             .left_margin(14)
@@ -191,7 +191,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::TextTagBuilder::new()
+        &gtk::builders::TextTagBuilder::new()
             .name(TAG_PARAGRAPH)
             .wrap_mode(gtk::WrapMode::Word)
             .build(),
@@ -244,7 +244,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
     let mut separator_anchors = vec![];
 
     let buffer = gtk::TextBuffer::new(Some(table));
-    let mut end_iter = buffer.get_end_iter();
+    let mut end_iter = buffer.end_iter();
     let mut links = vec![];
     let mut passwords = vec![];
     let mut blockquote_level = 0;
@@ -257,42 +257,42 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
             EventExt::StandardEvent(std) => match std {
                 // TODO code duplication
                 Event::Start(Tag::Strong) => {
-                    active_tags.insert(TAG_BOLD, end_iter.get_offset());
+                    active_tags.insert(TAG_BOLD, end_iter.offset());
                 }
                 Event::End(Tag::Strong) => {
                     if let Some(start_offset) = active_tags.remove(TAG_BOLD) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_BOLD, &start_iter, &end_iter);
                     }
                 }
                 Event::Start(Tag::Emphasis) => {
-                    active_tags.insert(TAG_ITALICS, end_iter.get_offset());
+                    active_tags.insert(TAG_ITALICS, end_iter.offset());
                 }
                 Event::End(Tag::Emphasis) => {
                     if let Some(start_offset) = active_tags.remove(TAG_ITALICS) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_ITALICS, &start_iter, &end_iter);
                     }
                 }
                 Event::Start(Tag::Strikethrough) => {
-                    active_tags.insert(TAG_STRIKETHROUGH, end_iter.get_offset());
+                    active_tags.insert(TAG_STRIKETHROUGH, end_iter.offset());
                 }
                 Event::End(Tag::Strikethrough) => {
                     if let Some(start_offset) = active_tags.remove(TAG_STRIKETHROUGH) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_STRIKETHROUGH, &start_iter, &end_iter);
                     }
                 }
                 Event::Start(Tag::Link(_, _, _title)) => {
-                    active_tags.insert(TAG_LINK, end_iter.get_offset());
+                    active_tags.insert(TAG_LINK, end_iter.offset());
                 }
                 Event::End(Tag::Link(_, url, _)) => {
                     if let Some(start_offset) = active_tags.remove(TAG_LINK) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_LINK, &start_iter, &end_iter);
                         links.push(ItemDataInfo {
                             start_offset,
-                            end_offset: end_iter.get_offset(),
+                            end_offset: end_iter.offset(),
                             data: url.to_string(),
                         });
                     }
@@ -307,7 +307,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     buffer.insert(&mut end_iter, "\n");
                 }
                 Event::Start(Tag::Item) => {
-                    active_tags.insert(TAG_LIST_ITEM, end_iter.get_offset());
+                    active_tags.insert(TAG_LIST_ITEM, end_iter.offset());
                     in_item = true;
                     if let Some(idx) = list_cur_idx {
                         buffer.insert(&mut end_iter, format!("\n{}.\t", idx).as_str());
@@ -318,7 +318,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 }
                 Event::End(Tag::Item) => {
                     if let Some(start_offset) = active_tags.remove(TAG_LIST_ITEM) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_LIST_ITEM, &start_iter, &end_iter);
                     }
                     in_item = false;
@@ -330,16 +330,16 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                         // but i think gtktextview doesn't support soft carriage returns,
                         // meaning that any \n starts a new paragraph as far as textview
                         // is concerned, so you get lots of extra in-paragraph spacing.
-                        if buffer.get_char_count() != 0 {
+                        if buffer.char_count() != 0 {
                             buffer.insert(&mut end_iter, "\n");
                         }
-                        active_tags.insert(TAG_PARAGRAPH, end_iter.get_offset());
+                        active_tags.insert(TAG_PARAGRAPH, end_iter.offset());
                     }
                 }
                 Event::End(Tag::Paragraph) => {
                     if !in_item {
                         if let Some(start_offset) = active_tags.remove(TAG_PARAGRAPH) {
-                            let start_iter = buffer.get_iter_at_offset(start_offset);
+                            let start_iter = buffer.iter_at_offset(start_offset);
                             buffer.apply_tag_by_name(TAG_PARAGRAPH, &start_iter, &end_iter);
                             buffer.insert(&mut end_iter, "\n");
                         }
@@ -348,13 +348,13 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 Event::Start(Tag::BlockQuote) => {
                     blockquote_level += 1;
                     if let Some(tag) = get_blockquote_tag(blockquote_level) {
-                        active_tags.insert(tag, end_iter.get_offset());
+                        active_tags.insert(tag, end_iter.offset());
                     }
                 }
                 Event::End(Tag::BlockQuote) => {
                     if let Some(tag) = get_blockquote_tag(blockquote_level) {
                         if let Some(start_offset) = active_tags.remove(tag) {
-                            let start_iter = buffer.get_iter_at_offset(start_offset);
+                            let start_iter = buffer.iter_at_offset(start_offset);
                             buffer.apply_tag_by_name(tag, &start_iter, &end_iter);
                         }
                     }
@@ -372,46 +372,46 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 Event::End(Tag::Table(_)) => {}
                 Event::Start(Tag::Heading(1)) => {
                     buffer.insert(&mut end_iter, "\n");
-                    active_tags.insert(TAG_HEADER1, end_iter.get_offset());
+                    active_tags.insert(TAG_HEADER1, end_iter.offset());
                 }
                 Event::Start(Tag::Heading(2)) => {
                     buffer.insert(&mut end_iter, "\n");
-                    active_tags.insert(TAG_HEADER2, end_iter.get_offset());
+                    active_tags.insert(TAG_HEADER2, end_iter.offset());
                 }
                 Event::Start(Tag::Heading(_)) => {
                     buffer.insert(&mut end_iter, "\n");
-                    active_tags.insert(TAG_HEADER3, end_iter.get_offset());
+                    active_tags.insert(TAG_HEADER3, end_iter.offset());
                 }
                 Event::End(Tag::Heading(1)) => {
                     if let Some(start_offset) = active_tags.remove(TAG_HEADER1) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_HEADER1, &start_iter, &end_iter);
                     }
                     buffer.insert(&mut end_iter, "\n");
                 }
                 Event::End(Tag::Heading(2)) => {
                     if let Some(start_offset) = active_tags.remove(TAG_HEADER2) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_HEADER2, &start_iter, &end_iter);
                     }
                     buffer.insert(&mut end_iter, "\n");
                 }
                 Event::End(Tag::Heading(_)) => {
                     if let Some(start_offset) = active_tags.remove(TAG_HEADER3) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_HEADER3, &start_iter, &end_iter);
                     }
                     buffer.insert(&mut end_iter, "\n");
                 }
                 Event::Start(Tag::CodeBlock(_)) => {
-                    if buffer.get_char_count() != 0 {
+                    if buffer.char_count() != 0 {
                         buffer.insert(&mut end_iter, "\n");
                     }
-                    active_tags.insert(TAG_CODE, end_iter.get_offset());
+                    active_tags.insert(TAG_CODE, end_iter.offset());
                 }
                 Event::End(Tag::CodeBlock(_)) => {
                     if let Some(start_offset) = active_tags.remove(TAG_CODE) {
-                        let start_iter = buffer.get_iter_at_offset(start_offset);
+                        let start_iter = buffer.iter_at_offset(start_offset);
                         buffer.apply_tag_by_name(TAG_CODE, &start_iter, &end_iter);
                     }
                 }
@@ -419,10 +419,9 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                     buffer.insert(&mut end_iter, &t);
                 }
                 Event::Code(t) => {
-                    active_tags.insert(TAG_CODE, end_iter.get_offset());
+                    active_tags.insert(TAG_CODE, end_iter.offset());
                     buffer.insert(&mut end_iter, &t);
-                    let start_iter =
-                        buffer.get_iter_at_offset(active_tags.remove(TAG_CODE).unwrap());
+                    let start_iter = buffer.iter_at_offset(active_tags.remove(TAG_CODE).unwrap());
                     buffer.apply_tag_by_name(TAG_CODE, &start_iter, &end_iter);
                 }
                 Event::Html(t) => {
@@ -438,16 +437,16 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 Event::FootnoteReference(_) | Event::TaskListMarker(_) => {}
             },
             EventExt::Password(p) => {
-                let start_offset = end_iter.get_offset();
+                let start_offset = end_iter.offset();
                 buffer.insert(&mut end_iter, "🔒[Password]");
                 buffer.apply_tag_by_name(
                     TAG_PASSWORD,
-                    &buffer.get_iter_at_offset(start_offset),
+                    &buffer.iter_at_offset(start_offset),
                     &end_iter,
                 );
                 passwords.push(ItemDataInfo {
                     start_offset,
-                    end_offset: end_iter.get_offset(),
+                    end_offset: end_iter.offset(),
                     data: p,
                 });
             }

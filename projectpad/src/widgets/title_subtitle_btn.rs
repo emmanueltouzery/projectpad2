@@ -33,9 +33,9 @@ impl Widget for TitleSubtitleBtn {
         gtk::Button {
             gtk::Box {
                 gtk::Image {
-                    property_icon_name: Some(self.model.icon.name()),
+                    icon_name: Some(self.model.icon.name()),
                     // https://github.com/gtk-rs/gtk/issues/837
-                    property_icon_size: 5, // gtk::IconSize::Dnd,
+                    icon_size: gtk::IconSize::Dnd,
                     margin_end: 10,
                 },
                 gtk::Box {

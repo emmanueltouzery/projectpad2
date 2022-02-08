@@ -96,8 +96,8 @@ impl Widget for ProjectItemMoveDialog {
         let selected_project = self
             .widgets
             .project_list
-            .get_selected_row()
-            .and_then(|row| self.model.displayed_projects.get(row.get_index() as usize))
+            .selected_row()
+            .and_then(|row| self.model.displayed_projects.get(row.index() as usize))
             .map(|r| (*r).clone());
         let env = self.model.environment;
         let applied_sender = self.model.move_applied_sender.clone();
@@ -306,13 +306,13 @@ impl Widget for ProjectItemMoveDialog {
 
     fn populate_project_list(&mut self, projects: Vec<Project>) {
         self.model.displayed_projects = projects;
-        for child in self.widgets.project_list.get_children() {
+        for child in self.widgets.project_list.children() {
             self.widgets.project_list.remove(&child);
         }
         let mut selected_idx = 0;
         for (idx, project) in self.model.displayed_projects.iter().enumerate() {
             self.widgets.project_list.add(
-                &gtk::LabelBuilder::new()
+                &gtk::builders::LabelBuilder::new()
                     .label(&project.name)
                     .xalign(0.0)
                     .margin(5)
@@ -325,7 +325,7 @@ impl Widget for ProjectItemMoveDialog {
         self.widgets.project_list.select_row(
             self.widgets
                 .project_list
-                .get_row_at_index(selected_idx as i32)
+                .row_at_index(selected_idx as i32)
                 .as_ref(),
         );
         self.widgets.project_list.show_all();

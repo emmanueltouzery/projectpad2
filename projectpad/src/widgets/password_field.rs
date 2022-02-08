@@ -38,25 +38,23 @@ impl Widget for PasswordField {
         self.widgets
             .password_entry
             .connect_icon_release(move |_, _, _| {
-                popover.set_pointing_to(
-                    &password_entry.get_icon_area(gtk::EntryIconPosition::Secondary),
-                );
+                popover
+                    .set_pointing_to(&password_entry.icon_area(gtk::EntryIconPosition::Secondary));
                 popover.popup();
             });
         let r = self.model.relm.clone();
-        self.widgets.password_entry.connect_changed(move |p| {
-            r.stream()
-                .emit(Msg::PasswordChanged(p.get_text().to_string()))
-        });
+        self.widgets
+            .password_entry
+            .connect_changed(move |p| r.stream().emit(Msg::PasswordChanged(p.text().to_string())));
     }
 
     fn init_popover(&mut self) {
         self.model.popover = Some(gtk::Popover::new(Some(&self.widgets.password_entry)));
-        let popover_vbox = gtk::BoxBuilder::new()
+        let popover_vbox = gtk::builders::BoxBuilder::new()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_reveal_btn = gtk::ModelButtonBuilder::new()
+        let popover_reveal_btn = gtk::builders::ModelButtonBuilder::new()
             .label("Reveal")
             .role(gtk::ButtonRole::Check)
             .build();
@@ -67,7 +65,9 @@ impl Widget for PasswordField {
             Msg::RevealPassword(btn.clone())
         );
         popover_vbox.add(&popover_reveal_btn);
-        let popover_copy_btn = gtk::ModelButtonBuilder::new().label("Copy").build();
+        let popover_copy_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Copy")
+            .build();
         relm::connect!(
             self.model.relm,
             popover_copy_btn,
@@ -97,20 +97,19 @@ impl Widget for PasswordField {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::RevealPassword(popover_reveal_btn) => {
-                let new_reveal = !self.widgets.password_entry.get_visibility();
+                let new_reveal = !EntryExt::is_visible(&self.widgets.password_entry);
                 self.widgets.password_entry.set_visibility(new_reveal);
-                popover_reveal_btn.set_property_active(new_reveal);
+                popover_reveal_btn.set_active(new_reveal);
             }
             Msg::CopyPassword => {
-                if let Some(clip) =
-                    gtk::Clipboard::get_default(&self.widgets.password_entry.get_display())
+                if let Some(clip) = gtk::Clipboard::default(&self.widgets.password_entry.display())
                 {
-                    clip.set_text(self.widgets.password_entry.get_text().as_str());
+                    clip.set_text(self.widgets.password_entry.text().as_str());
                 }
             }
             Msg::RequestPassword => {
                 self.model.relm.stream().emit(Msg::PublishPassword(
-                    self.widgets.password_entry.get_text().to_string(),
+                    self.widgets.password_entry.text().to_string(),
                 ));
             }
             Msg::PublishPassword(_) => {}

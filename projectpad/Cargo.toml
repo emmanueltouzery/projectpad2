@@ -13,21 +13,21 @@ includedir_codegen = "0.6.0"
 [dependencies]
 # relm: take in style_class after 0.21
 # can't go to 0.22 yet because of sourceview, which is not updated
-relm = { git = "https://github.com/antoyo/relm", rev = "1e4dee58f2536857420756b533f0673e60beffa7" }
-relm-derive = { git = "https://github.com/antoyo/relm", rev = "1e4dee58f2536857420756b533f0673e60beffa7" }
-glib = "0.10.3"
-gio = "0.9.1"
-gdk = "0.13.2"
+relm = { git = "https://github.com/emmanueltouzery/relm", rev = "b5df2312b8808ab05f7bab4af779e65e53c0e26e" }
+relm-derive = { git = "https://github.com/emmanueltouzery/relm", rev = "b5df2312b8808ab05f7bab4af779e65e53c0e26e" }
+glib = "0.15.5"
+gio = "0.15.3"
+gdk = "0.15.2"
 projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "1.4.7", features = ["sqlite"] }
-pango = "0.9.1"
+pango = "0.15.2"
 pulldown-cmark = { version = "0.8.0", default-features = false }
 itertools = "0.10.0"
 strum = "0.20.0"
 chrono = "0.4.19"
 includedir = "0.6.0"
 phf = "0.8.0"
-sourceview4 = "0.2.0"
+sourceview4 = "0.3.0"
 serde = "1.0.123"
 serde_derive = "1.0.123"
 toml = "0.5.8"
@@ -37,9 +37,9 @@ serde_yaml = "0.8.17"
 regex = "1.4.3"
 
 [dependencies.cairo-rs]
-version = "0.9.1"
-features = ["png", "v1_14"]
+version = "0.15.1"
+features = ["png", "v1_16"]
 
 [dependencies.gtk]
-version = "0.9.2"
+version = "0.15.3"
 features = ["v3_22_29"]

@@ -90,7 +90,7 @@ impl Widget for ServerExtraUserAddEditDialog {
             db_sender,
             server_id,
             server_user_id: sd.map(|d| d.id),
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _groups_channel: groups_channel,
             groups_sender,
             _server_user_updated_channel: server_user_updated_channel,
@@ -138,9 +138,9 @@ impl Widget for ServerExtraUserAddEditDialog {
     fn update_server_user(&self, new_password: String) {
         let server_id = self.model.server_id;
         let server_user_id = self.model.server_user_id;
-        let new_desc = self.widgets.desc_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
-        let new_username = self.widgets.username_entry.get_text();
+        let new_desc = self.widgets.desc_entry.text();
+        let new_group = self.widgets.group.active_text();
+        let new_username = self.widgets.username_entry.text();
         let new_authkey = self.model.auth_key.clone();
         let new_authkey_filename = self.model.auth_key_filename.clone();
         let s = self.model.server_user_updated_sender.clone();

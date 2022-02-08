@@ -106,11 +106,11 @@ impl Widget for ProjectSummary {
     }
 
     fn init_actions_popover(&self) {
-        let popover_vbox = gtk::BoxBuilder::new()
+        let popover_vbox = gtk::builders::BoxBuilder::new()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_add_btn = gtk::ModelButtonBuilder::new()
+        let popover_add_btn = gtk::builders::ModelButtonBuilder::new()
             .label("Add project item...")
             .build();
         left_align_menu(&popover_add_btn);
@@ -121,7 +121,9 @@ impl Widget for ProjectSummary {
             Msg::AddProjectItem
         );
         popover_vbox.add(&popover_add_btn);
-        let popover_edit_btn = gtk::ModelButtonBuilder::new().label("Edit").build();
+        let popover_edit_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Edit")
+            .build();
         left_align_menu(&popover_edit_btn);
         relm::connect!(
             self.model.relm,
@@ -130,7 +132,9 @@ impl Widget for ProjectSummary {
             Msg::EditProject
         );
         popover_vbox.add(&popover_edit_btn);
-        let popover_delete_btn = gtk::ModelButtonBuilder::new().label("Delete").build();
+        let popover_delete_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Delete")
+            .build();
         left_align_menu(&popover_delete_btn);
         relm::connect!(
             self.model.relm,
@@ -157,7 +161,7 @@ impl Widget for ProjectSummary {
             project: None,
             db_sender,
             relm: relm.clone(),
-            title: gtk::LabelBuilder::new()
+            title: gtk::builders::LabelBuilder::new()
                 .margin_top(8)
                 .margin_bottom(8)
                 .build(),
@@ -234,22 +238,22 @@ impl Widget for ProjectSummary {
                 // activated. 'clicked' does the same, too.
                 // => must filter to re-emit only the one that gets activated.
                 // https://stackoverflow.com/questions/13385024/read-gtk-radio-button-signal-only-when-selected
-                EnvironmentType::EnvDevelopment if self.widgets.radio_dev.get_active() => self
+                EnvironmentType::EnvDevelopment if self.widgets.radio_dev.is_active() => self
                     .model
                     .relm
                     .stream()
                     .emit(Msg::EnvironmentChanged(EnvironmentType::EnvDevelopment)),
-                EnvironmentType::EnvStage if self.widgets.radio_stg.get_active() => self
+                EnvironmentType::EnvStage if self.widgets.radio_stg.is_active() => self
                     .model
                     .relm
                     .stream()
                     .emit(Msg::EnvironmentChanged(EnvironmentType::EnvStage)),
-                EnvironmentType::EnvUat if self.widgets.radio_uat.get_active() => self
+                EnvironmentType::EnvUat if self.widgets.radio_uat.is_active() => self
                     .model
                     .relm
                     .stream()
                     .emit(Msg::EnvironmentChanged(EnvironmentType::EnvUat)),
-                EnvironmentType::EnvProd if self.widgets.radio_prd.get_active() => self
+                EnvironmentType::EnvProd if self.widgets.radio_prd.is_active() => self
                     .model
                     .relm
                     .stream()

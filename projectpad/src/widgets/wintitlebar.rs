@@ -43,7 +43,7 @@ pub struct Model {
 
 pub fn left_align_menu(menu: &gtk::ModelButton) {
     if let Some(label) = menu
-        .get_child()
+        .child()
         .and_then(|c| c.dynamic_cast::<gtk::Label>().ok())
     {
         label.set_xalign(0.0);
@@ -63,12 +63,14 @@ impl Widget for WinTitleBar {
     }
 
     fn init_menu_popover(&mut self) {
-        let vbox = gtk::BoxBuilder::new()
+        let vbox = gtk::builders::BoxBuilder::new()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let preferences_btn = gtk::ModelButtonBuilder::new().label("Preferences").build();
+        let preferences_btn = gtk::builders::ModelButtonBuilder::new()
+            .label("Preferences")
+            .build();
         left_align_menu(&preferences_btn);
         relm::connect!(
             self.model.relm,
@@ -78,7 +80,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&preferences_btn);
 
-        let import_btn = gtk::ModelButtonBuilder::new()
+        let import_btn = gtk::builders::ModelButtonBuilder::new()
             .label("Import/Export")
             .build();
         left_align_menu(&import_btn);
@@ -90,7 +92,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&import_btn);
 
-        let shortcuts_btn = gtk::ModelButtonBuilder::new()
+        let shortcuts_btn = gtk::builders::ModelButtonBuilder::new()
             .label("Keyboard Shortcuts")
             .build();
         left_align_menu(&shortcuts_btn);
@@ -102,7 +104,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&shortcuts_btn);
 
-        let help_btn = gtk::ModelButtonBuilder::new()
+        let help_btn = gtk::builders::ModelButtonBuilder::new()
             .label("Help")
             .hexpand(true)
             .build();
@@ -115,7 +117,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&help_btn);
 
-        let about_btn = gtk::ModelButtonBuilder::new()
+        let about_btn = gtk::builders::ModelButtonBuilder::new()
             .label("About Projectpad")
             .hexpand(true)
             .build();
@@ -152,7 +154,7 @@ impl Widget for WinTitleBar {
             Msg::DisplayShortcuts => self.display_shortcuts(),
             Msg::DisplayAbout => Self::display_about(),
             Msg::SearchClicked => {
-                let new_visible = self.widgets.search_toggle.get_active();
+                let new_visible = self.widgets.search_toggle.is_active();
                 self.widgets.search_entry.grab_focus();
                 self.model
                     .relm
@@ -169,7 +171,7 @@ impl Widget for WinTitleBar {
             }
             Msg::SearchTextChanged(_) => {} // meant for my parent
             Msg::SearchTextChangedFromElsewhere((txt, _evt)) => {
-                if !self.widgets.search_toggle.get_active() {
+                if !self.widgets.search_toggle.is_active() {
                     // we want to block the signal of the search button toggle,
                     // because when you click the search button we set the focus
                     // and select the search text. if we did that when search
@@ -253,7 +255,7 @@ impl Widget for WinTitleBar {
     }
 
     fn display_about() {
-        let dlg = gtk::AboutDialogBuilder::new()
+        let dlg = gtk::builders::AboutDialogBuilder::new()
             .name("Projectpad")
             .version(env!("CARGO_PKG_VERSION"))
             .logo_icon_name(Icon::APP_ICON.name())
@@ -266,7 +268,7 @@ impl Widget for WinTitleBar {
 
     fn display_shortcuts(&self) {
         let win = gtk::Builder::from_string(SHORTCUTS_UI)
-            .get_object::<gtk::Window>("shortcuts")
+            .object::<gtk::Window>("shortcuts")
             .unwrap();
         win.set_title("Keyboard Shortcuts");
         win.set_transient_for(Some(&standard_dialogs::get_main_window(
@@ -276,7 +278,7 @@ impl Widget for WinTitleBar {
     }
 
     fn enter_or_update_search_project(&self) {
-        let cur_text = self.widgets.search_entry.get_text().to_string();
+        let cur_text = self.widgets.search_entry.text().to_string();
         if let Some(index) = cur_text.find(PROJECT_FILTER_PREFIX) {
             let start_idx = index + PROJECT_FILTER_PREFIX.len();
             self.widgets.search_entry.set_position(start_idx as i32);
@@ -336,7 +338,7 @@ impl Widget for WinTitleBar {
                 child: {
                     pack_type: gtk::PackType::End
                 },
-                changed(entry) => Msg::SearchTextChanged(entry.get_text().to_string())
+                changed(entry) => Msg::SearchTextChanged(entry.text().to_string())
             },
         }
     }

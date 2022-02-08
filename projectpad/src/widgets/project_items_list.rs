@@ -57,7 +57,7 @@ impl Widget for ProjectItemsList {
     fn init_view(&mut self) {
         self.widgets
             .project_items_list
-            .set_focus_vadjustment(&self.widgets.scroll.get_vadjustment().unwrap());
+            .set_focus_vadjustment(&self.widgets.scroll.vadjustment());
         self.update_items_list();
     }
 
@@ -230,9 +230,7 @@ impl Widget for ProjectItemsList {
             }
             Msg::GotProjectItems(items) => {
                 let (items, _env, project_item) = *items;
-                if let Some(vadj) = self.widgets.scroll.get_vadjustment() {
-                    vadj.set_value(0.0);
-                }
+                self.widgets.scroll.vadjustment().set_value(0.0);
                 self.model.project_items = items.0;
                 self.model.project_item_groups_start_indexes = items.1;
                 self.update_items_list();
@@ -250,8 +248,8 @@ impl Widget for ProjectItemsList {
                             Some(0)
                         }
                     });
-                let row = row_idx
-                    .and_then(|i| self.widgets.project_items_list.get_row_at_index(i as i32));
+                let row =
+                    row_idx.and_then(|i| self.widgets.project_items_list.row_at_index(i as i32));
                 self.widgets.project_items_list.select_row(row.as_ref());
                 // row_idx != 0 => workaround for Gtk-CRITICAL warnings at startup
                 // I think the GUI is not ready yet. If we're interested in the first
@@ -266,8 +264,7 @@ impl Widget for ProjectItemsList {
                         // need to fetch the row in the callback, if fetching
                         // it before i had issues with project POI items (somehow
                         // the parent of the GtkListViewItem was not populated)
-                        if let Some(focus_row) = row_idx.and_then(|i| l.get_row_at_index(i as i32))
-                        {
+                        if let Some(focus_row) = row_idx.and_then(|i| l.row_at_index(i as i32)) {
                             l.select_row(Some(&focus_row));
                             focus_row.grab_focus();
                         }
@@ -344,7 +341,7 @@ impl Widget for ProjectItemsList {
     }
 
     fn update_items_list(&mut self) {
-        for child in self.widgets.project_items_list.get_children() {
+        for child in self.widgets.project_items_list.children() {
             self.widgets.project_items_list.remove(&child);
         }
         self.model.children_project_pois.clear();
@@ -359,21 +356,21 @@ impl Widget for ProjectItemsList {
         self.widgets
             .project_items_list
             .set_header_func(Some(Box::new(move |row, _h| {
-                if let Some(group_name) = indexes.get(&row.get_index()) {
-                    let vbox = gtk::BoxBuilder::new()
+                if let Some(group_name) = indexes.get(&row.index()) {
+                    let vbox = gtk::builders::BoxBuilder::new()
                         .orientation(gtk::Orientation::Vertical)
                         .build();
-                    vbox.add(&gtk::SeparatorBuilder::new().build());
-                    let label = gtk::LabelBuilder::new()
+                    vbox.add(&gtk::builders::SeparatorBuilder::new().build());
+                    let label = gtk::builders::LabelBuilder::new()
                         .label(group_name)
                         .xalign(0.0)
                         .build();
-                    label.get_style_context().add_class("project_item_header");
+                    label.style_context().add_class("project_item_header");
                     vbox.add(&label);
                     vbox.show_all();
                     row.set_header(Some(&vbox));
                 } else {
-                    row.set_header::<gtk::ListBoxRow>(None)
+                    row.set_header(None::<&gtk::ListBoxRow>)
                 }
             })));
     }
@@ -384,7 +381,7 @@ impl Widget for ProjectItemsList {
             #[name="project_items_list"]
             gtk::ListBox {
                 row_selected(_, row) =>
-                    Msg::ProjectItemIndexSelected(row.map(|r| r.get_index() as usize))
+                    Msg::ProjectItemIndexSelected(row.map(|r| r.index() as usize))
             }
         }
     }

@@ -21,11 +21,11 @@ pub struct Model {
 
 pub fn note_search_next<T>(textview: &T, note_search_text: &Option<String>)
 where
-    T: gtk::TextViewExt,
+    T: TextViewExt,
 {
-    let buffer = textview.get_buffer().unwrap();
+    let buffer = textview.buffer().unwrap();
     if let (Some((_start, end)), Some(search)) =
-        (buffer.get_selection_bounds(), note_search_text.clone())
+        (buffer.selection_bounds(), note_search_text.clone())
     {
         apply_search(
             textview,
@@ -36,11 +36,11 @@ where
 
 pub fn note_search_previous<T>(textview: &T, note_search_text: &Option<String>)
 where
-    T: gtk::TextViewExt,
+    T: TextViewExt,
 {
-    let buffer = textview.get_buffer().unwrap();
+    let buffer = textview.buffer().unwrap();
     if let (Some((start, _end)), Some(search)) =
-        (buffer.get_selection_bounds(), note_search_text.clone())
+        (buffer.selection_bounds(), note_search_text.clone())
     {
         apply_search(
             textview,
@@ -51,25 +51,25 @@ where
 
 pub fn apply_search<T>(textview: &T, range: Option<(gtk::TextIter, gtk::TextIter)>)
 where
-    T: gtk::TextViewExt,
+    T: TextViewExt,
 {
     if let Some((mut start, end)) = range {
-        textview.get_buffer().unwrap().select_range(&start, &end);
+        textview.buffer().unwrap().select_range(&start, &end);
         textview.scroll_to_iter(&mut start, 0.0, false, 0.0, 0.0);
     }
 }
 
 pub fn note_search_change<T>(textview: &T, text: &str)
 where
-    T: gtk::TextViewExt,
+    T: TextViewExt,
 {
     apply_search(
         textview,
-        textview
-            .get_buffer()
-            .unwrap()
-            .get_start_iter()
-            .forward_search(text, gtk::TextSearchFlags::all(), None),
+        textview.buffer().unwrap().start_iter().forward_search(
+            text,
+            gtk::TextSearchFlags::all(),
+            None,
+        ),
     );
 }
 
@@ -90,13 +90,13 @@ impl Widget for SearchBar {
                 }
             }
             Msg::KeyRelease(e) => {
-                if e.get_keyval() == gdk::keys::constants::Escape
-                    && self.widgets.revealer.get_reveal_child()
+                if e.keyval() == gdk::keys::constants::Escape
+                    && self.widgets.revealer.reveals_child()
                 {
                     self.model.relm.stream().emit(Msg::Reveal(false));
                 } else if is_plaintext_key(&e) {
                     self.model.relm.stream().emit(Msg::SearchChanged(
-                        self.widgets.search_entry.get_text().to_string(),
+                        self.widgets.search_entry.text().to_string(),
                     ));
                 }
             }

@@ -1,4 +1,5 @@
 use super::super::keyring_helpers;
+use gtk::traits::SettingsExt;
 use super::super::password_field;
 use super::super::password_field::Msg as PasswordFieldMsg;
 use super::change_db_password_dlg;
@@ -43,11 +44,11 @@ pub struct Model {
 impl Widget for Preferences {
     fn init_view(&mut self) {
         self.load_keyring_pass_state();
-        let remove_pass_btn_contents = gtk::BoxBuilder::new().build();
+        let remove_pass_btn_contents = gtk::builders::BoxBuilder::new().build();
         self.model.remove_pass_from_keyring_spinner.start();
         remove_pass_btn_contents.add(&self.model.remove_pass_from_keyring_spinner);
         remove_pass_btn_contents.add(
-            &gtk::LabelBuilder::new()
+            &gtk::builders::LabelBuilder::new()
                 .label("Remove password from keyring")
                 .build(),
         );
@@ -80,7 +81,7 @@ impl Widget for Preferences {
             pass_keyring_sender,
             _pass_keyring_channel,
             change_db_password_dlg: None,
-            remove_pass_from_keyring_spinner: gtk::SpinnerBuilder::new().build(),
+            remove_pass_from_keyring_spinner: gtk::builders::SpinnerBuilder::new().build(),
             confirm_dialog: None,
             confirm_ok_btn: None,
         }
@@ -117,9 +118,9 @@ impl Widget for Preferences {
                 self.widgets.remove_from_keyring.set_sensitive(t);
             }
             Msg::DarkThemeToggled(t) => {
-                gtk::Settings::get_default()
+                gtk::Settings::default()
                     .unwrap()
-                    .set_property_gtk_application_prefer_dark_theme(t);
+                    .set_gtk_application_prefer_dark_theme(t);
                 self.model.config.prefer_dark_theme = t;
                 self.update_config();
             }
@@ -172,7 +173,7 @@ impl Widget for Preferences {
                 dialog.show();
             }
             Msg::KeyPress(key) => {
-                if key.get_keyval() == gdk::keys::constants::Escape {
+                if key.keyval() == gdk::keys::constants::Escape {
                     self.widgets.prefs_win.close();
                 }
             }
@@ -207,8 +208,8 @@ impl Widget for Preferences {
         let entry_w = entry.widget();
         entry_w.set_margin_start(25);
         entry_w.set_margin_end(25);
-        dialog.get_content_area().add(entry_w);
-        dialog.set_property_secondary_text(Some("Please enter the current password to confirm"));
+        dialog.content_area().add(entry_w);
+        dialog.set_secondary_text(Some("Please enter the current password to confirm"));
 
         relm::connect!(
                 entry@PasswordFieldMsg::PasswordChanged(ref p),
@@ -236,8 +237,8 @@ impl Widget for Preferences {
                     show_close_button: true,
                 }
             },
-            property_default_width: 600,
-            property_default_height: 200,
+            default_width: 600,
+            default_height: 200,
             gtk::Box {
                 orientation: gtk::Orientation::Vertical,
                 margin_top: 10,
@@ -253,7 +254,7 @@ impl Widget for Preferences {
                 gtk::CheckButton {
                     label: "Prefer dark theme",
                     active: self.model.prefer_dark_theme,
-                    toggled(t) => Msg::DarkThemeToggled(t.get_active()),
+                    toggled(t) => Msg::DarkThemeToggled(t.is_active()),
                 },
                 #[style_class="section_title"]
                 gtk::Label {

@@ -7,7 +7,7 @@ pub fn display_error(msg: &str, e: Option<Box<dyn Error>>) {
 }
 
 pub fn display_error_str(msg: &str, e: Option<String>) {
-    let builder = gtk::MessageDialogBuilder::new()
+    let builder = gtk::builders::MessageDialogBuilder::new()
         .buttons(gtk::ButtonsType::Ok)
         .message_type(gtk::MessageType::Error)
         .modal(true)
@@ -29,7 +29,7 @@ pub fn confirm_deletion(
     confirm_cb: impl Fn() + 'static,
 ) {
     let main_win = get_main_window(widget);
-    let dialog = gtk::MessageDialogBuilder::new()
+    let dialog = gtk::builders::MessageDialogBuilder::new()
         .title("Confirmation")
         .text(summary)
         .secondary_text(msg)
@@ -39,7 +39,7 @@ pub fn confirm_deletion(
         .build();
     dialog.add_button("Cancel", gtk::ResponseType::Cancel);
     let save = dialog.add_button("Delete", gtk::ResponseType::Ok);
-    save.get_style_context().add_class("destructive-action");
+    save.style_context().add_class("destructive-action");
     dialog.connect_response(move |d, r| {
         d.close();
         if r == gtk::ResponseType::Ok {
@@ -51,7 +51,7 @@ pub fn confirm_deletion(
 
 pub fn get_main_window(widget_for_window: gtk::Widget) -> gtk::Window {
     widget_for_window
-        .get_toplevel()
+        .toplevel()
         .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
         .unwrap()
 }
@@ -65,8 +65,8 @@ pub fn prepare_custom_dialog<T: Widget>(
         .add_button("Save", gtk::ResponseType::Ok)
         .downcast::<gtk::Button>()
         .expect("error reading the dialog save button");
-    save.set_property_has_default(true);
-    save.get_style_context().add_class("suggested-action");
+    save.set_has_default(true);
+    save.style_context().add_class("suggested-action");
     prepare_custom_dialog_component_ref(&dialog, &dialog_contents);
     let save_btn = save.clone();
     dialog.connect_response(move |d, r| {
@@ -86,7 +86,7 @@ pub fn modal_dialog(
     title: String,
 ) -> gtk::Dialog {
     let main_win = get_main_window(widget_for_window);
-    gtk::DialogBuilder::new()
+    gtk::builders::DialogBuilder::new()
         .use_header_bar(1)
         .default_width(width)
         .default_height(height)
@@ -102,7 +102,7 @@ pub fn prepare_custom_dialog_component_ref<T: Widget>(
 ) {
     dialog_contents.widget().show();
     dialog
-        .get_content_area()
+        .content_area()
         .pack_start(dialog_contents.widget(), true, true, 0);
     dialog.add_button("Cancel", gtk::ResponseType::Cancel);
 }

@@ -122,7 +122,7 @@ impl Widget for ServerWebsiteAddEditDialog {
             server_www_id: sw.map(|d| d.id),
             projectname_id_sender,
             _projectname_id_channel: projectname_id_channel,
-            groups_store: gtk::ListStore::new(&[glib::Type::String]),
+            groups_store: gtk::ListStore::new(&[String::static_type()]),
             _groups_channel: groups_channel,
             groups_sender,
             _server_www_updated_channel: server_www_updated_channel,
@@ -178,11 +178,11 @@ impl Widget for ServerWebsiteAddEditDialog {
     fn update_server_www(&self, new_password: String) {
         let server_id = self.model.server_id;
         let server_www_id = self.model.server_www_id;
-        let new_desc = self.widgets.desc_entry.get_text();
-        let new_url = self.widgets.url_entry.get_text();
-        let new_text = self.widgets.text_entry.get_text();
-        let new_group = self.widgets.group.get_active_text();
-        let new_username = self.widgets.username_entry.get_text();
+        let new_desc = self.widgets.desc_entry.text();
+        let new_url = self.widgets.url_entry.text();
+        let new_text = self.widgets.text_entry.text();
+        let new_group = self.widgets.group.active_text();
+        let new_username = self.widgets.username_entry.text();
         let new_databaseid = self.model.server_database_id;
         let s = self.model.server_www_updated_sender.clone();
         self.model

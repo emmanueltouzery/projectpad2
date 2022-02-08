@@ -48,8 +48,8 @@ use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
 use diesel::prelude::*;
 use gdk::ModifierType;
-use gdk::WindowExt;
 use gtk::prelude::*;
+use gtk::traits::SettingsExt;
 use projectpadsql::models::{EnvironmentType, Project, Server};
 use relm::{Component, Widget};
 use relm_derive::{widget, Msg};
@@ -60,12 +60,12 @@ pub fn is_plaintext_key(e: &gdk::EventKey) -> bool {
     // (then the state won't be empty)
     // could be ctrl-c on notes for instance
     // whitelist MOD2 (num lock) and LOCK (shift or caps lock)
-    let mut state = e.get_state();
+    let mut state = e.state();
     state.remove(ModifierType::MOD2_MASK);
     state.remove(ModifierType::LOCK_MASK);
     state.is_empty()
-        && e.get_keyval() != gdk::keys::constants::Return
-        && e.get_keyval() != gdk::keys::constants::KP_Enter
+        && e.keyval() != gdk::keys::constants::Return
+        && e.keyval() != gdk::keys::constants::KP_Enter
 }
 
 const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
@@ -144,7 +144,7 @@ impl Widget for Win {
         self.widgets
             .tooltip_overlay
             .set_overlay_pass_through(overlay_widget, true);
-        overlay_widget.get_window().unwrap().set_pass_through(true);
+        overlay_widget.window().unwrap().set_pass_through(true);
         relm::connect!(titlebar@WinTitleBarMsg::SearchActiveChanged(is_active),
                                self.model.relm, Msg::SearchActiveChanged(is_active));
         relm::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
@@ -166,7 +166,7 @@ impl Widget for Win {
                         &self
                             .widgets
                             .infobar_overlay
-                            .get_toplevel()
+                            .toplevel()
                             .unwrap()
                             .upcast::<gtk::Widget>(),
                         0,
@@ -188,13 +188,13 @@ impl Widget for Win {
 
     fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, bool)) -> Model {
         let (db_sender, is_new_db) = params;
-        gtk::IconTheme::get_default()
+        gtk::IconTheme::default()
             .unwrap()
             .add_resource_path("/icons");
         let config = Config::read_config();
-        gtk::Settings::get_default()
+        gtk::Settings::default()
             .unwrap()
-            .set_property_gtk_application_prefer_dark_theme(config.prefer_dark_theme);
+            .set_gtk_application_prefer_dark_theme(config.prefer_dark_theme);
         let titlebar = relm::init::<WinTitleBar>(db_sender.clone()).expect("win title bar init");
         let tooltips_overlay = relm::init::<TooltipsOverlay>(()).expect("tooltips overlay init");
 
@@ -216,15 +216,15 @@ impl Widget for Win {
         let (project_count_channel, project_count_sender) = relm::Channel::new(move |count| {
             stream4.emit(Msg::ProjectCountChanged(count));
         });
-        let infobar = gtk::InfoBarBuilder::new()
+        let infobar = gtk::builders::InfoBarBuilder::new()
             .revealed(false)
             .message_type(gtk::MessageType::Info)
             .valign(gtk::Align::Start)
             .build();
 
-        let infobar_label = gtk::LabelBuilder::new().label("").build();
+        let infobar_label = gtk::builders::LabelBuilder::new().label("").build();
         infobar_label.show();
-        infobar.get_content_area().add(&infobar_label);
+        infobar.content_area().add(&infobar_label);
         infobar.show();
         Model {
             relm: relm.clone(),
@@ -297,10 +297,10 @@ impl Widget for Win {
             )
             .downcast::<gtk::Button>()
             .expect("error reading the dialog save button");
-        unlock_btn.get_style_context().add_class("suggested-action");
+        unlock_btn.style_context().add_class("suggested-action");
         dialog_contents.widget().show();
         dialog
-            .get_content_area()
+            .content_area()
             .pack_start(dialog_contents.widget(), true, true, 0);
         let s = dialog_contents.stream();
         dialog.connect_response(move |d, r| {
@@ -578,7 +578,7 @@ impl Widget for Win {
     }
 
     fn load_style(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let screen = self.widgets.window.get_screen().unwrap();
+        let screen = self.widgets.window.screen().unwrap();
         let css = gtk::CssProvider::new();
         css.load_from_data(CSS_DATA)?;
         gtk::StyleContext::add_provider_for_screen(
@@ -592,13 +592,13 @@ impl Widget for Win {
     fn is_search_mode(&self) -> bool {
         self.widgets
             .normal_or_search_stack
-            .get_visible_child_name()
+            .visible_child_name()
             .filter(|s| s.as_str() == CHILD_NAME_SEARCH)
             .is_some()
     }
 
     fn handle_keypress(&self, e: gdk::EventKey) {
-        if e.get_keyval() == gdk::keys::constants::Escape {
+        if e.keyval() == gdk::keys::constants::Escape {
             self.streams
                 .project_poi_contents
                 .emit(ProjectPoiContentsMsg::KeyboardEscape);
@@ -616,8 +616,8 @@ impl Widget for Win {
             self.streams.search_view.emit(SearchViewMsg::KeyPress(e));
             return;
         }
-        if !(e.get_state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
-            match e.get_keyval().to_unicode() {
+        if !(e.state() & gdk::ModifierType::CONTROL_MASK).is_empty() {
+            match e.keyval().to_unicode() {
                 Some('y') => {
                     self.streams
                         .project_poi_header
@@ -680,14 +680,14 @@ impl Widget for Win {
                 }
                 _ => {}
             }
-        } else if e.get_keyval() == gdk::keys::constants::Tab {
-        } else if e.get_keyval() == gdk::keys::constants::Return
-            || e.get_keyval() == gdk::keys::constants::KP_Enter
+        } else if e.keyval() == gdk::keys::constants::Tab {
+        } else if e.keyval() == gdk::keys::constants::Return
+            || e.keyval() == gdk::keys::constants::KP_Enter
         {
             self.streams
                 .project_poi_contents
                 .emit(ProjectPoiContentsMsg::KeyboardCtrlN);
-        } else if let Some(k) = e.get_keyval().to_unicode() {
+        } else if let Some(k) = e.keyval().to_unicode() {
             // do nothing if control and others were pressed
             // (then the state won't be empty)
             // could be ctrl-c on notes for instance
@@ -698,7 +698,7 @@ impl Widget for Win {
                 if self
                     .widgets
                     .window
-                    .get_focus()
+                    .focused_widget()
                     // is an entry focused?
                     .and_then(|w| w.downcast::<gtk::Entry>().ok())
                     // is it visible? (because when global search is off,
@@ -733,8 +733,8 @@ impl Widget for Win {
         #[name="window"]
         gtk::Window {
             titlebar: Some(self.model.titlebar.widget()),
-            property_default_width: 1000,
-            property_default_height: 650,
+            default_width: 1000,
+            default_height: 650,
             #[name="infobar_overlay"]
             gtk::Overlay {
                 #[name="normal_or_search_stack"]
@@ -745,7 +745,7 @@ impl Widget for Win {
                         },
                         #[name="project_list"]
                         ProjectList(self.model.db_sender.clone()) {
-                            property_width_request: 60,
+                            width_request: 60,
                             ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone()),
                             AddProject => Msg::AddProject,
                             UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
@@ -782,7 +782,7 @@ impl Widget for Win {
                                             #[name="project_items_list"]
                                             #[style_class="sidebar"]
                                             ProjectItemsList(self.model.db_sender.clone()) {
-                                                property_width_request: 260,
+                                                width_request: 260,
                                                 child: {
                                                     fill: true,
                                                     expand: true,

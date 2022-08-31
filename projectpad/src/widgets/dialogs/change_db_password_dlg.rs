@@ -7,6 +7,7 @@ use crate::widgets::password_field::Msg as PasswordFieldMsg;
 use crate::widgets::password_field::Msg::PasswordChanged as PasswordFieldMsgPasswordChanged;
 use crate::widgets::password_field::Msg::PublishPassword as PasswordFieldMsgPublishPassword;
 use crate::widgets::password_field::PasswordField;
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use gtk::prelude::*;
 use relm::Widget;
@@ -46,14 +47,14 @@ pub struct Model {
 }
 
 pub fn check_db_password(pass: &str) -> OpResult {
-    let db_conn =
+    let mut db_conn =
         SqliteConnection::establish(&projectpadsql::database_path().to_string_lossy()).unwrap();
-    projectpadsql::try_unlock_db(&db_conn, pass)
+    projectpadsql::try_unlock_db(&mut db_conn, pass)
 }
 
-fn set_db_password(db_conn: &SqliteConnection, pass: &str) -> Result<(), String> {
+fn set_db_password(db_conn: &mut SqliteConnection, pass: &str) -> Result<(), String> {
     db_conn
-        .execute(&format!(
+        .batch_execute(&format!(
             "PRAGMA rekey='{}';",
             projectpadsql::key_escape_param_value(pass)
         ))

@@ -4,16 +4,19 @@ extern crate diesel;
 pub mod models;
 pub mod schema;
 
-use diesel::expression::AsExpression;
+use diesel::connection::SimpleConnection;
+use diesel::expression::{AsExpression, TypedExpressionType};
 use diesel::prelude::*;
+use diesel::sql_types::SqlType;
 use std::path::PathBuf;
 
-// http://docs.diesel.rs/diesel/macro.diesel_infix_operator.html
-diesel_infix_operator!(SqliteIs, " IS ", backend: diesel::sqlite::Sqlite);
-pub fn sqlite_is<T, U>(left: T, right: U) -> SqliteIs<T, U::Expression>
+// https://docs.rs/diesel/2.0.0/diesel/macro.infix_operator.html
+diesel::infix_operator!(SqliteIs, " IS ", backend: diesel::sqlite::Sqlite);
+pub fn sqlite_is<T, U, ST>(left: T, right: U) -> SqliteIs<T, U::Expression>
 where
-    T: Expression,
-    U: AsExpression<T::SqlType>,
+    T: Expression<SqlType = ST>,
+    U: AsExpression<ST>,
+    ST: SqlType + TypedExpressionType,
 {
     SqliteIs::new(left, right.as_expression())
 }
@@ -62,7 +65,7 @@ pub fn key_escape_param_value(key: &str) -> String {
     key.replace('\'', "''")
 }
 
-pub fn try_unlock_db(db_conn: &SqliteConnection, pass: &str) -> Result<(), String> {
+pub fn try_unlock_db(db_conn: &mut SqliteConnection, pass: &str) -> Result<(), String> {
     // https://www.zetetic.net/sqlcipher/sqlcipher-api/#PRAGMA_key
     db_conn
         // https://www.zetetic.net/blog/2018/11/30/sqlcipher-400-release/ on my machine at least, the
@@ -71,7 +74,7 @@ pub fn try_unlock_db(db_conn: &SqliteConnection, pass: &str) -> Result<(), Strin
         // I considered using the sqlcipher4 format, but many distributions ship only the sqlcipher3
         // command-line tools (the latest ubuntu, suse and fedora, as I write this), and these can be
         // handy for the user.
-        .execute(&format!(
+        .batch_execute(&format!(
             "PRAGMA key='{}'; PRAGMA cipher_page_size = 1024; PRAGMA kdf_iter = 64000; PRAGMA cipher_hmac_algorithm = HMAC_SHA1; PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA1; SELECT count(*) FROM sqlite_master;",
             &key_escape_param_value(pass)
         ))
@@ -79,7 +82,7 @@ pub fn try_unlock_db(db_conn: &SqliteConnection, pass: &str) -> Result<(), Strin
         .map_err(|x| x.to_string())
 }
 
-pub fn get_db_version(db_conn: &SqliteConnection) -> QueryResult<i32> {
+pub fn get_db_version(db_conn: &mut SqliteConnection) -> QueryResult<i32> {
     use schema::db_version::dsl as ver;
     ver::db_version
         .order(ver::code.desc())
@@ -88,7 +91,7 @@ pub fn get_db_version(db_conn: &SqliteConnection) -> QueryResult<i32> {
 }
 
 pub fn get_project_group_names(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     project_id: i32,
 ) -> Vec<String> {
     use schema::project_note::dsl as pnote;
@@ -137,7 +140,10 @@ pub fn get_project_group_names(
     project_group_names_no_options
 }
 
-pub fn get_server_group_names(sql_conn: &diesel::SqliteConnection, server_id: i32) -> Vec<String> {
+pub fn get_server_group_names(
+    sql_conn: &mut diesel::SqliteConnection,
+    server_id: i32,
+) -> Vec<String> {
     use schema::server_database::dsl as db;
     use schema::server_extra_user_account::dsl as usr;
     use schema::server_note::dsl as not;

@@ -16,7 +16,7 @@ type ExportResult<T> = Result<T, Box<dyn std::error::Error>>;
 /// Return the list of dependent project names that were
 /// not exported but maybe should have been
 pub fn export_projects(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     projects: &[Project],
     fname: &Path,
     password: &str,
@@ -63,7 +63,7 @@ fn compute_project_to_folder_name(projects: &[Project]) -> HashMap<i32, PathBuf>
 }
 
 fn export_project(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     project: &Project,
     extra_files: &mut HashMap<PathBuf, Vec<u8>>,
     project_folder: &Path,
@@ -306,7 +306,7 @@ fn yaml_fix_multiline_strings(raw_output: &str) -> String {
 }
 
 fn export_env(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     project: &Project,
     env: EnvironmentType,
     is_first_env: bool,
@@ -328,7 +328,7 @@ fn export_env(
 }
 
 fn export_env_group(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     project: &Project,
     env: EnvironmentType,
     is_first_env: bool,
@@ -453,7 +453,7 @@ fn export_env_group(
 }
 
 fn export_server(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     server: Server,
     extra_files: &mut HashMap<PathBuf, Vec<u8>>,
 ) -> ExportResult<ServerWithItemsImportExport> {
@@ -506,7 +506,7 @@ fn find_unique_data_path<T>(path_base: String, extra_files: &HashMap<PathBuf, T>
 }
 
 fn export_server_items(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     extra_files: &mut HashMap<PathBuf, Vec<u8>>,
     server: &Server,
     group_name: Option<&str>,
@@ -609,7 +609,7 @@ fn export_server_extra_user(
 }
 
 fn to_server_link_import_export(
-    sql_conn: &SqliteConnection,
+    sql_conn: &mut SqliteConnection,
     server_link: ServerLink,
 ) -> ExportResult<ServerLinkImportExport> {
     use projectpadsql::schema::project::dsl as prj;
@@ -631,7 +631,7 @@ fn to_server_link_import_export(
 }
 
 fn to_server_website_import_export(
-    sql_conn: &SqliteConnection,
+    sql_conn: &mut SqliteConnection,
     website: ServerWebsite,
 ) -> ExportResult<ServerWebsiteImportExport> {
     use projectpadsql::schema::project::dsl as prj;
@@ -705,12 +705,17 @@ mod tests {
     #[test]
     fn serialize_should_yield_same_yaml() {
         use projectpadsql::schema::project::dsl as prj;
-        let sql_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
-        let projects = prj::project.load::<Project>(&sql_conn).unwrap();
+        let mut sql_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
+        let projects = prj::project.load::<Project>(&mut sql_conn).unwrap();
         let project = projects.get(0).unwrap();
 
-        let project_import_export =
-            export_project(&sql_conn, &project, &mut HashMap::new(), &PathBuf::from("")).unwrap();
+        let project_import_export = export_project(
+            &mut sql_conn,
+            &project,
+            &mut HashMap::new(),
+            &PathBuf::from(""),
+        )
+        .unwrap();
         let raw_output = generate_yaml(&project_import_export);
         assert_eq!(
             // drop the leading \n on the left

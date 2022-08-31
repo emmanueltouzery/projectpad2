@@ -4,8 +4,8 @@ use diesel::deserialize::*;
 use diesel::serialize::Output;
 use diesel::serialize::*;
 use diesel::sql_types::*;
+use diesel::sqlite::Sqlite;
 use serde_derive::{Deserialize, Serialize};
-use std::io::Write;
 use std::str::FromStr;
 use std::string::ToString;
 use strum_macros::{Display, EnumIter, EnumString};
@@ -37,7 +37,7 @@ pub struct Project {
     Serialize,
     Deserialize,
 )]
-#[sql_type = "Varchar"]
+#[diesel(sql_type = Varchar)]
 pub enum ServerType {
     SrvDatabase,
     SrvApplication,
@@ -62,7 +62,7 @@ pub enum ServerType {
     Serialize,
     Deserialize,
 )]
-#[sql_type = "Varchar"]
+#[diesel(sql_type = Varchar)]
 pub enum ServerAccessType {
     SrvAccessSsh,
     SrvAccessRdp,
@@ -85,7 +85,7 @@ pub enum ServerAccessType {
     Serialize,
     Deserialize,
 )]
-#[sql_type = "Varchar"]
+#[diesel(sql_type = Varchar)]
 pub enum EnvironmentType {
     EnvDevelopment,
     EnvUat,
@@ -115,7 +115,7 @@ impl Default for EnvironmentType {
     Serialize,
     Deserialize,
 )]
-#[sql_type = "Varchar"]
+#[diesel(sql_type = Varchar)]
 pub enum InterestType {
     PoiApplication,
     PoiLogFile,
@@ -145,7 +145,7 @@ impl Default for InterestType {
     Serialize,
     Deserialize,
 )]
-#[sql_type = "Varchar"]
+#[diesel(sql_type = Varchar)]
 pub enum RunOn {
     RunOnServer,
     RunOnClient,
@@ -158,17 +158,19 @@ macro_rules! simple_enum {
             DB: Backend,
             String: FromSql<Varchar, DB>,
         {
-            fn from_sql(bytes: Option<&DB::RawValue>) -> diesel::deserialize::Result<Self> {
+            fn from_sql(bytes: diesel::backend::RawValue<DB>) -> diesel::deserialize::Result<Self> {
                 Ok(<$x>::from_str(&String::from_sql(bytes)?)?)
             }
         }
 
-        impl<DB> ToSql<Varchar, DB> for $x
+        // https://diesel.rs/guides/migration_guide.html#2-0-0-to-sql
+        impl ToSql<Varchar, Sqlite> for $x
         where
-            DB: Backend,
+            String: ToSql<Varchar, Sqlite>,
         {
-            fn to_sql<W: Write>(&self, out: &mut Output<W, DB>) -> diesel::serialize::Result {
-                out.write_all(self.to_string().as_bytes())?;
+            fn to_sql(&self, out: &mut Output<Sqlite>) -> diesel::serialize::Result {
+                out.set_value(self.to_string());
+                // self.to_string().to_sql(out);
                 Ok(IsNull::No)
             }
         }

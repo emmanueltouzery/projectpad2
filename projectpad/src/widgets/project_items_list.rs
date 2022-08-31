@@ -110,7 +110,7 @@ impl Widget for ProjectItemsList {
     }
 
     fn fetch_project_items_sql(
-        sql_conn: &diesel::SqliteConnection,
+        sql_conn: &mut diesel::SqliteConnection,
         env: EnvironmentType,
         cur_project_id: Option<i32>,
     ) -> (

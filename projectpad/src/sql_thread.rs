@@ -1,3 +1,4 @@
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use std::str;
@@ -15,12 +16,12 @@ include!(concat!(env!("OUT_DIR"), "/data.rs"));
 //   then reuse it.
 
 // https://stackoverflow.com/a/49122850/516188
-pub struct SqlFunc(Box<dyn Fn(&SqliteConnection) + Send + 'static>);
+pub struct SqlFunc(Box<dyn Fn(&mut SqliteConnection) + Send + 'static>);
 
 impl SqlFunc {
     pub fn new<T>(func: T) -> SqlFunc
     where
-        T: Fn(&SqliteConnection) + Send + 'static,
+        T: Fn(&mut SqliteConnection) + Send + 'static,
     {
         SqlFunc(Box::new(func))
     }
@@ -31,15 +32,17 @@ pub fn start_sql_thread() -> mpsc::Sender<SqlFunc> {
 
     thread::spawn(move || {
         std::fs::create_dir_all(projectpadsql::config_path()).unwrap();
-        let db_conn =
+        let mut db_conn =
             SqliteConnection::establish(&projectpadsql::database_path().to_string_lossy()).unwrap();
-        rx.into_iter().for_each(|fun| (fun.0)(&db_conn));
+        rx.into_iter().for_each(|fun| (fun.0)(&mut db_conn));
     });
 
     tx
 }
 
-pub fn migrate_db_if_needed(db_conn: &SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
+pub fn migrate_db_if_needed(
+    db_conn: &mut SqliteConnection,
+) -> Result<(), Box<dyn std::error::Error>> {
     use projectpadsql::schema::db_version::dsl as ver;
     let mut version = projectpadsql::get_db_version(db_conn).unwrap_or(0) + 1;
     let get_migration_name = |version| format!("resources/migrations/{:03}.sql", version);
@@ -51,7 +54,7 @@ pub fn migrate_db_if_needed(db_conn: &SqliteConnection) -> Result<(), Box<dyn st
         println!("applying migration {}", version);
         let migration_bytes = MIGRATIONS.get(&migration_name)?;
         let migration_str = str::from_utf8(&migration_bytes)?;
-        db_conn.execute(migration_str)?;
+        db_conn.batch_execute(migration_str)?;
         diesel::insert_into(ver::db_version)
             .values((
                 ver::code.eq(version),

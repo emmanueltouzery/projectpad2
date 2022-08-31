@@ -135,7 +135,7 @@ impl Widget for ProjectList {
         }
     }
 
-    fn load_projects(db_conn: &SqliteConnection) -> Vec<Project> {
+    fn load_projects(db_conn: &mut SqliteConnection) -> Vec<Project> {
         use projectpadsql::schema::project::dsl::*;
         project.order(name.asc()).load::<Project>(db_conn).unwrap()
     }

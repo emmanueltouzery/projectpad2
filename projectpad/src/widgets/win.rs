@@ -46,6 +46,7 @@ use crate::sql_thread::migrate_db_if_needed;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_items_list::Msg::ProjectItemSelected;
 use crate::widgets::project_summary::Msg::EnvironmentChanged;
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use gdk::ModifierType;
 use gtk::prelude::*;
@@ -322,7 +323,7 @@ impl Widget for Win {
             .db_sender
             .send(SqlFunc::new(move |db_conn| {
                 migrate_db_if_needed(db_conn).unwrap();
-                db_conn.execute("PRAGMA foreign_keys = ON").unwrap();
+                db_conn.batch_execute("PRAGMA foreign_keys = ON").unwrap();
                 s.send(()).unwrap();
             }))
             .unwrap();

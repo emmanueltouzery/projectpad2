@@ -155,20 +155,20 @@ pub fn main() {
         2
     );
 
-    let conn = ok_or_exit!(
+    let mut conn = ok_or_exit!(
         SqliteConnection::establish(db_path),
         "Cannot open the database, aborting. {}",
         3
     );
 
     ok_or_exit!(
-        projectpadsql::try_unlock_db(&conn, &db_pass),
+        projectpadsql::try_unlock_db(&mut conn, &db_pass),
         "Failed unlocking the database with the password, aborting. {}",
         4
     );
 
     ok_or_exit!(
-        check_db_version(&conn),
+        check_db_version(&mut conn),
         "{} https://github.com/emmanueltouzery/projectpad2",
         5
     );
@@ -226,7 +226,9 @@ pub fn main() {
 
     let display_mode = flag_options.display_mode;
     let ranked_items = get_ranked_items(&history_executed_actions);
-    std::thread::spawn(move || database::load_items(&conn, display_mode, &tx_item, &ranked_items));
+    std::thread::spawn(move || {
+        database::load_items(&mut conn, display_mode, &tx_item, &ranked_items)
+    });
 
     let (selected_items, query, accept_key) = Skim::run_with(&options, Some(rx_item))
         .map(|out| (out.selected_items, out.query, out.final_key))
@@ -331,7 +333,7 @@ fn run_command_folder(action: &actions::Action) -> Option<PathBuf> {
         .map(|p| p.path.clone())
 }
 
-fn check_db_version(conn: &SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
+fn check_db_version(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
     let version = projectpadsql::get_db_version(conn)?;
     if version < MIN_SUPPORTED_DB_SCHEMA_VERSION {
         return Err(format!("The database version ({}), is older than the oldest version supported by this application. Please upgrade the main projectpad application.", version).into());

@@ -25,7 +25,7 @@ pub fn get_7z_error_details(output: &[u8]) -> String {
 }
 
 pub fn do_import(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     fname: &str,
     password: &str,
 ) -> ImportResult<()> {
@@ -60,7 +60,7 @@ pub fn do_import(
 }
 
 fn import_projects(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     projects_contents: Vec<(PathBuf, ProjectImportExport)>,
     import_folder: &Path,
 ) -> ImportResult<()> {
@@ -220,7 +220,7 @@ struct UnprocessedWebsite {
 /// in the first pass so the links are resolved, if
 /// at all possible, when we'll process the second pass.
 fn import_project_env_first_pass(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     import_folder: &Path,
     project_id: i32,
     env: EnvironmentType,
@@ -250,7 +250,7 @@ fn import_project_env_first_pass(
 }
 
 fn import_project_env_group_first_pass(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     import_folder: &Path,
     project_id: i32,
     items: &ProjectEnvGroupImportExport,
@@ -282,7 +282,7 @@ fn import_project_env_group_first_pass(
 }
 
 fn import_project_poi(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     project_id: i32,
     group_name: Option<&str>,
     project_poi: &ProjectPoiImportExport,
@@ -308,7 +308,7 @@ fn import_project_poi(
 }
 
 fn import_project_note(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     project_id: i32,
     group_name: Option<&str>,
     env: EnvironmentType,
@@ -367,7 +367,7 @@ fn import_project_note(
 }
 
 fn import_server_link(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     project_id: i32,
     group_name: Option<&str>,
     env: EnvironmentType,
@@ -396,7 +396,7 @@ fn import_server_link(
 }
 
 fn import_server(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     import_folder: &Path,
     project_id: i32,
     env: EnvironmentType,
@@ -460,7 +460,7 @@ fn import_server(
 }
 
 fn import_server_items(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     import_folder: &Path,
     server_id: i32,
     group_name: Option<&str>,
@@ -545,7 +545,7 @@ fn import_server_items(
 }
 
 fn import_server_website(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     website_info: &UnprocessedWebsite,
 ) -> ImportResult<()> {
     use projectpadsql::schema::server_website::dsl as srv_www;
@@ -576,7 +576,7 @@ fn import_server_website(
 /// is in another project, and maybe that server wasn't
 /// exported together with the rest.
 fn get_linked_server_id(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     server_path: &ServerPath,
 ) -> ImportResult<Option<i32>> {
     use projectpadsql::schema::project::dsl as prj;
@@ -602,7 +602,7 @@ fn get_linked_server_id(
         .optional()?)
 }
 
-fn server_id_exists(sql_conn: &diesel::SqliteConnection, id: i32) -> bool {
+fn server_id_exists(sql_conn: &mut diesel::SqliteConnection, id: i32) -> bool {
     use projectpadsql::schema::server::dsl as srv;
     srv::server
         .filter(srv::id.eq(id))
@@ -613,7 +613,7 @@ fn server_id_exists(sql_conn: &diesel::SqliteConnection, id: i32) -> bool {
 }
 
 fn get_new_databaseid(
-    sql_conn: &diesel::SqliteConnection,
+    sql_conn: &mut diesel::SqliteConnection,
     db_path: &ServerDatabasePath,
 ) -> ImportResult<Option<i32>> {
     use projectpadsql::schema::server_database::dsl as srv_db;
@@ -731,11 +731,11 @@ uat_environment:
       - shared_with_other_environments: my first script"#;
 
     pub fn tests_load_yaml(yaml: &str) -> SqliteConnection {
-        let db_conn = SqliteConnection::establish(":memory:").unwrap();
-        sql_thread::migrate_db_if_needed(&db_conn).unwrap();
+        let mut db_conn = SqliteConnection::establish(":memory:").unwrap();
+        sql_thread::migrate_db_if_needed(&mut db_conn).unwrap();
         let input = serde_yaml::from_str(yaml).unwrap();
         import_projects(
-            &db_conn,
+            &mut db_conn,
             vec![(PathBuf::from(""), input)],
             &PathBuf::from(""),
         )
@@ -813,9 +813,9 @@ uat_environment:
 
     #[test]
     fn import_from_yaml() {
-        let db_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
+        let mut db_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
         use projectpadsql::schema::project::dsl as prj;
-        let imported_projects = prj::project.load::<Project>(&db_conn).unwrap();
+        let imported_projects = prj::project.load::<Project>(&mut db_conn).unwrap();
         assert_eq!(1, imported_projects.len());
         let p = imported_projects.get(0).unwrap();
         assert_eq!("Demo", p.name);

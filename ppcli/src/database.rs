@@ -49,7 +49,7 @@ pub struct ItemOfInterest {
     pub run_on: Option<RunOn>,
 }
 
-fn filter_servers(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
+fn filter_servers(db_conn: &mut SqliteConnection) -> Vec<ItemOfInterest> {
     use projectpadsql::schema::project::dsl as prj;
     use projectpadsql::schema::server::dsl as srv;
     srv::server
@@ -103,7 +103,7 @@ fn filter_servers(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
         .collect()
 }
 
-fn filter_project_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
+fn filter_project_pois(db_conn: &mut SqliteConnection) -> Vec<ItemOfInterest> {
     use projectpadsql::schema::project::dsl as prj;
     use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
     prj_poi::project_point_of_interest
@@ -139,7 +139,7 @@ fn filter_project_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
         .collect()
 }
 
-fn filter_server_pois(db_conn: &SqliteConnection) -> Vec<ItemOfInterest> {
+fn filter_server_pois(db_conn: &mut SqliteConnection) -> Vec<ItemOfInterest> {
     use projectpadsql::schema::project::dsl as prj;
     use projectpadsql::schema::server::dsl as srv;
     use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
@@ -241,7 +241,7 @@ impl ExecutedAction {
 }
 
 pub fn load_items<T>(
-    conn: &SqliteConnection,
+    conn: &mut SqliteConnection,
     display_mode: DisplayMode,
     item_sender: &Sender<Arc<dyn SkimItem>>,
     ranked_items: &HashMap<ExecutedAction, T>,

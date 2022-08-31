@@ -357,7 +357,7 @@ impl Widget for ImportExportDialog {
                         import_result_sender
                             .send(
                                 sql_conn
-                                    .transaction(|| {
+                                    .transaction(|sql_conn| {
                                         import::do_import(sql_conn, &fname.to_string_lossy(), &pass)
                                     })
                                     .map_err(|e| e.to_string()),

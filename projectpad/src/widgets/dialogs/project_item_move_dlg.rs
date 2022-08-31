@@ -120,7 +120,7 @@ impl Widget for ProjectItemMoveDialog {
     }
 
     fn apply_move_sql(
-        sql_conn: &diesel::SqliteConnection,
+        sql_conn: &mut diesel::SqliteConnection,
         prj: Project,
         project_item: ProjectItem,
         env: EnvironmentType,
@@ -223,7 +223,7 @@ impl Widget for ProjectItemMoveDialog {
     }
 
     fn project_enable_env_if_needed(
-        sql_conn: &diesel::SqliteConnection,
+        sql_conn: &mut diesel::SqliteConnection,
         prj: Project,
         env: EnvironmentType,
     ) -> Result<(ProjectUpdated, Project), String> {

@@ -29,7 +29,7 @@ pub struct SearchResult {
 }
 
 pub fn run_search_filter(
-    sql_conn: &SqliteConnection,
+    sql_conn: &mut SqliteConnection,
     search_item_types: SearchItemsType,
     search_pattern: &str,
     project_pattern: &Option<String>,
@@ -128,7 +128,7 @@ pub fn run_search_filter(
     }
 }
 
-fn filter_projects(db_conn: &SqliteConnection, filter: &str) -> Vec<Project> {
+fn filter_projects(db_conn: &mut SqliteConnection, filter: &str) -> Vec<Project> {
     use projectpadsql::schema::project::dsl::*;
     project
         .filter(name.like(filter).escape('\\'))
@@ -136,7 +136,10 @@ fn filter_projects(db_conn: &SqliteConnection, filter: &str) -> Vec<Project> {
         .unwrap()
 }
 
-fn filter_project_pois(db_conn: &SqliteConnection, filter: &str) -> Vec<ProjectPointOfInterest> {
+fn filter_project_pois(
+    db_conn: &mut SqliteConnection,
+    filter: &str,
+) -> Vec<ProjectPointOfInterest> {
     use projectpadsql::schema::project_point_of_interest::dsl::*;
     project_point_of_interest
         .filter(
@@ -149,7 +152,7 @@ fn filter_project_pois(db_conn: &SqliteConnection, filter: &str) -> Vec<ProjectP
         .unwrap()
 }
 
-fn filter_project_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<ProjectNote> {
+fn filter_project_notes(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ProjectNote> {
     use projectpadsql::schema::project_note::dsl::*;
     project_note
         .filter(
@@ -162,7 +165,7 @@ fn filter_project_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<Project
         .unwrap()
 }
 
-fn filter_server_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerNote> {
+fn filter_server_notes(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ServerNote> {
     use projectpadsql::schema::server_note::dsl::*;
     server_note
         .filter(
@@ -175,7 +178,7 @@ fn filter_server_notes(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerNo
         .unwrap()
 }
 
-fn filter_server_links(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerLink> {
+fn filter_server_links(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ServerLink> {
     use projectpadsql::schema::server_link::dsl::*;
     server_link
         .filter(desc.like(filter).escape('\\'))
@@ -184,7 +187,7 @@ fn filter_server_links(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerLi
 }
 
 fn filter_server_extra_users(
-    db_conn: &SqliteConnection,
+    db_conn: &mut SqliteConnection,
     filter: &str,
 ) -> Vec<ServerExtraUserAccount> {
     use projectpadsql::schema::server_extra_user_account::dsl::*;
@@ -198,7 +201,7 @@ fn filter_server_extra_users(
         .unwrap()
 }
 
-fn filter_server_pois(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerPointOfInterest> {
+fn filter_server_pois(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ServerPointOfInterest> {
     use projectpadsql::schema::server_point_of_interest::dsl::*;
     server_point_of_interest
         .filter(
@@ -211,7 +214,7 @@ fn filter_server_pois(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerPoi
         .unwrap()
 }
 
-fn filter_server_databases(db_conn: &SqliteConnection, filter: &str) -> Vec<ServerDatabase> {
+fn filter_server_databases(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ServerDatabase> {
     use projectpadsql::schema::server_database::dsl::*;
     server_database
         .filter(
@@ -224,7 +227,7 @@ fn filter_server_databases(db_conn: &SqliteConnection, filter: &str) -> Vec<Serv
         .unwrap()
 }
 
-fn filter_servers(db_conn: &SqliteConnection, filter: &str) -> Vec<Server> {
+fn filter_servers(db_conn: &mut SqliteConnection, filter: &str) -> Vec<Server> {
     use projectpadsql::schema::server::dsl::*;
     server
         .filter(
@@ -238,7 +241,7 @@ fn filter_servers(db_conn: &SqliteConnection, filter: &str) -> Vec<Server> {
 }
 
 fn filter_server_websites(
-    db_conn: &SqliteConnection,
+    db_conn: &mut SqliteConnection,
     filter: &str,
 ) -> Vec<(ServerWebsite, Option<ServerDatabase>)> {
     use projectpadsql::schema::server_database::dsl as db;
@@ -257,7 +260,7 @@ fn filter_server_websites(
         .unwrap()
 }
 
-fn load_projects_by_id(db_conn: &SqliteConnection, ids: &HashSet<i32>) -> Vec<Project> {
+fn load_projects_by_id(db_conn: &mut SqliteConnection, ids: &HashSet<i32>) -> Vec<Project> {
     use projectpadsql::schema::project::dsl::*;
     project
         .filter(id.eq_any(ids))
@@ -266,7 +269,7 @@ fn load_projects_by_id(db_conn: &SqliteConnection, ids: &HashSet<i32>) -> Vec<Pr
         .unwrap()
 }
 
-fn load_servers_by_id(db_conn: &SqliteConnection, ids: &HashSet<i32>) -> Vec<Server> {
+fn load_servers_by_id(db_conn: &mut SqliteConnection, ids: &HashSet<i32>) -> Vec<Server> {
     use projectpadsql::schema::server::dsl::*;
     server
         .filter(id.eq_any(ids))
@@ -389,9 +392,9 @@ mod tests {
 
     #[test]
     fn search_finds_users() {
-        let db_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
+        let mut db_conn = tests_load_yaml(SAMPLE_YAML_PROJECT);
         let search_result =
-            run_search_filter(&db_conn, SearchItemsType::All, "monitor", &None, false);
+            run_search_filter(&mut db_conn, SearchItemsType::All, "monitor", &None, false);
         // we should find the user...
         assert_eq!(1, search_result.server_extra_users.len());
         assert_eq!(

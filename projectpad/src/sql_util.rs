@@ -5,16 +5,15 @@ use diesel::query_dsl::methods::FindDsl;
 use diesel::sqlite::SqliteConnection;
 use diesel::{associations::HasTable, helper_types::Find, query_builder::DeleteStatement};
 
-no_arg_sql_function!(
-    last_insert_rowid,
-    diesel::sql_types::Integer,
-    "Represents the SQL last_insert_row() function"
-);
+sql_function! {
+    // Represents the SQL last_insert_row() function
+    fn last_insert_rowid() -> diesel::sql_types::Integer;
+}
 
 /// insert a row and get back the id of the newly inserted row
 /// unfortunately sqlite doesn't support sql RETURNING
 pub fn insert_row(
-    sql_conn: &SqliteConnection,
+    sql_conn: &mut SqliteConnection,
     insert_statement: impl ExecuteDsl<SqliteConnection>,
 ) -> Result<i32, (String, Option<String>)> {
     let insert_result = ExecuteDsl::execute(insert_statement, sql_conn)
@@ -26,7 +25,7 @@ pub fn insert_row(
             // caveats of last_insert_rowid seem to be in case of multiple
             // threads sharing a connection (which we don't do), and triggers
             // and other things (which we don't have).
-            diesel::select(last_insert_rowid)
+            diesel::select(last_insert_rowid())
                 .get_result::<i32>(sql_conn)
                 .map_err(|e| {
                     (
@@ -48,7 +47,7 @@ pub type DeleteFindStatement<F> =
     DeleteStatement<<F as HasTable>::Table, <F as IntoUpdateTarget>::WhereClause>;
 
 pub fn delete_row<Tbl, Pk>(
-    sql_conn: &SqliteConnection,
+    sql_conn: &mut SqliteConnection,
     table: Tbl,
     pk: Pk,
 ) -> Result<(), (&'static str, Option<String>)>

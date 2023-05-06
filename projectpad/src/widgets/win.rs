@@ -52,7 +52,7 @@ use gdk::ModifierType;
 use gtk::prelude::*;
 use gtk::traits::SettingsExt;
 use projectpadsql::models::{EnvironmentType, Project, Server};
-use relm::{Component, Widget};
+use relm4::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
@@ -109,21 +109,21 @@ pub struct ProjectPoiItem {
     // TODO groups
 }
 pub struct Model {
-    relm: relm::Relm<Win>,
+    relm: relm4::Relm<Win>,
     db_sender: mpsc::Sender<SqlFunc>,
     titlebar: Component<WinTitleBar>,
     is_new_db: bool,
     is_db_unlocked: bool,
-    _display_item_channel: relm::Channel<DisplayItemParams>,
-    display_item_sender: relm::Sender<DisplayItemParams>,
-    project_add_dialog: Option<(relm::Component<ProjectAddEditDialog>, gtk::Dialog)>,
+    _display_item_channel: relm4::Channel<DisplayItemParams>,
+    display_item_sender: relm4::Sender<DisplayItemParams>,
+    project_add_dialog: Option<(relm4::Component<ProjectAddEditDialog>, gtk::Dialog)>,
     tooltips_overlay: Component<TooltipsOverlay>,
-    _db_unlock_attempted_channel: relm::Channel<bool>,
-    db_unlock_attempted_sender: relm::Sender<bool>,
-    _db_prepared_channel: relm::Channel<()>,
-    db_prepared_sender: relm::Sender<()>,
-    _project_count_channel: relm::Channel<usize>,
-    project_count_sender: relm::Sender<usize>,
+    _db_unlock_attempted_channel: relm4::Channel<bool>,
+    db_unlock_attempted_sender: relm4::Sender<bool>,
+    _db_prepared_channel: relm4::Channel<()>,
+    db_prepared_sender: relm4::Sender<()>,
+    _project_count_channel: relm4::Channel<usize>,
+    project_count_sender: relm4::Sender<usize>,
     unlock_db_component_dialog: Option<(gtk::Dialog, Component<UnlockDbDialog>)>,
     infobar: gtk::InfoBar,
     infobar_label: gtk::Label,
@@ -146,13 +146,13 @@ impl Widget for Win {
             .tooltip_overlay
             .set_overlay_pass_through(overlay_widget, true);
         overlay_widget.window().unwrap().set_pass_through(true);
-        relm::connect!(titlebar@WinTitleBarMsg::SearchActiveChanged(is_active),
+        relm4::connect!(titlebar@WinTitleBarMsg::SearchActiveChanged(is_active),
                                self.model.relm, Msg::SearchActiveChanged(is_active));
-        relm::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
+        relm4::connect!(titlebar@WinTitleBarMsg::SearchTextChanged(ref search_text),
                                self.model.relm, Msg::SearchTextChanged(search_text.clone()));
-        relm::connect!(titlebar@WinTitleBarMsg::DarkThemeToggled,
+        relm4::connect!(titlebar@WinTitleBarMsg::DarkThemeToggled,
                                self.model.relm, Msg::DarkThemeToggled);
-        relm::connect!(titlebar@WinTitleBarMsg::ImportApplied,
+        relm4::connect!(titlebar@WinTitleBarMsg::ImportApplied,
                                self.model.relm, Msg::ImportApplied);
         self.init_infobar_overlay();
 
@@ -187,7 +187,7 @@ impl Widget for Win {
             .set_overlay_pass_through(&self.model.infobar, true);
     }
 
-    fn model(relm: &relm::Relm<Self>, params: (mpsc::Sender<SqlFunc>, bool)) -> Model {
+    fn model(relm: &relm4::Relm<Self>, params: (mpsc::Sender<SqlFunc>, bool)) -> Model {
         let (db_sender, is_new_db) = params;
         gtk::IconTheme::default()
             .unwrap()
@@ -196,25 +196,25 @@ impl Widget for Win {
         gtk::Settings::default()
             .unwrap()
             .set_gtk_application_prefer_dark_theme(config.prefer_dark_theme);
-        let titlebar = relm::init::<WinTitleBar>(db_sender.clone()).expect("win title bar init");
-        let tooltips_overlay = relm::init::<TooltipsOverlay>(()).expect("tooltips overlay init");
+        let titlebar = relm4::init::<WinTitleBar>(db_sender.clone()).expect("win title bar init");
+        let tooltips_overlay = relm4::init::<TooltipsOverlay>(()).expect("tooltips overlay init");
 
         let stream = relm.stream().clone();
         let (display_item_channel, display_item_sender) =
-            relm::Channel::new(move |ch_data: DisplayItemParams| {
+            relm4::Channel::new(move |ch_data: DisplayItemParams| {
                 stream.emit(Msg::DisplayItem(Box::new(ch_data)));
             });
         let stream2 = relm.stream().clone();
         let (db_unlock_attempted_channel, db_unlock_attempted_sender) =
-            relm::Channel::new(move |val| {
+            relm4::Channel::new(move |val| {
                 stream2.emit(Msg::DbUnlockAttempted(val));
             });
         let stream3 = relm.stream().clone();
-        let (db_prepared_channel, db_prepared_sender) = relm::Channel::new(move |_| {
+        let (db_prepared_channel, db_prepared_sender) = relm4::Channel::new(move |_| {
             stream3.emit(Msg::DbPrepared);
         });
         let stream4 = relm.stream().clone();
-        let (project_count_channel, project_count_sender) = relm::Channel::new(move |count| {
+        let (project_count_channel, project_count_sender) = relm4::Channel::new(move |count| {
             stream4.emit(Msg::ProjectCountChanged(count));
         });
         let infobar = gtk::InfoBar::builder()
@@ -271,7 +271,7 @@ impl Widget for Win {
             100,
             "Projectpad".to_string(),
         );
-        relm::connect!(
+        relm4::connect!(
             self.model.relm,
             &dialog,
             connect_delete_event(_, _),
@@ -279,9 +279,9 @@ impl Widget for Win {
         );
 
         let dialog_contents =
-            relm::init::<UnlockDbDialog>((self.model.is_new_db, self.model.db_sender.clone()))
+            relm4::init::<UnlockDbDialog>((self.model.is_new_db, self.model.db_sender.clone()))
                 .expect("error initializing the unlock db modal");
-        relm::connect!(
+        relm4::connect!(
             dialog_contents@MsgUnlockDbDlg::CheckedPassword(Ok(_)),
             self.model.relm,
             Msg::DbUnlocked
@@ -469,7 +469,7 @@ impl Widget for Win {
                     MsgProjectAddEditDialog::OkPressed,
                     "Project",
                 );
-                relm::connect!(
+                relm4::connect!(
                     component@MsgProjectAddEditDialog::ProjectUpdated(ref _project),
                     self.model.relm,
                     Msg::ProjectListChanged
@@ -486,7 +486,7 @@ impl Widget for Win {
             Msg::ShowInfoBar(msg) => {
                 self.model.infobar_label.set_text(&msg);
                 self.model.infobar.set_revealed(true);
-                relm::timeout(self.model.relm.stream(), 1500, || Msg::HideInfobar);
+                relm4::timeout(self.model.relm.stream(), 1500, || Msg::HideInfobar);
             }
             Msg::HideInfobar => {
                 self.model.infobar.set_revealed(false);

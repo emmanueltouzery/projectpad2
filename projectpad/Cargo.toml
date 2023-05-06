@@ -11,13 +11,14 @@ tar = "0.4.32"
 includedir_codegen = "0.6.0"
 
 [dependencies]
-relm = { git = "https://github.com/emmanueltouzery/relm", rev = "b339d26" }
-relm-derive = { git = "https://github.com/emmanueltouzery/relm", rev = "b339d26" }
+relm4 = "0.5.1"
+relm4-components = "0.5.1"
+gtk = { package="gtk4", version="0.5.5" }
 glib = "0.17.9"
 gio = "0.17.9"
-gdk = "0.17.1"
+gdk4 = "0.5.5"
 projectpadsql = { path = "../projectpadsql" }
-diesel = { version = "2.0.0", features = ["sqlite"] }
+diesel = { version = "2.0.4", features = ["sqlite"] }
 pango = "0.17.4"
 pulldown-cmark = { version = "0.8.0", default-features = false }
 itertools = "0.10.0"
@@ -25,7 +26,7 @@ strum = "0.20.0"
 chrono = "0.4.19"
 includedir = "0.6.0"
 phf = "0.8.0"
-sourceview4 = "0.4.0"
+sourceview5 = "0.5.0"
 serde = "1.0.123"
 serde_derive = "1.0.123"
 toml = "0.5.8"
@@ -37,6 +38,3 @@ regex = "1.4.3"
 [dependencies.cairo-rs]
 version = "0.17.0"
 features = ["png", "v1_16"]
-
-[dependencies.gtk]
-version = "0.17.1"

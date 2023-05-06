@@ -7,7 +7,7 @@ pub fn display_error(msg: &str, e: Option<Box<dyn Error>>) {
 }
 
 pub fn display_error_str(msg: &str, e: Option<String>) {
-    let builder = gtk::builders::MessageDialogBuilder::new()
+    let builder = gtk::MessageDialog::builder()
         .buttons(gtk::ButtonsType::Ok)
         .message_type(gtk::MessageType::Error)
         .modal(true)
@@ -29,7 +29,7 @@ pub fn confirm_deletion(
     confirm_cb: impl Fn() + 'static,
 ) {
     let main_win = get_main_window(widget);
-    let dialog = gtk::builders::MessageDialogBuilder::new()
+    let dialog = gtk::MessageDialog::builder()
         .title("Confirmation")
         .text(summary)
         .secondary_text(msg)
@@ -86,7 +86,7 @@ pub fn modal_dialog(
     title: String,
 ) -> gtk::Dialog {
     let main_win = get_main_window(widget_for_window);
-    gtk::builders::DialogBuilder::new()
+    gtk::Dialog::builder()
         .use_header_bar(1)
         .default_width(width)
         .default_height(height)

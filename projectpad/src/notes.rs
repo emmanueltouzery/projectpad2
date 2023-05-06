@@ -85,28 +85,28 @@ const TAG_BLOCKQUOTE3: &str = "blockquote3";
 pub fn build_tag_table() -> gtk::TextTagTable {
     let tag_table = gtk::TextTagTable::new();
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_BOLD)
             .wrap_mode(gtk::WrapMode::Word)
             .weight(pango::Weight::Bold.into_glib())
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_STRIKETHROUGH)
             .wrap_mode(gtk::WrapMode::Word)
             .strikethrough(true)
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_ITALICS)
             .wrap_mode(gtk::WrapMode::Word)
             .style(pango::Style::Italic)
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_HEADER1)
             .weight(pango::Weight::Bold.into_glib())
             .wrap_mode(gtk::WrapMode::Word)
@@ -114,7 +114,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_HEADER2)
             .weight(pango::Weight::Bold.into_glib())
             .wrap_mode(gtk::WrapMode::Word)
@@ -122,7 +122,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_HEADER3)
             .weight(pango::Weight::Bold.into_glib())
             .wrap_mode(gtk::WrapMode::Word)
@@ -130,7 +130,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_LINK)
             .underline(pango::Underline::Single)
             .wrap_mode(gtk::WrapMode::Word)
@@ -138,21 +138,21 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_PASSWORD)
             .wrap_mode(gtk::WrapMode::Word)
             .foreground("orange")
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_CODE)
             .family("monospace")
             .wrap_mode(gtk::WrapMode::None)
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_BLOCKQUOTE1)
             .wrap_mode(gtk::WrapMode::Word)
             .left_margin(30)
@@ -160,7 +160,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_BLOCKQUOTE2)
             .wrap_mode(gtk::WrapMode::Word)
             .left_margin(40)
@@ -168,7 +168,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_BLOCKQUOTE3)
             .wrap_mode(gtk::WrapMode::Word)
             .left_margin(50)
@@ -182,7 +182,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
     tab_ar.set_tab(0, pango::TabAlign::Left, 0);
     tab_ar.set_tab(1, pango::TabAlign::Left, 14);
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_LIST_ITEM)
             .indent(-14)
             .left_margin(14)
@@ -191,7 +191,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table.add(
-        &gtk::builders::TextTagBuilder::new()
+        &gtk::TextTag::builder()
             .name(TAG_PARAGRAPH)
             .wrap_mode(gtk::WrapMode::Word)
             .build(),

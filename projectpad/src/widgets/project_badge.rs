@@ -196,7 +196,7 @@ impl Widget for ProjectBadge {
     fn compute_font_size(context: &cairo::Context, width: f64) -> f64 {
         let mut size = 5.0;
         context.set_font_size(size);
-        while context.text_extents("HU").unwrap().width < width * 0.8 {
+        while context.text_extents("HU").unwrap().width() < width * 0.8 {
             context.set_font_size(size);
             size += 1.0;
         }
@@ -244,8 +244,8 @@ impl Widget for ProjectBadge {
         // context.set_source_rgb(1.0, 1.0, 1.0);
         let text_extents = context.text_extents(contents)?;
         context.move_to(
-            (allocation_width / 2) as f64 - text_extents.width / 2.0 - text_extents.x_bearing,
-            (allocation_width / 2) as f64 - text_extents.y_bearing - text_extents.height / 2.0,
+            (allocation_width / 2) as f64 - text_extents.width() / 2.0 - text_extents.x_bearing(),
+            (allocation_width / 2) as f64 - text_extents.y_bearing() - text_extents.height() / 2.0,
         );
         context.text_path(contents);
         context.fill()

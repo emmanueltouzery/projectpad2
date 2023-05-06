@@ -357,14 +357,11 @@ impl Widget for ProjectItemsList {
             .project_items_list
             .set_header_func(Some(Box::new(move |row, _h| {
                 if let Some(group_name) = indexes.get(&row.index()) {
-                    let vbox = gtk::builders::BoxBuilder::new()
+                    let vbox = gtk::Box::builder()
                         .orientation(gtk::Orientation::Vertical)
                         .build();
-                    vbox.add(&gtk::builders::SeparatorBuilder::new().build());
-                    let label = gtk::builders::LabelBuilder::new()
-                        .label(group_name)
-                        .xalign(0.0)
-                        .build();
+                    vbox.add(&gtk::Separator::builder().build());
+                    let label = gtk::Label::builder().label(group_name).xalign(0.0).build();
                     label.style_context().add_class("project_item_header");
                     vbox.add(&label);
                     vbox.show_all();

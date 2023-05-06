@@ -62,7 +62,7 @@ impl Widget for ProjectNoteAddEditDialog {
         self.widgets.grid.set_width_request(700);
         self.widgets.grid.set_height_request(500);
 
-        let no_envs_error_label = gtk::builders::LabelBuilder::new()
+        let no_envs_error_label = gtk::Label::builder()
             .label("You must select at least one environment which is active on the parent project")
             .build();
         no_envs_error_label.show();

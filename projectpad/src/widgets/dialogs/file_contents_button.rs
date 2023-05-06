@@ -65,7 +65,7 @@ impl Widget for FileContentsButton {
                     .emit(Msg::FileChanged((None, None)));
             }
             Msg::PickFile => {
-                let dialog = gtk::builders::FileChooserNativeBuilder::new()
+                let dialog = gtk::FileChooserNative::builder()
                     .action(gtk::FileChooserAction::Open)
                     .title("Select file")
                     .modal(true)
@@ -121,7 +121,7 @@ impl Widget for FileContentsButton {
             Msg::FileChanged(_) => {}
             Msg::SaveAuthFile => {
                 // native file picker to save files, so it works also within flatpak
-                let dialog = gtk::builders::FileChooserNativeBuilder::new()
+                let dialog = gtk::FileChooserNative::builder()
                     .title("Select destination folder")
                     .action(gtk::FileChooserAction::SelectFolder)
                     .accept_label("Save")

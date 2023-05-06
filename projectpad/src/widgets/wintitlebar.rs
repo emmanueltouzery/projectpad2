@@ -63,14 +63,12 @@ impl Widget for WinTitleBar {
     }
 
     fn init_menu_popover(&mut self) {
-        let vbox = gtk::builders::BoxBuilder::new()
+        let vbox = gtk::Box::builder()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let preferences_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Preferences")
-            .build();
+        let preferences_btn = gtk::ModelButton::builder().label("Preferences").build();
         left_align_menu(&preferences_btn);
         relm::connect!(
             self.model.relm,
@@ -80,9 +78,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&preferences_btn);
 
-        let import_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Import/Export")
-            .build();
+        let import_btn = gtk::ModelButton::builder().label("Import/Export").build();
         left_align_menu(&import_btn);
         relm::connect!(
             self.model.relm,
@@ -92,7 +88,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&import_btn);
 
-        let shortcuts_btn = gtk::builders::ModelButtonBuilder::new()
+        let shortcuts_btn = gtk::ModelButton::builder()
             .label("Keyboard Shortcuts")
             .build();
         left_align_menu(&shortcuts_btn);
@@ -104,7 +100,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&shortcuts_btn);
 
-        let help_btn = gtk::builders::ModelButtonBuilder::new()
+        let help_btn = gtk::ModelButton::builder()
             .label("Help")
             .hexpand(true)
             .build();
@@ -117,7 +113,7 @@ impl Widget for WinTitleBar {
         );
         vbox.add(&help_btn);
 
-        let about_btn = gtk::builders::ModelButtonBuilder::new()
+        let about_btn = gtk::ModelButton::builder()
             .label("About Projectpad")
             .hexpand(true)
             .build();
@@ -255,7 +251,7 @@ impl Widget for WinTitleBar {
     }
 
     fn display_about() {
-        let dlg = gtk::builders::AboutDialogBuilder::new()
+        let dlg = gtk::AboutDialog::builder()
             .name("Projectpad")
             .version(env!("CARGO_PKG_VERSION"))
             .logo_icon_name(Icon::APP_ICON.name())

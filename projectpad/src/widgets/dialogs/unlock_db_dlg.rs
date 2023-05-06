@@ -50,7 +50,7 @@ impl Widget for UnlockDbDialog {
         Model {
             db_sender,
             is_new_db,
-            error_label: gtk::builders::LabelBuilder::new().label("").build(),
+            error_label: gtk::Label::builder().label("").build(),
             pass_valid_sender,
             _pass_valid_channel: pass_valid_channel,
             password: None,

@@ -60,7 +60,7 @@ impl Widget for ServerLinkAddEditDialog {
         self.init_group();
         self.fetch_project_name_and_id();
 
-        let must_pick_server_error_label = gtk::builders::LabelBuilder::new()
+        let must_pick_server_error_label = gtk::Label::builder()
             .label("You must select a server to link to")
             .build();
         must_pick_server_error_label.show();

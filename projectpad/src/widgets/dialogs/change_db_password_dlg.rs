@@ -101,13 +101,13 @@ impl Widget for ChangeDbPasswordDialog {
             relm::Channel::new(move |r: OpResult| {
                 stream3.emit(Msg::CurrentPasswordValid(r.is_ok()))
             });
-        let infobar = gtk::builders::InfoBarBuilder::new()
+        let infobar = gtk::InfoBar::builder()
             .revealed(false)
             .message_type(gtk::MessageType::Info)
             .valign(gtk::Align::Start)
             .build();
 
-        let infobar_label = gtk::builders::LabelBuilder::new().label("").build();
+        let infobar_label = gtk::Label::builder().label("").build();
         infobar_label.show();
         infobar.content_area().add(&infobar_label);
         infobar.show();

@@ -145,11 +145,11 @@ impl Widget for ImportExportDialog {
             db_sender,
             header,
             wizard_state: WizardState::Start,
-            import_error_label: gtk::builders::LabelBuilder::new()
+            import_error_label: gtk::Label::builder()
                 .label("")
                 .ellipsize(pango::EllipsizeMode::End)
                 .build(),
-            export_error_label: gtk::builders::LabelBuilder::new()
+            export_error_label: gtk::Label::builder()
                 .label("")
                 .ellipsize(pango::EllipsizeMode::End)
                 .build(),
@@ -276,7 +276,7 @@ impl Widget for ImportExportDialog {
     }
 
     fn open_export_save_dialog(&self, pass: String) {
-        let dialog = gtk::builders::FileChooserNativeBuilder::new()
+        let dialog = gtk::FileChooserNative::builder()
             .action(gtk::FileChooserAction::Save)
             .title("Export to...")
             .modal(true)
@@ -326,7 +326,7 @@ impl Widget for ImportExportDialog {
         }
         for project in &self.model.displayed_projects {
             self.widgets.project_list.add(
-                &gtk::builders::LabelBuilder::new()
+                &gtk::Label::builder()
                     .label(&project.name)
                     .xalign(0.0)
                     .margin(5)

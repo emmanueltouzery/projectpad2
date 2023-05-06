@@ -312,7 +312,7 @@ impl Widget for ProjectItemMoveDialog {
         let mut selected_idx = 0;
         for (idx, project) in self.model.displayed_projects.iter().enumerate() {
             self.widgets.project_list.add(
-                &gtk::builders::LabelBuilder::new()
+                &gtk::Label::builder()
                     .label(&project.name)
                     .xalign(0.0)
                     .margin(5)

@@ -73,13 +73,13 @@ impl Widget for ProjectAddEditDialog {
             });
         let name = p.map(|p| p.name.clone()).unwrap_or_else(|| "".to_string());
         let icon = p.and_then(|p| p.icon.clone()).filter(|i| !i.is_empty());
-        let infobar = gtk::builders::InfoBarBuilder::new()
+        let infobar = gtk::InfoBar::builder()
             .revealed(false)
             .message_type(gtk::MessageType::Info)
             .valign(gtk::Align::Start)
             .build();
 
-        let infobar_label = gtk::builders::LabelBuilder::new().label("").build();
+        let infobar_label = gtk::Label::builder().label("").build();
         infobar_label.show();
         infobar.content_area().add(&infobar_label);
         infobar.show();

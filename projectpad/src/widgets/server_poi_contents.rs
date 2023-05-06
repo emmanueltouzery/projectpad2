@@ -344,10 +344,7 @@ impl Widget for ServerPoiContents {
             .contents_list
             .set_header_func(Some(Box::new(move |row, _h| {
                 if let Some(group_name) = indexes.get(&row.index()) {
-                    let label = gtk::builders::LabelBuilder::new()
-                        .label(group_name)
-                        .xalign(0.0)
-                        .build();
+                    let label = gtk::Label::builder().label(group_name).xalign(0.0).build();
                     label.style_context().add_class("server_item_header");
                     row.set_header(Some(&label));
                 } else {
@@ -359,21 +356,19 @@ impl Widget for ServerPoiContents {
 
         if self.model.cur_server_id.is_some() && self.model.server_items.is_empty() {
             // show a little intro text
-            let vbox = gtk::builders::BoxBuilder::new()
+            let vbox = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let intro_label = gtk::builders::LabelBuilder::new()
+            let intro_label = gtk::Label::builder()
                 .label("<big>This server doesn't have any items</big>")
                 .xalign(0.0)
                 .margin(10)
                 .use_markup(true)
                 .build();
             vbox.add(&intro_label);
-            let details = gtk::builders::ExpanderBuilder::new()
-                .label("Server item types")
-                .build();
+            let details = gtk::Expander::builder().label("Server item types").build();
             details.add(
-                &gtk::builders::LabelBuilder::new()
+                &gtk::Label::builder()
                     .label("You can add multiple item types to a server. To do that, use the gear icon \
                             next to the server name. Let's review all the available item types:\n\n\
                             • <u>Point of interest</u> - a command to run or a relevant file or folder \

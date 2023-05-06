@@ -50,11 +50,11 @@ impl Widget for PasswordField {
 
     fn init_popover(&mut self) {
         self.model.popover = Some(gtk::Popover::new(Some(&self.widgets.password_entry)));
-        let popover_vbox = gtk::builders::BoxBuilder::new()
+        let popover_vbox = gtk::Box::builder()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_reveal_btn = gtk::builders::ModelButtonBuilder::new()
+        let popover_reveal_btn = gtk::ModelButton::builder()
             .label("Reveal")
             .role(gtk::ButtonRole::Check)
             .build();
@@ -65,9 +65,7 @@ impl Widget for PasswordField {
             Msg::RevealPassword(btn.clone())
         );
         popover_vbox.add(&popover_reveal_btn);
-        let popover_copy_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Copy")
-            .build();
+        let popover_copy_btn = gtk::ModelButton::builder().label("Copy").build();
         relm::connect!(
             self.model.relm,
             popover_copy_btn,

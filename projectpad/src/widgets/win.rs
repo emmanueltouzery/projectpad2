@@ -217,13 +217,13 @@ impl Widget for Win {
         let (project_count_channel, project_count_sender) = relm::Channel::new(move |count| {
             stream4.emit(Msg::ProjectCountChanged(count));
         });
-        let infobar = gtk::builders::InfoBarBuilder::new()
+        let infobar = gtk::InfoBar::builder()
             .revealed(false)
             .message_type(gtk::MessageType::Info)
             .valign(gtk::Align::Start)
             .build();
 
-        let infobar_label = gtk::builders::LabelBuilder::new().label("").build();
+        let infobar_label = gtk::Label::builder().label("").build();
         infobar_label.show();
         infobar.content_area().add(&infobar_label);
         infobar.show();

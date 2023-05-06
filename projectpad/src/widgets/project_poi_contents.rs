@@ -106,7 +106,7 @@ impl Widget for ProjectPoiContents {
     }
 
     fn model(relm: &relm::Relm<Self>, db_sender: mpsc::Sender<SqlFunc>) -> Model {
-        let copy_btn = gtk::builders::ButtonBuilder::new()
+        let copy_btn = gtk::Button::builder()
             .label("Copy code block")
             .always_show_image(true)
             .image(&gtk::Image::from_icon_name(
@@ -392,9 +392,7 @@ impl Widget for ProjectPoiContents {
                 if let Some(iter) = self.widgets.note_textview.iter_at_location(bx, by) {
                     let is_code = Self::iter_matches_tags(&iter, &[crate::notes::TAG_CODE]);
                     if is_code {
-                        let copy_btn = gtk::builders::MenuItemBuilder::new()
-                            .label("Copy code block")
-                            .build();
+                        let copy_btn = gtk::MenuItem::builder().label("Copy code block").build();
                         let textview = self.widgets.note_textview.clone();
                         let relm = self.model.relm.clone();
                         let buffer = self.widgets.note_textview.buffer().unwrap();
@@ -476,7 +474,7 @@ impl Widget for ProjectPoiContents {
             .note_textview
             .set_buffer(Some(&note_buffer_info.buffer));
         for anchor in &note_buffer_info.separator_anchors {
-            let sep = gtk::builders::SeparatorBuilder::new()
+            let sep = gtk::Separator::builder()
                 .margin(15)
                 .width_request(350)
                 .build();
@@ -518,13 +516,11 @@ impl Widget for ProjectPoiContents {
             50,
             15,
         ));
-        let popover_vbox = gtk::builders::BoxBuilder::new()
+        let popover_vbox = gtk::Box::builder()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_copy_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Copy password")
-            .build();
+        let popover_copy_btn = gtk::ModelButton::builder().label("Copy password").build();
         let textview = self.widgets.note_textview.clone();
         let p = password.to_string();
         let r = self.model.relm.clone();
@@ -533,9 +529,7 @@ impl Widget for ProjectPoiContents {
         });
         left_align_menu(&popover_copy_btn);
         popover_vbox.add(&popover_copy_btn);
-        let popover_reveal_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Reveal password")
-            .build();
+        let popover_reveal_btn = gtk::ModelButton::builder().label("Reveal password").build();
         let p2 = password.to_string();
         let r2 = self.model.relm.clone();
         popover_reveal_btn.connect_clicked(move |_| {

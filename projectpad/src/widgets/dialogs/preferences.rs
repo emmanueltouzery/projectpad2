@@ -44,11 +44,11 @@ pub struct Model {
 impl Widget for Preferences {
     fn init_view(&mut self) {
         self.load_keyring_pass_state();
-        let remove_pass_btn_contents = gtk::builders::BoxBuilder::new().build();
+        let remove_pass_btn_contents = gtk::Box::builder().build();
         self.model.remove_pass_from_keyring_spinner.start();
         remove_pass_btn_contents.add(&self.model.remove_pass_from_keyring_spinner);
         remove_pass_btn_contents.add(
-            &gtk::builders::LabelBuilder::new()
+            &gtk::Label::builder()
                 .label("Remove password from keyring")
                 .build(),
         );
@@ -81,7 +81,7 @@ impl Widget for Preferences {
             pass_keyring_sender,
             _pass_keyring_channel,
             change_db_password_dlg: None,
-            remove_pass_from_keyring_spinner: gtk::builders::SpinnerBuilder::new().build(),
+            remove_pass_from_keyring_spinner: gtk::Spinner::builder().build(),
             confirm_dialog: None,
             confirm_ok_btn: None,
         }

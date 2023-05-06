@@ -106,11 +106,11 @@ impl Widget for ProjectSummary {
     }
 
     fn init_actions_popover(&self) {
-        let popover_vbox = gtk::builders::BoxBuilder::new()
+        let popover_vbox = gtk::Box::builder()
             .margin(10)
             .orientation(gtk::Orientation::Vertical)
             .build();
-        let popover_add_btn = gtk::builders::ModelButtonBuilder::new()
+        let popover_add_btn = gtk::ModelButton::builder()
             .label("Add project item...")
             .build();
         left_align_menu(&popover_add_btn);
@@ -121,9 +121,7 @@ impl Widget for ProjectSummary {
             Msg::AddProjectItem
         );
         popover_vbox.add(&popover_add_btn);
-        let popover_edit_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Edit")
-            .build();
+        let popover_edit_btn = gtk::ModelButton::builder().label("Edit").build();
         left_align_menu(&popover_edit_btn);
         relm::connect!(
             self.model.relm,
@@ -132,9 +130,7 @@ impl Widget for ProjectSummary {
             Msg::EditProject
         );
         popover_vbox.add(&popover_edit_btn);
-        let popover_delete_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Delete")
-            .build();
+        let popover_delete_btn = gtk::ModelButton::builder().label("Delete").build();
         left_align_menu(&popover_delete_btn);
         relm::connect!(
             self.model.relm,
@@ -161,10 +157,7 @@ impl Widget for ProjectSummary {
             project: None,
             db_sender,
             relm: relm.clone(),
-            title: gtk::builders::LabelBuilder::new()
-                .margin_top(8)
-                .margin_bottom(8)
-                .build(),
+            title: gtk::Label::builder().margin_top(8).margin_bottom(8).build(),
             btn_and_handler: vec![],
             header_popover: gtk::Popover::new(None::<&gtk::Button>),
             project_add_item_dialog: None,

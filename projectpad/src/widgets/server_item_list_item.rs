@@ -245,9 +245,7 @@ impl Widget for ServerItemListItem {
         // TODO drop the clone
         let extra_btns = match self.model.server_item.clone() {
             ServerItem::Note(n) => {
-                let view_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("View")
-                    .build();
+                let view_btn = gtk::ModelButton::builder().label("View").build();
                 let n0 = n.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
@@ -255,9 +253,7 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::ViewNote(n0.clone())
                 );
-                let edit_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Edit")
-                    .build();
+                let edit_btn = gtk::ModelButton::builder().label("Edit").build();
                 let n1 = n.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
@@ -265,9 +261,7 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::EditNote(n1.clone())
                 );
-                let delete_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Delete")
-                    .build();
+                let delete_btn = gtk::ModelButton::builder().label("Delete").build();
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
@@ -281,9 +275,7 @@ impl Widget for ServerItemListItem {
                 vec![view_btn, edit_btn, delete_btn]
             }
             ServerItem::PointOfInterest(poi) => {
-                let edit_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Edit")
-                    .build();
+                let edit_btn = gtk::ModelButton::builder().label("Edit").build();
                 let p = poi.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
@@ -291,9 +283,7 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::EditPoi(p.clone())
                 );
-                let delete_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Delete")
-                    .build();
+                let delete_btn = gtk::ModelButton::builder().label("Delete").build();
                 // TODO skip the ask step
                 relm::connect!(
                     self.model.relm,
@@ -308,9 +298,7 @@ impl Widget for ServerItemListItem {
                 vec![edit_btn, delete_btn]
             }
             ServerItem::Database(db) => {
-                let edit_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Edit")
-                    .build();
+                let edit_btn = gtk::ModelButton::builder().label("Edit").build();
                 let d = db.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
@@ -318,9 +306,7 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::EditDb(d.clone())
                 );
-                let delete_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Delete")
-                    .build();
+                let delete_btn = gtk::ModelButton::builder().label("Delete").build();
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
@@ -333,7 +319,7 @@ impl Widget for ServerItemListItem {
                 );
                 let mut db_menu_items = vec![edit_btn, delete_btn];
                 for www in &self.model.websites_for_item {
-                    let go_to_www_btn = gtk::builders::ModelButtonBuilder::new()
+                    let go_to_www_btn = gtk::ModelButton::builder()
                         .label(&format!("Go to '{}'", &www.desc))
                         .build();
                     let w3 = www.clone(); // TODO too many clones
@@ -348,9 +334,7 @@ impl Widget for ServerItemListItem {
                 db_menu_items
             }
             ServerItem::ExtraUserAccount(usr) => {
-                let edit_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Edit")
-                    .build();
+                let edit_btn = gtk::ModelButton::builder().label("Edit").build();
                 let u = usr.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
@@ -358,9 +342,7 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::EditUser(u.clone())
                 );
-                let delete_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Delete")
-                    .build();
+                let delete_btn = gtk::ModelButton::builder().label("Delete").build();
                 relm::connect!(
                     self.model.relm,
                     &delete_btn,
@@ -374,9 +356,7 @@ impl Widget for ServerItemListItem {
                 vec![edit_btn, delete_btn]
             }
             ServerItem::Website(www) => {
-                let edit_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Edit")
-                    .build();
+                let edit_btn = gtk::ModelButton::builder().label("Edit").build();
                 let w = www.clone(); // TODO too many clones
                 relm::connect!(
                     self.model.relm,
@@ -384,9 +364,7 @@ impl Widget for ServerItemListItem {
                     connect_clicked(_),
                     Msg::EditWebsite(w.clone())
                 );
-                let delete_btn = gtk::builders::ModelButtonBuilder::new()
-                    .label("Delete")
-                    .build();
+                let delete_btn = gtk::ModelButton::builder().label("Delete").build();
                 // TODO skip the ask step
                 relm::connect!(
                     self.model.relm,
@@ -400,9 +378,7 @@ impl Widget for ServerItemListItem {
                 );
                 let mut www_menu_items = vec![edit_btn, delete_btn];
                 if let Some(db) = self.model.database_for_item.as_ref() {
-                    let go_to_db_btn = gtk::builders::ModelButtonBuilder::new()
-                        .label("Go to database")
-                        .build();
+                    let go_to_db_btn = gtk::ModelButton::builder().label("Go to database").build();
                     let d3 = db.clone(); // TODO too many clones
                     relm::connect!(
                         self.model.relm,
@@ -437,7 +413,7 @@ impl Widget for ServerItemListItem {
                 .collect::<Vec<_>>()
                 .join("\n");
             self.widgets.items_grid.attach(
-                &gtk::builders::LabelBuilder::new()
+                &gtk::Label::builder()
                     .hexpand(true)
                     .single_line_mode(true)
                     .use_markup(true)

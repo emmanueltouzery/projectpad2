@@ -157,7 +157,7 @@ pub enum OperationMode {
 impl Widget for SearchView {
     fn init_view(&mut self) {
         self.model.action_popover = Some(
-            gtk::builders::PopoverBuilder::new()
+            gtk::Popover::builder()
                 .relative_to(&self.widgets.search_result_area)
                 .position(gtk::PositionType::Bottom)
                 .build(),
@@ -297,9 +297,7 @@ impl Widget for SearchView {
         } else {
             vec![]
         };
-        let open_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Open")
-            .build();
+        let open_btn = gtk::ModelButton::builder().label("Open").build();
         let ppitem = projectpad_item.clone();
         relm::connect!(
             relm,
@@ -307,9 +305,7 @@ impl Widget for SearchView {
             connect_clicked(_),
             Msg::OpenItem(ppitem.clone())
         );
-        let edit_btn = gtk::builders::ModelButtonBuilder::new()
-            .label("Edit")
-            .build();
+        let edit_btn = gtk::ModelButton::builder().label("Edit").build();
         let ppitem2 = projectpad_item.clone();
         relm::connect!(
             relm,

@@ -178,7 +178,7 @@ impl Widget for ProjectList {
             );
             self.model.children_widgets.push(child);
         }
-        let add_btn = gtk::builders::ButtonBuilder::new()
+        let add_btn = gtk::Button::builder()
             .always_show_image(true)
             .image(&gtk::Image::from_icon_name(
                 Some("list-add-symbolic"),

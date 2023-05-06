@@ -213,9 +213,7 @@ impl Widget for PickProjectpadItemButton {
             .emit(search_view::Msg::SelectItem(self.model.item.clone()));
         standard_dialogs::prepare_custom_dialog_component_ref(&dialog, comp);
 
-        let search_entry = gtk::builders::SearchEntryBuilder::new()
-            .text(&search_text)
-            .build();
+        let search_entry = gtk::SearchEntry::builder().text(&search_text).build();
         let comp2 = comp.stream();
         search_entry.connect_changed(move |se| {
             comp2

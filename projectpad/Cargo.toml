@@ -11,8 +11,8 @@ tar = "0.4.32"
 includedir_codegen = "0.6.0"
 
 [dependencies]
-relm = { git = "https://github.com/emmanueltouzery/relm", rev = "b339d26" }
-relm-derive = { git = "https://github.com/emmanueltouzery/relm", rev = "b339d26" }
+relm = { git = "https://github.com/emmanueltouzery/relm", rev = "3862d48" }
+relm-derive = { git = "https://github.com/emmanueltouzery/relm", rev = "3862d48" }
 glib = "0.17.9"
 gio = "0.17.9"
 gdk = "0.17.1"

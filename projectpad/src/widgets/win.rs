@@ -579,7 +579,7 @@ impl Widget for Win {
     }
 
     fn load_style(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let screen = self.widgets.window.screen().unwrap();
+        let screen = WidgetExt::screen(&self.widgets.window).unwrap();
         let css = gtk::CssProvider::new();
         css.load_from_data(CSS_DATA)?;
         gtk::StyleContext::add_provider_for_screen(

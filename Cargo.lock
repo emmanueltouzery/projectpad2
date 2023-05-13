@@ -2046,7 +2046,7 @@ checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
 [[package]]
 name = "relm"
 version = "0.24.0"
-source = "git+https://github.com/emmanueltouzery/relm?rev=b339d26#b339d26940ee76a8ca39782378edb9717f4457c7"
+source = "git+https://github.com/emmanueltouzery/relm?rev=3862d48#3862d48611a757bba569286bdfe7c5fc40707140"
 dependencies = [
  "cairo-rs",
  "fragile",
@@ -2061,7 +2061,7 @@ dependencies = [
 [[package]]
 name = "relm-derive"
 version = "0.24.0"
-source = "git+https://github.com/emmanueltouzery/relm?rev=b339d26#b339d26940ee76a8ca39782378edb9717f4457c7"
+source = "git+https://github.com/emmanueltouzery/relm?rev=3862d48#3862d48611a757bba569286bdfe7c5fc40707140"
 dependencies = [
  "lazy_static",
  "proc-macro2",

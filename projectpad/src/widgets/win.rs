@@ -52,6 +52,9 @@ use gdk::ModifierType;
 use gtk::prelude::*;
 use gtk::traits::SettingsExt;
 use projectpadsql::models::{EnvironmentType, Project, Server};
+use relm4::ComponentParts;
+use relm4::ComponentSender;
+use relm4::SimpleComponent;
 use relm4::{Component, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
@@ -73,7 +76,7 @@ const CSS_DATA: &[u8] = include_bytes!("../../resources/style.css");
 
 type DisplayItemParams = (Project, Option<ProjectItem>, Option<ServerItem>);
 
-#[derive(Msg)]
+#[derive(Debug)]
 pub enum Msg {
     Quit,
     CloseUnlockDb,
@@ -133,9 +136,17 @@ const CHILD_NAME_NORMAL: &str = "normal";
 const CHILD_NAME_SEARCH: &str = "search";
 const CHILD_NAME_WELCOME: &str = "welcome";
 
-#[widget]
-impl Widget for Win {
-    fn init_view(&mut self) {
+#[relm4::component]
+impl SimpleComponent for Model {
+    type Init = Model;
+    type Input = Msg;
+    type Output = ();
+
+    fn init(
+        init: Self::Init,
+        root: &Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
         if let Err(err) = self.load_style() {
             println!("Error loading the CSS: {}", err);
         }
@@ -176,15 +187,10 @@ impl Widget for Win {
                     .unwrap()
                     .1,
             ));
-    }
 
-    fn init_infobar_overlay(&self) {
-        self.widgets
-            .infobar_overlay
-            .add_overlay(&self.model.infobar);
-        self.widgets
-            .infobar_overlay
-            .set_overlay_pass_through(&self.model.infobar, true);
+        let model = Model { init };
+        let widgets = view_output!();
+        ComponentParts { model, widgets }
     }
 
     fn model(relm: &relm4::Relm<Self>, params: (mpsc::Sender<SqlFunc>, bool)) -> Model {
@@ -247,6 +253,196 @@ impl Widget for Win {
             infobar,
             infobar_label,
         }
+    }
+
+    view! {
+        #[name="window"]
+        gtk::Window {
+            set_titlebar: Some(self.model.titlebar.widget()),
+            set_default_width: 1000,
+            set_default_height: 650,
+            #[name="infobar_overlay"]
+            gtk::Overlay {
+                #[name="normal_or_search_stack"]
+                gtk::Stack {
+                    add_child = &gtk::Box {
+                        child: {
+                            name: Some(CHILD_NAME_NORMAL)
+                        },
+                        #[name="project_list"]
+                        ProjectList(self.model.db_sender.clone()) {
+                            width_request: 60,
+                            ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone()),
+                            AddProject => Msg::AddProject,
+                            UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
+                        },
+                        #[name="normal_or_welcome_stack"]
+                        gtk::Stack {
+                            gtk::Box {
+                                child: {
+                                    name: Some(CHILD_NAME_NORMAL)
+                                },
+                                // we use the overlay to display a tooltip with the name
+                                // of the project from the project_list that the mouse
+                                // currently hovers.
+                                #[name="tooltip_overlay"]
+                                gtk::Overlay {
+                                    gtk::Box {
+                                        orientation: gtk::Orientation::Vertical,
+                                        #[name="project_summary"]
+                                        ProjectSummary(self.model.db_sender.clone()) {
+                                            EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
+                                            ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                            ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
+                                            ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
+                                        },
+                                        gtk::Separator {},
+                                        gtk::Box {
+                                            child: {
+                                                fill: true,
+                                                expand: true,
+                                            },
+                                            gtk::Separator {
+                                                orientation: gtk::Orientation::Vertical,
+                                            },
+                                            #[name="project_items_list"]
+                                            #[style_class="sidebar"]
+                                            ProjectItemsList(self.model.db_sender.clone()) {
+                                                width_request: 260,
+                                                child: {
+                                                    fill: true,
+                                                    expand: true,
+                                                },
+                                                ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
+                                            },
+                                        }
+                                    },
+                                },
+                                #[name="normal_or_project_welcome_stack"]
+                                gtk::Stack {
+                                    child: {
+                                        fill: true,
+                                        expand: true,
+                                    },
+                                    gtk::Box {
+                                        child: {
+                                            name: Some(CHILD_NAME_WELCOME)
+                                        },
+                                        gtk::ScrolledWindow {
+                                            gtk::Label {
+                                                hexpand: true,
+                                                margin_start: 10,
+                                                margin_end: 10,
+                                                margin_top: 10,
+                                                xalign: 0.1,
+                                                yalign: 0.1,
+                                                line_wrap: true,
+                                                markup: "<big><b>Empty project</b></big>\n\n\
+                                                         Let's add items to this project. For that use the 'gear' icon next to \
+                                                         the project name. The gear icon allows you to edit the project, but also \
+                                                         to add elements to it.\n\n\
+                                                         A project may contain:\n\n\
+                                                         • <u>Server</u> - These are machines or virtual machines, with their own \
+                                                         IP. Projectpad knows several types of servers like Application servers, \
+                                                         Database, Reporting, Proxy... And a server may contain more elements, \
+                                                         such as point of interests (like folders on the filesystem), websites, \
+                                                         databases and so on - you'll be able to add these with the gear icon \
+                                                         that'll appear next to the server name on the right of the screen;\n\n\
+                                                         • <u>Point of interest</u> - These are commands to run or relevant files \
+                                                         or folders. Project point of interests have to be located on your computer. If you're \
+                                                         interested in point of interests on another machine then create a <tt>server</tt> for \
+                                                         that machine and add a Server point of interest on that server;\n\n\
+                                                         • <u>Project note</u> - Notes are markdown-formatted text containing \
+                                                         free-form text. Project notes are tied to the whole project, you can \
+                                                         also create server notes if they're tied to a specific server;\n\n\
+                                                         • <u>Server link</u> - Sometimes a specific server is shared between \
+                                                         different projects. Since we don't want to enter that server multiple \
+                                                         times in projectpad, we can enter it just once and 'link' to it from \
+                                                         the various projects making use of it. It's also possible to link to \
+                                                         a specific group on that server."
+                                            }
+                                        }
+                                    },
+                                    gtk::Box {
+                                        child: {
+                                            name: Some(CHILD_NAME_NORMAL)
+                                        },
+                                        orientation: gtk::Orientation::Vertical,
+                                        spacing: 10,
+                                        #[name="project_poi_header"]
+                                        ProjectPoiHeader((self.model.db_sender.clone(), None)) {
+                                            ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
+                                            ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
+                                            ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
+                                            ProjectPoiHeaderGotoItemMsg(ref project, ref pi) => Msg::DisplayItem(Box::new(
+                                                (project.clone(), Some(pi.clone()), None))),
+                                            ProjectPoiHeaderShowInfoBar(ref msg) =>
+                                                Msg::ShowInfoBar(msg.clone()),
+                                            ProjectPoiHeaderOpenSingleWebsiteLink => Msg::OpenSingleWebsiteLink,
+                                            ProjectPoiHeaderMoveApplied(Ok((_, _, project_item_move_dlg::ProjectUpdated::Yes))) => Msg::ProjectListChanged,
+                                        },
+                                        #[name="project_poi_contents"]
+                                        ProjectPoiContents(self.model.db_sender.clone()) {
+                                            child: {
+                                                fill: true,
+                                                expand: true,
+                                            },
+                                            ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
+                                                Msg::RequestDisplayItem(item_info.clone()),
+                                            ProjectPoiContentsMsgShowInfoBar(ref msg) =>
+                                                Msg::ShowInfoBar(msg.clone()),
+                                        }
+                                    },
+                                }
+                            },
+                            gtk::Box {
+                                child: {
+                                    name: Some(CHILD_NAME_WELCOME)
+                                },
+                                gtk::Label {
+                                    xalign: 0.1,
+                                    yalign: 0.1,
+                                    line_wrap: true,
+                                    markup: "<big><b>Welcome to Projectpad!</b></big>\n\n\nTo get started, you must create your first project. Use the <tt>+</tt> button on the top-left.\n\n\
+                                             Projects get subdivided in environments, and specifically:\n\n\
+                                             • <u>Prod</u> - the production environment;\n\
+                                             • <u>Uat</u> - User Acceptance Testing, an environment used by the customer, which is not Prod;\n\
+                                             • <u>Stg</u> - Staging, the last testing environment before showing the product to the customer;\n\
+                                             • <u>Dev</u> - the development environment.\n\n\
+                                             A project should have at least one environment. If unsure, use Prod.\n\n\
+                                             Once you have a project and environments for it, you'll be able to manage notes, points of interests, servers, and so on, for that project,\n\
+                                             for each environment."
+                                }
+                            }
+                        }
+                    },
+                    #[name="search_view"]
+                    SearchView((self.model.db_sender.clone(), None,
+                                SearchItemsType::All, OperationMode::ItemActions, None, None)) {
+                        child: {
+                            name: Some(CHILD_NAME_SEARCH)
+                        },
+                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new((**item).clone())),
+                        SearchViewSearchResultsModified => Msg::SearchResultsModified,
+                        SearchViewShowInfoBar(ref msg) => Msg::ShowInfoBar(msg.clone()),
+                    }
+                },
+            },
+            delete_event(_, _) => (Msg::Quit, Inhibit(false)),
+            key_press_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
+            key_release_event(_, event) => (Msg::KeyRelease(event.clone()), Inhibit(false)),
+        }
+    }
+}
+
+impl Model {
+    fn init_infobar_overlay(&self) {
+        self.widgets
+            .infobar_overlay
+            .add_overlay(&self.model.infobar);
+        self.widgets
+            .infobar_overlay
+            .set_overlay_pass_through(&self.model.infobar, true);
     }
 
     fn unlock_db(&mut self) {
@@ -346,7 +542,7 @@ impl Widget for Win {
             .unwrap();
     }
 
-    fn update(&mut self, event: Msg) {
+    fn update(&mut self, event: Msg, _sender: ComponentSender<Self>) {
         match event {
             Msg::Quit => gtk::main_quit(),
             Msg::DbUnlockAttempted(true) => {
@@ -727,185 +923,6 @@ impl Widget for Win {
                         e,
                     )));
             }
-        }
-    }
-
-    view! {
-        #[name="window"]
-        gtk::Window {
-            titlebar: Some(self.model.titlebar.widget()),
-            default_width: 1000,
-            default_height: 650,
-            #[name="infobar_overlay"]
-            gtk::Overlay {
-                #[name="normal_or_search_stack"]
-                gtk::Stack {
-                    gtk::Box {
-                        child: {
-                            name: Some(CHILD_NAME_NORMAL)
-                        },
-                        #[name="project_list"]
-                        ProjectList(self.model.db_sender.clone()) {
-                            width_request: 60,
-                            ProjectActivated((ref prj, UpdateParents::Yes)) => Msg::ProjectActivated(prj.clone()),
-                            AddProject => Msg::AddProject,
-                            UpdateProjectTooltip(ref nfo) => Msg::UpdateProjectTooltip(nfo.clone())
-                        },
-                        #[name="normal_or_welcome_stack"]
-                        gtk::Stack {
-                            gtk::Box {
-                                child: {
-                                    name: Some(CHILD_NAME_NORMAL)
-                                },
-                                // we use the overlay to display a tooltip with the name
-                                // of the project from the project_list that the mouse
-                                // currently hovers.
-                                #[name="tooltip_overlay"]
-                                gtk::Overlay {
-                                    gtk::Box {
-                                        orientation: gtk::Orientation::Vertical,
-                                        #[name="project_summary"]
-                                        ProjectSummary(self.model.db_sender.clone()) {
-                                            EnvironmentChanged(env) => Msg::EnvironmentChanged(env),
-                                            ProjectSummaryItemAddedMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                                            ProjectSummaryProjectUpdated(_) => Msg::ProjectListChanged,
-                                            ProjectSummaryProjectDeleted(_) => Msg::ProjectListChanged
-                                        },
-                                        gtk::Separator {},
-                                        gtk::Box {
-                                            child: {
-                                                fill: true,
-                                                expand: true,
-                                            },
-                                            gtk::Separator {
-                                                orientation: gtk::Orientation::Vertical,
-                                            },
-                                            #[name="project_items_list"]
-                                            #[style_class="sidebar"]
-                                            ProjectItemsList(self.model.db_sender.clone()) {
-                                                width_request: 260,
-                                                child: {
-                                                    fill: true,
-                                                    expand: true,
-                                                },
-                                                ProjectItemSelected(ref pi) => Msg::ProjectItemSelected(pi.clone())
-                                            },
-                                        }
-                                    },
-                                },
-                                #[name="normal_or_project_welcome_stack"]
-                                gtk::Stack {
-                                    child: {
-                                        fill: true,
-                                        expand: true,
-                                    },
-                                    gtk::Box {
-                                        child: {
-                                            name: Some(CHILD_NAME_WELCOME)
-                                        },
-                                        gtk::ScrolledWindow {
-                                            gtk::Label {
-                                                hexpand: true,
-                                                margin_start: 10,
-                                                margin_end: 10,
-                                                margin_top: 10,
-                                                xalign: 0.1,
-                                                yalign: 0.1,
-                                                line_wrap: true,
-                                                markup: "<big><b>Empty project</b></big>\n\n\
-                                                         Let's add items to this project. For that use the 'gear' icon next to \
-                                                         the project name. The gear icon allows you to edit the project, but also \
-                                                         to add elements to it.\n\n\
-                                                         A project may contain:\n\n\
-                                                         • <u>Server</u> - These are machines or virtual machines, with their own \
-                                                         IP. Projectpad knows several types of servers like Application servers, \
-                                                         Database, Reporting, Proxy... And a server may contain more elements, \
-                                                         such as point of interests (like folders on the filesystem), websites, \
-                                                         databases and so on - you'll be able to add these with the gear icon \
-                                                         that'll appear next to the server name on the right of the screen;\n\n\
-                                                         • <u>Point of interest</u> - These are commands to run or relevant files \
-                                                         or folders. Project point of interests have to be located on your computer. If you're \
-                                                         interested in point of interests on another machine then create a <tt>server</tt> for \
-                                                         that machine and add a Server point of interest on that server;\n\n\
-                                                         • <u>Project note</u> - Notes are markdown-formatted text containing \
-                                                         free-form text. Project notes are tied to the whole project, you can \
-                                                         also create server notes if they're tied to a specific server;\n\n\
-                                                         • <u>Server link</u> - Sometimes a specific server is shared between \
-                                                         different projects. Since we don't want to enter that server multiple \
-                                                         times in projectpad, we can enter it just once and 'link' to it from \
-                                                         the various projects making use of it. It's also possible to link to \
-                                                         a specific group on that server."
-                                            }
-                                        }
-                                    },
-                                    gtk::Box {
-                                        child: {
-                                            name: Some(CHILD_NAME_NORMAL)
-                                        },
-                                        orientation: gtk::Orientation::Vertical,
-                                        spacing: 10,
-                                        #[name="project_poi_header"]
-                                        ProjectPoiHeader((self.model.db_sender.clone(), None)) {
-                                            ProjectPoiHeaderProjectItemRefreshMsg(ref pi) => Msg::ProjectItemUpdated(pi.clone()),
-                                            ProjectPoiHeaderProjectItemDeletedMsg(ref pi) => Msg::ProjectItemDeleted(pi.clone()),
-                                            ProjectPoiHeaderProjectItemUpdatedMsg(ref pi) => Msg::ProjectItemSelected(pi.clone()),
-                                            ProjectPoiHeaderGotoItemMsg(ref project, ref pi) => Msg::DisplayItem(Box::new(
-                                                (project.clone(), Some(pi.clone()), None))),
-                                            ProjectPoiHeaderShowInfoBar(ref msg) =>
-                                                Msg::ShowInfoBar(msg.clone()),
-                                            ProjectPoiHeaderOpenSingleWebsiteLink => Msg::OpenSingleWebsiteLink,
-                                            ProjectPoiHeaderMoveApplied(Ok((_, _, project_item_move_dlg::ProjectUpdated::Yes))) => Msg::ProjectListChanged,
-                                        },
-                                        #[name="project_poi_contents"]
-                                        ProjectPoiContents(self.model.db_sender.clone()) {
-                                            child: {
-                                                fill: true,
-                                                expand: true,
-                                            },
-                                            ProjectPoiContentsMsgRequestDisplayServerItem(ref item_info) =>
-                                                Msg::RequestDisplayItem(item_info.clone()),
-                                            ProjectPoiContentsMsgShowInfoBar(ref msg) =>
-                                                Msg::ShowInfoBar(msg.clone()),
-                                        }
-                                    },
-                                }
-                            },
-                            gtk::Box {
-                                child: {
-                                    name: Some(CHILD_NAME_WELCOME)
-                                },
-                                gtk::Label {
-                                    xalign: 0.1,
-                                    yalign: 0.1,
-                                    line_wrap: true,
-                                    markup: "<big><b>Welcome to Projectpad!</b></big>\n\n\nTo get started, you must create your first project. Use the <tt>+</tt> button on the top-left.\n\n\
-                                             Projects get subdivided in environments, and specifically:\n\n\
-                                             • <u>Prod</u> - the production environment;\n\
-                                             • <u>Uat</u> - User Acceptance Testing, an environment used by the customer, which is not Prod;\n\
-                                             • <u>Stg</u> - Staging, the last testing environment before showing the product to the customer;\n\
-                                             • <u>Dev</u> - the development environment.\n\n\
-                                             A project should have at least one environment. If unsure, use Prod.\n\n\
-                                             Once you have a project and environments for it, you'll be able to manage notes, points of interests, servers, and so on, for that project,\n\
-                                             for each environment."
-                                }
-                            }
-                        }
-                    },
-                    #[name="search_view"]
-                    SearchView((self.model.db_sender.clone(), None,
-                                SearchItemsType::All, OperationMode::ItemActions, None, None)) {
-                        child: {
-                            name: Some(CHILD_NAME_SEARCH)
-                        },
-                        SearchViewOpenItemFull(ref item) => Msg::DisplayItem(Box::new((**item).clone())),
-                        SearchViewSearchResultsModified => Msg::SearchResultsModified,
-                        SearchViewShowInfoBar(ref msg) => Msg::ShowInfoBar(msg.clone()),
-                    }
-                },
-            },
-            delete_event(_, _) => (Msg::Quit, Inhibit(false)),
-            key_press_event(_, event) => (Msg::KeyPress(event.clone()), Inhibit(false)),
-            key_release_event(_, event) => (Msg::KeyRelease(event.clone()), Inhibit(false)),
         }
     }
 }

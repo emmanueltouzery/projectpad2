@@ -19,7 +19,7 @@ glib = "0.15.5"
 gio = "0.15.3"
 gdk = "0.15.2"
 projectpadsql = { path = "../projectpadsql" }
-diesel = { version = "2.0.0", features = ["sqlite"] }
+diesel = { version = "2.0.4", features = ["sqlite"] }
 pango = "0.15.2"
 pulldown-cmark = { version = "0.8.0", default-features = false }
 itertools = "0.10.0"

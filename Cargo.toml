@@ -3,5 +3,6 @@
 members = [
     "projectpadsql",
     "ppcli",
-    "projectpad"
+    "projectpad",
+    "projectpad-gtk4"
 ]

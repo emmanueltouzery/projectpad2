@@ -1,0 +1,10 @@
+[package]
+name = "projectpad-gtk4"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+relm4 = "0.5.0"
+relm4-components = "0.5.0"
+projectpadsql = { path = "../projectpadsql" }
+diesel = { version = "2.0.4", features = ["sqlite"] }

@@ -1,13 +1,14 @@
 use std::convert::identity;
 
 use gtk::prelude::{BoxExt, ButtonExt, DialogExt, GtkWindowExt, ToggleButtonExt, WidgetExt};
+use projectpadsql::models::Project;
 use relm4::gtk::prelude::Cast;
 use relm4::{
     gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
     MessageBroker, RelmApp, SimpleComponent,
 };
 
-use crate::widgets::project_list::ProjectList;
+use crate::widgets::project_list::{ProjectList, ProjectListMsg};
 
 mod widgets;
 
@@ -205,6 +206,27 @@ impl SimpleComponent for App {
         let project_list = ProjectList::builder()
             .launch(())
             .forward(sender.input_sender(), identity);
+
+        project_list.emit(ProjectListMsg::GotProjectList(vec![
+            Project {
+                id: 0,
+                name: "test".to_string(),
+                icon: None,
+                has_dev: true,
+                has_uat: true,
+                has_stage: true,
+                has_prod: true,
+            },
+            Project {
+                id: 0,
+                name: "test2".to_string(),
+                icon: None,
+                has_dev: true,
+                has_uat: true,
+                has_stage: true,
+                has_prod: true,
+            },
+        ]));
 
         let model = App {
             mode: AppMode::View,

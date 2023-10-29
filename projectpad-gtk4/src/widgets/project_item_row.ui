@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="ProjectList" parent="GtkBox">
+  <template class="ProjectItemRow" parent="GtkBox">
     <property name="orientation">vertical</property>
     <child>
-      <object class="GtkListBox" id="project_item_list">
-      </object>
-      <object class="GtkButton" id="add_button">
+      <object class="GtkLabel" id="project_item_name">
       </object>
     </child>
   </template>

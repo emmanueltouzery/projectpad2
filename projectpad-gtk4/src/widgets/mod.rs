@@ -1,2 +1,2 @@
-pub mod project_badge;
+pub mod project_item_row;
 pub mod project_list;

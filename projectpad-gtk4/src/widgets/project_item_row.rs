@@ -1,12 +1,15 @@
-use glib::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use gtk::subclass::widget::WidgetClassSubclassExt;
-
-use crate::ProjectItem;
+use gtk::{
+    gio::Action,
+    glib::{self, Sender},
+};
 
 mod imp {
+    use super::*;
+    use glib::subclass;
     use gtk::{
         subclass::{
             prelude::{BoxImpl, ObjectImpl, ObjectSubclass},
@@ -15,23 +18,18 @@ mod imp {
         CompositeTemplate, TemplateChild,
     };
 
-    use super::*;
-
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_list.ui")]
-    pub struct ProjectList {
+    pub struct ProjectItemRow {
         #[template_child]
-        pub add_button: TemplateChild<gtk::Button>,
-
-        #[template_child]
-        pub project_item_list: TemplateChild<gtk::ListBox>,
+        pub project_item_name: TemplateChild<gtk::Label>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ProjectList {
-        const NAME: &'static str = "ProjectList";
+    impl ObjectSubclass for ProjectItemRow {
+        const NAME: &'static str = "ProjectItemRow";
         type ParentType = gtk::Box;
-        type Type = super::ProjectList;
+        type Type = super::ProjectItemRow;
 
         fn class_init(klass: &mut Self::Class) {
             Self::bind_template(klass);
@@ -42,20 +40,20 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for ProjectList {}
+    impl ObjectImpl for ProjectItemRow {}
 
-    impl WidgetImpl for ProjectList {}
+    impl WidgetImpl for ProjectItemRow {}
 
-    impl BoxImpl for ProjectList {}
+    impl BoxImpl for ProjectItemRow {}
 }
 
 glib::wrapper! {
-    pub struct ProjectList(ObjectSubclass<imp::ProjectList>)
+    pub struct ProjectItemRow(ObjectSubclass<imp::ProjectItemRow>)
         @extends gtk::Widget, gtk::Box;
 }
 
-impl ProjectList {
-    pub fn set_project_items(&mut self, project: Vec<ProjectItem>) {
-        // self.imp().project_item_list.clear();
-    }
+impl ProjectItemRow {
+    // pub fn set_projects(&mut self, project: Vec<Project>) {
+    //     // self.imp().project_badge_list.clear();
+    // }
 }

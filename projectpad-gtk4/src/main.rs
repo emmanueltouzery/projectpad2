@@ -1,11 +1,15 @@
 use gtk::prelude::*;
 use gtk::{glib, Application, ApplicationWindow, Builder, Button, MessageDialog, ResponseType};
-use widgets::project_badge::ProjectBadge;
 use widgets::project_list::ProjectList;
 mod widgets;
 
 #[derive(Default)]
 pub struct Project {
+    name: String,
+}
+
+#[derive(Default)]
+pub struct ProjectItem {
     name: String,
 }
 
@@ -26,7 +30,7 @@ fn main() -> glib::ExitCode {
 fn build_ui(application: &Application) {
     // https://github.com/gtk-rs/gtk4-rs/issues/116
     // must call before using in UI files
-    ProjectBadge::static_type();
+    widgets::project_item_row::ProjectItemRow::static_type();
     ProjectList::static_type();
 
     let ui_src = include_str!("gtk_builder.ui");

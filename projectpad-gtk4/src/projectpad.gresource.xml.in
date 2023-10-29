@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/github/emmanueltouzery/projectpad2">
+    <file compressed="true" preprocess="xml-stripblanks">src/widgets/project_list.ui</file>
+  </gresource>
+</gresources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="ProjectList" parent="GtkBox">
+    <property name="orientation">vertical</property>
+    <child>
+      <object class="GtkBox" id="project_badge_list">
+        <property name="orientation">vertical</property>
+        <property name="spacing">6</property>
+      </object>
+      <object class="GtkButton" id="add_button">
+      </object>
+    </child>
+  </template>
+</interface>

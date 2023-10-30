@@ -2,10 +2,14 @@ use glib::*;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
-use gtk::subclass::widget::WidgetClassSubclassExt;
 
 use crate::ProjectItem;
 
+use super::project_item_model::ProjectItemModel;
+use super::project_item_row::ProjectItemRow;
+
+// https://gtk-rs.org/gtk4-rs/stable/latest/book/todo_1.html
+// https://gitlab.com/news-flash/news_flash_gtk/-/blob/master/src/article_list/models/article.rs?ref_type=heads
 mod imp {
     use gtk::{
         subclass::{
@@ -24,7 +28,7 @@ mod imp {
         pub add_button: TemplateChild<gtk::Button>,
 
         #[template_child]
-        pub project_item_list: TemplateChild<gtk::ListBox>,
+        pub project_item_list: TemplateChild<gtk::ListView>,
     }
 
     #[glib::object_subclass]
@@ -56,6 +60,12 @@ glib::wrapper! {
 
 impl ProjectList {
     pub fn set_project_items(&mut self, project: Vec<ProjectItem>) {
-        // self.imp().project_item_list.clear();
+        let list_store = gio::ListStore::new::<ProjectItemModel>();
+        let item: ProjectItemModel = ProjectItemModel::new("it me".to_string()); // glib::object::Object::new();
+        list_store.append(&item);
+        let selection_model = gtk::NoSelection::new(Some(list_store));
+        self.imp()
+            .project_item_list
+            .set_model(Some(&selection_model));
     }
 }

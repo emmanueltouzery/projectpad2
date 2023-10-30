@@ -1,7 +1,6 @@
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
-use gtk::subclass::widget::WidgetClassSubclassExt;
 use gtk::{
     gio::Action,
     glib::{self, Sender},

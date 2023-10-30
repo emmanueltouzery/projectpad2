@@ -3,7 +3,7 @@
   <template class="ProjectList" parent="GtkBox">
     <property name="orientation">vertical</property>
     <child>
-      <object class="GtkListBox" id="project_item_list">
+      <object class="GtkListView" id="project_item_list">
       </object>
       <object class="GtkButton" id="add_button">
       </object>

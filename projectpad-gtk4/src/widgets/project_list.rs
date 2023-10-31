@@ -24,9 +24,8 @@ mod imp {
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_list.ui")]
     pub struct ProjectList {
-        #[template_child]
-        pub add_button: TemplateChild<gtk::Button>,
-
+        // #[template_child]
+        // pub add_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub project_item_list: TemplateChild<gtk::ListView>,
     }

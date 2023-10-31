@@ -5,8 +5,8 @@
     <child>
       <object class="GtkListView" id="project_item_list">
       </object>
-      <object class="GtkButton" id="add_button">
-      </object>
+      <!-- <object class="GtkButton" id="add_button">
+      </object> -->
     </child>
   </template>
 </interface>

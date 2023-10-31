@@ -57,6 +57,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
+            self.project_list.get().set_project_items(Vec::new());
             // let app = ProjectpadApplication::default();
             // let sender = app.imp().sender.clone();
             // let player = app.imp().player.clone();

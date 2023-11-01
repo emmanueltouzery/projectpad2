@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="ProjectItemRow" parent="GtkBox">
-    <property name="orientation">vertical</property>
-    <child>
-      <object class="GtkLabel" id="project_item_name">
+  <template class="GtkListItem">
+    <property name="child">
+      <object class="GtkLabel">
+        <binding name="label">
+          <lookup name="title" type="ProjectItemModel">
+            <lookup name="item">GtkListItem</lookup>
+          </lookup>
+        </binding>
       </object>
-    </child>
+    </property>
   </template>
 </interface>

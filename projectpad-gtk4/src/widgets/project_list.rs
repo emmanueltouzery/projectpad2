@@ -45,7 +45,11 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for ProjectList {}
+    impl ObjectImpl for ProjectList {
+        fn constructed(&self) {
+            self.obj().init_list();
+        }
+    }
 
     impl WidgetImpl for ProjectList {}
 
@@ -58,6 +62,15 @@ glib::wrapper! {
 }
 
 impl ProjectList {
+    pub fn init_list(&self) {
+        self.imp().project_item_list.set_factory(Some(
+            &gtk::BuilderListItemFactory::from_resource(
+                Some(&gtk::BuilderRustScope::new()),
+                "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item_row.ui",
+            ),
+        ));
+    }
+
     pub fn set_project_items(&mut self, project: Vec<ProjectItem>) {
         let list_store = gio::ListStore::new::<ProjectItemModel>();
         let item: ProjectItemModel = ProjectItemModel::new("it me".to_string()); // glib::object::Object::new();

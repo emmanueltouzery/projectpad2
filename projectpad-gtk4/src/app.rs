@@ -1,9 +1,9 @@
 use gio::subclass::prelude::ApplicationImpl;
 use glib::{clone, ObjectExt, Properties, Receiver, Sender};
-use gtk::prelude::*;
 use gtk::subclass::prelude::DerivedObjectProperties;
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib};
+use gtk::{gdk, gio, glib};
+use gtk::{prelude::*, CssProvider};
 
 use crate::ProjectpadApplicationWindow;
 
@@ -65,8 +65,23 @@ impl ProjectpadApplication {
             // .property("resource-base-path", Some(config::PATH_ID))
             .build();
 
+        app.connect_startup(|_| Self::load_css());
+
         // Start running gtk::Application
         app.run()
+    }
+
+    fn load_css() {
+        // Load the CSS file and add it to the provider
+        let provider = CssProvider::new();
+        provider.load_from_data(include_str!("style.css"));
+
+        // Add the provider to the default screen
+        gtk::style_context_add_provider_for_display(
+            &gdk::Display::default().expect("Could not connect to a display."),
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
     }
 
     fn create_window(&self) -> ProjectpadApplicationWindow {

@@ -3,9 +3,11 @@
   <template class="GtkListItem">
     <property name="child">
       <object class="GtkLabel">
-        <style>
-          <class name="my-special-button-class"/>
-        </style>
+        <binding name="css-classes">
+          <lookup name="css-classes" type="ProjectItemModel">
+            <lookup name="item">GtkListItem</lookup>
+          </lookup>
+        </binding>
         <binding name="label">
           <lookup name="title" type="ProjectItemModel">
             <lookup name="item">GtkListItem</lookup>

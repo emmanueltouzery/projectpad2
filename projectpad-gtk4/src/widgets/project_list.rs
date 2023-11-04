@@ -5,7 +5,7 @@ use gtk::subclass::widget::CompositeTemplate;
 
 use crate::ProjectItem;
 
-use super::project_item_model::ProjectItemModel;
+use super::project_item_model::{Env, ProjectItemModel};
 use super::project_item_row::ProjectItemRow;
 
 // https://gtk-rs.org/gtk4-rs/stable/latest/book/todo_1.html
@@ -73,7 +73,9 @@ impl ProjectList {
 
     pub fn set_project_items(&mut self, project: Vec<ProjectItem>) {
         let list_store = gio::ListStore::new::<ProjectItemModel>();
-        let item: ProjectItemModel = ProjectItemModel::new("it me".to_string()); // glib::object::Object::new();
+        let item: ProjectItemModel = ProjectItemModel::new("Prod".to_string(), Env::Prod); // glib::object::Object::new();
+        list_store.append(&item);
+        let item: ProjectItemModel = ProjectItemModel::new("UAT".to_string(), Env::Uat); // glib::object::Object::new();
         list_store.append(&item);
         let selection_model = gtk::NoSelection::new(Some(list_store));
         self.imp()

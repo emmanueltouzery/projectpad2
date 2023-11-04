@@ -1,3 +1,6 @@
-.my-special-button-class {
-  background-color: red;
+.project-item-prod {
+  border-left: 5px solid red;
+}
+.project-item-uat {
+  border-left: 5px solid yellow;
 }

@@ -13,6 +13,8 @@ mod imp {
     pub struct ProjectItemModel {
         #[property(get, set)]
         title: Rc<RefCell<String>>,
+        #[property(get, set)]
+        css_classes: Rc<RefCell<Vec<String>>>,
     }
 
     #[glib::object_subclass]
@@ -30,9 +32,29 @@ glib::wrapper! {
     pub struct ProjectItemModel(ObjectSubclass<imp::ProjectItemModel>);
 }
 
+pub enum Env {
+    Dev,
+    Staging,
+    Uat,
+    Prod,
+}
+
+fn env_to_css(val: Env) -> Vec<String> {
+    vec![match val {
+        Env::Dev => "project-item-dev",
+        Env::Staging => "project-item-staging",
+        Env::Uat => "project-item-uat",
+        Env::Prod => "project-item-prod",
+    }
+    .to_string()]
+}
+
 impl ProjectItemModel {
-    pub fn new(title: String) -> Self {
-        Object::builder().property("title", title).build()
+    pub fn new(title: String, environment: Env) -> Self {
+        Object::builder()
+            .property("title", title)
+            .property("css-classes", env_to_css(environment))
+            .build()
     }
 }
 

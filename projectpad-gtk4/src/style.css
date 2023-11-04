@@ -1,6 +1,14 @@
+.list-item-box {
+  padding: 5px;
+}
+
 .project-item-prod {
-  border-left: 5px solid red;
+  background: red;
+  padding: 2px;
+  border-radius: 3px;
 }
 .project-item-uat {
-  border-left: 5px solid yellow;
+  background: orange;
+  padding: 2px;
+  border-radius: 3px;
 }

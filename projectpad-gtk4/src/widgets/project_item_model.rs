@@ -14,7 +14,9 @@ mod imp {
         #[property(get, set)]
         title: Rc<RefCell<String>>,
         #[property(get, set)]
-        css_classes: Rc<RefCell<Vec<String>>>,
+        env_desc: Rc<RefCell<String>>,
+        #[property(get, set)]
+        env_classes: Rc<RefCell<Vec<String>>>,
     }
 
     #[glib::object_subclass]
@@ -39,21 +41,35 @@ pub enum Env {
     Prod,
 }
 
-fn env_to_css(val: Env) -> Vec<String> {
-    vec![match val {
-        Env::Dev => "project-item-dev",
-        Env::Staging => "project-item-staging",
-        Env::Uat => "project-item-uat",
-        Env::Prod => "project-item-prod",
+fn env_to_css(val: &Env) -> Vec<String> {
+    vec![
+        match val {
+            Env::Dev => "project-item-dev",
+            Env::Staging => "project-item-staging",
+            Env::Uat => "project-item-uat",
+            Env::Prod => "project-item-prod",
+        }
+        .to_string(),
+        "caption-heading".to_string(),
+    ]
+}
+
+fn env_to_desc(val: &Env) -> String {
+    match val {
+        Env::Dev => "DEV",
+        Env::Staging => "STG",
+        Env::Uat => "UAT",
+        Env::Prod => "PRD",
     }
-    .to_string()]
+    .to_string()
 }
 
 impl ProjectItemModel {
     pub fn new(title: String, environment: Env) -> Self {
         Object::builder()
             .property("title", title)
-            .property("css-classes", env_to_css(environment))
+            .property("env-desc", env_to_desc(&environment))
+            .property("env-classes", env_to_css(&environment))
             .build()
     }
 }

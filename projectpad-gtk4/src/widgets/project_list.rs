@@ -77,7 +77,7 @@ impl ProjectList {
         list_store.append(&item);
         let item: ProjectItemModel = ProjectItemModel::new("UAT".to_string(), Env::Uat); // glib::object::Object::new();
         list_store.append(&item);
-        let selection_model = gtk::NoSelection::new(Some(list_store));
+        let selection_model = gtk::SingleSelection::new(Some(list_store));
         self.imp()
             .project_item_list
             .set_model(Some(&selection_model));

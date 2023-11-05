@@ -5,4 +5,34 @@
     <file compressed="true" preprocess="xml-stripblanks">src/widgets/project_item_row.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">src/gtk_builder.ui</file>
   </gresource>
+  <gresource prefix="/icons/scalable/actions">
+    <file alias="server.svg">fontawesome-5.13.0/svgs/solid/server.svg</file>
+    <file alias="clipboard.svg">fontawesome-5.13.0/svgs/solid/clipboard.svg</file>
+    <file alias="cube.svg">fontawesome-5.13.0/svgs/solid/cube.svg</file>
+    <file alias="link.svg">fontawesome-5.13.0/svgs/solid/share-square.svg</file>
+    <file alias="database.svg">fontawesome-5.13.0/svgs/solid/database.svg</file>
+    <file alias="monitoring.svg">fontawesome-5.13.0/svgs/solid/tachometer-alt.svg</file>
+    <file alias="reporting.svg">fontawesome-5.13.0/svgs/solid/chart-line.svg</file>
+    <file alias="http.svg">fontawesome-5.13.0/svgs/solid/globe.svg</file>
+    <file alias="windows.svg">fontawesome-5.13.0/svgs/brands/windows.svg</file>
+    <file alias="user.svg">fontawesome-5.13.0/svgs/solid/user.svg</file>
+    <file alias="log-file.svg">fontawesome-5.13.0/svgs/solid/file-medical-alt.svg</file>
+    <file alias="config-file.svg">fontawesome-5.13.0/svgs/solid/file-code.svg</file>
+    <file alias="cog.svg">fontawesome-5.13.0/svgs/solid/cog.svg</file>
+    <file alias="folder-plus.svg">fontawesome-5.13.0/svgs/solid/folder-plus.svg</file>
+    <file alias="archive.svg">fontawesome-5.13.0/svgs/solid/archive.svg</file>
+    <file alias="terminal.svg">fontawesome-5.13.0/svgs/solid/hashtag.svg</file>
+    <file alias="ssh.svg">fontawesome-5.13.0/svgs/solid/terminal.svg</file>
+    <file alias="bold.svg">fontawesome-5.13.0/svgs/solid/bold.svg</file>
+    <file alias="italic.svg">fontawesome-5.13.0/svgs/solid/italic.svg</file>
+    <file alias="strikethrough.svg">fontawesome-5.13.0/svgs/solid/strikethrough.svg</file>
+    <file alias="heading.svg">fontawesome-5.13.0/svgs/solid/heading.svg</file>
+    <file alias="external-link-alt.svg">fontawesome-5.13.0/svgs/solid/external-link-alt.svg</file>
+    <file alias="lock.svg">fontawesome-5.13.0/svgs/solid/lock.svg</file>
+    <file alias="code.svg">fontawesome-5.13.0/svgs/solid/code.svg</file>
+    <file alias="quote.svg">fontawesome-5.13.0/svgs/solid/quote-left.svg</file>
+    <file alias="list-ul.svg">fontawesome-5.13.0/svgs/solid/list-ul.svg</file>
+    <file alias="list-ol.svg">fontawesome-5.13.0/svgs/solid/list-ol.svg</file>
+    <file>com.github.emmanueltouzery.projectpad.svg</file>
+  </gresource>
 </gresources>

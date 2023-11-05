@@ -72,6 +72,12 @@ impl ProjectpadApplication {
     }
 
     fn load_css() {
+        // https://developer.gnome.org/documentation/tutorials/themed-icons.html
+        // https://docs.elementary.io/develop/apis/gresource
+        gtk::IconTheme::for_display(
+            &gdk::Display::default().expect("Could not connect to a display."),
+        )
+        .add_resource_path("/icons");
         // Load the CSS file and add it to the provider
         let provider = CssProvider::new();
         provider.load_from_data(include_str!("style.css"));

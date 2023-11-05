@@ -2175,9 +2175,13 @@ name = "projectpad-gtk4"
 version = "0.1.0"
 dependencies = [
  "cairo-rs 0.18.2",
+ "flate2",
  "gio 0.18.2",
  "glib 0.18.2",
  "gtk4",
+ "includedir_codegen",
+ "reqwest",
+ "tar",
 ]
 
 [[package]]

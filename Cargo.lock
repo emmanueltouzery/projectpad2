@@ -1616,6 +1616,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "libadwaita"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fe7e70c06507ed10a16cda707f358fbe60fe0dc237498f78c686ade92fd979c"
+dependencies = [
+ "gdk-pixbuf 0.18.0",
+ "gdk4",
+ "gio 0.18.2",
+ "glib 0.18.2",
+ "gtk4",
+ "libadwaita-sys",
+ "libc",
+ "pango 0.18.0",
+]
+
+[[package]]
+name = "libadwaita-sys"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e10aaa38de1d53374f90deeb4535209adc40cc5dba37f9704724169bceec69a"
+dependencies = [
+ "gdk4-sys",
+ "gio-sys 0.18.1",
+ "glib-sys 0.18.1",
+ "gobject-sys 0.18.0",
+ "gtk4-sys",
+ "libc",
+ "pango-sys 0.18.0",
+ "system-deps",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.132"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2180,6 +2212,7 @@ dependencies = [
  "glib 0.18.2",
  "gtk4",
  "includedir_codegen",
+ "libadwaita",
  "reqwest",
  "tar",
 ]

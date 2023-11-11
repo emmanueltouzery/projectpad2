@@ -1,3 +1,4 @@
+use adw::subclass::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
 use glib::{clone, ObjectExt, Properties, Receiver, Sender};
 use gtk::subclass::prelude::DerivedObjectProperties;
@@ -32,7 +33,7 @@ mod imp {
     #[glib::object_subclass]
     impl ObjectSubclass for ProjectpadApplication {
         const NAME: &'static str = "ProjectpadApplication";
-        type ParentType = gtk::Application;
+        type ParentType = adw::Application;
         type Type = super::ProjectpadApplication;
     }
 
@@ -48,11 +49,13 @@ mod imp {
     }
 
     impl GtkApplicationImpl for ProjectpadApplication {}
+
+    impl AdwApplicationImpl for ProjectpadApplication {}
 }
 
 glib::wrapper! {
     pub struct ProjectpadApplication(ObjectSubclass<imp::ProjectpadApplication>)
-        @extends gio::Application, gtk::Application; //, adw::Application,
+        @extends gio::Application, gtk::Application, adw::Application;
         // @implements gio::ActionMap, gio::ActionGroup;
 }
 

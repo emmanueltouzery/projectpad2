@@ -1,36 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="ProjectpadApplicationWindow" parent="GtkApplicationWindow">
+  <template class="ProjectpadApplicationWindow" parent="AdwApplicationWindow">
     <property name="title" translatable="yes">Builder Basics</property>
     <property name="default-width">320</property>
     <property name="default-height">240</property>
     <child>
-      <object class="GtkBox">
-        <property name="orientation">vertical</property>
-        <child>
-          <object class="GtkHeaderBar">
+      <object class="AdwBreakpoint">
+        <condition>max-width: 400sp</condition>
+        <setter object="split_view" property="collapsed">True</setter>
+      </object>
+    </child>
+    <child>
+      <object class="AdwNavigationSplitView" id="split_view">
+        <property name="sidebar">
+          <object class="AdwNavigationPage">
+            <property name="title" translatable="yes">Sidebar</property>
+            <property name="child">
+              <object class="ProjectList" id="project_list">
+                <property name="vexpand">True</property>
+              </object>
+            </property>
           </object>
-        </child>
-        <child>
-          <!-- <object class="GtkButton" id="button">
-            <property name="label" translatable="yes">Big Useless Button</property>
-          </object> -->
-          <!-- <object class="ProjectBadge" id="project_badge">
-            <property name="vexpand">True</property>
-          </object> -->
-          <object class="ProjectList" id="project_list">
-            <property name="vexpand">True</property>
+        </property>
+        <property name="content">
+          <object class="AdwNavigationPage">
+            <property name="title" translatable="yes">Content</property>
+            <property name="child">
+              <object class="GtkLabel">
+                <property name="hexpand">True</property>
+                <property name="halign">start</property>
+                <property name="label">Hi</property>
+              </object>
+            </property>
           </object>
-        </child>
+        </property>
       </object>
     </child>
   </template>
-  <!-- <object class="GtkMessageDialog" id="messagedialog">
-    <property name="transient-for">window</property>
-    <property name="resizable">False</property>
-    <property name="modal">True</property>
-    <property name="buttons">ok</property>
-    <property name="text" translatable="yes">Thank you for trying this example</property>
-    <property name="secondary-text" translatable="yes">You have pressed the button</property>
-  </object> -->
 </interface>

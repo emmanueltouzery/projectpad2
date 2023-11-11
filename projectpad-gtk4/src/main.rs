@@ -5,6 +5,7 @@ use gtk::prelude::*;
 use gtk::{glib, Application, ApplicationWindow, Builder, Button, MessageDialog, ResponseType};
 use widgets::project_list::ProjectList;
 mod widgets;
+use adw::subclass::prelude::*;
 use glib::{clone, subclass, Sender};
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
@@ -41,7 +42,7 @@ mod imp {
     #[glib::object_subclass]
     impl ObjectSubclass for ProjectpadApplicationWindow {
         const NAME: &'static str = "ProjectpadApplicationWindow";
-        type ParentType = gtk::ApplicationWindow;
+        type ParentType = adw::ApplicationWindow;
         type Type = super::ProjectpadApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
@@ -83,7 +84,7 @@ mod imp {
 
     impl ApplicationWindowImpl for ProjectpadApplicationWindow {}
 
-    // impl AdwApplicationWindowImpl for ProjectpadApplicationWindow {}
+    impl AdwApplicationWindowImpl for ProjectpadApplicationWindow {}
 
     impl ProjectpadApplicationWindow {}
 }
@@ -91,7 +92,7 @@ mod imp {
 glib::wrapper! {
     pub struct ProjectpadApplicationWindow(
         ObjectSubclass<imp::ProjectpadApplicationWindow>)
-        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow; //, adw::ApplicationWindow,
+        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow;
         // @implements gio::ActionMap, gio::ActionGroup;
 }
 

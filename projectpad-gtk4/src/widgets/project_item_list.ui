@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="ProjectList" parent="GtkBox">
+  <template class="ProjectItemList" parent="GtkBox">
     <property name="orientation">vertical</property>
     <child>
       <object class="GtkListView" id="project_item_list">

@@ -1,12 +1,10 @@
 use glib::*;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
 use crate::ProjectItem;
 
 use super::project_item_model::{Env, ProjectItemModel};
-use super::project_item_row::ProjectItemRow;
 
 // https://gtk-rs.org/gtk4-rs/stable/latest/book/todo_1.html
 // https://gitlab.com/news-flash/news_flash_gtk/-/blob/master/src/article_list/models/article.rs?ref_type=heads
@@ -22,19 +20,19 @@ mod imp {
     use super::*;
 
     #[derive(Debug, Default, CompositeTemplate)]
-    #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_list.ui")]
-    pub struct ProjectList {
-        // #[template_child]
-        // pub add_button: TemplateChild<gtk::Button>,
+    #[template(
+        resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item_list.ui"
+    )]
+    pub struct ProjectItemList {
         #[template_child]
         pub project_item_list: TemplateChild<gtk::ListView>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ProjectList {
-        const NAME: &'static str = "ProjectList";
+    impl ObjectSubclass for ProjectItemList {
+        const NAME: &'static str = "ProjectItemList";
         type ParentType = gtk::Box;
-        type Type = super::ProjectList;
+        type Type = super::ProjectItemList;
 
         fn class_init(klass: &mut Self::Class) {
             Self::bind_template(klass);
@@ -45,23 +43,23 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for ProjectList {
+    impl ObjectImpl for ProjectItemList {
         fn constructed(&self) {
             self.obj().init_list();
         }
     }
 
-    impl WidgetImpl for ProjectList {}
+    impl WidgetImpl for ProjectItemList {}
 
-    impl BoxImpl for ProjectList {}
+    impl BoxImpl for ProjectItemList {}
 }
 
 glib::wrapper! {
-    pub struct ProjectList(ObjectSubclass<imp::ProjectList>)
+    pub struct ProjectItemList(ObjectSubclass<imp::ProjectItemList>)
         @extends gtk::Widget, gtk::Box;
 }
 
-impl ProjectList {
+impl ProjectItemList {
     pub fn init_list(&self) {
         self.imp().project_item_list.set_factory(Some(
             &gtk::BuilderListItemFactory::from_resource(

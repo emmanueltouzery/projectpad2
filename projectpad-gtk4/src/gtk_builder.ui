@@ -27,7 +27,7 @@
               <object class="AdwNavigationPage">
                 <property name="title" translatable="yes">Sidebar</property>
                 <property name="child">
-                  <object class="ProjectList" id="project_list">
+                  <object class="ProjectItemList" id="project_item_list">
                     <property name="vexpand">True</property>
                   </object>
                 </property>

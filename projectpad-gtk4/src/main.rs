@@ -1,12 +1,10 @@
 use app::ProjectpadApplication;
-use glib::prelude::*;
-use glib::Properties;
 use gtk::prelude::*;
-use gtk::{glib, Application, ApplicationWindow, Builder, Button, MessageDialog, ResponseType};
-use widgets::project_list::ProjectList;
+use gtk::{glib, Application};
+use widgets::project_item_list::ProjectItemList;
 mod widgets;
 use adw::subclass::prelude::*;
-use glib::{clone, subclass, Sender};
+use glib::subclass;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
@@ -36,7 +34,7 @@ mod imp {
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/gtk_builder.ui")]
     pub struct ProjectpadApplicationWindow {
         #[template_child]
-        pub project_list: TemplateChild<ProjectList>,
+        pub project_item_list: TemplateChild<ProjectItemList>,
     }
 
     #[glib::object_subclass]
@@ -58,7 +56,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.project_list.get().set_project_items(Vec::new());
+            self.project_item_list.get().set_project_items(Vec::new());
             // let app = ProjectpadApplication::default();
             // let sender = app.imp().sender.clone();
             // let player = app.imp().player.clone();
@@ -131,7 +129,7 @@ fn build_ui(application: &Application) {
     // https://github.com/gtk-rs/gtk4-rs/issues/116
     // must call before using in UI files
     widgets::project_item_row::ProjectItemRow::static_type();
-    ProjectList::static_type();
+    ProjectItemList::static_type();
 
     // let ui_src = include_str!("gtk_builder.ui");
     // let builder = Builder::from_string(ui_src);

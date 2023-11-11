@@ -4,8 +4,8 @@
     <property name="title" translatable="yes">Builder Basics</property>
     <property name="default-width">320</property>
     <property name="default-height">240</property>
-    <property name="width-request">150</property>
-    <property name="height-request">150</property>
+    <property name="width-request">200</property>
+    <property name="height-request">200</property>
     <child>
       <object class="AdwBreakpoint">
         <condition>max-width: 400sp</condition>
@@ -13,25 +13,52 @@
       </object>
     </child>
     <child>
-      <object class="AdwNavigationSplitView" id="split_view">
+      <object class="AdwOverlaySplitView" id="split_view">
+        <property name="show-sidebar"
+          bind-source="show_sidebar_button"
+          bind-property="active"
+          bind-flags="sync-create|bidirectional"/>
         <property name="sidebar">
-          <object class="AdwNavigationPage">
-            <property name="title" translatable="yes">Sidebar</property>
-            <property name="child">
-              <object class="ProjectList" id="project_list">
-                <property name="vexpand">True</property>
+          <object class="AdwToolbarView">
+            <child type="top">
+              <object class="AdwHeaderBar"/>
+            </child>
+            <property name="content">
+              <object class="AdwNavigationPage">
+                <property name="title" translatable="yes">Sidebar</property>
+                <property name="child">
+                  <object class="ProjectList" id="project_list">
+                    <property name="vexpand">True</property>
+                  </object>
+                </property>
               </object>
             </property>
           </object>
         </property>
         <property name="content">
-          <object class="AdwNavigationPage">
-            <property name="title" translatable="yes">Content</property>
-            <property name="child">
-              <object class="GtkLabel">
-                <property name="hexpand">True</property>
-                <property name="halign">start</property>
-                <property name="label">Hi</property>
+          <object class="AdwToolbarView">
+            <child type="top">
+              <object class="AdwHeaderBar">
+                <!-- https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/adaptive-layouts.html -->
+                <child type="start">
+                  <object class="GtkToggleButton" id="show_sidebar_button">
+                    <property name="icon-name">sidebar-show-symbolic</property>
+                    <property name="active">True</property>
+                    <property name="visible" bind-source="split_view" bind-property="collapsed" bind-flags="bidirectional|sync-create"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <property name="content">
+              <object class="AdwNavigationPage">
+                <property name="title" translatable="yes">Content</property>
+                <property name="child">
+                  <object class="GtkLabel">
+                    <property name="hexpand">True</property>
+                    <property name="halign">start</property>
+                    <property name="label">Hi</property>
+                  </object>
+                </property>
               </object>
             </property>
           </object>

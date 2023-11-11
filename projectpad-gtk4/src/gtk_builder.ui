@@ -4,6 +4,8 @@
     <property name="title" translatable="yes">Builder Basics</property>
     <property name="default-width">320</property>
     <property name="default-height">240</property>
+    <property name="width-request">150</property>
+    <property name="height-request">150</property>
     <child>
       <object class="AdwBreakpoint">
         <condition>max-width: 400sp</condition>

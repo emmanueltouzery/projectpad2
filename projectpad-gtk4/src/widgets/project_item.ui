@@ -2,9 +2,7 @@
 <interface>
   <template class="ProjectItem" parent="AdwBin">
     <child>
-      <object class="GtkStack" id="project_item_stack">
-        <child>
-        </child>
+      <object class="AdwBin" id="project_item">
       </object>
     </child>
   </template>

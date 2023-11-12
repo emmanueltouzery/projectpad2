@@ -16,7 +16,7 @@ mod imp {
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item.ui")]
     pub struct ProjectItem {
         #[template_child]
-        pub project_item_stack: TemplateChild<gtk::Stack>,
+        pub project_item: TemplateChild<adw::Bin>,
     }
 
     #[glib::object_subclass]
@@ -52,6 +52,7 @@ glib::wrapper! {
 
 impl ProjectItem {
     pub fn display_item_id(&self, id: i32) {
-        println!("projectitem::display_item_id({id})")
+        println!("projectitem::display_item_id({id})");
+        super::project_items::server::display_server(&self.imp().project_item, id);
     }
 }

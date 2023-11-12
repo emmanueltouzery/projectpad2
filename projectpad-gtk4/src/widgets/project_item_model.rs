@@ -1,6 +1,5 @@
 use glib::prelude::*;
 use glib::*;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 
 mod imp {
@@ -11,6 +10,8 @@ mod imp {
     #[derive(Properties, Default)]
     #[properties(wrapper_type = super::ProjectItemModel)]
     pub struct ProjectItemModel {
+        #[property(get, set)]
+        id: Rc<RefCell<i32>>,
         #[property(get, set)]
         title: Rc<RefCell<String>>,
         #[property(get, set)]
@@ -65,8 +66,9 @@ fn env_to_desc(val: &Env) -> String {
 }
 
 impl ProjectItemModel {
-    pub fn new(title: String, environment: Env) -> Self {
+    pub fn new(id: i32, title: String, environment: Env) -> Self {
         Object::builder()
+            .property("id", id)
             .property("title", title)
             .property("env-desc", env_to_desc(&environment))
             .property("env-classes", env_to_css(&environment))

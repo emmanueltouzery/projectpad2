@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="ProjectItem" parent="AdwBin">
+    <child>
+      <object class="GtkStack" id="project_item_stack">
+        <child>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

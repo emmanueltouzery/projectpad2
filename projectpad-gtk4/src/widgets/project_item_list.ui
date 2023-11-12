@@ -4,9 +4,8 @@
     <property name="orientation">vertical</property>
     <child>
       <object class="GtkListView" id="project_item_list">
+        <property name="single-click-activate">true</property>
       </object>
-      <!-- <object class="GtkButton" id="add_button">
-      </object> -->
     </child>
   </template>
 </interface>

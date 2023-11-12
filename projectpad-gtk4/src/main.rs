@@ -1,30 +1,20 @@
 use app::ProjectpadApplication;
-use gtk::prelude::*;
-use gtk::{glib, Application};
+use gtk::glib;
 use widgets::project_item_list::ProjectItemList;
 mod widgets;
 use adw::subclass::prelude::*;
 use glib::subclass;
-use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
 mod app;
 
-#[derive(Default)]
-pub struct Project {
-    name: String,
-}
-
-#[derive(Default)]
-pub struct ProjectItem {
-    name: String,
-}
-
 mod imp {
+    use crate::widgets::project_item::ProjectItem;
+
     use super::*;
     use gtk::{
         subclass::{
-            prelude::{BoxImpl, ObjectImpl, ObjectSubclass},
+            prelude::{ObjectImpl, ObjectSubclass},
             widget::{CompositeTemplateInitializingExt, WidgetImpl},
         },
         CompositeTemplate, TemplateChild,
@@ -35,6 +25,8 @@ mod imp {
     pub struct ProjectpadApplicationWindow {
         #[template_child]
         pub project_item_list: TemplateChild<ProjectItemList>,
+        #[template_child]
+        pub project_item: TemplateChild<ProjectItem>,
     }
 
     #[glib::object_subclass]
@@ -56,7 +48,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.project_item_list.get().set_project_items(Vec::new());
+            self.project_item_list.get().set_project_items();
             // let app = ProjectpadApplication::default();
             // let sender = app.imp().sender.clone();
             // let player = app.imp().player.clone();
@@ -96,19 +88,15 @@ glib::wrapper! {
 
 impl ProjectpadApplicationWindow {
     pub fn new() -> Self {
-        glib::Object::new::<Self>()
+        let win = glib::Object::new::<Self>();
+        win.imp().project_item_list.connect_activate(
+            glib::clone!(@weak win as w => move |project_item_id| {
+                w.imp().project_item.display_item_id(project_item_id)
+            }),
+        );
+        win
     }
 }
-
-// impl Default for ProjectpadApplicationWindow {
-//     fn default() -> Self {
-//         SwApplication::default()
-//             .active_window()
-//             .unwrap()
-//             .downcast()
-//             .unwrap()
-//     }
-// }
 
 fn main() -> glib::ExitCode {
     let res_bytes = include_bytes!("resources.bin");
@@ -117,38 +105,4 @@ fn main() -> glib::ExitCode {
     gio::resources_register(&resource);
 
     ProjectpadApplication::run()
-    // let application = gtk::Application::new(
-    //     Some("com.github.gtk-rs.examples.builder_basics"),
-    //     Default::default(),
-    // );
-    // application.connect_activate(build_ui);
-    // application.run()
-}
-
-fn build_ui(application: &Application) {
-    // https://github.com/gtk-rs/gtk4-rs/issues/116
-    // must call before using in UI files
-    widgets::project_item_row::ProjectItemRow::static_type();
-    ProjectItemList::static_type();
-
-    // let ui_src = include_str!("gtk_builder.ui");
-    // let builder = Builder::from_string(ui_src);
-
-    // // let window: ApplicationWindow = builder.object("window").expect("Couldn't get window");
-    // window.set_application(Some(application));
-    // // let bigbutton: Button = builder.object("button").expect("Couldn't get button");
-    // let dialog: MessageDialog = builder
-    //     .object("messagedialog")
-    //     .expect("Couldn't get messagedialog");
-
-    // // probably look at SwApplicationWindow in shortwave
-    // dialog.connect_response(move |d: &MessageDialog, _: ResponseType| {
-    //     d.hide();
-    // });
-
-    // // bigbutton.connect_clicked(move |_| {
-    // //     dialog.show();
-    // // });
-
-    // window.show();
 }

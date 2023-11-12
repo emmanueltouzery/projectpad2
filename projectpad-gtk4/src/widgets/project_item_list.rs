@@ -1,8 +1,7 @@
 use glib::*;
+use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
-
-use crate::ProjectItem;
 
 use super::project_item_model::{Env, ProjectItemModel};
 
@@ -69,15 +68,29 @@ impl ProjectItemList {
         ));
     }
 
-    pub fn set_project_items(&mut self, project: Vec<ProjectItem>) {
+    pub fn set_project_items(&mut self) {
         let list_store = gio::ListStore::new::<ProjectItemModel>();
-        let item: ProjectItemModel = ProjectItemModel::new("Prod".to_string(), Env::Prod); // glib::object::Object::new();
+        let item: ProjectItemModel = ProjectItemModel::new(1, "Prod".to_string(), Env::Prod); // glib::object::Object::new();
         list_store.append(&item);
-        let item: ProjectItemModel = ProjectItemModel::new("UAT".to_string(), Env::Uat); // glib::object::Object::new();
+        let item: ProjectItemModel = ProjectItemModel::new(2, "UAT".to_string(), Env::Uat); // glib::object::Object::new();
         list_store.append(&item);
         let selection_model = gtk::SingleSelection::new(Some(list_store));
         self.imp()
             .project_item_list
             .set_model(Some(&selection_model));
+    }
+
+    pub fn connect_activate<F: Fn(i32) + 'static>(&self, f: F) -> SignalHandlerId {
+        self.imp()
+            .project_item_list
+            .connect_activate(move |list, idx| {
+                f(list
+                    .model()
+                    .unwrap()
+                    .upcast::<gio::ListModel>()
+                    .item(idx)
+                    .unwrap()
+                    .property::<i32>("id"))
+            })
     }
 }

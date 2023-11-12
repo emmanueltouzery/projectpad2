@@ -53,10 +53,9 @@
               <object class="AdwNavigationPage">
                 <property name="title" translatable="yes">Content</property>
                 <property name="child">
-                  <object class="GtkLabel">
+                  <object class="ProjectItem" id="project_item">
                     <property name="hexpand">True</property>
                     <property name="halign">start</property>
-                    <property name="label">Hi</property>
                   </object>
                 </property>
               </object>

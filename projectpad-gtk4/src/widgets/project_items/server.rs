@@ -35,24 +35,37 @@ pub fn display_server(parent: &adw::Bin, id: i32) {
         .title("Website")
         .description("service1")
         .build();
-    server_item1.add(
-        &adw::ActionRow::builder()
-            .title("Address")
-            .subtitle("https://service1.com")
+    let website_ar = adw::ActionRow::builder()
+        .title("Address")
+        .subtitle("https://service1.com")
+        .build();
+    website_ar.add_suffix(
+        &gtk::Image::builder()
+            .icon_name("web-browser-symbolic")
             .build(),
     );
-    server_item1.add(
-        &adw::ActionRow::builder()
-            .title("Username")
-            .subtitle("admin")
+    server_item1.add(&website_ar);
+
+    let username_ar = adw::ActionRow::builder()
+        .title("Username")
+        .subtitle("admin")
+        .build();
+    username_ar.add_suffix(
+        &gtk::Image::builder()
+            .icon_name("edit-copy-symbolic")
             .build(),
     );
-    server_item1.add(
-        &adw::ActionRow::builder()
-            .title("Password")
-            .subtitle("●●●●")
+    server_item1.add(&username_ar);
+    let password_ar = adw::ActionRow::builder()
+        .title("Password")
+        .subtitle("●●●●")
+        .build();
+    password_ar.add_suffix(
+        &gtk::Image::builder()
+            .icon_name("edit-copy-symbolic")
             .build(),
     );
+    server_item1.add(&password_ar);
     vbox.append(&server_item1);
 
     // lb.set_property("halign", gtk::Align::Fill);

@@ -1,6 +1,15 @@
 use adw::prelude::*;
 
 pub fn display_server(parent: &adw::Bin, id: i32) {
+    let vbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(20)
+        .margin_start(10)
+        .margin_end(10)
+        .margin_bottom(10)
+        .margin_top(10)
+        .build();
+
     // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html
     let lb = gtk::ListBox::builder()
         .selection_mode(gtk::SelectionMode::None)
@@ -20,6 +29,7 @@ pub fn display_server(parent: &adw::Bin, id: i32) {
             .subtitle("root")
             .build(),
     );
+    vbox.append(&lb);
 
     let server_item1 = adw::PreferencesGroup::builder()
         .title("Website")
@@ -43,10 +53,10 @@ pub fn display_server(parent: &adw::Bin, id: i32) {
             .subtitle("●●●●")
             .build(),
     );
-    lb.append(&server_item1);
+    vbox.append(&server_item1);
 
     // lb.set_property("halign", gtk::Align::Fill);
     // parent.set_property("halign", gtk::Align::Fill);
 
-    parent.set_child(Some(&lb));
+    parent.set_child(Some(&vbox));
 }

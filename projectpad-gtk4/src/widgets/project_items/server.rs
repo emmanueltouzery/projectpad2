@@ -16,19 +16,37 @@ pub fn display_server(parent: &adw::Bin, id: i32) {
         .css_classes(vec!["boxed-list"])
         .build();
 
-    lb.append(&adw::ActionRow::builder().title("Server name").build());
-    lb.append(
-        &adw::ActionRow::builder()
-            .title("Address")
-            .subtitle("hostname")
+    let server_ar = adw::ActionRow::builder().title("Server name").build();
+    server_ar.add_suffix(
+        &gtk::Button::builder()
+            .icon_name("open-menu-symbolic")
+            .has_frame(false)
+            .valign(gtk::Align::Center)
             .build(),
     );
-    lb.append(
-        &adw::ActionRow::builder()
-            .title("Username")
-            .subtitle("root")
+    lb.append(&server_ar);
+
+    let address_ar = adw::ActionRow::builder()
+        .title("Address")
+        .subtitle("hostname")
+        .build();
+    address_ar.add_suffix(
+        &gtk::Image::builder()
+            .icon_name("edit-copy-symbolic")
             .build(),
     );
+    lb.append(&address_ar);
+
+    let server_username_ar = adw::ActionRow::builder()
+        .title("Username")
+        .subtitle("root")
+        .build();
+    server_username_ar.add_suffix(
+        &gtk::Image::builder()
+            .icon_name("edit-copy-symbolic")
+            .build(),
+    );
+    lb.append(&server_username_ar);
     vbox.append(&lb);
 
     let server_item1 = adw::PreferencesGroup::builder()

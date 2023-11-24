@@ -93,18 +93,41 @@
               </object>
             </child>
             <property name="content">
-              <object class="AdwNavigationPage">
-                <property name="title" translatable="yes">Content</property>
-                <property name="child">
-                  <object class="AdwClamp">
+              <object class="GtkOverlay">
+                <child>
+                  <object class="AdwNavigationPage">
+                    <property name="title" translatable="yes">Content</property>
                     <property name="child">
-                      <object class="ProjectItem" id="project_item">
-                        <property name="halign">fill</property>
-                        <property name="hexpand">True</property>
+                      <object class="AdwClamp">
+                        <property name="child">
+                          <object class="ProjectItem" id="project_item">
+                            <property name="halign">fill</property>
+                            <property name="hexpand">True</property>
+                          </object>
+                        </property>
                       </object>
                     </property>
                   </object>
-                </property>
+                </child>
+                <child type="overlay">
+                  <object class="GtkToggleButton">
+                    <property name="valign">end</property>
+                    <property name="halign">end</property>
+                    <property name="margin-bottom">15</property>
+                    <property name="margin-end">15</property>
+                    <property name="use-underline">true</property>
+                    <style>
+                      <class name="pill"/>
+                    </style>
+                    <property name="child">
+                      <object class="AdwButtonContent">
+                        <property name="icon-name">document-edit-symbolic</property>
+                        <property name="label" translatable="yes">_Edit</property>
+                        <property name="use-underline">True</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
               </object>
             </property>
           </object>

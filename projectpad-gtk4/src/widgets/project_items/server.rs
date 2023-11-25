@@ -42,6 +42,13 @@ fn display_server_edit(parent: &adw::Bin) {
 
     header_box.append(&header_second_col);
 
+    let delete_btn = gtk::Button::builder()
+        .icon_name("user-trash-symbolic")
+        .halign(gtk::Align::End)
+        .hexpand(true)
+        .build();
+    header_box.append(&delete_btn);
+
     vbox.append(&header_box);
 
     // let server_ar = adw::EntryRow::builder().title("Server name").build();
@@ -101,6 +108,12 @@ fn display_server_edit(parent: &adw::Bin) {
 
     // lb.set_property("halign", gtk::Align::Fill);
     // parent.set_property("halign", gtk::Align::Fill);
+
+    let add_btn = gtk::Button::builder()
+        .icon_name("list-add-symbolic")
+        .hexpand(true)
+        .build();
+    vbox.append(&add_btn);
 
     parent.set_child(Some(&vbox));
 }

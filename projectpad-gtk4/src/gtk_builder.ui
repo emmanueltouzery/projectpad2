@@ -34,6 +34,12 @@
                     <property name="show-initials">True</property>
                   </object>
                 </child>
+                <child type="end">
+                  <object class="GtkButton" id="add_project_item">
+                    <property name="icon-name">list-add-symbolic</property>
+                    <property name="visible" bind-source="edit_btn" bind-property="active" bind-flags="bidirectional|sync-create"/>
+                  </object>
+                </child>
               </object>
             </child>
             <property name="content">

@@ -10,21 +10,43 @@ pub fn display_server(parent: &adw::Bin, id: i32) {
         .margin_top(10)
         .build();
 
-    // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html
-    let lb = gtk::ListBox::builder()
-        .selection_mode(gtk::SelectionMode::None)
-        .css_classes(vec!["boxed-list"])
+    let header_box = gtk::Box::builder().spacing(10).build();
+
+    let server_icon = gtk::Image::builder()
+        .icon_name("server")
+        .pixel_size(48)
+        .build();
+    header_box.append(&server_icon);
+
+    let header_second_col = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(20)
+        .valign(gtk::Align::Center)
         .build();
 
-    let server_ar = adw::ActionRow::builder().title("Server name").build();
-    server_ar.add_suffix(
-        &gtk::Button::builder()
-            .icon_name("open-menu-symbolic")
-            .has_frame(false)
-            .valign(gtk::Align::Center)
-            .build(),
-    );
-    lb.append(&server_ar);
+    let server = gtk::Label::builder()
+        .label("Server")
+        .halign(gtk::Align::Start)
+        .css_classes(["title-1"])
+        // .description("desc")
+        .build();
+    header_second_col.append(&server);
+
+    header_box.append(&header_second_col);
+
+    vbox.append(&header_box);
+
+    // let server_ar = adw::ActionRow::builder().title("Server name").build();
+    // server_ar.add_suffix(
+    //     &gtk::Button::builder()
+    //         .icon_name("open-menu-symbolic")
+    //         .has_frame(false)
+    //         .valign(gtk::Align::Center)
+    //         .build(),
+    // );
+    // server.add(&server_ar);
+
+    let server_item0 = adw::PreferencesGroup::builder().build();
 
     let address_ar = adw::ActionRow::builder()
         .title("Address")
@@ -35,7 +57,8 @@ pub fn display_server(parent: &adw::Bin, id: i32) {
             .icon_name("edit-copy-symbolic")
             .build(),
     );
-    lb.append(&address_ar);
+    server_item0.add(&address_ar);
+    // server.add(&address_ar);
 
     let server_username_ar = adw::ActionRow::builder()
         .title("Username")
@@ -46,8 +69,10 @@ pub fn display_server(parent: &adw::Bin, id: i32) {
             .icon_name("edit-copy-symbolic")
             .build(),
     );
-    lb.append(&server_username_ar);
-    vbox.append(&lb);
+    // server.add(&server_username_ar);
+    server_item0.add(&server_username_ar);
+
+    vbox.append(&server_item0);
 
     let server_item1 = adw::PreferencesGroup::builder()
         .title("Website")

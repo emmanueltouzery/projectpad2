@@ -22,41 +22,12 @@
           <object class="AdwToolbarView">
             <child type="top">
               <object class="AdwHeaderBar">
+                <property name="show-title">False</property>
                 <child type="start">
                   <object class="AdwAvatar">
                     <property name="text">Proper Ltd</property>
                     <property name="size">32</property>
                     <property name="show-initials">True</property>
-                  </object>
-                </child>
-                <child type="end">
-                  <object class="GtkMenuButton">
-                    <property name="icon-name">open-menu-symbolic</property>
-                    <property name="popover">
-                      <object class="GtkPopoverMenu">
-                        <!-- <property name="menu-model">app_menu</property> -->
-                        <child type="zoom-out">
-                          <object class="GtkButton">
-                            <property name="icon-name">zoom-out-symbolic</property>
-                            <property name="action-name">view.zoom-out</property>
-                            <property name="tooltip-text" translatable="yes">Zoom Out</property>
-                            <style>
-                              <class name="flat"/>
-                            </style>
-                          </object>
-                        </child>
-                        <child type="zoom-in">
-                          <object class="GtkButton">
-                            <property name="icon-name">zoom-in-symbolic</property>
-                            <property name="action-name">view.zoom-in</property>
-                            <property name="tooltip-text" translatable="yes">Zoom In</property>
-                            <style>
-                              <class name="flat"/>
-                            </style>
-                          </object>
-                        </child>
-                      </object>
-                    </property>
                   </object>
                 </child>
               </object>
@@ -83,6 +54,36 @@
                     <property name="icon-name">sidebar-show-symbolic</property>
                     <property name="active">True</property>
                     <property name="visible" bind-source="split_view" bind-property="collapsed" bind-flags="bidirectional|sync-create"/>
+                  </object>
+                </child>
+                <child type="end">
+                  <object class="GtkMenuButton">
+                    <property name="icon-name">open-menu-symbolic</property>
+                    <property name="popover">
+                      <object class="GtkPopoverMenu">
+                        <!-- <property name="menu-model">app_menu</property> -->
+                        <!-- <child type="zoom-out">
+                          <object class="GtkButton">
+                            <property name="icon-name">zoom-out-symbolic</property>
+                            <property name="action-name">view.zoom-out</property>
+                            <property name="tooltip-text" translatable="yes">Zoom Out</property>
+                            <style>
+                              <class name="flat"/>
+                            </style>
+                          </object>
+                        </child>
+                        <child type="zoom-in">
+                          <object class="GtkButton">
+                            <property name="icon-name">zoom-in-symbolic</property>
+                            <property name="action-name">view.zoom-in</property>
+                            <property name="tooltip-text" translatable="yes">Zoom In</property>
+                            <style>
+                              <class name="flat"/>
+                            </style>
+                          </object>
+                        </child> -->
+                      </object>
+                    </property>
                   </object>
                 </child>
                 <child type="end">

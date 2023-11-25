@@ -109,11 +109,15 @@
                   <object class="AdwNavigationPage">
                     <property name="title" translatable="yes">Content</property>
                     <property name="child">
-                      <object class="AdwClamp">
+                      <object class="GtkScrolledWindow">
                         <property name="child">
-                          <object class="ProjectItem" id="project_item">
-                            <property name="halign">fill</property>
-                            <property name="hexpand">True</property>
+                          <object class="AdwClamp">
+                            <property name="child">
+                              <object class="ProjectItem" id="project_item">
+                                <property name="halign">fill</property>
+                                <property name="hexpand">True</property>
+                              </object>
+                            </property>
                           </object>
                         </property>
                       </object>

@@ -16,3 +16,4 @@ cairo-rs = "0.18.2"
 glib = "0.18.2"
 gio = "0.18.2"
 adw = { version = "0.5.3", package = "libadwaita", features = ["v1_4"] }
+projectpadsql = { path = "../projectpadsql" }

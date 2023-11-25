@@ -111,7 +111,7 @@
                   </object>
                 </child>
                 <child type="overlay">
-                  <object class="GtkToggleButton">
+                  <object class="GtkToggleButton" id="edit_btn">
                     <property name="valign">end</property>
                     <property name="halign">end</property>
                     <property name="margin-bottom">15</property>

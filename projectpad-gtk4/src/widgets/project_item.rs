@@ -1,8 +1,11 @@
+use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
 mod imp {
+    use std::cell::Cell;
+
     use super::*;
     use gtk::{
         subclass::{
@@ -12,11 +15,15 @@ mod imp {
         CompositeTemplate, TemplateChild,
     };
 
-    #[derive(Debug, Default, CompositeTemplate)]
+    #[derive(Properties, Debug, Default, CompositeTemplate)]
+    #[properties(wrapper_type = super::ProjectItem)]
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item.ui")]
     pub struct ProjectItem {
         #[template_child]
         pub project_item: TemplateChild<adw::Bin>,
+
+        #[property(get, set)]
+        edit_mode: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -34,10 +41,23 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for ProjectItem {
-        // fn constructed(&self) {
-        //     self.obj().init_list();
-        // }
+        fn constructed(&self) {
+            //     self.obj().init_list();
+            let _ = self
+                .obj()
+                .connect_edit_mode_notify(|project_item: &super::ProjectItem| {
+                    // println!("edit mode changed: {}", project_item.edit_mode());
+                    project_item.display_item_id(0);
+                });
+            //     "edit-mode",
+            //     false,
+            //     closure_local!(move |project_item: i32, edit_mode: bool| {
+            //         println!("edit mode changed: {edit_mode}");
+            //     }),
+            // );
+        }
     }
 
     impl WidgetImpl for ProjectItem {}
@@ -53,6 +73,10 @@ glib::wrapper! {
 impl ProjectItem {
     pub fn display_item_id(&self, id: i32) {
         println!("projectitem::display_item_id({id})");
-        super::project_items::server::display_server(&self.imp().project_item, id);
+        super::project_items::server::display_server(
+            &self.imp().project_item,
+            id,
+            self.edit_mode(),
+        );
     }
 }

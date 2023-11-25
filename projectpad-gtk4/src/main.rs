@@ -4,6 +4,7 @@ use widgets::project_item_list::ProjectItemList;
 mod widgets;
 use adw::subclass::prelude::*;
 use glib::subclass;
+use gtk::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
 mod app;
@@ -27,6 +28,8 @@ mod imp {
         pub project_item_list: TemplateChild<ProjectItemList>,
         #[template_child]
         pub project_item: TemplateChild<ProjectItem>,
+        #[template_child]
+        pub edit_btn: TemplateChild<gtk::ToggleButton>,
     }
 
     #[glib::object_subclass]
@@ -55,6 +58,9 @@ mod imp {
 
             // self.obj().setup_widgets(sender.clone(), player);
             // self.obj().setup_gactions(sender);
+            self.edit_btn
+                .bind_property("active", &self.project_item.get(), "edit_mode")
+                .build();
         }
     }
 

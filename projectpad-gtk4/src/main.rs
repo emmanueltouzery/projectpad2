@@ -27,8 +27,6 @@ mod imp {
         #[template_child]
         pub project_avatar: TemplateChild<adw::Avatar>,
         #[template_child]
-        pub project_avatar_popover: TemplateChild<gtk::PopoverMenu>,
-        #[template_child]
         pub project_item_list: TemplateChild<ProjectItemList>,
         #[template_child]
         pub project_item: TemplateChild<ProjectItem>,
@@ -67,16 +65,17 @@ mod imp {
                 .build();
 
             let gesture = gtk::GestureClick::new();
-            let project_avatar_popover = self.project_avatar_popover.get();
+            let project_avatar = self.project_avatar.get();
             gesture.connect_released(move |gesture, _, _, _| {
                 gesture.set_state(gtk::EventSequenceState::Claimed);
-                println!("Box pressed!");
                 // https://discourse.gnome.org/t/using-gtkpopovermenu-as-a-gtkmenu-replacement/3786/14
                 let popover_menu = gio::Menu::new();
-                popover_menu.append(Some("Add project..."), None);
-                // let popover = gtk::PopoverMenu::builder()
-                //     .menu_model(&popover_menu)
-                //     .build();
+                popover_menu.append(Some("Edit project"), None);
+                popover_menu.append(Some("Add project"), None);
+                let project_avatar_popover = gtk::PopoverMenu::builder()
+                    .menu_model(&popover_menu)
+                    .build();
+                project_avatar_popover.set_parent(&project_avatar);
                 project_avatar_popover.set_menu_model(Some(&popover_menu));
                 project_avatar_popover.popup();
             });

@@ -32,10 +32,6 @@
                     <property name="text">Proper Ltd</property>
                     <property name="size">32</property>
                     <property name="show-initials">True</property>
-                    <child>
-                      <object class="GtkPopoverMenu" id="project_avatar_popover">
-                      </object>
-                    </child>
                   </object>
                 </child>
                 <child type="end">

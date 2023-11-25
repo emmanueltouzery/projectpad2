@@ -25,6 +25,10 @@ mod imp {
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/gtk_builder.ui")]
     pub struct ProjectpadApplicationWindow {
         #[template_child]
+        pub project_avatar: TemplateChild<adw::Avatar>,
+        #[template_child]
+        pub project_avatar_popover: TemplateChild<gtk::PopoverMenu>,
+        #[template_child]
         pub project_item_list: TemplateChild<ProjectItemList>,
         #[template_child]
         pub project_item: TemplateChild<ProjectItem>,
@@ -61,6 +65,23 @@ mod imp {
             self.edit_btn
                 .bind_property("active", &self.project_item.get(), "edit_mode")
                 .build();
+
+            let gesture = gtk::GestureClick::new();
+            let project_avatar_popover = self.project_avatar_popover.get();
+            gesture.connect_released(move |gesture, _, _, _| {
+                gesture.set_state(gtk::EventSequenceState::Claimed);
+                println!("Box pressed!");
+                // https://discourse.gnome.org/t/using-gtkpopovermenu-as-a-gtkmenu-replacement/3786/14
+                let popover_menu = gio::Menu::new();
+                popover_menu.append(Some("Add project..."), None);
+                // let popover = gtk::PopoverMenu::builder()
+                //     .menu_model(&popover_menu)
+                //     .build();
+                project_avatar_popover.set_menu_model(Some(&popover_menu));
+                project_avatar_popover.popup();
+            });
+            self.project_avatar.get().add_controller(gesture);
+            // https://www.reddit.com/r/GTK/comments/15y17a0/how_to_add_a_right_click_menu_to_a_drawingarea/
         }
     }
 

@@ -28,10 +28,14 @@
                   </object>
                 </property>
                 <child type="start">
-                  <object class="AdwAvatar">
+                  <object class="AdwAvatar" id="project_avatar">
                     <property name="text">Proper Ltd</property>
                     <property name="size">32</property>
                     <property name="show-initials">True</property>
+                    <child>
+                      <object class="GtkPopoverMenu" id="project_avatar_popover">
+                      </object>
+                    </child>
                   </object>
                 </child>
                 <child type="end">

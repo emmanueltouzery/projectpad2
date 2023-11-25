@@ -67,7 +67,6 @@ fn display_server_edit(parent: &adw::Bin) {
         .title("Address")
         .text("hostname")
         .build();
-    address_ar.add_suffix(&gtk::Image::builder().build());
     server_item0.add(&address_ar);
     // server.add(&address_ar);
 
@@ -75,7 +74,6 @@ fn display_server_edit(parent: &adw::Bin) {
         .title("Username")
         .text("root")
         .build();
-    server_username_ar.add_suffix(&gtk::Image::builder().build());
     // server.add(&server_username_ar);
     server_item0.add(&server_username_ar);
 
@@ -89,20 +87,17 @@ fn display_server_edit(parent: &adw::Bin) {
         .title("Address")
         .text("https://service1.com")
         .build();
-    website_ar.add_suffix(&gtk::Image::builder().build());
     server_item1.add(&website_ar);
 
     let username_ar = adw::EntryRow::builder()
         .title("Username")
         .text("admin")
         .build();
-    username_ar.add_suffix(&gtk::Image::builder().build());
     server_item1.add(&username_ar);
     let password_ar = adw::PasswordEntryRow::builder()
         .title("Password")
         .text("pass")
         .build();
-    password_ar.add_suffix(&gtk::Image::builder().build());
     server_item1.add(&password_ar);
     vbox.append(&server_item1);
 

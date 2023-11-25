@@ -97,7 +97,7 @@ impl ProjectpadApplicationWindow {
         let win = glib::Object::new::<Self>();
         win.imp().project_item_list.connect_activate(
             glib::clone!(@weak win as w => move |project_item_id| {
-                w.imp().project_item.display_item_id(project_item_id)
+                w.imp().project_item.set_item_id(project_item_id)
             }),
         );
         win

@@ -24,6 +24,9 @@ mod imp {
 
         #[property(get, set)]
         edit_mode: Cell<bool>,
+
+        #[property(get, set)]
+        pub item_id: Cell<i32>,
     }
 
     #[glib::object_subclass]
@@ -49,14 +52,14 @@ mod imp {
                 .obj()
                 .connect_edit_mode_notify(|project_item: &super::ProjectItem| {
                     // println!("edit mode changed: {}", project_item.edit_mode());
-                    project_item.display_item_id(0);
+                    project_item.display_item();
                 });
-            //     "edit-mode",
-            //     false,
-            //     closure_local!(move |project_item: i32, edit_mode: bool| {
-            //         println!("edit mode changed: {edit_mode}");
-            //     }),
-            // );
+            let _ = self
+                .obj()
+                .connect_item_id_notify(|project_item: &super::ProjectItem| {
+                    // println!("edit mode changed: {}", project_item.edit_mode());
+                    project_item.display_item();
+                });
         }
     }
 
@@ -71,11 +74,11 @@ glib::wrapper! {
 }
 
 impl ProjectItem {
-    pub fn display_item_id(&self, id: i32) {
-        println!("projectitem::display_item_id({id})");
+    fn display_item(&self) {
+        println!("projectitem::display_item_id({})", self.imp().item_id.get());
         super::project_items::server::display_server(
             &self.imp().project_item,
-            id,
+            self.imp().item_id.get(),
             self.edit_mode(),
         );
     }

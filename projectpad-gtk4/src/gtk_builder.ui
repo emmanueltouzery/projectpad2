@@ -22,7 +22,11 @@
           <object class="AdwToolbarView">
             <child type="top">
               <object class="AdwHeaderBar">
-                <property name="show-title">False</property>
+                <property name="title-widget">
+                  <object class="AdwWindowTitle">
+                    <property name="title">Project name</property>
+                  </object>
+                </property>
                 <child type="start">
                   <object class="AdwAvatar">
                     <property name="text">Proper Ltd</property>

@@ -23,6 +23,11 @@ fn main() {
         .wait()
         .unwrap();
     assert!(status.success());
+
+    includedir_codegen::start("MIGRATIONS")
+        .dir("resources/migrations", Compression::None)
+        .build("data.rs")
+        .unwrap();
 }
 
 fn fetch_fontawesome_icons(target_foldername: &str) {

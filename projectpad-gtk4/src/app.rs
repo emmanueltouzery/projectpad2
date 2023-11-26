@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use adw::subclass::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
 use glib::{clone, ObjectExt, Properties, Receiver, Sender};
@@ -6,6 +8,7 @@ use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib};
 use gtk::{prelude::*, CssProvider};
 
+use crate::sql_thread::SqlFunc;
 use crate::ProjectpadApplicationWindow;
 
 mod imp {
@@ -60,7 +63,7 @@ glib::wrapper! {
 }
 
 impl ProjectpadApplication {
-    pub fn run() -> glib::ExitCode {
+    pub fn run(sql_channel: mpsc::Sender<SqlFunc>, is_new_db: bool) -> glib::ExitCode {
         // Create new GObject and downcast it into SwApplication
         let app = glib::Object::builder::<ProjectpadApplication>()
             // .property("application-id", Some(config::APP_ID))

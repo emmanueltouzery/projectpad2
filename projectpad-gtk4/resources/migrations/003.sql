@@ -1,0 +1,7 @@
+CREATE TABLE server_website (id INTEGER PRIMARY KEY,
+	desc TEXT NOT NULL,
+	url TEXT NOT NULL,
+	username TEXT NOT NULL,
+	password TEXT NOT NULL,
+	server_id INTEGER NOT NULL,
+	FOREIGN KEY(server_id) REFERENCES server(id) ON DELETE CASCADE);

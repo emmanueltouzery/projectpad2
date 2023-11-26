@@ -22,16 +22,14 @@
           <object class="AdwToolbarView">
             <child type="top">
               <object class="AdwHeaderBar">
-                <property name="title-widget">
-                  <object class="AdwWindowTitle">
-                    <property name="title">Project name</property>
-                  </object>
-                </property>
+                <property name="show-title">False</property>
                 <child type="start">
-                  <object class="AdwAvatar" id="project_avatar">
-                    <property name="text">Proper Ltd</property>
-                    <property name="size">32</property>
-                    <property name="show-initials">True</property>
+                  <object class="GtkMenuButton">
+                    <property name="label">Default project</property>
+                    <property name="popover">
+                      <object class="GtkPopoverMenu" id="project_popover_menu">
+                      </object>
+                    </property>
                   </object>
                 </child>
                 <child type="end">

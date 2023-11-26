@@ -32,8 +32,8 @@ fn display_server_edit(parent: &adw::Bin) {
         .valign(gtk::Align::Center)
         .build();
 
-    let server = gtk::Label::builder()
-        .label("Server")
+    let server = gtk::Entry::builder()
+        .text("Server")
         .halign(gtk::Align::Start)
         .css_classes(["title-1"])
         // .description("desc")

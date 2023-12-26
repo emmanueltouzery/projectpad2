@@ -60,13 +60,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
+name = "async-channel"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ca33f4bc4ed1babef42cad36cc1f51fa88be00420404e5b1e80ab1b18f7678c"
+dependencies = [
+ "concurrent-queue 2.4.0",
+ "event-listener",
+ "event-listener-strategy",
+ "futures-core",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "async-io"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ab006897723d9352f63e2b13047177c3982d8d79709d713ce7747a8f19fd1b0"
 dependencies = [
  "autocfg",
- "concurrent-queue",
+ "concurrent-queue 1.2.4",
  "futures-lite",
  "libc",
  "log",
@@ -214,13 +227,13 @@ dependencies = [
 
 [[package]]
 name = "cairo-rs"
-version = "0.18.2"
+version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c0466dfa8c0ee78deef390c274ad756801e0a6dbb86c5ef0924a298c5761c4d"
+checksum = "f33613627f0dea6a731b0605101fad59ba4f193a52c96c4687728d822605a8a1"
 dependencies = [
  "bitflags 2.4.1",
  "cairo-sys-rs 0.18.2",
- "glib 0.18.2",
+ "glib 0.18.4",
  "libc",
  "once_cell",
  "thiserror",
@@ -321,6 +334,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af4780a44ab5696ea9e28294517f1fffb421a83a25af521333c838635509db9c"
 dependencies = [
  "cache-padded",
+]
+
+[[package]]
+name = "concurrent-queue"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d16048cd947b08fa32c24458a22f5dc5e835264f689f4f5653210c69fd107363"
+dependencies = [
+ "crossbeam-utils 0.8.11",
 ]
 
 [[package]]
@@ -691,6 +713,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "event-listener"
+version = "4.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84f2cdcf274580f2d63697192d744727b3198894b1bf02923643bf59e2c26712"
+dependencies = [
+ "concurrent-queue 2.4.0",
+ "parking",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "event-listener-strategy"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "958e4d70b6d5e81971bebec42271ec641e7ff4e170a6fa605f2b8a8b65cb97d3"
+dependencies = [
+ "event-listener",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -917,8 +960,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbc9c2ed73a81d556b65d08879ba4ee58808a6b1927ce915262185d6d547c6f3"
 dependencies = [
  "gdk-pixbuf-sys 0.18.0",
- "gio 0.18.2",
- "glib 0.18.2",
+ "gio 0.18.4",
+ "glib 0.18.4",
  "libc",
  "once_cell",
 ]
@@ -972,11 +1015,11 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7edb019ad581f8ecf8ea8e4baa6df7c483a95b5a59be3140be6a9c3b0c632af6"
 dependencies = [
- "cairo-rs 0.18.2",
+ "cairo-rs 0.18.3",
  "gdk-pixbuf 0.18.0",
  "gdk4-sys",
- "gio 0.18.2",
- "glib 0.18.2",
+ "gio 0.18.4",
+ "glib 0.18.4",
  "libc",
  "pango 0.18.0",
 ]
@@ -1049,16 +1092,16 @@ dependencies = [
 
 [[package]]
 name = "gio"
-version = "0.18.2"
+version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57052f84e8e5999b258e8adf8f5f2af0ac69033864936b8b6838321db2f759b1"
+checksum = "d4fc8f532f87b79cbc51a79748f16a6828fb784be93145a322fa14d06d354c73"
 dependencies = [
  "futures-channel",
  "futures-core",
  "futures-io",
  "futures-util",
  "gio-sys 0.18.1",
- "glib 0.18.2",
+ "glib 0.18.4",
  "libc",
  "once_cell",
  "pin-project-lite",
@@ -1114,9 +1157,9 @@ dependencies = [
 
 [[package]]
 name = "glib"
-version = "0.18.2"
+version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c316afb01ce8067c5eaab1fc4f2cd47dc21ce7b6296358605e2ffab23ccbd19"
+checksum = "951bbd7fdc5c044ede9f05170f05a3ae9479239c3afdfe2d22d537a3add15c4e"
 dependencies = [
  "bitflags 2.4.1",
  "futures-channel",
@@ -1212,7 +1255,7 @@ version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b2228cda1505613a7a956cca69076892cfbda84fc2b7a62b94a41a272c0c401"
 dependencies = [
- "glib 0.18.2",
+ "glib 0.18.4",
  "graphene-sys",
  "libc",
 ]
@@ -1235,9 +1278,9 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d958e351d2f210309b32d081c832d7de0aca0b077aa10d88336c6379bd01f7e"
 dependencies = [
- "cairo-rs 0.18.2",
+ "cairo-rs 0.18.3",
  "gdk4",
- "glib 0.18.2",
+ "glib 0.18.4",
  "graphene-rs",
  "gsk4-sys",
  "libc",
@@ -1321,13 +1364,13 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aeb51aa3e9728575a053e1f43543cd9992ac2477e1b186ad824fd4adfb70842"
 dependencies = [
- "cairo-rs 0.18.2",
+ "cairo-rs 0.18.3",
  "field-offset",
  "futures-channel",
  "gdk-pixbuf 0.18.0",
  "gdk4",
- "gio 0.18.2",
- "glib 0.18.2",
+ "gio 0.18.4",
+ "glib 0.18.4",
  "graphene-rs",
  "gsk4",
  "gtk4-macros",
@@ -1642,8 +1685,8 @@ checksum = "2fe7e70c06507ed10a16cda707f358fbe60fe0dc237498f78c686ade92fd979c"
 dependencies = [
  "gdk-pixbuf 0.18.0",
  "gdk4",
- "gio 0.18.2",
- "glib 0.18.2",
+ "gio 0.18.4",
+ "glib 0.18.4",
  "gtk4",
  "libadwaita-sys",
  "libc",
@@ -1978,8 +2021,8 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06a9e54b831d033206160096b825f2070cf5fda7e35167b1c01e9e774f9202d1"
 dependencies = [
- "gio 0.18.2",
- "glib 0.18.2",
+ "gio 0.18.4",
+ "glib 0.18.4",
  "libc",
  "once_cell",
  "pango-sys 0.18.0",
@@ -2071,9 +2114,9 @@ dependencies = [
 
 [[package]]
 name = "pin-project-lite"
-version = "0.2.9"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0a7ae3ac2f1173085d398531c705756c94a4c56843785df85a60c1a0afac116"
+checksum = "8afb450f006bf6385ca15ef45d71d2288452bc3683ce2e2cacc0d18e4be60b58"
 
 [[package]]
 name = "pin-utils"
@@ -2231,14 +2274,16 @@ dependencies = [
 name = "projectpad-gtk4"
 version = "0.1.0"
 dependencies = [
- "cairo-rs 0.18.2",
+ "async-channel",
+ "cairo-rs 0.18.3",
  "diesel",
  "flate2",
- "gio 0.18.2",
- "glib 0.18.2",
+ "gio 0.18.4",
+ "glib 0.18.4",
  "gtk4",
  "includedir",
  "includedir_codegen",
+ "keyring",
  "libadwaita",
  "phf",
  "projectpadsql",

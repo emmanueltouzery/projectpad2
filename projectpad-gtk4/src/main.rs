@@ -10,6 +10,7 @@ use gtk::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
 mod app;
+mod keyring_helpers;
 mod sql_thread;
 
 mod imp {

@@ -1,12 +1,14 @@
 use std::sync::mpsc;
 
 use adw::subclass::prelude::*;
+use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
 use glib::{clone, ObjectExt, Properties, Receiver, Sender};
 use gtk::subclass::prelude::DerivedObjectProperties;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib};
 use gtk::{prelude::*, CssProvider};
+use projectpadsql::models::Project;
 
 use crate::sql_thread::SqlFunc;
 use crate::{keyring_helpers, ProjectpadApplicationWindow};
@@ -92,11 +94,13 @@ impl ProjectpadApplication {
                 .unwrap();
 
             // The main loop executes the asynchronous block
+            let channel2 = sql_channel.clone();
             glib::spawn_future_local(async move {
                 let unlock_success = receiver.recv().await.unwrap();
                 if unlock_success {
                     // TODO run_prepare_db
                     // TODO request_update_welcome_status
+                    Self::fetch_projects(&channel2);
                 } else {
                     // self.display_unlock_dialog();
                 }
@@ -104,6 +108,22 @@ impl ProjectpadApplication {
         } else {
             // self.display_unlock_dialog();
         }
+    }
+
+    fn fetch_projects(sql_channel: &mpsc::Sender<SqlFunc>) {
+        let (sender, receiver) = async_channel::bounded(1);
+        sql_channel
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl::*;
+                let prjs = project.order(name.asc()).load::<Project>(sql_conn).unwrap();
+                sender.send_blocking(prjs).unwrap();
+                // s.send(prjs).unwrap();
+            }))
+            .unwrap();
+        glib::spawn_future_local(async move {
+            let prjs = receiver.recv().await.unwrap();
+            dbg!(prjs);
+        });
     }
 
     fn load_css() {

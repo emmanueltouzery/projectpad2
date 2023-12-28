@@ -1,9 +1,10 @@
+use std::cell::OnceCell;
 use std::sync::mpsc;
 
 use adw::subclass::prelude::*;
 use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
-use glib::{clone, ObjectExt, Properties, Receiver, Sender};
+use glib::{clone, ObjectExt, Properties, Receiver, Sender, WeakRef};
 use gtk::subclass::prelude::DerivedObjectProperties;
 use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib};
@@ -33,6 +34,8 @@ mod imp {
         pub rb_server: RefCell<Option<String>>, // TODO remove
         //
         pub window: OnceCell<WeakRef<ProjectpadApplicationWindow>>,
+
+        pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
     }
 
     #[glib::object_subclass]
@@ -48,8 +51,9 @@ mod imp {
     impl ApplicationImpl for ProjectpadApplication {
         fn activate(&self) {
             let app = self.obj();
-            let window = app.create_window();
-            let _ = self.window.set(window.downgrade());
+            self.obj().unlock_db();
+            // let window = app.create_window();
+            // let _ = self.window.set(window.downgrade());
         }
     }
 
@@ -68,25 +72,36 @@ impl ProjectpadApplication {
     pub fn run(sql_channel: mpsc::Sender<SqlFunc>, is_new_db: bool) -> glib::ExitCode {
         // Create new GObject and downcast it into SwApplication
         let app = glib::Object::builder::<ProjectpadApplication>()
+            // .property("sql_channel", sql_channel)
             // .property("application-id", Some(config::APP_ID))
             // .property("flags", gio::ApplicationFlags::empty())
             // .property("resource-base-path", Some(config::PATH_ID))
             .build();
+        app.imp().sql_channel.replace(Some(sql_channel));
 
         app.connect_startup(|_| Self::load_css());
 
-        Self::unlock_db(&sql_channel);
+        // app.connect_activate(move |a| Self::unlock_db(a, sql_channel));
+        // Self::unlock_db(app);
 
         // Start running gtk::Application
         app.run()
+
+        // glib::ExitCode::SUCCESS // TODO
     }
 
-    fn unlock_db(sql_channel: &mpsc::Sender<SqlFunc>) {
+    fn unlock_db(&self) {
+        let window = self.create_window();
+        let _ = self.imp().window.set(window.downgrade());
         if let Some(pass) = keyring_helpers::get_pass_from_keyring() {
             // https://gtk-rs.org/gtk4-rs/stable/latest/book/main_event_loop.html
             // Create channel that can hold at most 1 message at a time
             let (sender, receiver) = async_channel::bounded(1);
-            sql_channel
+            self.imp()
+                .sql_channel
+                .borrow()
+                .as_ref()
+                .unwrap()
                 .send(SqlFunc::new(move |sql_conn| {
                     let unlock_success = projectpadsql::try_unlock_db(sql_conn, &pass).is_ok();
                     sender.send_blocking(unlock_success).unwrap();
@@ -94,16 +109,22 @@ impl ProjectpadApplication {
                 .unwrap();
 
             // The main loop executes the asynchronous block
-            let channel2 = sql_channel.clone();
+            let channel2 = self.imp().sql_channel.borrow().as_ref().unwrap().clone();
+            // let w = self.imp().window.clone();
+            // dbg!("running the app");
+            // self.run();
+            // dbg!("after running the app");
             glib::spawn_future_local(async move {
                 let unlock_success = receiver.recv().await.unwrap();
                 if unlock_success {
                     // TODO run_prepare_db
                     // TODO request_update_welcome_status
+
                     Self::fetch_projects(&channel2);
                 } else {
                     // self.display_unlock_dialog();
                 }
+                // self.run();
             });
         } else {
             // self.display_unlock_dialog();
@@ -122,7 +143,18 @@ impl ProjectpadApplication {
             .unwrap();
         glib::spawn_future_local(async move {
             let prjs = receiver.recv().await.unwrap();
-            dbg!(prjs);
+            let app = gio::Application::default()
+                .expect("Failed to retrieve application singleton")
+                .downcast::<ProjectpadApplication>()
+                .unwrap();
+            let window = app.imp().window.get().unwrap();
+            let binding = window.upgrade();
+            let popover = &binding.as_ref().unwrap().imp().project_popover_menu;
+            let menu_model = gio::Menu::new();
+            for prj in prjs {
+                menu_model.append(Some(&prj.name), None);
+            }
+            popover.set_menu_model(Some(&menu_model));
         });
     }
 

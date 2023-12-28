@@ -34,6 +34,8 @@ mod imp {
         pub project_item: TemplateChild<ProjectItem>,
         #[template_child]
         pub edit_btn: TemplateChild<gtk::ToggleButton>,
+        #[template_child]
+        pub project_popover_menu: TemplateChild<gtk::PopoverMenu>,
     }
 
     #[glib::object_subclass]
@@ -96,6 +98,8 @@ glib::wrapper! {
         // @implements gio::ActionMap, gio::ActionGroup;
 }
 
+// TODO split the window in a separate win.rs file?
+// currently app.rs is using main.rs which is dubious.
 impl ProjectpadApplicationWindow {
     pub fn new() -> Self {
         let win = glib::Object::new::<Self>();

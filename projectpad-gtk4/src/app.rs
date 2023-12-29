@@ -51,7 +51,10 @@ mod imp {
     impl ApplicationImpl for ProjectpadApplication {
         fn activate(&self) {
             let app = self.obj();
-            self.obj().unlock_db();
+            let window = app.create_window();
+            let _ = app.imp().window.set(window.downgrade());
+            app.setup_actions(&window);
+            app.unlock_db();
             // let window = app.create_window();
             // let _ = self.window.set(window.downgrade());
         }
@@ -90,9 +93,26 @@ impl ProjectpadApplication {
         // glib::ExitCode::SUCCESS // TODO
     }
 
+    fn setup_actions(&self, window: &ProjectpadApplicationWindow) {
+        // let select_project_action =
+        //     gio::SimpleAction::new("select-project", Some(glib::VariantTy::INT64));
+        // select_project_action.connect_activate(|action, parameter| {
+        //     println!("{} / {:#?}", action, parameter);
+        // });
+        let select_project_action = gio::SimpleAction::new_stateful(
+            "select-project",
+            Some(&i32::static_variant_type()),
+            // None,
+            &(1).to_variant(),
+        );
+        select_project_action.connect_change_state(|action, parameter| {
+            println!("{} / {:#?}", action, parameter);
+        });
+        window.add_action(&select_project_action);
+        dbg!(&window.list_actions());
+    }
+
     fn unlock_db(&self) {
-        let window = self.create_window();
-        let _ = self.imp().window.set(window.downgrade());
         if let Some(pass) = keyring_helpers::get_pass_from_keyring() {
             // https://gtk-rs.org/gtk4-rs/stable/latest/book/main_event_loop.html
             // Create channel that can hold at most 1 message at a time
@@ -152,7 +172,15 @@ impl ProjectpadApplication {
             let popover = &binding.as_ref().unwrap().imp().project_popover_menu;
             let menu_model = gio::Menu::new();
             for prj in prjs {
-                menu_model.append(Some(&prj.name), None);
+                // println!(
+                //     "{}",
+                //     gio::Action::print_detailed_name("win.select-project", Some(&1.to_variant()))
+                // );
+                println!("{}", format!("win.select-project({})", prj.id));
+                menu_model.append(
+                    Some(&prj.name),
+                    Some(&format!("win.select-project({})", prj.id)),
+                );
             }
             popover.set_menu_model(Some(&menu_model));
         });

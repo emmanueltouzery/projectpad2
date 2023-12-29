@@ -94,8 +94,8 @@ mod imp {
 glib::wrapper! {
     pub struct ProjectpadApplicationWindow(
         ObjectSubclass<imp::ProjectpadApplicationWindow>)
-        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow;
-        // @implements gio::ActionMap, gio::ActionGroup;
+        @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,
+        @implements gio::ActionMap, gio::ActionGroup;
 }
 
 // TODO split the window in a separate win.rs file?

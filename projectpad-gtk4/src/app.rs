@@ -107,6 +107,8 @@ impl ProjectpadApplication {
         );
         select_project_action.connect_change_state(|action, parameter| {
             println!("{} / {:#?}", action, parameter);
+            let project_id = parameter.unwrap().get::<i32>().unwrap();
+            dbg!(project_id);
         });
         window.add_action(&select_project_action);
         dbg!(&window.list_actions());

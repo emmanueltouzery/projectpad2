@@ -16,6 +16,7 @@
           <object class="GtkLabel">
             <property name="hexpand">True</property>
             <property name="halign">start</property>
+            <property name="ellipsize">end</property>
             <binding name="label">
               <lookup name="title" type="ProjectItemModel">
                 <lookup name="item">GtkListItem</lookup>

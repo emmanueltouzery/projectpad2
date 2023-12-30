@@ -8,6 +8,8 @@ const FONTAWESOME_VERSION: &str = "5.13.0";
 
 // can probably be cleaned up: https://gtk-rs.org/gtk4-rs/stable/latest/book/composite_templates.html#resources
 fn main() {
+    println!("cargo:rerun-if-changed=NULL"); // https://stackoverflow.com/a/76743504/516188 TODO do
+                                             // it better
     // println!("cargo:rerun-if-changed=src/projectpad.gresource.xml.in");
 
     let target_foldername = format!("fontawesome-{}", FONTAWESOME_VERSION);

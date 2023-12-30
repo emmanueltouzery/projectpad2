@@ -93,6 +93,10 @@ impl ProjectpadApplication {
         // glib::ExitCode::SUCCESS // TODO
     }
 
+    fn get_sql_channel(&self) -> mpsc::Sender<SqlFunc> {
+        self.imp().sql_channel.borrow().clone().unwrap()
+    }
+
     fn setup_actions(&self, window: &ProjectpadApplicationWindow) {
         // let select_project_action =
         //     gio::SimpleAction::new("select-project", Some(glib::VariantTy::INT64));
@@ -105,10 +109,15 @@ impl ProjectpadApplication {
             // None,
             &(1).to_variant(),
         );
-        select_project_action.connect_change_state(|action, parameter| {
+        let w = window.clone();
+        let chan = self.get_sql_channel();
+        select_project_action.connect_change_state(move |action, parameter| {
             println!("{} / {:#?}", action, parameter);
             let project_id = parameter.unwrap().get::<i32>().unwrap();
-            dbg!(project_id);
+            w.imp()
+                .project_item_list
+                .get()
+                .fetch_project_items(&chan, project_id);
         });
         window.add_action(&select_project_action);
         dbg!(&window.list_actions());
@@ -119,11 +128,7 @@ impl ProjectpadApplication {
             // https://gtk-rs.org/gtk4-rs/stable/latest/book/main_event_loop.html
             // Create channel that can hold at most 1 message at a time
             let (sender, receiver) = async_channel::bounded(1);
-            self.imp()
-                .sql_channel
-                .borrow()
-                .as_ref()
-                .unwrap()
+            self.get_sql_channel()
                 .send(SqlFunc::new(move |sql_conn| {
                     let unlock_success = projectpadsql::try_unlock_db(sql_conn, &pass).is_ok();
                     sender.send_blocking(unlock_success).unwrap();

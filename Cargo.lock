@@ -2283,6 +2283,7 @@ dependencies = [
  "gtk4",
  "includedir",
  "includedir_codegen",
+ "itertools",
  "keyring",
  "libadwaita",
  "phf",

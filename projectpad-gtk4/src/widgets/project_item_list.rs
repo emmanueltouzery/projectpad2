@@ -104,7 +104,7 @@ impl ProjectItemList {
         group_start_indices: HashMap<i32, String>,
     ) {
         let mut list_store = ProjectItemListModel::new();
-        list_store.set_group_start_indices(group_start_indices);
+        list_store.set_group_start_indices(project_items.len(), group_start_indices);
         for project_item in project_items {
             list_store.append(&Self::get_item_model(project_item));
         }

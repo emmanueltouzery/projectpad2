@@ -66,7 +66,11 @@ impl ProjectItemListModel {
         self.imp().items.borrow_mut().push(item.clone());
     }
 
-    pub fn set_group_start_indices(&mut self, group_start_indices: HashMap<i32, String>) {
+    pub fn set_group_start_indices(
+        &mut self,
+        items_len: usize,
+        group_start_indices: HashMap<i32, String>,
+    ) {
         let mut indices: Vec<u32> = group_start_indices
             .keys()
             .map(|k| u32::try_from(*k).unwrap())
@@ -74,18 +78,22 @@ impl ProjectItemListModel {
         indices.sort();
         let mut index_to_group = HashMap::<u32, (u32, u32)>::new();
         let mut cur_idx = 0;
-        for i in 0..indices.len() {
-            let start = indices[i];
-            if start > cur_idx {
-                index_to_group.insert(cur_idx, (cur_idx, start));
+        if indices.is_empty() {
+            index_to_group.insert(0, (0, u32::try_from(items_len).unwrap()));
+        } else {
+            for i in 0..indices.len() {
+                let start = indices[i];
+                if start > cur_idx {
+                    index_to_group.insert(cur_idx, (cur_idx, start));
+                }
+                cur_idx = start;
+                let end_idx = if i < indices.len() - 1 {
+                    indices[i + 1]
+                } else {
+                    u32::try_from(items_len).unwrap()
+                };
+                index_to_group.insert(start, (start, end_idx));
             }
-            let end_idx = if i < indices.len() - 1 {
-                indices[i + 1]
-            } else {
-                cur_idx + 1
-            };
-            index_to_group.insert(start, (start, end_idx));
-            cur_idx = start;
         }
         self.imp().index_to_group.replace(index_to_group);
     }

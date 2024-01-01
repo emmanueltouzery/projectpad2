@@ -20,7 +20,7 @@ mod imp {
     impl ObjectSubclass for ProjectItemListModel {
         const NAME: &'static str = "ProjectItemListModel";
         type Type = super::ProjectItemListModel;
-        type Interfaces = (gio::ListModel,);
+        type Interfaces = (gio::ListModel, gtk::SectionModel);
     }
 
     impl ObjectImpl for ProjectItemListModel {}
@@ -41,10 +41,20 @@ mod imp {
                 .map(|o| o.clone().upcast::<glib::Object>())
         }
     }
+
+    impl SectionModelImpl for ProjectItemListModel {
+        fn section(&self, position: u32) -> (u32, u32) {
+            (position, position + 2)
+            // if position == 0 {
+            //     return (0, 2);
+            // }
+            // return (3, 10);
+        }
+    }
 }
 
 glib::wrapper! {
-    pub struct ProjectItemListModel(ObjectSubclass<imp::ProjectItemListModel>) @implements gio::ListModel;
+    pub struct ProjectItemListModel(ObjectSubclass<imp::ProjectItemListModel>) @implements gio::ListModel, gtk::SectionModel;
 
 }
 

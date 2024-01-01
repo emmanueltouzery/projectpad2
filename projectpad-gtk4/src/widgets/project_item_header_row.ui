@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="GtkListItem">
+  <template class="GtkListHeader">
     <property name="child">
       <object class="GtkBox">
         <style>
@@ -19,7 +19,7 @@
             <property name="ellipsize">end</property>
             <binding name="label">
               <lookup name="group-name" type="ProjectItemModel">
-                <lookup name="item">GtkListItem</lookup>
+                <lookup name="item">GtkListHeader</lookup>
               </lookup>
             </binding>
           </object>

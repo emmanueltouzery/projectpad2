@@ -98,8 +98,13 @@ impl ProjectItemList {
         ));
     }
 
-    pub fn set_project_items(&mut self, project_items: &[ProjectItem]) {
+    pub fn set_project_items(
+        &mut self,
+        project_items: &[ProjectItem],
+        group_start_indices: HashMap<i32, String>,
+    ) {
         let mut list_store = ProjectItemListModel::new();
+        list_store.set_group_start_indices(group_start_indices);
         for project_item in project_items {
             list_store.append(&Self::get_item_model(project_item));
         }
@@ -243,7 +248,7 @@ impl ProjectItemList {
         dbg!("spawn");
         glib::spawn_future_local(async move {
             let (items, group_start_indices) = receiver.recv().await.unwrap();
-            s.set_project_items(&items);
+            s.set_project_items(&items, group_start_indices);
         });
     }
 

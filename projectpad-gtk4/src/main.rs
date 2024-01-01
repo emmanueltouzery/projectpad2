@@ -14,6 +14,8 @@ mod keyring_helpers;
 mod sql_thread;
 
 mod imp {
+    use std::collections::HashMap;
+
     use crate::widgets::project_item::ProjectItem;
 
     use super::*;
@@ -57,7 +59,9 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.project_item_list.get().set_project_items(&Vec::new());
+            self.project_item_list
+                .get()
+                .set_project_items(&Vec::new(), HashMap::new());
             // let app = ProjectpadApplication::default();
             // let sender = app.imp().sender.clone();
             // let player = app.imp().player.clone();

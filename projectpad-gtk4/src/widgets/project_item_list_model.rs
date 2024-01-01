@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
@@ -14,6 +16,7 @@ mod imp {
     #[derive(Debug, Default)]
     pub struct ProjectItemListModel {
         pub items: RefCell<Vec<ProjectItemModel>>,
+        pub index_to_group: RefCell<HashMap<u32, (u32, u32)>>,
     }
 
     #[glib::object_subclass]
@@ -44,11 +47,7 @@ mod imp {
 
     impl SectionModelImpl for ProjectItemListModel {
         fn section(&self, position: u32) -> (u32, u32) {
-            (position, position + 2)
-            // if position == 0 {
-            //     return (0, 2);
-            // }
-            // return (3, 10);
+            self.index_to_group.borrow()[&position]
         }
     }
 }
@@ -65,5 +64,29 @@ impl ProjectItemListModel {
 
     pub fn append(&mut self, item: &ProjectItemModel) {
         self.imp().items.borrow_mut().push(item.clone());
+    }
+
+    pub fn set_group_start_indices(&mut self, group_start_indices: HashMap<i32, String>) {
+        let mut indices: Vec<u32> = group_start_indices
+            .keys()
+            .map(|k| u32::try_from(*k).unwrap())
+            .collect();
+        indices.sort();
+        let mut index_to_group = HashMap::<u32, (u32, u32)>::new();
+        let mut cur_idx = 0;
+        for i in 0..indices.len() {
+            let start = indices[i];
+            if start > cur_idx {
+                index_to_group.insert(cur_idx, (cur_idx, start));
+            }
+            let end_idx = if i < indices.len() - 1 {
+                indices[i + 1]
+            } else {
+                cur_idx + 1
+            };
+            index_to_group.insert(start, (start, end_idx));
+            cur_idx = start;
+        }
+        self.imp().index_to_group.replace(index_to_group);
     }
 }

@@ -18,6 +18,8 @@ mod imp {
         env_desc: Rc<RefCell<String>>,
         #[property(get, set)]
         env_classes: Rc<RefCell<Vec<String>>>,
+        #[property(get, set)]
+        group_name: Rc<RefCell<String>>,
     }
 
     #[glib::object_subclass]
@@ -66,12 +68,13 @@ fn env_to_desc(val: &Env) -> String {
 }
 
 impl ProjectItemModel {
-    pub fn new(id: i32, title: String, environment: Env) -> Self {
+    pub fn new(id: i32, title: String, environment: Env, group_name: Option<String>) -> Self {
         Object::builder()
             .property("id", id)
             .property("title", title)
             .property("env-desc", env_to_desc(&environment))
             .property("env-classes", env_to_css(&environment))
+            .property("group-name", group_name.unwrap_or("".to_string()))
             .build()
     }
 }

@@ -16,7 +16,10 @@ use projectpadsql::models::{
 
 use crate::sql_thread::SqlFunc;
 
-use super::project_item_model::{Env, ProjectItemModel};
+use super::{
+    project_item_list_model::ProjectItemListModel,
+    project_item_model::{Env, ProjectItemModel},
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ProjectItem {
@@ -87,11 +90,16 @@ impl ProjectItemList {
                 "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item_row.ui",
             ),
         ));
+        self.imp().project_item_list.set_header_factory(Some(
+            &gtk::BuilderListItemFactory::from_resource(
+                Some(&gtk::BuilderRustScope::new()),
+                "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item_header_row.ui",
+            ),
+        ));
     }
 
     pub fn set_project_items(&mut self, project_items: &[ProjectItem]) {
-        dbg!(project_items.len());
-        let list_store = gio::ListStore::new::<ProjectItemModel>();
+        let mut list_store = ProjectItemListModel::new();
         for project_item in project_items {
             list_store.append(&Self::get_item_model(project_item));
         }
@@ -116,6 +124,7 @@ impl ProjectItemList {
                 srv.id,
                 srv.desc.clone(),
                 Self::environment_type_to_env(srv.environment),
+                srv.group_name.clone()
             ),
             //     markup: if srv.is_retired {
             //         format!("<i>{}</i>", glib::markup_escape_text(&srv.desc))
@@ -136,6 +145,7 @@ impl ProjectItemList {
                 link.id,
                 link.desc.clone(),
                 Self::environment_type_to_env(link.environment),
+                link.group_name.clone()
             ),
             //     markup: glib::markup_escape_text(&link.desc).to_string(),
             //     group_name: link.group_name.as_ref().cloned(),
@@ -145,12 +155,13 @@ impl ProjectItemList {
                 note.id,
                 note.title.clone(),
                 Env::Prod, // TODO has_prod, has...
+                note.group_name.clone()
             ),
             //     markup: glib::markup_escape_text(&note.title).to_string(),
             //     group_name: note.group_name.as_ref().cloned(),
             //     icon: Icon::NOTE,
             // },
-            ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(poi.id, poi.desc.clone(), Env::Prod) // TODO env
+            ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(poi.id, poi.desc.clone(), Env::Prod, poi.group_name.clone()) // TODO env
                 // markup: glib::markup_escape_text(&poi.desc).to_string(),
                 // group_name: poi.group_name.as_ref().cloned(),
                 // icon: match poi.interest_type {
@@ -202,7 +213,7 @@ impl ProjectItemList {
                 let mut prj_pois_iter = prj_pois.into_iter();
 
                 let mut items = Vec::new();
-                let mut group_start_indexes = HashMap::new();
+                let mut group_start_indices = HashMap::new();
                 // this code relies on the sort order from the SQL query
                 // to be the same as the one we process the results in.
                 // notably we must have the nulls (no group) first.
@@ -215,7 +226,7 @@ impl ProjectItemList {
                     None,
                 );
                 for group_name in group_names {
-                    group_start_indexes.insert(items.len() as i32, group_name.clone());
+                    group_start_indices.insert(items.len() as i32, group_name.clone());
                     Self::add_items(
                         &mut items,
                         &mut servers_iter,
@@ -225,13 +236,13 @@ impl ProjectItemList {
                         Some(group_name),
                     );
                 }
-                sender.send_blocking((items, group_start_indexes));
+                sender.send_blocking((items, group_start_indices));
             }))
             .unwrap();
         let mut s = self.clone();
         dbg!("spawn");
         glib::spawn_future_local(async move {
-            let (items, group_start_indexes) = receiver.recv().await.unwrap();
+            let (items, group_start_indices) = receiver.recv().await.unwrap();
             s.set_project_items(&items);
         });
     }

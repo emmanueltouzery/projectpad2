@@ -11,7 +11,7 @@ includedir_codegen = "0.6.0"
 
 
 [dependencies]
-gtk = { version = "0.7.3", package = "gtk4", features = ["v4_10"] }
+gtk = { version = "0.7.3", package = "gtk4", features = ["v4_12"] }
 cairo-rs = "0.18.3"
 glib = "0.18.4"
 gio = "0.18.4"

@@ -3,6 +3,7 @@
   <gresource prefix="/com/github/emmanueltouzery/projectpad2">
     <file compressed="true" preprocess="xml-stripblanks">src/widgets/project_item_list.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">src/widgets/project_item_row.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">src/widgets/project_item_header_row.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">src/widgets/project_item.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">src/gtk_builder.ui</file>
   </gresource>

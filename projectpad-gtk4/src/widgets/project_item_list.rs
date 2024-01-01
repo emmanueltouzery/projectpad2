@@ -195,7 +195,6 @@ impl ProjectItemList {
     }
 
     pub fn fetch_project_items(&mut self, db_sender: &mpsc::Sender<SqlFunc>, project_id: i32) {
-        dbg!(project_id);
         let (sender, receiver) = async_channel::bounded(1);
         db_sender
             .send(SqlFunc::new(move |sql_conn| {
@@ -241,11 +240,10 @@ impl ProjectItemList {
                         Some(group_name),
                     );
                 }
-                sender.send_blocking((items, group_start_indices));
+                sender.send_blocking((items, group_start_indices)).unwrap();
             }))
             .unwrap();
         let mut s = self.clone();
-        dbg!("spawn");
         glib::spawn_future_local(async move {
             let (items, group_start_indices) = receiver.recv().await.unwrap();
             s.set_project_items(&items, group_start_indices);

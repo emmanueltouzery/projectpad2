@@ -93,7 +93,7 @@ impl ProjectpadApplication {
         // glib::ExitCode::SUCCESS // TODO
     }
 
-    fn get_sql_channel(&self) -> mpsc::Sender<SqlFunc> {
+    pub fn get_sql_channel(&self) -> mpsc::Sender<SqlFunc> {
         self.imp().sql_channel.borrow().clone().unwrap()
     }
 

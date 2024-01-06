@@ -270,12 +270,7 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
 
     vbox.append(&server_item0);
 
-    for server_item in channel_data.server_items.iter() {
-        match server_item {
-            ServerItem::Website(w) => display_server_website(w, WidgetMode::Edit, &vbox),
-            _ => {}
-        }
-    }
+    add_server_items(&channel_data, WidgetMode::Edit, &vbox);
 
     // lb.set_property("halign", gtk::Align::Fill);
     // parent.set_property("halign", gtk::Align::Fill);
@@ -363,12 +358,7 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
 
     vbox.append(&server_item0);
 
-    for server_item in channel_data.server_items.iter() {
-        match server_item {
-            ServerItem::Website(w) => display_server_website(w, WidgetMode::Show, &vbox),
-            _ => {}
-        }
-    }
+    add_server_items(&channel_data, WidgetMode::Show, &vbox);
 
     // lb.set_property("halign", gtk::Align::Fill);
     // parent.set_property("halign", gtk::Align::Fill);
@@ -467,6 +457,15 @@ impl DetailsRow<'_> {
                 }
                 e.upcast::<gtk::Widget>()
             }
+        }
+    }
+}
+
+fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &gtk::Box) {
+    for server_item in channel_data.server_items.iter() {
+        match server_item {
+            ServerItem::Website(w) => display_server_website(w, widget_mode, &vbox),
+            _ => {}
         }
     }
 }

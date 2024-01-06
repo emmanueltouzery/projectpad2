@@ -412,30 +412,32 @@ impl DetailsRow<'_> {
         }
     }
 
-    fn build(&self, widget_mode: WidgetMode) -> gtk::Widget {
+    fn add(&self, widget_mode: WidgetMode, group: &adw::PreferencesGroup) {
         match widget_mode {
-            WidgetMode::Show => self.build_show(),
-            WidgetMode::Edit => self.build_edit(),
+            WidgetMode::Show => self.add_show(group),
+            WidgetMode::Edit => self.add_edit(group),
         }
     }
 
-    fn build_show(&self) -> gtk::Widget {
-        let subtitle = if self.password_mode == PasswordMode::PlainText {
-            self.subtitle
-        } else {
-            "●●●●"
-        };
-        let e = adw::ActionRow::builder()
-            .title(self.title)
-            .subtitle(subtitle)
-            .build();
-        if let Some(i) = self.suffix_icon {
-            e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+    fn add_show(&self, group: &adw::PreferencesGroup) {
+        if !self.subtitle.is_empty() {
+            let subtitle = if self.password_mode == PasswordMode::PlainText {
+                self.subtitle
+            } else {
+                "●●●●"
+            };
+            let e = adw::ActionRow::builder()
+                .title(self.title)
+                .subtitle(subtitle)
+                .build();
+            if let Some(i) = self.suffix_icon {
+                e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+            }
+            group.add(&e);
         }
-        e.upcast::<gtk::Widget>()
     }
 
-    fn build_edit(&self) -> gtk::Widget {
+    fn add_edit(&self, group: &adw::PreferencesGroup) {
         match self.password_mode {
             PasswordMode::PlainText => {
                 let e = adw::EntryRow::builder()
@@ -445,7 +447,7 @@ impl DetailsRow<'_> {
                 if let Some(i) = self.suffix_icon {
                     e.add_suffix(&gtk::Image::builder().icon_name(i).build());
                 }
-                e.upcast::<gtk::Widget>()
+                group.add(&e);
             }
             PasswordMode::Password => {
                 let e = adw::PasswordEntryRow::builder()
@@ -455,12 +457,14 @@ impl DetailsRow<'_> {
                 if let Some(i) = self.suffix_icon {
                     e.add_suffix(&gtk::Image::builder().icon_name(i).build());
                 }
-                e.upcast::<gtk::Widget>()
+                group.add(&e);
             }
         }
     }
 }
 
+// there are groups for server items... group by them
+// example: vps-test2[u20]
 fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &gtk::Box) {
     for server_item in channel_data.server_items.iter() {
         match server_item {
@@ -476,21 +480,14 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
         .title("Website")
         .description(&w.desc)
         .build();
-    let website_ar =
-        DetailsRow::new("Address", &w.url, Some("web-browser-symbolic")).build(widget_mode);
-    server_item1.add(&website_ar);
+    DetailsRow::new("Address", &w.url, Some("web-browser-symbolic"))
+        .add(widget_mode, &server_item1);
 
-    if !w.username.is_empty() {
-        let username_ar =
-            DetailsRow::new("Username", &w.username, Some("edit-copy-symbolic")).build(widget_mode);
-        server_item1.add(&username_ar);
-    }
-    if !w.password.is_empty() {
-        let password_ar =
-            DetailsRow::new_password("Password", &w.password, Some("edit-copy-symbolic"))
-                .build(widget_mode);
-        server_item1.add(&password_ar);
-    }
+    DetailsRow::new("Username", &w.username, Some("edit-copy-symbolic"))
+        .add(widget_mode, &server_item1);
+    DetailsRow::new_password("Password", &w.password, Some("edit-copy-symbolic"))
+        .add(widget_mode, &server_item1);
+
     vbox.append(&server_item1);
 }
 
@@ -499,20 +496,13 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
         .title("Point of interest")
         .description(&poi.desc)
         .build();
-    if !poi.path.is_empty() {
-        let path =
-            DetailsRow::new("Path", &poi.path, Some("edit-copy-symbolic")).build(widget_mode);
-        server_item1.add(&path);
-    }
-    if !poi.text.is_empty() {
-        let field_name = match poi.interest_type {
-            InterestType::PoiCommandToRun => "Command",
-            _ => "Text",
-        };
-        let text =
-            DetailsRow::new(field_name, &poi.text, Some("edit-copy-symbolic")).build(widget_mode);
-        server_item1.add(&text);
-    }
+    DetailsRow::new("Path", &poi.path, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);
+    let field_name = match poi.interest_type {
+        InterestType::PoiCommandToRun => "Command",
+        _ => "Text",
+    };
+    DetailsRow::new(field_name, &poi.text, Some("edit-copy-symbolic"))
+        .add(widget_mode, &server_item1);
 
     vbox.append(&server_item1);
 }

@@ -378,13 +378,27 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
 
     vbox.append(&server_item0);
 
+    for server_item in channel_data.server_items.iter() {
+        match server_item {
+            ServerItem::Website(w) => display_server_website_show(w, &vbox),
+            _ => {}
+        }
+    }
+
+    // lb.set_property("halign", gtk::Align::Fill);
+    // parent.set_property("halign", gtk::Align::Fill);
+
+    parent.set_child(Some(&vbox));
+}
+
+fn display_server_website_show(w: &ServerWebsite, vbox: &gtk::Box) {
     let server_item1 = adw::PreferencesGroup::builder()
         .title("Website")
-        .description("service1")
+        .description(&w.desc)
         .build();
     let website_ar = adw::ActionRow::builder()
         .title("Address")
-        .subtitle("https://service1.com")
+        .subtitle(&w.url)
         .build();
     website_ar.add_suffix(
         &gtk::Image::builder()
@@ -393,30 +407,29 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
     );
     server_item1.add(&website_ar);
 
-    let username_ar = adw::ActionRow::builder()
-        .title("Username")
-        .subtitle("admin")
-        .build();
-    username_ar.add_suffix(
-        &gtk::Image::builder()
-            .icon_name("edit-copy-symbolic")
-            .build(),
-    );
-    server_item1.add(&username_ar);
-    let password_ar = adw::ActionRow::builder()
-        .title("Password")
-        .subtitle("●●●●")
-        .build();
-    password_ar.add_suffix(
-        &gtk::Image::builder()
-            .icon_name("edit-copy-symbolic")
-            .build(),
-    );
-    server_item1.add(&password_ar);
+    if !w.username.is_empty() {
+        let username_ar = adw::ActionRow::builder()
+            .title("Username")
+            .subtitle(&w.username)
+            .build();
+        username_ar.add_suffix(
+            &gtk::Image::builder()
+                .icon_name("edit-copy-symbolic")
+                .build(),
+        );
+        server_item1.add(&username_ar);
+    }
+    if !w.password.is_empty() {
+        let password_ar = adw::ActionRow::builder()
+            .title("Password")
+            .subtitle("●●●●")
+            .build();
+        password_ar.add_suffix(
+            &gtk::Image::builder()
+                .icon_name("edit-copy-symbolic")
+                .build(),
+        );
+        server_item1.add(&password_ar);
+    }
     vbox.append(&server_item1);
-
-    // lb.set_property("halign", gtk::Align::Fill);
-    // parent.set_property("halign", gtk::Align::Fill);
-
-    parent.set_child(Some(&vbox));
 }

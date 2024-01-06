@@ -270,27 +270,12 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
 
     vbox.append(&server_item0);
 
-    let server_item1 = adw::PreferencesGroup::builder()
-        .title("Website")
-        .description("service1")
-        .build();
-    let website_ar = adw::EntryRow::builder()
-        .title("Address")
-        .text("https://service1.com")
-        .build();
-    server_item1.add(&website_ar);
-
-    let username_ar = adw::EntryRow::builder()
-        .title("Username")
-        .text("admin")
-        .build();
-    server_item1.add(&username_ar);
-    let password_ar = adw::PasswordEntryRow::builder()
-        .title("Password")
-        .text("pass")
-        .build();
-    server_item1.add(&password_ar);
-    vbox.append(&server_item1);
+    for server_item in channel_data.server_items.iter() {
+        match server_item {
+            ServerItem::Website(w) => display_server_website(w, WidgetMode::Edit, &vbox),
+            _ => {}
+        }
+    }
 
     // lb.set_property("halign", gtk::Align::Fill);
     // parent.set_property("halign", gtk::Align::Fill);
@@ -380,7 +365,7 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
 
     for server_item in channel_data.server_items.iter() {
         match server_item {
-            ServerItem::Website(w) => display_server_website_show(w, &vbox),
+            ServerItem::Website(w) => display_server_website(w, WidgetMode::Show, &vbox),
             _ => {}
         }
     }
@@ -391,44 +376,119 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
     parent.set_child(Some(&vbox));
 }
 
-fn display_server_website_show(w: &ServerWebsite, vbox: &gtk::Box) {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WidgetMode {
+    Show,
+    Edit,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PasswordMode {
+    PlainText,
+    Password,
+}
+
+struct DetailsRow<'a> {
+    pub title: &'a str,
+    pub subtitle: &'a str,
+    pub suffix_icon: Option<&'static str>,
+    pub password_mode: PasswordMode,
+}
+
+impl DetailsRow<'_> {
+    fn new<'a>(
+        title: &'a str,
+        subtitle: &'a str,
+        suffix_icon: Option<&'static str>,
+    ) -> DetailsRow<'a> {
+        DetailsRow {
+            title,
+            subtitle,
+            suffix_icon,
+            password_mode: PasswordMode::PlainText,
+        }
+    }
+
+    fn new_password<'a>(
+        title: &'a str,
+        subtitle: &'a str,
+        suffix_icon: Option<&'static str>,
+    ) -> DetailsRow<'a> {
+        DetailsRow {
+            title,
+            subtitle,
+            suffix_icon,
+            password_mode: PasswordMode::Password,
+        }
+    }
+
+    fn build(&self, widget_mode: WidgetMode) -> gtk::Widget {
+        match widget_mode {
+            WidgetMode::Show => self.build_show(),
+            WidgetMode::Edit => self.build_edit(),
+        }
+    }
+
+    fn build_show(&self) -> gtk::Widget {
+        let subtitle = if self.password_mode == PasswordMode::PlainText {
+            self.subtitle
+        } else {
+            "●●●●"
+        };
+        let e = adw::ActionRow::builder()
+            .title(self.title)
+            .subtitle(subtitle)
+            .build();
+        if let Some(i) = self.suffix_icon {
+            e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+        }
+        e.upcast::<gtk::Widget>()
+    }
+
+    fn build_edit(&self) -> gtk::Widget {
+        match self.password_mode {
+            PasswordMode::PlainText => {
+                let e = adw::EntryRow::builder()
+                    .title(self.title)
+                    .text(self.subtitle)
+                    .build();
+                if let Some(i) = self.suffix_icon {
+                    e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+                }
+                e.upcast::<gtk::Widget>()
+            }
+            PasswordMode::Password => {
+                let e = adw::PasswordEntryRow::builder()
+                    .title(self.title)
+                    .text(self.subtitle)
+                    .build();
+                if let Some(i) = self.suffix_icon {
+                    e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+                }
+                e.upcast::<gtk::Widget>()
+            }
+        }
+    }
+}
+
+fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk::Box) {
     let server_item1 = adw::PreferencesGroup::builder()
         .title("Website")
         .description(&w.desc)
         .build();
-    let website_ar = adw::ActionRow::builder()
-        .title("Address")
-        .subtitle(&w.url)
-        .build();
-    website_ar.add_suffix(
-        &gtk::Image::builder()
-            .icon_name("web-browser-symbolic")
-            .build(),
-    );
+    let website_ar =
+        DetailsRow::new("Address", &w.url, Some("web-browser-symbolic")).build(widget_mode);
     server_item1.add(&website_ar);
 
     if !w.username.is_empty() {
-        let username_ar = adw::ActionRow::builder()
-            .title("Username")
-            .subtitle(&w.username)
-            .build();
-        username_ar.add_suffix(
-            &gtk::Image::builder()
-                .icon_name("edit-copy-symbolic")
-                .build(),
-        );
+        let username_ar =
+            DetailsRow::new("Username", &w.username, Some("edit-copy-symbolic")).build(widget_mode);
         server_item1.add(&username_ar);
     }
     if !w.password.is_empty() {
-        let password_ar = adw::ActionRow::builder()
-            .title("Password")
-            .subtitle("●●●●")
-            .build();
-        password_ar.add_suffix(
-            &gtk::Image::builder()
-                .icon_name("edit-copy-symbolic")
-                .build(),
-        );
+        let password_ar =
+            DetailsRow::new_password("Password", &w.password, Some("edit-copy-symbolic"))
+                .build(widget_mode);
         server_item1.add(&password_ar);
     }
     vbox.append(&server_item1);

@@ -18,7 +18,7 @@ use crate::sql_thread::SqlFunc;
 
 use super::{
     project_item_list_model::ProjectItemListModel,
-    project_item_model::{Env, ProjectItemModel},
+    project_item_model::{Env, ProjectItemModel, ProjectItemType},
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -127,6 +127,7 @@ impl ProjectItemList {
         match project_item {
             ProjectItem::Server(srv) => ProjectItemModel::new(
                 srv.id,
+                ProjectItemType::Server,
                 srv.desc.clone(),
                 Self::environment_type_to_env(srv.environment),
                 srv.group_name.clone()
@@ -148,6 +149,7 @@ impl ProjectItemList {
             // },
             ProjectItem::ServerLink(link) => ProjectItemModel::new(
                 link.id,
+                ProjectItemType::ServerLink,
                 link.desc.clone(),
                 Self::environment_type_to_env(link.environment),
                 link.group_name.clone()
@@ -158,6 +160,7 @@ impl ProjectItemList {
             // },
             ProjectItem::ProjectNote(note) => ProjectItemModel::new(
                 note.id,
+                ProjectItemType::ProjectNote,
                 note.title.clone(),
                 Env::Prod, // TODO has_prod, has...
                 note.group_name.clone()
@@ -166,7 +169,8 @@ impl ProjectItemList {
             //     group_name: note.group_name.as_ref().cloned(),
             //     icon: Icon::NOTE,
             // },
-            ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(poi.id, poi.desc.clone(), Env::Prod, poi.group_name.clone()) // TODO env
+            ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(
+                poi.id, ProjectItemType::ProjectPointOfInterest, poi.desc.clone(), Env::Prod, poi.group_name.clone()) // TODO env
                 // markup: glib::markup_escape_text(&poi.desc).to_string(),
                 // group_name: poi.group_name.as_ref().cloned(),
                 // icon: match poi.interest_type {
@@ -180,17 +184,17 @@ impl ProjectItemList {
             }
     }
 
-    pub fn connect_activate<F: Fn(i32) + 'static>(&self, f: F) -> SignalHandlerId {
+    pub fn connect_activate<F: Fn(i32, ProjectItemType) + 'static>(&self, f: F) -> SignalHandlerId {
         self.imp()
             .project_item_list
             .connect_activate(move |list, idx| {
-                f(list
+                let model = list
                     .model()
                     .unwrap()
                     .upcast::<gio::ListModel>()
                     .item(idx)
-                    .unwrap()
-                    .property::<i32>("id"))
+                    .unwrap();
+                f(model.property::<i32>("id"), ProjectItemType::from_repr(model.property::<u8>("project-item-type")).unwrap());
             })
     }
 

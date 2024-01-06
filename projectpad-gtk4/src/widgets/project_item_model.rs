@@ -1,6 +1,16 @@
 use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
+use strum_macros::FromRepr;
+
+#[derive(FromRepr, Debug, PartialEq)]
+#[repr(u8)]
+pub enum ProjectItemType {
+    Server = 1,
+    ServerLink = 2,
+    ProjectNote = 3,
+    ProjectPointOfInterest = 4,
+}
 
 mod imp {
     use std::{cell::RefCell, rc::Rc};
@@ -20,6 +30,8 @@ mod imp {
         env_classes: Rc<RefCell<Vec<String>>>,
         #[property(get, set)]
         group_name: Rc<RefCell<String>>,
+        #[property(get, set)]
+        project_item_type: Rc<RefCell<u8>>,
     }
 
     #[glib::object_subclass]
@@ -68,9 +80,16 @@ fn env_to_desc(val: &Env) -> String {
 }
 
 impl ProjectItemModel {
-    pub fn new(id: i32, title: String, environment: Env, group_name: Option<String>) -> Self {
+    pub fn new(
+        id: i32,
+        project_item_type: ProjectItemType,
+        title: String,
+        environment: Env,
+        group_name: Option<String>,
+    ) -> Self {
         Object::builder()
             .property("id", id)
+            .property("project-item-type", project_item_type as u8)
             .property("title", title)
             .property("env-desc", env_to_desc(&environment))
             .property("env-classes", env_to_css(&environment))

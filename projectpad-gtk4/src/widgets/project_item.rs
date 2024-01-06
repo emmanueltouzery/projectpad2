@@ -37,6 +37,9 @@ mod imp {
 
         #[property(get, set)]
         pub item_id: Cell<i32>,
+
+        #[property(get, set)]
+        pub project_item_type: Cell<u8>,
     }
 
     #[glib::object_subclass]
@@ -64,6 +67,8 @@ mod imp {
                     // println!("edit mode changed: {}", project_item.edit_mode());
                     project_item.display_item();
                 });
+            // TODO this is crappy. the owner sets project_item_type and then item_id and we react
+            // only on the second. there must be a better way...
             let _ = self
                 .obj()
                 .connect_item_id_notify(|project_item: &super::ProjectItem| {

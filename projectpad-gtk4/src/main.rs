@@ -108,7 +108,8 @@ impl ProjectpadApplicationWindow {
     pub fn new() -> Self {
         let win = glib::Object::new::<Self>();
         win.imp().project_item_list.connect_activate(
-            glib::clone!(@weak win as w => move |project_item_id| {
+            glib::clone!(@weak win as w => move |project_item_id, project_item_type| {
+                w.imp().project_item.set_project_item_type(project_item_type as u8);
                 w.imp().project_item.set_item_id(project_item_id)
             }),
         );

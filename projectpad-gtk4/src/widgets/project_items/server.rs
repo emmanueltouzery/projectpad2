@@ -178,23 +178,18 @@ pub fn load_and_display_server(
         }))
         .unwrap();
 
+    let p = parent.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        dbg!(&channel_data);
+        if edit_mode {
+            display_server_edit(&p, channel_data);
+        } else {
+            display_server_show(&p, channel_data);
+        }
     });
-
-    display_server(parent, server_id.unwrap(), edit_mode);
 }
 
-fn display_server(parent: &adw::Bin, id: i32, edit_mode: bool) {
-    if edit_mode {
-        display_server_edit(parent);
-    } else {
-        display_server_show(parent);
-    }
-}
-
-fn display_server_edit(parent: &adw::Bin) {
+fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
@@ -299,7 +294,7 @@ fn display_server_edit(parent: &adw::Bin) {
     parent.set_child(Some(&vbox));
 }
 
-fn display_server_show(parent: &adw::Bin) {
+fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)

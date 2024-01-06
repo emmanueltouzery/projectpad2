@@ -3,8 +3,8 @@ use adw::prelude::*;
 use diesel::prelude::*;
 use itertools::Itertools;
 use projectpadsql::models::{
-    Server, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
-    ServerWebsite,
+    InterestType, Server, ServerDatabase, ServerExtraUserAccount, ServerNote,
+    ServerPointOfInterest, ServerWebsite,
 };
 use std::{
     collections::{BTreeSet, HashMap},
@@ -465,6 +465,7 @@ fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &
     for server_item in channel_data.server_items.iter() {
         match server_item {
             ServerItem::Website(w) => display_server_website(w, widget_mode, &vbox),
+            ServerItem::PointOfInterest(poi) => display_server_poi(poi, widget_mode, &vbox),
             _ => {}
         }
     }
@@ -490,5 +491,28 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
                 .build(widget_mode);
         server_item1.add(&password_ar);
     }
+    vbox.append(&server_item1);
+}
+
+fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox: &gtk::Box) {
+    let server_item1 = adw::PreferencesGroup::builder()
+        .title("Point of interest")
+        .description(&poi.desc)
+        .build();
+    if !poi.path.is_empty() {
+        let path =
+            DetailsRow::new("Path", &poi.path, Some("edit-copy-symbolic")).build(widget_mode);
+        server_item1.add(&path);
+    }
+    if !poi.text.is_empty() {
+        let field_name = match poi.interest_type {
+            InterestType::PoiCommandToRun => "Command",
+            _ => "Text",
+        };
+        let text =
+            DetailsRow::new(field_name, &poi.text, Some("edit-copy-symbolic")).build(widget_mode);
+        server_item1.add(&text);
+    }
+
     vbox.append(&server_item1);
 }

@@ -3,7 +3,8 @@ use adw::prelude::*;
 use diesel::prelude::*;
 use itertools::Itertools;
 use projectpadsql::models::{
-    ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerWebsite,
+    Server, ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest,
+    ServerWebsite,
 };
 use std::{
     collections::{BTreeSet, HashMap},
@@ -53,6 +54,7 @@ impl ServerItem {
 
 #[derive(Debug)]
 pub struct ChannelData {
+    server: Server,
     server_items: Vec<ServerItem>,
     group_start_indexes: HashMap<i32, String>,
     databases_for_websites: HashMap<i32, ServerDatabase>,
@@ -68,89 +70,96 @@ pub fn load_and_display_server(
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::server::dsl as srv;
             use projectpadsql::schema::server_database::dsl as srv_db;
             use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
             use projectpadsql::schema::server_note::dsl as srv_note;
             use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
             use projectpadsql::schema::server_website::dsl as srv_www;
-            let (items, databases_for_websites, websites_for_databases) = match server_id {
-                Some(sid) => {
-                    let server_websites = srv_www::server_website
-                        .filter(srv_www::server_id.eq(sid))
-                        .order(srv_www::desc.asc())
-                        .load::<ServerWebsite>(sql_conn)
-                        .unwrap();
+            let sid = server_id.unwrap();
+            let (server, items, databases_for_websites, websites_for_databases) = {
+                let server = srv::server
+                    .filter(srv::id.eq(sid))
+                    .first::<Server>(sql_conn)
+                    .unwrap();
 
-                    let databases_for_websites =
-                        srv_db::server_database
-                            .filter(srv_db::id.eq_any(
-                                server_websites.iter().filter_map(|w| w.server_database_id),
-                            ))
-                            .load::<ServerDatabase>(sql_conn)
-                            .unwrap()
-                            .into_iter()
-                            .map(|db| (db.id, db))
-                            .collect::<HashMap<_, _>>();
+                let server_websites = srv_www::server_website
+                    .filter(srv_www::server_id.eq(sid))
+                    .order(srv_www::desc.asc())
+                    .load::<ServerWebsite>(sql_conn)
+                    .unwrap();
 
-                    let mut servers = server_websites
-                        .into_iter()
-                        .map(ServerItem::Website)
-                        .collect::<Vec<_>>();
+                let databases_for_websites = srv_db::server_database
+                    .filter(
+                        srv_db::id
+                            .eq_any(server_websites.iter().filter_map(|w| w.server_database_id)),
+                    )
+                    .load::<ServerDatabase>(sql_conn)
+                    .unwrap()
+                    .into_iter()
+                    .map(|db| (db.id, db))
+                    .collect::<HashMap<_, _>>();
 
-                    servers.extend(
-                        srv_poi::server_point_of_interest
-                            .filter(srv_poi::server_id.eq(sid))
-                            .order(srv_poi::desc.asc())
-                            .load::<ServerPointOfInterest>(sql_conn)
-                            .unwrap()
-                            .into_iter()
-                            .map(ServerItem::PointOfInterest),
-                    );
-                    servers.extend(
-                        srv_note::server_note
-                            .filter(srv_note::server_id.eq(sid))
-                            .order(srv_note::title.asc())
-                            .load::<ServerNote>(sql_conn)
-                            .unwrap()
-                            .into_iter()
-                            .map(ServerItem::Note),
-                    );
-                    servers.extend(
-                        &mut srv_usr::server_extra_user_account
-                            .filter(srv_usr::server_id.eq(sid))
-                            .order(srv_usr::desc.asc())
-                            .load::<ServerExtraUserAccount>(sql_conn)
-                            .unwrap()
-                            .into_iter()
-                            .map(ServerItem::ExtraUserAccount),
-                    );
+                let mut servers = server_websites
+                    .into_iter()
+                    .map(ServerItem::Website)
+                    .collect::<Vec<_>>();
 
-                    let databases = srv_db::server_database
-                        .filter(srv_db::server_id.eq(sid))
-                        .order(srv_db::desc.asc())
-                        .load::<ServerDatabase>(sql_conn)
-                        .unwrap();
-
-                    let mut websites_for_databases = HashMap::new();
-                    for (key, group) in &srv_www::server_website
-                        .filter(
-                            srv_www::server_database_id.eq_any(databases.iter().map(|db| db.id)),
-                        )
-                        .order(srv_www::server_database_id.asc())
-                        .load::<ServerWebsite>(sql_conn)
+                servers.extend(
+                    srv_poi::server_point_of_interest
+                        .filter(srv_poi::server_id.eq(sid))
+                        .order(srv_poi::desc.asc())
+                        .load::<ServerPointOfInterest>(sql_conn)
                         .unwrap()
                         .into_iter()
-                        .group_by(|www| www.server_database_id.unwrap())
-                    {
-                        websites_for_databases.insert(key, group.collect());
-                    }
+                        .map(ServerItem::PointOfInterest),
+                );
+                servers.extend(
+                    srv_note::server_note
+                        .filter(srv_note::server_id.eq(sid))
+                        .order(srv_note::title.asc())
+                        .load::<ServerNote>(sql_conn)
+                        .unwrap()
+                        .into_iter()
+                        .map(ServerItem::Note),
+                );
+                servers.extend(
+                    &mut srv_usr::server_extra_user_account
+                        .filter(srv_usr::server_id.eq(sid))
+                        .order(srv_usr::desc.asc())
+                        .load::<ServerExtraUserAccount>(sql_conn)
+                        .unwrap()
+                        .into_iter()
+                        .map(ServerItem::ExtraUserAccount),
+                );
 
-                    let mut dbs = databases.into_iter().map(ServerItem::Database);
-                    servers.extend(&mut dbs);
+                let databases = srv_db::server_database
+                    .filter(srv_db::server_id.eq(sid))
+                    .order(srv_db::desc.asc())
+                    .load::<ServerDatabase>(sql_conn)
+                    .unwrap();
 
-                    (servers, databases_for_websites, websites_for_databases)
+                let mut websites_for_databases = HashMap::new();
+                for (key, group) in &srv_www::server_website
+                    .filter(srv_www::server_database_id.eq_any(databases.iter().map(|db| db.id)))
+                    .order(srv_www::server_database_id.asc())
+                    .load::<ServerWebsite>(sql_conn)
+                    .unwrap()
+                    .into_iter()
+                    .group_by(|www| www.server_database_id.unwrap())
+                {
+                    websites_for_databases.insert(key, group.collect());
                 }
-                None => (vec![], HashMap::new(), HashMap::new()),
+
+                let mut dbs = databases.into_iter().map(ServerItem::Database);
+                servers.extend(&mut dbs);
+
+                (
+                    server,
+                    servers,
+                    databases_for_websites,
+                    websites_for_databases,
+                )
             };
 
             let group_names: BTreeSet<&str> = items.iter().filter_map(|i| i.group_name()).collect();
@@ -169,6 +178,7 @@ pub fn load_and_display_server(
 
             sender
                 .send_blocking(ChannelData {
+                    server,
                     server_items: grouped_items.into_iter().cloned().collect(),
                     group_start_indexes,
                     databases_for_websites,
@@ -214,7 +224,7 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
         .build();
 
     let server = gtk::Entry::builder()
-        .text("Server")
+        .text(&channel_data.server.desc)
         .halign(gtk::Align::Start)
         .css_classes(["title-1"])
         // .description("desc")
@@ -246,14 +256,14 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
 
     let address_ar = adw::EntryRow::builder()
         .title("Address")
-        .text("hostname")
+        .text(&channel_data.server.ip)
         .build();
     server_item0.add(&address_ar);
     // server.add(&address_ar);
 
     let server_username_ar = adw::EntryRow::builder()
         .title("Username")
-        .text("root")
+        .text(&channel_data.server.username)
         .build();
     // server.add(&server_username_ar);
     server_item0.add(&server_username_ar);
@@ -319,7 +329,7 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
         .build();
 
     let server = gtk::Label::builder()
-        .label("Server")
+        .label(&channel_data.server.desc)
         .halign(gtk::Align::Start)
         .css_classes(["title-1"])
         // .description("desc")
@@ -344,7 +354,7 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
 
     let address_ar = adw::ActionRow::builder()
         .title("Address")
-        .subtitle("hostname")
+        .subtitle(&channel_data.server.ip)
         .build();
     address_ar.add_suffix(
         &gtk::Image::builder()
@@ -356,7 +366,7 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
 
     let server_username_ar = adw::ActionRow::builder()
         .title("Username")
-        .subtitle("root")
+        .subtitle(&channel_data.server.username)
         .build();
     server_username_ar.add_suffix(
         &gtk::Image::builder()

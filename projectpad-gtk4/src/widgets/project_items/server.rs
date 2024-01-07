@@ -56,7 +56,7 @@ impl ServerItem {
 pub struct ChannelData {
     server: Server,
     server_items: Vec<ServerItem>,
-    group_start_indexes: HashMap<i32, String>,
+    group_start_indices: HashMap<i32, String>,
     databases_for_websites: HashMap<i32, ServerDatabase>,
     websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
 }
@@ -163,12 +163,12 @@ pub fn load_and_display_server(
             };
 
             let group_names: BTreeSet<&str> = items.iter().filter_map(|i| i.group_name()).collect();
-            let mut group_start_indexes = HashMap::new();
+            let mut group_start_indices = HashMap::new();
 
             let mut grouped_items = vec![];
             grouped_items.extend(items.iter().filter(|i| i.group_name() == None));
             for group_name in &group_names {
-                group_start_indexes.insert(grouped_items.len() as i32, group_name.to_string());
+                group_start_indices.insert(grouped_items.len() as i32, group_name.to_string());
                 grouped_items.extend(
                     items
                         .iter()
@@ -180,7 +180,7 @@ pub fn load_and_display_server(
                 .send_blocking(ChannelData {
                     server,
                     server_items: grouped_items.into_iter().cloned().collect(),
-                    group_start_indexes,
+                    group_start_indices,
                     databases_for_websites,
                     websites_for_databases,
                 })
@@ -467,13 +467,39 @@ impl DetailsRow<'_> {
     }
 }
 
-// TODO there are groups for server items... group by them
-// example: vps-test2[u20]
 fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &gtk::Box) {
+    let mut cur_parent = vbox.clone();
+    let mut cur_group_name = None::<&str>;
     for server_item in channel_data.server_items.iter() {
+        let group_name = server_item.group_name();
+        if group_name != cur_group_name {
+            if let Some(grp) = group_name {
+                let frame = gtk::Frame::builder().build();
+                let frame_box = gtk::Box::builder()
+                    .css_classes(["card", "frame-group"])
+                    .orientation(gtk::Orientation::Vertical)
+                    .spacing(20)
+                    .build();
+                cur_parent = frame_box;
+                cur_parent.append(
+                    &gtk::Label::builder()
+                        .css_classes(["heading"])
+                        .halign(gtk::Align::Start)
+                        .label(grp)
+                        .build(),
+                );
+                cur_parent.append(&gtk::Separator::builder().build());
+                frame.set_child(Some(&cur_parent));
+                vbox.append(&frame);
+                cur_group_name = group_name;
+            }
+        }
+        if server_item.group_name().is_none() {
+            cur_parent = vbox.clone();
+        }
         match server_item {
-            ServerItem::Website(w) => display_server_website(w, widget_mode, &vbox),
-            ServerItem::PointOfInterest(poi) => display_server_poi(poi, widget_mode, &vbox),
+            ServerItem::Website(w) => display_server_website(w, widget_mode, &cur_parent),
+            ServerItem::PointOfInterest(poi) => display_server_poi(poi, widget_mode, &cur_parent),
             _ => {}
         }
     }

@@ -429,6 +429,10 @@ impl DetailsRow<'_> {
             let e = adw::ActionRow::builder()
                 .title(self.title)
                 .subtitle(subtitle)
+                // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
+                // When used together with the .property style class, AdwActionRow and
+                // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
+                .css_classes(["property"])
                 .build();
             if let Some(i) = self.suffix_icon {
                 e.add_suffix(&gtk::Image::builder().icon_name(i).build());

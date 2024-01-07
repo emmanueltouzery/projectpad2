@@ -463,7 +463,7 @@ impl DetailsRow<'_> {
     }
 }
 
-// there are groups for server items... group by them
+// TODO there are groups for server items... group by them
 // example: vps-test2[u20]
 fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &gtk::Box) {
     for server_item in channel_data.server_items.iter() {
@@ -477,8 +477,8 @@ fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &
 
 fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk::Box) {
     let server_item1 = adw::PreferencesGroup::builder()
-        .title("Website")
-        .description(&w.desc)
+        .description("Website")
+        .title(&w.desc)
         .build();
     DetailsRow::new("Address", &w.url, Some("web-browser-symbolic"))
         .add(widget_mode, &server_item1);
@@ -488,13 +488,20 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
     DetailsRow::new_password("Password", &w.password, Some("edit-copy-symbolic"))
         .add(widget_mode, &server_item1);
 
+    if widget_mode == WidgetMode::Edit {
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .build();
+        server_item1.set_header_suffix(Some(&delete_btn));
+    }
+
     vbox.append(&server_item1);
 }
 
 fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox: &gtk::Box) {
     let server_item1 = adw::PreferencesGroup::builder()
-        .title("Point of interest")
-        .description(&poi.desc)
+        .description("Point of interest")
+        .title(&poi.desc)
         .build();
     DetailsRow::new("Path", &poi.path, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);
     let field_name = match poi.interest_type {
@@ -503,6 +510,14 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
     };
     DetailsRow::new(field_name, &poi.text, Some("edit-copy-symbolic"))
         .add(widget_mode, &server_item1);
+
+    if widget_mode == WidgetMode::Edit {
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .build();
+        server_item1.set_header_suffix(Some(&delete_btn));
+        // interest type combo
+    }
 
     vbox.append(&server_item1);
 }

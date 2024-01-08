@@ -293,9 +293,16 @@ enum IncludeAddGroup {
 }
 
 fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMenu {
+    let add_poi_menu = gio::Menu::new();
+    add_poi_menu.append(Some("Application"), None);
+    add_poi_menu.append(Some("Backup/Archive"), None);
+    add_poi_menu.append(Some("Command to run"), None);
+    add_poi_menu.append(Some("Config file"), None);
+    add_poi_menu.append(Some("Log file"), None);
+
     let add_menu = gio::Menu::new();
     add_menu.append(Some("Website"), None);
-    add_menu.append(Some("Point of interest"), None);
+    add_menu.append_submenu(Some("Point of interest"), &add_poi_menu);
     if include_add_group == IncludeAddGroup::Yes {
         add_menu.append(Some("Group"), None);
     }
@@ -606,7 +613,6 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
             .icon_name("user-trash-symbolic")
             .build();
         server_item1.set_header_suffix(Some(&delete_btn));
-        // TODO interest type combo
     }
 
     vbox.append(&server_item1);

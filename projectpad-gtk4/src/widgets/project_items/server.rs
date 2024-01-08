@@ -272,16 +272,34 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
 
     add_server_items(&channel_data, WidgetMode::Edit, &vbox);
 
-    // lb.set_property("halign", gtk::Align::Fill);
-    // parent.set_property("halign", gtk::Align::Fill);
+    // let (frame, frame_box) = group_frame("", WidgetMode::Edit);
+    // finish_server_item_group(&frame_box, WidgetMode::Edit);
+    // vbox.append(&frame);
 
-    let add_btn = gtk::Button::builder()
+    let add_btn = gtk::MenuButton::builder()
         .icon_name("list-add-symbolic")
         .hexpand(true)
+        .popover(&add_server_item_popover(IncludeAddGroup::Yes))
         .build();
     vbox.append(&add_btn);
 
     parent.set_child(Some(&vbox));
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum IncludeAddGroup {
+    Yes,
+    No,
+}
+
+fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMenu {
+    let add_menu = gio::Menu::new();
+    add_menu.append(Some("Website"), None);
+    add_menu.append(Some("Point of interest"), None);
+    if include_add_group == IncludeAddGroup::Yes {
+        add_menu.append(Some("Group"), None);
+    }
+    gtk::PopoverMenu::builder().menu_model(&add_menu).build()
 }
 
 fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
@@ -478,31 +496,21 @@ impl DetailsRow<'_> {
 fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &gtk::Box) {
     let mut cur_parent = vbox.clone();
     let mut cur_group_name = None::<&str>;
+
     for server_item in channel_data.server_items.iter() {
         let group_name = server_item.group_name();
         if group_name != cur_group_name {
             if let Some(grp) = group_name {
-                let frame = gtk::Frame::builder().build();
-                let frame_box = gtk::Box::builder()
-                    .css_classes(["card", "frame-group"])
-                    .orientation(gtk::Orientation::Vertical)
-                    .spacing(20)
-                    .build();
+                let (frame, frame_box) = group_frame(grp, widget_mode);
                 cur_parent = frame_box;
-                cur_parent.append(
-                    &gtk::Label::builder()
-                        .css_classes(["heading"])
-                        .halign(gtk::Align::Start)
-                        .label(grp)
-                        .build(),
-                );
-                cur_parent.append(&gtk::Separator::builder().build());
-                frame.set_child(Some(&cur_parent));
                 vbox.append(&frame);
                 cur_group_name = group_name;
             }
         }
         if server_item.group_name().is_none() {
+            if cur_group_name.is_some() {
+                finish_server_item_group(&cur_parent, widget_mode);
+            }
             cur_parent = vbox.clone();
         }
         match server_item {
@@ -510,6 +518,49 @@ fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &
             ServerItem::PointOfInterest(poi) => display_server_poi(poi, widget_mode, &cur_parent),
             _ => {}
         }
+    }
+    if cur_group_name.is_some() {
+        finish_server_item_group(&cur_parent, widget_mode);
+    }
+}
+
+fn group_frame(group_name: &str, widget_mode: WidgetMode) -> (gtk::Frame, gtk::Box) {
+    let frame = gtk::Frame::builder().build();
+    let frame_box = gtk::Box::builder()
+        .css_classes(["card", "frame-group"])
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(20)
+        .build();
+    if widget_mode == WidgetMode::Show {
+        frame_box.append(
+            &gtk::Label::builder()
+                .css_classes(["heading"])
+                .halign(gtk::Align::Start)
+                .label(group_name)
+                .build(),
+        );
+    } else {
+        frame_box.append(
+            &gtk::Entry::builder()
+                .css_classes(["heading"])
+                .halign(gtk::Align::Start)
+                .text(group_name)
+                .build(),
+        );
+    }
+    frame_box.append(&gtk::Separator::builder().build());
+    frame.set_child(Some(&frame_box));
+    (frame, frame_box)
+}
+
+fn finish_server_item_group(cur_parent: &gtk::Box, widget_mode: WidgetMode) {
+    if widget_mode == WidgetMode::Edit {
+        cur_parent.append(
+            &gtk::MenuButton::builder()
+                .icon_name("list-add-symbolic")
+                .popover(&add_server_item_popover(IncludeAddGroup::No))
+                .build(),
+        );
     }
 }
 
@@ -548,13 +599,14 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
     };
     DetailsRow::new(field_name, &poi.text, Some("edit-copy-symbolic"))
         .add(widget_mode, &server_item1);
+    // TODO run multisite queries on prod not properly handled
 
     if widget_mode == WidgetMode::Edit {
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
             .build();
         server_item1.set_header_suffix(Some(&delete_btn));
-        // interest type combo
+        // TODO interest type combo
     }
 
     vbox.append(&server_item1);

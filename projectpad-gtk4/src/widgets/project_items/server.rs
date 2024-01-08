@@ -256,14 +256,14 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
 
     let address_ar = adw::EntryRow::builder()
         .title("Address")
-        .text(&channel_data.server.ip)
+        .text(glib::markup_escape_text(&channel_data.server.ip))
         .build();
     server_item0.add(&address_ar);
     // server.add(&address_ar);
 
     let server_username_ar = adw::EntryRow::builder()
         .title("Username")
-        .text(&channel_data.server.username)
+        .text(glib::markup_escape_text(&channel_data.server.username))
         .build();
     // server.add(&server_username_ar);
     server_item0.add(&server_username_ar);
@@ -460,8 +460,8 @@ impl DetailsRow<'_> {
                 "●●●●"
             };
             let e = adw::ActionRow::builder()
-                .title(self.title)
-                .subtitle(subtitle)
+                .title(glib::markup_escape_text(self.title))
+                .subtitle(glib::markup_escape_text(subtitle))
                 // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
                 // When used together with the .property style class, AdwActionRow and
                 // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
@@ -601,12 +601,11 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
         .build();
     DetailsRow::new("Path", &poi.path, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);
     let field_name = match poi.interest_type {
-        InterestType::PoiCommandToRun => "Command",
+        InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
         _ => "Text",
     };
     DetailsRow::new(field_name, &poi.text, Some("edit-copy-symbolic"))
         .add(widget_mode, &server_item1);
-    // TODO run multisite queries on prod not properly handled
 
     if widget_mode == WidgetMode::Edit {
         let delete_btn = gtk::Button::builder()

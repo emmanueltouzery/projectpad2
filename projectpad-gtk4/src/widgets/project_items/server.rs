@@ -335,6 +335,10 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
     let address_ar = adw::ActionRow::builder()
         .title("Address")
         .subtitle(&channel_data.server.ip)
+        // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
+        // When used together with the .property style class, AdwActionRow and
+        // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
+        .css_classes(["property"])
         .build();
     address_ar.add_suffix(
         &gtk::Image::builder()
@@ -347,6 +351,10 @@ fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
     let server_username_ar = adw::ActionRow::builder()
         .title("Username")
         .subtitle(&channel_data.server.username)
+        // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
+        // When used together with the .property style class, AdwActionRow and
+        // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
+        .css_classes(["property"])
         .build();
     server_username_ar.add_suffix(
         &gtk::Image::builder()

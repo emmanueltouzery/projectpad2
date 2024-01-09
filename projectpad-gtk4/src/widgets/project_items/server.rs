@@ -583,6 +583,7 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
         .add(widget_mode, &server_item1);
     DetailsRow::new_password("Password", &w.password, Some("edit-copy-symbolic"))
         .add(widget_mode, &server_item1);
+    DetailsRow::new("Text", &w.text, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
         let delete_btn = gtk::Button::builder()

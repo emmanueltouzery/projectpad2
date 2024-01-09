@@ -1,4 +1,4 @@
-use crate::sql_thread::SqlFunc;
+use crate::{notes, sql_thread::SqlFunc};
 use adw::prelude::*;
 use diesel::prelude::*;
 use itertools::Itertools;
@@ -523,6 +523,7 @@ fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &
         match server_item {
             ServerItem::Website(w) => display_server_website(w, widget_mode, &cur_parent),
             ServerItem::PointOfInterest(poi) => display_server_poi(poi, widget_mode, &cur_parent),
+            ServerItem::Note(n) => display_server_note(n, widget_mode, &cur_parent),
             _ => {}
         }
     }
@@ -614,6 +615,65 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
             .build();
         server_item1.set_header_suffix(Some(&delete_btn));
     }
+
+    vbox.append(&server_item1);
+}
+
+fn truncate(s: &str, max_chars: usize) -> &str {
+    match s.char_indices().nth(max_chars) {
+        None => s,
+        Some((idx, _)) => &s[..idx],
+    }
+}
+
+fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::Box) {
+    let contents_head = notes::note_markdown_to_quick_preview(&note.contents)
+        .lines()
+        .take(3)
+        .collect_vec()
+        .join("⏎");
+
+    let text_view = if widget_mode == WidgetMode::Show {
+        gtk::TextView::builder()
+            .buffer(
+                &notes::note_markdown_to_text_buffer(
+                    &note.contents,
+                    &crate::notes::build_tag_table(),
+                )
+                .buffer,
+            )
+            .editable(false)
+            .build()
+            .upcast::<gtk::Widget>()
+    } else {
+        let buf = sourceview5::Buffer::with_language(
+            &sourceview5::LanguageManager::default()
+                .language("markdown")
+                .unwrap(),
+        );
+        buf.set_text(&note.contents);
+        let view = sourceview5::View::with_buffer(&buf);
+        view.upcast::<gtk::Widget>()
+    };
+
+    let server_item1 = adw::PreferencesGroup::builder()
+        .description("Note")
+        .title(&note.title)
+        .build();
+
+    let scrolled_text_view = gtk::ScrolledWindow::builder()
+        .child(&text_view)
+        .height_request(500)
+        .build();
+
+    let row = adw::ExpanderRow::builder()
+        .title(truncate(&contents_head, 120))
+        // .css_classes(["property"])
+        .build();
+
+    row.add_row(&scrolled_text_view);
+
+    server_item1.add(&row);
 
     vbox.append(&server_item1);
 }

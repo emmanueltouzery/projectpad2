@@ -115,6 +115,7 @@
                       <object class="GtkScrolledWindow">
                         <property name="child">
                           <object class="AdwClamp">
+                            <property name="maximum-size">750</property>
                             <property name="child">
                               <object class="ProjectItem" id="project_item">
                                 <property name="halign">fill</property>

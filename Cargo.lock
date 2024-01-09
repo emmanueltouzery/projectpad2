@@ -1021,7 +1021,7 @@ dependencies = [
  "gio 0.18.4",
  "glib 0.18.4",
  "libc",
- "pango 0.18.0",
+ "pango 0.18.3",
 ]
 
 [[package]]
@@ -1284,7 +1284,7 @@ dependencies = [
  "graphene-rs",
  "gsk4-sys",
  "libc",
- "pango 0.18.0",
+ "pango 0.18.3",
 ]
 
 [[package]]
@@ -1376,7 +1376,7 @@ dependencies = [
  "gtk4-macros",
  "gtk4-sys",
  "libc",
- "pango 0.18.0",
+ "pango 0.18.3",
 ]
 
 [[package]]
@@ -1690,7 +1690,7 @@ dependencies = [
  "gtk4",
  "libadwaita-sys",
  "libc",
- "pango 0.18.0",
+ "pango 0.18.3",
 ]
 
 [[package]]
@@ -2017,9 +2017,9 @@ dependencies = [
 
 [[package]]
 name = "pango"
-version = "0.18.0"
+version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06a9e54b831d033206160096b825f2070cf5fda7e35167b1c01e9e774f9202d1"
+checksum = "7ca27ec1eb0457ab26f3036ea52229edbdb74dee1edd29063f5b9b010e7ebee4"
 dependencies = [
  "gio 0.18.4",
  "glib 0.18.4",
@@ -2286,9 +2286,12 @@ dependencies = [
  "itertools",
  "keyring",
  "libadwaita",
+ "pango 0.18.3",
  "phf",
  "projectpadsql",
+ "pulldown-cmark",
  "reqwest",
+ "sourceview5",
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "tar",
@@ -2879,6 +2882,41 @@ dependencies = [
  "libc",
  "pango-sys 0.15.10",
  "pkg-config",
+ "system-deps",
+]
+
+[[package]]
+name = "sourceview5"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88c5f976a113e947bc5ec67758b2960c0db4ca76f80fb410d7cd86cd456d9ee5"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "gdk-pixbuf 0.18.0",
+ "gdk4",
+ "gio 0.18.4",
+ "glib 0.18.4",
+ "gtk4",
+ "libc",
+ "pango 0.18.3",
+ "sourceview5-sys",
+]
+
+[[package]]
+name = "sourceview5-sys"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29637cccd56075a37ba72c0cc8b8d599dbc1d857e30dadea97eaacbc29b7fd46"
+dependencies = [
+ "gdk-pixbuf-sys 0.18.0",
+ "gdk4-sys",
+ "gio-sys 0.18.1",
+ "glib-sys 0.18.1",
+ "gobject-sys 0.18.0",
+ "gtk4-sys",
+ "libc",
+ "pango-sys 0.18.0",
  "system-deps",
 ]
 

@@ -11,6 +11,7 @@ use gtk::subclass::widget::CompositeTemplate;
 
 mod app;
 mod keyring_helpers;
+pub mod notes;
 mod sql_thread;
 
 mod imp {

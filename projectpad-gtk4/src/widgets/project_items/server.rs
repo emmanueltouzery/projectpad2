@@ -668,6 +668,13 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         .title(&note.title)
         .build();
 
+    if widget_mode == WidgetMode::Edit {
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .build();
+        server_item1.set_header_suffix(Some(&delete_btn));
+    }
+
     let scrolled_text_view = gtk::ScrolledWindow::builder()
         .child(&text_view)
         .height_request(500)

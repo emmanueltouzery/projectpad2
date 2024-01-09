@@ -651,6 +651,13 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
                 .language("markdown")
                 .unwrap(),
         );
+        // https://stackoverflow.com/a/63351603/516188
+        // TODO don't hardcode sourceview to dark mode
+        // dbg!(&sourceview5::StyleSchemeManager::default().scheme_ids());
+        buf.set_property(
+            "style-scheme",
+            sourceview5::StyleSchemeManager::default().scheme("Adwaita-dark"),
+        );
         buf.set_text(&note.contents);
         let view = sourceview5::View::with_buffer(&buf);
         view.upcast::<gtk::Widget>()

@@ -420,9 +420,9 @@ impl DetailsRow<'_> {
                     .title(self.title)
                     .text(self.subtitle)
                     .build();
-                if let Some(i) = self.suffix_icon {
-                    e.add_suffix(&gtk::Image::builder().icon_name(i).build());
-                }
+                // if let Some(i) = self.suffix_icon {
+                //     e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+                // }
                 group.add(&e);
             }
             PasswordMode::Password => {
@@ -430,9 +430,9 @@ impl DetailsRow<'_> {
                     .title(self.title)
                     .text(self.subtitle)
                     .build();
-                if let Some(i) = self.suffix_icon {
-                    e.add_suffix(&gtk::Image::builder().icon_name(i).build());
-                }
+                // if let Some(i) = self.suffix_icon {
+                //     e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+                // }
                 group.add(&e);
             }
         }

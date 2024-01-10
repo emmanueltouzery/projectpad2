@@ -191,15 +191,11 @@ pub fn load_and_display_server(
     let p = parent.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        if edit_mode {
-            display_server_edit(&p, channel_data);
-        } else {
-            display_server_show(&p, channel_data);
-        }
+        display_server(&p, channel_data, edit_mode);
     });
 }
 
-fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
+fn display_server(parent: &adw::Bin, channel_data: ChannelData, edit_mode: bool) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
@@ -233,16 +229,18 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
 
     header_box.append(&header_second_col);
 
-    let delete_btn = gtk::Button::builder()
-        .icon_name("user-trash-symbolic")
-        .halign(gtk::Align::End)
-        .hexpand(true)
-        .build();
-    header_box.append(&delete_btn);
+    if edit_mode {
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .halign(gtk::Align::End)
+            .hexpand(true)
+            .build();
+        header_box.append(&delete_btn);
+    }
 
     vbox.append(&header_box);
 
-    // let server_ar = adw::EntryRow::builder().title("Server name").build();
+    // let server_ar = adw::ActionRow::builder().title("Server name").build();
     // server_ar.add_suffix(
     //     &gtk::Button::builder()
     //         .icon_name("open-menu-symbolic")
@@ -254,35 +252,55 @@ fn display_server_edit(parent: &adw::Bin, channel_data: ChannelData) {
 
     let server_item0 = adw::PreferencesGroup::builder().build();
 
-    let address_ar = adw::EntryRow::builder()
-        .title("Address")
-        .text(glib::markup_escape_text(&channel_data.server.ip))
-        .build();
-    server_item0.add(&address_ar);
-    // server.add(&address_ar);
+    let widget_mode = if edit_mode {
+        WidgetMode::Edit
+    } else {
+        WidgetMode::Show
+    };
 
-    let server_username_ar = adw::EntryRow::builder()
-        .title("Username")
-        .text(glib::markup_escape_text(&channel_data.server.username))
-        .build();
-    // server.add(&server_username_ar);
-    server_item0.add(&server_username_ar);
+    DetailsRow::new(
+        "Address",
+        &channel_data.server.ip,
+        Some("edit-copy-symbolic"),
+    )
+    .add(widget_mode, &server_item0);
+
+    DetailsRow::new(
+        "Username",
+        &channel_data.server.username,
+        Some("edit-copy-symbolic"),
+    )
+    .add(widget_mode, &server_item0);
+
+    DetailsRow::new_password(
+        "Password",
+        &channel_data.server.password,
+        Some("edit-copy-symbolic"),
+    )
+    .add(widget_mode, &server_item0);
+    DetailsRow::new(
+        "Text",
+        &channel_data.server.text,
+        Some("edit-copy-symbolic"),
+    )
+    .add(widget_mode, &server_item0);
 
     vbox.append(&server_item0);
 
-    add_server_items(&channel_data, WidgetMode::Edit, &vbox);
+    add_server_items(&channel_data, widget_mode, &vbox);
 
-    // let (frame, frame_box) = group_frame("", WidgetMode::Edit);
-    // finish_server_item_group(&frame_box, WidgetMode::Edit);
-    // vbox.append(&frame);
+    if widget_mode == WidgetMode::Edit {
+        // let (frame, frame_box) = group_frame("", WidgetMode::Edit);
+        // finish_server_item_group(&frame_box, WidgetMode::Edit);
+        // vbox.append(&frame);
 
-    let add_btn = gtk::MenuButton::builder()
-        .icon_name("list-add-symbolic")
-        .hexpand(true)
-        .popover(&add_server_item_popover(IncludeAddGroup::Yes))
-        .build();
-    vbox.append(&add_btn);
-
+        let add_btn = gtk::MenuButton::builder()
+            .icon_name("list-add-symbolic")
+            .hexpand(true)
+            .popover(&add_server_item_popover(IncludeAddGroup::Yes))
+            .build();
+        vbox.append(&add_btn);
+    }
     parent.set_child(Some(&vbox));
 }
 
@@ -307,96 +325,6 @@ fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMe
         add_menu.append(Some("Group"), None);
     }
     gtk::PopoverMenu::builder().menu_model(&add_menu).build()
-}
-
-fn display_server_show(parent: &adw::Bin, channel_data: ChannelData) {
-    let vbox = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .spacing(20)
-        .margin_start(10)
-        .margin_end(10)
-        .margin_bottom(10)
-        .margin_top(10)
-        .build();
-
-    let header_box = gtk::Box::builder().spacing(10).build();
-
-    let server_icon = gtk::Image::builder()
-        .icon_name("server")
-        .pixel_size(48)
-        .build();
-    header_box.append(&server_icon);
-
-    let header_second_col = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .spacing(20)
-        .valign(gtk::Align::Center)
-        .build();
-
-    let server = gtk::Label::builder()
-        .label(&channel_data.server.desc)
-        .halign(gtk::Align::Start)
-        .css_classes(["title-1"])
-        // .description("desc")
-        .build();
-    header_second_col.append(&server);
-
-    header_box.append(&header_second_col);
-
-    vbox.append(&header_box);
-
-    // let server_ar = adw::ActionRow::builder().title("Server name").build();
-    // server_ar.add_suffix(
-    //     &gtk::Button::builder()
-    //         .icon_name("open-menu-symbolic")
-    //         .has_frame(false)
-    //         .valign(gtk::Align::Center)
-    //         .build(),
-    // );
-    // server.add(&server_ar);
-
-    let server_item0 = adw::PreferencesGroup::builder().build();
-
-    let address_ar = adw::ActionRow::builder()
-        .title("Address")
-        .subtitle(&channel_data.server.ip)
-        // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
-        // When used together with the .property style class, AdwActionRow and
-        // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
-        .css_classes(["property"])
-        .build();
-    address_ar.add_suffix(
-        &gtk::Image::builder()
-            .icon_name("edit-copy-symbolic")
-            .build(),
-    );
-    server_item0.add(&address_ar);
-    // server.add(&address_ar);
-
-    let server_username_ar = adw::ActionRow::builder()
-        .title("Username")
-        .subtitle(&channel_data.server.username)
-        // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
-        // When used together with the .property style class, AdwActionRow and
-        // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
-        .css_classes(["property"])
-        .build();
-    server_username_ar.add_suffix(
-        &gtk::Image::builder()
-            .icon_name("edit-copy-symbolic")
-            .build(),
-    );
-    // server.add(&server_username_ar);
-    server_item0.add(&server_username_ar);
-
-    vbox.append(&server_item0);
-
-    add_server_items(&channel_data, WidgetMode::Show, &vbox);
-
-    // lb.set_property("halign", gtk::Align::Fill);
-    // parent.set_property("halign", gtk::Align::Fill);
-
-    parent.set_child(Some(&vbox));
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

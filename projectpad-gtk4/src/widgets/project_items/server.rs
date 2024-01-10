@@ -219,13 +219,23 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, edit_mode: bool)
         .valign(gtk::Align::Center)
         .build();
 
-    let server = gtk::Entry::builder()
-        .text(&channel_data.server.desc)
-        .halign(gtk::Align::Start)
-        .css_classes(["title-1"])
-        // .description("desc")
-        .build();
-    header_second_col.append(&server);
+    if edit_mode {
+        let server = gtk::Entry::builder()
+            .text(&channel_data.server.desc)
+            .halign(gtk::Align::Start)
+            .css_classes(["title-1"])
+            // .description("desc")
+            .build();
+        header_second_col.append(&server);
+    } else {
+        let server = gtk::Label::builder()
+            .label(&channel_data.server.desc)
+            .halign(gtk::Align::Start)
+            .css_classes(["title-1"])
+            // .description("desc")
+            .build();
+        header_second_col.append(&server);
+    }
 
     header_box.append(&header_second_col);
 

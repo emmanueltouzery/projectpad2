@@ -321,6 +321,7 @@ fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMe
     let add_menu = gio::Menu::new();
     add_menu.append(Some("Website"), None);
     add_menu.append_submenu(Some("Point of interest"), &add_poi_menu);
+    add_menu.append(Some("Note"), None);
     if include_add_group == IncludeAddGroup::Yes {
         add_menu.append(Some("Group"), None);
     }
@@ -500,6 +501,21 @@ fn finish_server_item_group(cur_parent: &gtk::Box, widget_mode: WidgetMode) {
     }
 }
 
+fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, title: &str) {
+    let delete_btn = gtk::Button::builder()
+        .icon_name("user-trash-symbolic")
+        .build();
+    let edit_desc_entry = gtk::Entry::builder()
+        .text(title)
+        .valign(gtk::Align::Center)
+        .build();
+
+    let suffix_box = gtk::Box::builder().spacing(15).build();
+    suffix_box.append(&edit_desc_entry);
+    suffix_box.append(&delete_btn);
+    server_item1.set_header_suffix(Some(&suffix_box));
+}
+
 fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk::Box) {
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Website")
@@ -515,10 +531,7 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
     DetailsRow::new("Text", &w.text, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .build();
-        server_item1.set_header_suffix(Some(&delete_btn));
+        add_group_edit_suffix(&server_item1, &w.desc);
     }
 
     vbox.append(&server_item1);
@@ -538,10 +551,7 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
         .add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .build();
-        server_item1.set_header_suffix(Some(&delete_btn));
+        add_group_edit_suffix(&server_item1, &poi.desc);
     }
 
     vbox.append(&server_item1);
@@ -597,10 +607,7 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         .build();
 
     if widget_mode == WidgetMode::Edit {
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .build();
-        server_item1.set_header_suffix(Some(&delete_btn));
+        add_group_edit_suffix(&server_item1, &note.title);
     }
 
     let scrolled_text_view = gtk::ScrolledWindow::builder()

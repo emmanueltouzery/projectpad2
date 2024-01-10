@@ -548,8 +548,16 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
 }
 
 fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox: &gtk::Box) {
+    let desc = match poi.interest_type {
+        InterestType::PoiLogFile => "Log file",
+        InterestType::PoiConfigFile => "Config file",
+        InterestType::PoiApplication => "Application",
+        InterestType::PoiCommandToRun => "Command to run",
+        InterestType::PoiBackupArchive => "Backup/Archive",
+        InterestType::PoiCommandTerminal => "Command to run",
+    };
     let server_item1 = adw::PreferencesGroup::builder()
-        .description("Point of interest")
+        .description(desc)
         .title(&poi.desc)
         .build();
     DetailsRow::new("Path", &poi.path, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);

@@ -11,6 +11,8 @@ use std::{
     sync::mpsc,
 };
 
+use super::note;
+
 #[derive(Clone, Debug)]
 pub enum ServerItem {
     Website(ServerWebsite),
@@ -616,7 +618,13 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         );
         buf.set_text(&note.contents);
         let view = sourceview5::View::with_buffer(&buf);
-        view.upcast::<gtk::Widget>()
+        view.set_vexpand(true);
+        let text_box = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        text_box.append(&note::get_note_toolbar());
+        text_box.append(&view);
+        text_box.upcast::<gtk::Widget>()
     };
 
     let server_item1 = adw::PreferencesGroup::builder()

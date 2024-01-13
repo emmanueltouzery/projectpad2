@@ -85,6 +85,12 @@ glib::wrapper! {
         @extends gtk::Widget, adw::Bin;
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum WidgetMode {
+    Show,
+    Edit,
+}
+
 impl ProjectItem {
     fn display_item(&self) {
         println!("projectitem::display_item_id({})", self.imp().item_id.get());
@@ -92,15 +98,29 @@ impl ProjectItem {
         // TODO receive the item type besides the item_id and switch on item type here
         // also possibly receive the ProjectItem, telling me much more than the id
         let db_sender = app.unwrap().get_sql_channel();
-        let server_id = Some(self.imp().item_id.get());
+        let item_id = Some(self.imp().item_id.get());
         let item_type = ProjectItemType::from_repr(self.imp().project_item_type.get());
+        let widget_mode = if self.edit_mode() {
+            WidgetMode::Edit
+        } else {
+            WidgetMode::Show
+        };
+
         match item_type {
             Some(ProjectItemType::Server) => super::project_items::server::load_and_display_server(
                 &self.imp().project_item,
                 db_sender,
-                server_id,
-                self.edit_mode(),
+                item_id,
+                widget_mode,
             ),
+            Some(ProjectItemType::ProjectNote) => {
+                super::project_items::note::load_and_display_note(
+                    &self.imp().project_item,
+                    db_sender,
+                    item_id,
+                    widget_mode,
+                )
+            }
             _ => {
                 eprintln!("unhandled item type!");
             }

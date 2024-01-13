@@ -1,4 +1,4 @@
-use crate::{notes, sql_thread::SqlFunc};
+use crate::{notes, sql_thread::SqlFunc, widgets::project_item::WidgetMode};
 use adw::prelude::*;
 use diesel::prelude::*;
 use itertools::Itertools;
@@ -11,7 +11,7 @@ use std::{
     sync::mpsc,
 };
 
-use super::note;
+use super::{common, note};
 
 #[derive(Clone, Debug)]
 pub enum ServerItem {
@@ -67,7 +67,7 @@ pub fn load_and_display_server(
     parent: &adw::Bin,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: Option<i32>,
-    edit_mode: bool, // TODO bools are crappy as parameters
+    widget_mode: WidgetMode,
 ) {
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
@@ -193,64 +193,12 @@ pub fn load_and_display_server(
     let p = parent.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        display_server(&p, channel_data, edit_mode);
+        display_server(&p, channel_data, widget_mode);
     });
 }
 
-fn display_server(parent: &adw::Bin, channel_data: ChannelData, edit_mode: bool) {
-    let vbox = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .spacing(20)
-        .margin_start(10)
-        .margin_end(10)
-        .margin_bottom(10)
-        .margin_top(10)
-        .build();
-
-    let header_box = gtk::Box::builder().spacing(10).build();
-
-    let server_icon = gtk::Image::builder()
-        .icon_name("server")
-        .pixel_size(48)
-        .build();
-    header_box.append(&server_icon);
-
-    let header_second_col = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .spacing(20)
-        .valign(gtk::Align::Center)
-        .build();
-
-    if edit_mode {
-        let server = gtk::Entry::builder()
-            .text(&channel_data.server.desc)
-            .halign(gtk::Align::Start)
-            .css_classes(["title-1"])
-            // .description("desc")
-            .build();
-        header_second_col.append(&server);
-    } else {
-        let server = gtk::Label::builder()
-            .label(&channel_data.server.desc)
-            .halign(gtk::Align::Start)
-            .css_classes(["title-1"])
-            // .description("desc")
-            .build();
-        header_second_col.append(&server);
-    }
-
-    header_box.append(&header_second_col);
-
-    if edit_mode {
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .halign(gtk::Align::End)
-            .hexpand(true)
-            .build();
-        header_box.append(&delete_btn);
-    }
-
-    vbox.append(&header_box);
+fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: WidgetMode) {
+    let vbox = common::get_contents_box_with_header(&channel_data.server.desc, widget_mode);
 
     // let server_ar = adw::ActionRow::builder().title("Server name").build();
     // server_ar.add_suffix(
@@ -263,12 +211,6 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, edit_mode: bool)
     // server.add(&server_ar);
 
     let server_item0 = adw::PreferencesGroup::builder().build();
-
-    let widget_mode = if edit_mode {
-        WidgetMode::Edit
-    } else {
-        WidgetMode::Show
-    };
 
     DetailsRow::new(
         "Address",
@@ -338,12 +280,6 @@ fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMe
         add_menu.append(Some("Group"), None);
     }
     gtk::PopoverMenu::builder().menu_model(&add_menu).build()
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum WidgetMode {
-    Show,
-    Edit,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -591,41 +527,7 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         .collect_vec()
         .join("⏎");
 
-    let text_view = if widget_mode == WidgetMode::Show {
-        gtk::TextView::builder()
-            .buffer(
-                &notes::note_markdown_to_text_buffer(
-                    &note.contents,
-                    &crate::notes::build_tag_table(),
-                )
-                .buffer,
-            )
-            .editable(false)
-            .build()
-            .upcast::<gtk::Widget>()
-    } else {
-        let buf = sourceview5::Buffer::with_language(
-            &sourceview5::LanguageManager::default()
-                .language("markdown")
-                .unwrap(),
-        );
-        // https://stackoverflow.com/a/63351603/516188
-        // TODO don't hardcode sourceview to dark mode
-        // dbg!(&sourceview5::StyleSchemeManager::default().scheme_ids());
-        buf.set_property(
-            "style-scheme",
-            sourceview5::StyleSchemeManager::default().scheme("Adwaita-dark"),
-        );
-        buf.set_text(&note.contents);
-        let view = sourceview5::View::with_buffer(&buf);
-        view.set_vexpand(true);
-        let text_box = gtk::Box::builder()
-            .orientation(gtk::Orientation::Vertical)
-            .build();
-        text_box.append(&note::get_note_toolbar());
-        text_box.append(&view);
-        text_box.upcast::<gtk::Widget>()
-    };
+    let text_view = note::get_note_contents_widget(&note.contents, widget_mode);
 
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Note")

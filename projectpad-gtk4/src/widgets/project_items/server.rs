@@ -527,7 +527,8 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         .collect_vec()
         .join("⏎");
 
-    let text_view = note::get_note_contents_widget(&note.contents, widget_mode);
+    let (note_view, note_view_scrolled_window) =
+        note::get_note_contents_widget(&note.contents, widget_mode);
 
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Note")
@@ -538,17 +539,14 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         add_group_edit_suffix(&server_item1, &note.title);
     }
 
-    let scrolled_text_view = gtk::ScrolledWindow::builder()
-        .child(&text_view)
-        .height_request(500)
-        .build();
+    note_view_scrolled_window.set_height_request(500);
 
     let row = adw::ExpanderRow::builder()
         .title(truncate(&contents_head, 120))
         // .css_classes(["property"])
         .build();
 
-    row.add_row(&scrolled_text_view);
+    row.add_row(&note_view);
 
     server_item1.add(&row);
 

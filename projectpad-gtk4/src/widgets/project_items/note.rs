@@ -53,18 +53,16 @@ fn display_note(parent: &adw::Bin, note: ProjectNote, widget_mode: WidgetMode) {
     let vbox = common::get_contents_box_with_header(&note.title, widget_mode);
     parent.set_child(Some(&vbox));
 
-    let text_view = get_note_contents_widget(&note.contents, widget_mode);
-    let scrolled_text_view = gtk::ScrolledWindow::builder()
-        .child(&text_view)
-        .vexpand(true)
-        .hexpand(true)
-        .build();
+    let (note_view, _scrolled_window) = get_note_contents_widget(&note.contents, widget_mode);
 
-    vbox.append(&scrolled_text_view);
+    vbox.append(&note_view);
 }
 
-pub fn get_note_contents_widget(contents: &str, widget_mode: WidgetMode) -> gtk::Widget {
-    if widget_mode == WidgetMode::Show {
+pub fn get_note_contents_widget(
+    contents: &str,
+    widget_mode: WidgetMode,
+) -> (gtk::Widget, gtk::ScrolledWindow) {
+    let text_view = if widget_mode == WidgetMode::Show {
         gtk::TextView::builder()
             .buffer(
                 &notes::note_markdown_to_text_buffer(contents, &crate::notes::build_tag_table())
@@ -89,11 +87,24 @@ pub fn get_note_contents_widget(contents: &str, widget_mode: WidgetMode) -> gtk:
         buf.set_text(contents);
         let view = sourceview5::View::with_buffer(&buf);
         view.set_vexpand(true);
-        let text_box = gtk::Box::builder()
+        view.upcast::<gtk::Widget>()
+    };
+
+    let scrolled_text_view = gtk::ScrolledWindow::builder()
+        .child(&text_view)
+        .vexpand(true)
+        .hexpand(true)
+        .build();
+
+    let widget = if widget_mode == WidgetMode::Show {
+        scrolled_text_view.clone().upcast::<gtk::Widget>()
+    } else {
+        let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
-        text_box.append(&get_note_toolbar());
-        text_box.append(&view);
-        text_box.upcast::<gtk::Widget>()
-    }
+        vbox.append(&get_note_toolbar());
+        vbox.append(&scrolled_text_view);
+        vbox.upcast::<gtk::Widget>()
+    };
+    (widget, scrolled_text_view)
 }

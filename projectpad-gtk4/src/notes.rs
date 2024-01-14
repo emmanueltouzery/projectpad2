@@ -134,7 +134,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .name(TAG_LINK)
             .underline(pango::Underline::Single)
             .wrap_mode(gtk::WrapMode::Word)
-            .foreground("blue")
+            .foreground("#62a0ea")
             .build(),
     );
     tag_table.add(

@@ -1,14 +1,13 @@
-use std::collections::HashMap;
-
+use adw::prelude::*;
 use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
-use projectpadsql::models::{
-    ServerDatabase, ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerWebsite,
-};
 
-use crate::{app::ProjectpadApplication, widgets::project_item_model::ProjectItemType};
+use crate::{
+    app::ProjectpadApplication,
+    widgets::{project_item_model::ProjectItemType, project_items::note},
+};
 
 mod imp {
     use std::cell::Cell;
@@ -62,6 +61,7 @@ mod imp {
                 .obj()
                 .connect_edit_mode_notify(|project_item: &super::ProjectItem| {
                     // println!("edit mode changed: {}", project_item.edit_mode());
+                    // TODO maybe don't reload widgets completely when toggling edit mode?
                     project_item.display_item();
                 });
             // TODO this is crappy. the owner sets project_item_type and then item_id and we react
@@ -91,6 +91,15 @@ pub enum WidgetMode {
     Edit,
 }
 
+impl WidgetMode {
+    pub fn get_edit_mode(&self) -> bool {
+        match &self {
+            WidgetMode::Show => false,
+            _ => true,
+        }
+    }
+}
+
 impl ProjectItem {
     fn display_item(&self) {
         println!("projectitem::display_item_id({})", self.imp().item_id.get());
@@ -114,12 +123,19 @@ impl ProjectItem {
                 widget_mode,
             ),
             Some(ProjectItemType::ProjectNote) => {
-                super::project_items::note::load_and_display_note(
-                    &self.imp().project_item,
-                    db_sender,
-                    item_id,
-                    widget_mode,
-                )
+                let note = note::Note::new();
+                // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
+                // it feels even worse (would like not to rebuild the widget every time...)
+                note.set_project_note_id(&item_id.unwrap());
+                note.set_edit_mode(self.edit_mode());
+                self.imp().project_item.set_child(Some(
+                    // &note::Note::new().set_note_id(&glib::Value::from(item_id)),
+                    &note,
+                ));
+                //     db_sender,
+                //     item_id,
+                //     widget_mode,
+                // )
             }
             _ => {
                 eprintln!("unhandled item type!");

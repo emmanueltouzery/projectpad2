@@ -527,8 +527,15 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         .collect_vec()
         .join("⏎");
 
-    let (note_view, note_view_scrolled_window) =
-        note::get_note_contents_widget(&note.contents, widget_mode);
+    // let (note_view, note_view_scrolled_window) =
+    //     note::get_note_contents_widget(&note.contents, widget_mode);
+
+    let note_view = note::Note::new();
+    // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
+    // it feels even worse (would like not to rebuild the widget every time...)
+    dbg!(note.id);
+    note_view.set_server_note_id(note.id);
+    note_view.set_edit_mode(widget_mode.get_edit_mode());
 
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Note")
@@ -539,7 +546,7 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         add_group_edit_suffix(&server_item1, &note.title);
     }
 
-    note_view_scrolled_window.set_height_request(500);
+    note_view.set_height_request(500);
 
     let row = adw::ExpanderRow::builder()
         .title(truncate(&contents_head, 120))

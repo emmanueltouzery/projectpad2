@@ -4,8 +4,8 @@ use std::sync::mpsc;
 use adw::prelude::*;
 use glib::prelude::*;
 use glib::*;
-use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
+use gtk::{gdk, subclass::prelude::*};
 use projectpadsql::models::{ProjectNote, ServerNote};
 
 use crate::{
@@ -17,6 +17,7 @@ use super::common;
 struct NoteInfo<'a> {
     title: &'a str,
     contents: &'a str,
+    display_header: bool,
 }
 
 mod imp {
@@ -148,6 +149,7 @@ impl Note {
             p.display_note_contents(NoteInfo {
                 title: &channel_data.title,
                 contents: &channel_data.contents,
+                display_header: true,
             });
         });
     }
@@ -171,6 +173,7 @@ impl Note {
             p.display_note_contents(NoteInfo {
                 title: &channel_data.title,
                 contents: &channel_data.contents,
+                display_header: false,
             });
         });
     }
@@ -186,7 +189,11 @@ impl Note {
         } else {
             WidgetMode::Show
         };
-        let vbox = common::get_contents_box_with_header(&note.title, widget_mode);
+        let vbox = if note.display_header {
+            common::get_contents_box_with_header(&note.title, widget_mode)
+        } else {
+            gtk::Box::builder().build()
+        };
         self.set_child(Some(&vbox));
 
         let (note_view, _scrolled_window) =
@@ -271,19 +278,96 @@ impl Note {
                             None::<&gio::Cancellable>,
                             |_| {},
                         );
-                        // } else if let Some(pass) = self
-                        //     .model
-                        //     .note_passwords
-                        //     .iter()
-                        //     .find(|l| l.start_offset <= offset && l.end_offset > offset)
-                        // {
-                        //     let p = pass.data.clone();
-                        //     self.password_popover(&p);
+                    } else if let Some(pass) = s
+                        .imp()
+                        .note_passwords
+                        .borrow()
+                        .iter()
+                        .find(|l| l.start_offset <= offset && l.end_offset > offset)
+                    {
+                        let p = pass.data.clone();
+                        s.password_popover(&p);
                     }
                 }
             }
         });
         text_view.add_controller(gesture_ctrl);
+    }
+
+    fn password_popover(&self, password: &str) {
+        // // i'd initialize the popover in the init & reuse it,
+        // // but i can't get the toplevel there, probably things
+        // // are not fully initialized yet.
+        // let popover = gtk::Popover::new(Some(
+        //     &self
+        //         .widgets
+        //         .contents_stack
+        //         .toplevel()
+        //         .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
+        //         .unwrap()
+        //         .child()
+        //         .unwrap(),
+        // ));
+        // popover.set_position(gtk::PositionType::Bottom);
+        // self.model.pass_popover = Some(popover.clone());
+        // let display = gdk::Display::default().unwrap();
+        // let seat = display.default_seat().unwrap();
+        // let mouse_device = seat.pointer().unwrap();
+        // let window = self
+        //     .widgets
+        //     .contents_stack
+        //     .toplevel()
+        //     .unwrap()
+        //     .window()
+        //     .unwrap();
+        // let (_, dev_x, dev_y, _) = window.device_position(&mouse_device);
+        // popover.set_pointing_to(Some(&gdk::Rectangle::new(
+        //     dev_x - 40,
+        //     dev_y - self.model.headerbar_height.unwrap_or(0),
+        //     50,
+        //     15,
+        // )));
+        // let popover_vbox = gtk::builders::BoxBuilder::new()
+        //     .margin(10)
+        //     .orientation(gtk::Orientation::Vertical)
+        //     .build();
+        // let popover_copy_btn = gtk::builders::ModelButtonBuilder::new()
+        //     .label("Copy password")
+        //     .build();
+        // let textview = self.widgets.note_textview.clone();
+        // let p = password.to_string();
+        // let r = self.model.relm.clone();
+        // popover_copy_btn.connect_clicked(move |_| {
+        //     Self::copy_to_clipboard(&p);
+        // });
+        // left_align_menu(&popover_copy_btn);
+        // popover_vbox.add(&popover_copy_btn);
+        // let popover_reveal_btn = gtk::builders::ModelButtonBuilder::new()
+        //     .label("Reveal password")
+        //     .build();
+        // let p2 = password.to_string();
+        // let r2 = self.model.relm.clone();
+        // popover_reveal_btn.connect_clicked(move |_| {
+        //     r2.stream()
+        //         .emit(Msg::ShowInfoBar(format!("The password is: {}", p2.clone())));
+        // });
+        // left_align_menu(&popover_reveal_btn);
+        // popover_vbox.add(&popover_reveal_btn);
+        // popover_vbox.show_all();
+        // popover.add(&popover_vbox);
+        // popover.popup();
+
+        // // then 'reveal'
+        // // reveal presumably shows & hides a gtk infobar
+        // // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
+    }
+
+    fn copy_to_clipboard(text: &str) {
+        if let Some(display) = gdk::Display::default() {
+            display.clipboard().set_text(text);
+            // relm.stream()
+            //     .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
+        }
     }
 
     fn iter_matches_tags(iter: &gtk::TextIter, tags: &[&str]) -> bool {

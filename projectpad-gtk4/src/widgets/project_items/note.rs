@@ -2,8 +2,8 @@ use diesel::prelude::*;
 use std::sync::mpsc;
 
 use adw::prelude::*;
-use glib::prelude::*;
 use glib::*;
+use gtk::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use gtk::{gdk, subclass::prelude::*};
 use projectpadsql::models::{ProjectNote, ServerNote};
@@ -31,7 +31,10 @@ mod imp {
         },
         CompositeTemplate, TemplateChild,
     };
-    use std::cell::{Cell, RefCell};
+    use std::{
+        cell::{Cell, RefCell},
+        rc::Rc,
+    };
 
     // #[derive(Properties, Debug, Default, CompositeTemplate)]
     #[derive(Properties, Debug, Default)]
@@ -48,7 +51,7 @@ mod imp {
         pub server_note_id: Cell<i32>,
 
         pub note_links: RefCell<Vec<ItemDataInfo>>,
-        pub note_passwords: RefCell<Vec<ItemDataInfo>>,
+        pub note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
     }
 
     #[glib::object_subclass]
@@ -260,6 +263,24 @@ impl Note {
         let gesture_ctrl = gtk::GestureClick::new();
         let tv = text_view.clone();
         let s = self.clone();
+
+        let action_group = gio::SimpleActionGroup::new();
+        text_view.insert_action_group("note", Some(&action_group));
+        let copy_password_action = gio::SimpleAction::new(
+            "copy-password",
+            Some(&i32::static_variant_type()),
+            // None,
+        );
+        let sp = self.imp().note_passwords.clone();
+        copy_password_action.connect_activate(move |action, parameter| {
+            println!("{} / {:#?}", action, parameter);
+            let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
+            if let Some(p) = sp.borrow().get(password_index) {
+                Self::copy_to_clipboard(&p.data);
+            }
+        });
+        action_group.add_action(&copy_password_action);
+
         gesture_ctrl.connect_released(move |_gesture, _n, x, y| {
             let (bx, by) =
                 tv.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
@@ -278,15 +299,16 @@ impl Note {
                             None::<&gio::Cancellable>,
                             |_| {},
                         );
-                    } else if let Some(pass) = s
+                    } else if let Some((pass_idx, pass)) = s
                         .imp()
                         .note_passwords
                         .borrow()
                         .iter()
-                        .find(|l| l.start_offset <= offset && l.end_offset > offset)
+                        .enumerate()
+                        .find(|(idx, l)| l.start_offset <= offset && l.end_offset > offset)
                     {
                         let p = pass.data.clone();
-                        s.password_popover(&p);
+                        s.password_popover(&tv, pass_idx, &tv.iter_location(&iter), &p);
                     }
                 }
             }
@@ -294,22 +316,31 @@ impl Note {
         text_view.add_controller(gesture_ctrl);
     }
 
-    fn password_popover(&self, password: &str) {
-        // // i'd initialize the popover in the init & reuse it,
-        // // but i can't get the toplevel there, probably things
-        // // are not fully initialized yet.
-        // let popover = gtk::Popover::new(Some(
-        //     &self
-        //         .widgets
-        //         .contents_stack
-        //         .toplevel()
-        //         .and_then(|w| w.dynamic_cast::<gtk::Window>().ok())
-        //         .unwrap()
-        //         .child()
-        //         .unwrap(),
-        // ));
-        // popover.set_position(gtk::PositionType::Bottom);
-        // self.model.pass_popover = Some(popover.clone());
+    fn password_popover(
+        &self,
+        text_view: &gtk::TextView,
+        pass_idx: usize,
+        position: &gdk::Rectangle,
+        password: &str,
+    ) {
+        // i'd initialize the popover in the init & reuse it,
+        // but i can't get the toplevel there, probably things
+        // are not fully initialized yet.
+        let popover = gtk::PopoverMenu::builder().pointing_to(position).build();
+
+        popover.set_parent(text_view);
+        popover.set_position(gtk::PositionType::Bottom);
+
+        let menu_model = gio::Menu::new();
+        menu_model.append(
+            Some("Copy password"),
+            Some(&format!("note.copy-password({})", pass_idx)),
+        );
+        menu_model.append(
+            Some("Reveal password"),
+            Some(&format!("reveal-password({})", pass_idx)),
+        );
+        popover.set_menu_model(Some(&menu_model));
         // let display = gdk::Display::default().unwrap();
         // let seat = display.default_seat().unwrap();
         // let mouse_device = seat.pointer().unwrap();
@@ -327,39 +358,31 @@ impl Note {
         //     50,
         //     15,
         // )));
-        // let popover_vbox = gtk::builders::BoxBuilder::new()
-        //     .margin(10)
+        // let popover_vbox = gtk::Box::builder()
         //     .orientation(gtk::Orientation::Vertical)
         //     .build();
-        // let popover_copy_btn = gtk::builders::ModelButtonBuilder::new()
-        //     .label("Copy password")
-        //     .build();
-        // let textview = self.widgets.note_textview.clone();
+        // let popover_copy_btn = gtk::Button::builder().label("Copy password").build();
         // let p = password.to_string();
-        // let r = self.model.relm.clone();
         // popover_copy_btn.connect_clicked(move |_| {
         //     Self::copy_to_clipboard(&p);
         // });
-        // left_align_menu(&popover_copy_btn);
-        // popover_vbox.add(&popover_copy_btn);
-        // let popover_reveal_btn = gtk::builders::ModelButtonBuilder::new()
-        //     .label("Reveal password")
-        //     .build();
+        // // left_align_menu(&popover_copy_btn);
+        // popover_vbox.append(&popover_copy_btn);
+        // let popover_reveal_btn = gtk::Button::builder().label("Reveal password").build();
         // let p2 = password.to_string();
-        // let r2 = self.model.relm.clone();
         // popover_reveal_btn.connect_clicked(move |_| {
-        //     r2.stream()
-        //         .emit(Msg::ShowInfoBar(format!("The password is: {}", p2.clone())));
+        //     // r2.stream()
+        //     //     .emit(Msg::ShowInfoBar(format!("The password is: {}", p2.clone())));
         // });
-        // left_align_menu(&popover_reveal_btn);
-        // popover_vbox.add(&popover_reveal_btn);
-        // popover_vbox.show_all();
-        // popover.add(&popover_vbox);
-        // popover.popup();
+        // // left_align_menu(&popover_reveal_btn);
+        // popover_vbox.append(&popover_reveal_btn);
+        // // popover_vbox.show_all();
+        // popover.set_child(Some(&popover_vbox));
+        popover.popup();
 
-        // // then 'reveal'
-        // // reveal presumably shows & hides a gtk infobar
-        // // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
+        // then 'reveal'
+        // reveal presumably shows & hides a gtk infobar
+        // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
     }
 
     fn copy_to_clipboard(text: &str) {

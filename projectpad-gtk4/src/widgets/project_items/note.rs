@@ -315,16 +315,14 @@ impl Note {
                             None::<&gio::Cancellable>,
                             |_| {},
                         );
-                    } else if let Some((pass_idx, pass)) = s
+                    } else if let Some(pass_idx) = s
                         .imp()
                         .note_passwords
                         .borrow()
                         .iter()
-                        .enumerate()
-                        .find(|(idx, l)| l.start_offset <= offset && l.end_offset > offset)
+                        .position(|l| l.start_offset <= offset && l.end_offset > offset)
                     {
-                        let p = pass.data.clone();
-                        s.password_popover(&tv, pass_idx, &tv.iter_location(&iter), &p);
+                        s.password_popover(&tv, pass_idx, &tv.iter_location(&iter));
                     }
                 }
             }
@@ -337,7 +335,6 @@ impl Note {
         text_view: &gtk::TextView,
         pass_idx: usize,
         position: &gdk::Rectangle,
-        password: &str,
     ) {
         // i'd initialize the popover in the init & reuse it,
         // but i can't get the toplevel there, probably things
@@ -358,10 +355,6 @@ impl Note {
         );
         popover.set_menu_model(Some(&menu_model));
         popover.popup();
-
-        // then 'reveal'
-        // reveal presumably shows & hides a gtk infobar
-        // https://stackoverflow.com/questions/52101062/vala-hide-gtk-infobar-after-a-few-seconds
     }
 
     fn copy_to_clipboard(text: &str) {

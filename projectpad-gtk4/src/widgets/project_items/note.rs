@@ -210,6 +210,7 @@ impl Note {
         contents: &str,
         widget_mode: WidgetMode,
     ) -> (gtk::Widget, gtk::ScrolledWindow) {
+        let toast_parent = adw::ToastOverlay::new();
         let text_view = if widget_mode == WidgetMode::Show {
             let note_buffer_info =
                 notes::note_markdown_to_text_buffer(contents, &crate::notes::build_tag_table());
@@ -217,7 +218,7 @@ impl Note {
                 .buffer(&note_buffer_info.buffer)
                 .editable(false)
                 .build();
-            self.register_events(&text_view);
+            self.register_events(&text_view, &toast_parent);
             self.imp().note_links.set(note_buffer_info.links);
             self.imp().note_passwords.set(note_buffer_info.passwords);
             text_view.upcast::<gtk::Widget>()
@@ -246,40 +247,55 @@ impl Note {
             .hexpand(true)
             .build();
 
+        toast_parent.set_child(Some(&scrolled_text_view));
+
         let widget = if widget_mode == WidgetMode::Show {
-            scrolled_text_view.clone().upcast::<gtk::Widget>()
+            toast_parent.clone().upcast::<gtk::Widget>()
         } else {
             let vbox = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
             vbox.append(&Self::get_note_toolbar());
-            vbox.append(&scrolled_text_view);
+            vbox.append(&toast_parent);
             vbox.upcast::<gtk::Widget>()
         };
         (widget, scrolled_text_view)
     }
 
-    fn register_events(&self, text_view: &gtk::TextView) {
+    fn register_events(&self, text_view: &gtk::TextView, toast_parent: &adw::ToastOverlay) {
         let gesture_ctrl = gtk::GestureClick::new();
         let tv = text_view.clone();
         let s = self.clone();
 
         let action_group = gio::SimpleActionGroup::new();
         text_view.insert_action_group("note", Some(&action_group));
-        let copy_password_action = gio::SimpleAction::new(
-            "copy-password",
-            Some(&i32::static_variant_type()),
-            // None,
-        );
+
+        let copy_password_action =
+            gio::SimpleAction::new("copy-password", Some(&i32::static_variant_type()));
         let sp = self.imp().note_passwords.clone();
+        let tp = toast_parent.clone();
         copy_password_action.connect_activate(move |action, parameter| {
             println!("{} / {:#?}", action, parameter);
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
             if let Some(p) = sp.borrow().get(password_index) {
                 Self::copy_to_clipboard(&p.data);
+                tp.add_toast(adw::Toast::new("Password copied to the clipboard"));
             }
         });
         action_group.add_action(&copy_password_action);
+
+        let reveal_password_action =
+            gio::SimpleAction::new("reveal-password", Some(&i32::static_variant_type()));
+        let sp = self.imp().note_passwords.clone();
+        let tp = toast_parent.clone();
+        reveal_password_action.connect_activate(move |action, parameter| {
+            println!("{} / {:#?}", action, parameter);
+            let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
+            if let Some(p) = sp.borrow().get(password_index) {
+                tp.add_toast(adw::Toast::new(&format!("The password is: {}", p.data)));
+            }
+        });
+        action_group.add_action(&reveal_password_action);
 
         gesture_ctrl.connect_released(move |_gesture, _n, x, y| {
             let (bx, by) =
@@ -338,46 +354,9 @@ impl Note {
         );
         menu_model.append(
             Some("Reveal password"),
-            Some(&format!("reveal-password({})", pass_idx)),
+            Some(&format!("note.reveal-password({})", pass_idx)),
         );
         popover.set_menu_model(Some(&menu_model));
-        // let display = gdk::Display::default().unwrap();
-        // let seat = display.default_seat().unwrap();
-        // let mouse_device = seat.pointer().unwrap();
-        // let window = self
-        //     .widgets
-        //     .contents_stack
-        //     .toplevel()
-        //     .unwrap()
-        //     .window()
-        //     .unwrap();
-        // let (_, dev_x, dev_y, _) = window.device_position(&mouse_device);
-        // popover.set_pointing_to(Some(&gdk::Rectangle::new(
-        //     dev_x - 40,
-        //     dev_y - self.model.headerbar_height.unwrap_or(0),
-        //     50,
-        //     15,
-        // )));
-        // let popover_vbox = gtk::Box::builder()
-        //     .orientation(gtk::Orientation::Vertical)
-        //     .build();
-        // let popover_copy_btn = gtk::Button::builder().label("Copy password").build();
-        // let p = password.to_string();
-        // popover_copy_btn.connect_clicked(move |_| {
-        //     Self::copy_to_clipboard(&p);
-        // });
-        // // left_align_menu(&popover_copy_btn);
-        // popover_vbox.append(&popover_copy_btn);
-        // let popover_reveal_btn = gtk::Button::builder().label("Reveal password").build();
-        // let p2 = password.to_string();
-        // popover_reveal_btn.connect_clicked(move |_| {
-        //     // r2.stream()
-        //     //     .emit(Msg::ShowInfoBar(format!("The password is: {}", p2.clone())));
-        // });
-        // // left_align_menu(&popover_reveal_btn);
-        // popover_vbox.append(&popover_reveal_btn);
-        // // popover_vbox.show_all();
-        // popover.set_child(Some(&popover_vbox));
         popover.popup();
 
         // then 'reveal'

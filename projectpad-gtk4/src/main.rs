@@ -39,6 +39,8 @@ mod imp {
         pub edit_btn: TemplateChild<gtk::ToggleButton>,
         #[template_child]
         pub project_popover_menu: TemplateChild<gtk::PopoverMenu>,
+        #[template_child]
+        pub search_entry: TemplateChild<gtk::SearchEntry>,
     }
 
     #[glib::object_subclass]
@@ -112,6 +114,12 @@ impl ProjectpadApplicationWindow {
             glib::clone!(@weak win as w => move |project_item_id, project_item_type| {
                 w.imp().project_item.set_project_item_type(project_item_type as u8);
                 w.imp().project_item.set_item_id(project_item_id)
+            }),
+        );
+
+        win.imp().search_entry.connect_search_changed(
+            glib::clone!(@weak win as w => move |entry| {
+                dbg!(entry.text());
             }),
         );
         win

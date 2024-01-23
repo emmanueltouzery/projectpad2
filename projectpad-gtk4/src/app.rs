@@ -4,15 +4,15 @@ use std::sync::mpsc;
 use adw::subclass::prelude::*;
 use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
-use glib::{clone, ObjectExt, Properties, Receiver, Sender, WeakRef};
+use glib::{ObjectExt, Properties};
 use gtk::subclass::prelude::DerivedObjectProperties;
-use gtk::subclass::prelude::*;
 use gtk::{gdk, gio, glib};
 use gtk::{prelude::*, CssProvider};
 use projectpadsql::models::Project;
 
+use crate::keyring_helpers;
 use crate::sql_thread::SqlFunc;
-use crate::{keyring_helpers, ProjectpadApplicationWindow};
+use crate::win::ProjectpadApplicationWindow;
 
 mod imp {
     use std::cell::{OnceCell, RefCell};
@@ -23,7 +23,7 @@ mod imp {
     };
     use gtk::subclass::prelude::GtkApplicationImpl;
 
-    use crate::ProjectpadApplicationWindow;
+    use crate::win::ProjectpadApplicationWindow;
 
     use super::*;
 
@@ -213,7 +213,7 @@ impl ProjectpadApplication {
     }
 
     fn create_window(&self) -> ProjectpadApplicationWindow {
-        let window = ProjectpadApplicationWindow::new();
+        let window = ProjectpadApplicationWindow::new(self.get_sql_channel());
         self.add_window(&window);
 
         window.present();

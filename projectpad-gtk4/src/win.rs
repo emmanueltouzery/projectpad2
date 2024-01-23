@@ -112,6 +112,10 @@ impl ProjectpadApplicationWindow {
             }),
         );
 
+        win.imp().search_entry.connect_show(|entry| {
+            entry.grab_focus();
+        });
+
         win.imp().search_entry.connect_search_changed(
             glib::clone!(@weak win as w => move |entry| {
                         dbg!(entry.text());

@@ -14,7 +14,7 @@ use gtk::subclass::widget::CompositeTemplate;
 mod imp {
     use std::collections::HashMap;
 
-    use crate::widgets::project_item::ProjectItem;
+    use crate::widgets::{project_item::ProjectItem, search::search_item_list::SearchItemList};
 
     use super::*;
     use gtk::{
@@ -37,7 +37,13 @@ mod imp {
         #[template_child]
         pub project_popover_menu: TemplateChild<gtk::PopoverMenu>,
         #[template_child]
+        pub search_toggle_btn: TemplateChild<gtk::ToggleButton>,
+        #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
+        #[template_child]
+        pub search_item_list: TemplateChild<SearchItemList>,
+        #[template_child]
+        pub main_or_search: TemplateChild<gtk::Stack>,
     }
 
     #[glib::object_subclass]
@@ -116,6 +122,14 @@ impl ProjectpadApplicationWindow {
             entry.grab_focus();
         });
 
+        win.imp()
+            .search_toggle_btn
+            .connect_clicked(glib::clone!(@weak win as w => move |_| {
+                w.imp()
+                    .main_or_search
+                    .set_visible_child_name(if w.imp().main_or_search.visible_child_name() == Some("main".into()) { "search" } else { "main" });
+            }));
+
         win.imp().search_entry.connect_search_changed(
             glib::clone!(@weak win as w => move |entry| {
                         dbg!(entry.text());
@@ -131,6 +145,8 @@ impl ProjectpadApplicationWindow {
                 // let mut s = self.clone();
                 glib::spawn_future_local(async move {
                     let search_res = receiver.recv().await.unwrap();
+                    // probably a switcher for the main window for the search mode and a new search
+                    // widget
                     dbg!(&search_res);
                 });
                 }

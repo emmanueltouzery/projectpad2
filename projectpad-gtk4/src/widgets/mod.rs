@@ -2,5 +2,5 @@ pub mod project_item;
 pub mod project_item_list;
 mod project_item_list_model;
 mod project_item_model;
-pub mod project_item_row;
 pub mod project_items;
+pub mod search;

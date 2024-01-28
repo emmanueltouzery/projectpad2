@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::panic;
 use std::sync::mpsc;
 
@@ -143,11 +144,14 @@ impl ProjectpadApplicationWindow {
                     }))
                     .unwrap();
                 // let mut s = self.clone();
+                    let mut sil = w.imp().search_item_list.clone();
                 glib::spawn_future_local(async move {
                     let search_res = receiver.recv().await.unwrap();
                     // probably a switcher for the main window for the search mode and a new search
                     // widget
                     dbg!(&search_res);
+                    sil.set_search_items(search_res, HashMap::new());
+
                 });
                 }
             ),

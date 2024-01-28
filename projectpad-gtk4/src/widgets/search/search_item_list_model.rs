@@ -7,33 +7,31 @@ use gtk::{gio, glib};
 // need a special model so i can have list headers
 // https://discourse.gnome.org/t/gtk4-listview-header-rows/18777
 
-use super::project_item_model::ProjectItemModel;
+use super::search_item_model::SearchItemModel;
 
 mod imp {
     use std::cell::RefCell;
 
-    use crate::widgets::project_item_model::ProjectItemModel;
-
     use super::*;
 
     #[derive(Debug, Default)]
-    pub struct ProjectItemListModel {
-        pub items: RefCell<Vec<ProjectItemModel>>,
+    pub struct SearchItemListModel {
+        pub items: RefCell<Vec<SearchItemModel>>,
         pub index_to_group: RefCell<HashMap<u32, (u32, u32)>>,
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ProjectItemListModel {
-        const NAME: &'static str = "ProjectItemListModel";
-        type Type = super::ProjectItemListModel;
+    impl ObjectSubclass for SearchItemListModel {
+        const NAME: &'static str = "SearchItemListModel";
+        type Type = super::SearchItemListModel;
         type Interfaces = (gio::ListModel, gtk::SectionModel);
     }
 
-    impl ObjectImpl for ProjectItemListModel {}
+    impl ObjectImpl for SearchItemListModel {}
 
-    impl ListModelImpl for ProjectItemListModel {
+    impl ListModelImpl for SearchItemListModel {
         fn item_type(&self) -> glib::Type {
-            ProjectItemModel::static_type()
+            SearchItemModel::static_type()
         }
 
         fn n_items(&self) -> u32 {
@@ -48,7 +46,7 @@ mod imp {
         }
     }
 
-    impl SectionModelImpl for ProjectItemListModel {
+    impl SectionModelImpl for SearchItemListModel {
         fn section(&self, position: u32) -> (u32, u32) {
             self.index_to_group.borrow()[&position]
         }
@@ -56,16 +54,16 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct ProjectItemListModel(ObjectSubclass<imp::ProjectItemListModel>) @implements gio::ListModel, gtk::SectionModel;
+    pub struct SearchItemListModel(ObjectSubclass<imp::SearchItemListModel>) @implements gio::ListModel, gtk::SectionModel;
 
 }
 
-impl ProjectItemListModel {
+impl SearchItemListModel {
     pub fn new() -> Self {
         glib::Object::new()
     }
 
-    pub fn append(&mut self, item: &ProjectItemModel) {
+    pub fn append(&mut self, item: &SearchItemModel) {
         self.imp().items.borrow_mut().push(item.clone());
     }
 

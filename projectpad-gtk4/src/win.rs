@@ -137,9 +137,12 @@ impl ProjectpadApplicationWindow {
 
                 let (sender, receiver) = async_channel::bounded(1);
                 let search_text = entry.text().as_str().to_owned();
+
+                let search_spec = search_engine::search_parse(&search_text);
+                let f = search_spec.search_pattern;
                 db_sender
                     .send(SqlFunc::new(move |sql_conn| {
-                        let res = search_engine::run_search_filter(sql_conn, search_engine::SearchItemsType::All, &search_text, &None, false);
+                        let res = search_engine::run_search_filter(sql_conn, search_engine::SearchItemsType::All, &f, &None, false);
                         sender.send_blocking(res).unwrap();
                     }))
                     .unwrap();
@@ -149,7 +152,6 @@ impl ProjectpadApplicationWindow {
                     let search_res = receiver.recv().await.unwrap();
                     // probably a switcher for the main window for the search mode and a new search
                     // widget
-                    dbg!(&search_res);
                     sil.set_search_items(search_res, HashMap::new());
 
                 });

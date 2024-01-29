@@ -7,7 +7,7 @@ use gtk::{gio, glib};
 // need a special model so i can have list headers
 // https://discourse.gnome.org/t/gtk4-listview-header-rows/18777
 
-use super::search_item_model::SearchItemModel;
+use super::search_item_model::{SearchItemModel, SearchItemType};
 
 mod imp {
     use std::cell::RefCell;
@@ -17,7 +17,7 @@ mod imp {
     #[derive(Debug, Default)]
     pub struct SearchItemListModel {
         pub items: RefCell<Vec<SearchItemModel>>,
-        pub index_to_group: RefCell<HashMap<u32, (u32, u32)>>,
+        pub projects_indices: RefCell<Vec<usize>>,
     }
 
     #[glib::object_subclass]
@@ -47,8 +47,24 @@ mod imp {
     }
 
     impl SectionModelImpl for SearchItemListModel {
-        fn section(&self, position: u32) -> (u32, u32) {
-            self.index_to_group.borrow()[&position]
+        fn section(&self, position_: u32) -> (u32, u32) {
+            let position = position_ as usize;
+            let projects_indices = self.projects_indices.borrow();
+            let mut cur_pos = 0;
+            while cur_pos < projects_indices.len() {
+                if projects_indices[cur_pos] >= position {
+                    return (
+                        projects_indices[cur_pos] as u32,
+                        if cur_pos == projects_indices.len() - 1 {
+                            projects_indices.len()
+                        } else {
+                            projects_indices[cur_pos + 1]
+                        } as u32,
+                    );
+                }
+                cur_pos += 1;
+            }
+            (0, projects_indices.len() as u32)
         }
     }
 }
@@ -64,38 +80,12 @@ impl SearchItemListModel {
     }
 
     pub fn append(&mut self, item: &SearchItemModel) {
-        self.imp().items.borrow_mut().push(item.clone());
-    }
-
-    pub fn set_group_start_indices(
-        &mut self,
-        items_len: usize,
-        group_start_indices: HashMap<i32, String>,
-    ) {
-        let mut indices: Vec<u32> = group_start_indices
-            .keys()
-            .map(|k| u32::try_from(*k).unwrap())
-            .collect();
-        indices.sort();
-        let mut index_to_group = HashMap::<u32, (u32, u32)>::new();
-        let mut cur_idx = 0;
-        if indices.is_empty() {
-            index_to_group.insert(0, (0, u32::try_from(items_len).unwrap()));
-        } else {
-            for i in 0..indices.len() {
-                let start = indices[i];
-                if start > cur_idx {
-                    index_to_group.insert(cur_idx, (cur_idx, start));
-                }
-                cur_idx = start;
-                let end_idx = if i < indices.len() - 1 {
-                    indices[i + 1]
-                } else {
-                    u32::try_from(items_len).unwrap()
-                };
-                index_to_group.insert(start, (start, end_idx));
-            }
+        if item.property_value("search_item_type").get() == Ok(SearchItemType::Project as u8) {
+            self.imp()
+                .projects_indices
+                .borrow_mut()
+                .push(self.imp().items.borrow().len());
         }
-        self.imp().index_to_group.replace(index_to_group);
+        self.imp().items.borrow_mut().push(item.clone());
     }
 }

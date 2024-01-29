@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="GtkListHeader">
+    <property name="child">
+      <object class="GtkBox">
+        <style>
+          <class name="list-item-box" />
+        </style>
+        <child>
+          <object class="GtkImage">
+            <property name="icon-name">cube</property>
+            <property name="margin-end">3</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="hexpand">True</property>
+            <property name="halign">start</property>
+            <property name="ellipsize">end</property>
+            <binding name="label">
+              <lookup name="title" type="SearchItemModel">
+                <lookup name="item">GtkListHeader</lookup>
+              </lookup>
+            </binding>
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>

@@ -72,12 +72,12 @@ impl SearchItemList {
                 Some(&gtk::BuilderRustScope::new()),
                 "/com/github/emmanueltouzery/projectpad2/src/widgets/search/search_item_row.ui",
             )));
-        // self.imp().search_item_list.set_header_factory(Some(
-        //     &gtk::BuilderListItemFactory::from_resource(
-        //         Some(&gtk::BuilderRustScope::new()),
-        //         "/com/github/emmanueltouzery/projectpad2/src/widgets/search_item_header_row.ui",
-        //     ),
-        // ));
+        self.imp()
+            .search_item_list
+            .set_header_factory(Some(&gtk::BuilderListItemFactory::from_resource(
+            Some(&gtk::BuilderRustScope::new()),
+            "/com/github/emmanueltouzery/projectpad2/src/widgets/search/search_item_header_row.ui",
+        )));
     }
 
     pub fn set_search_items(

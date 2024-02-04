@@ -102,13 +102,24 @@ impl ProjectItemList {
         &mut self,
         project_items: &[ProjectItem],
         group_start_indices: HashMap<i32, String>,
+        selected_item: Option<i32>,
     ) {
         let mut list_store = ProjectItemListModel::new();
         list_store.set_group_start_indices(project_items.len(), group_start_indices);
+        let mut idx = 0;
+        let mut selected_index = None;
         for project_item in project_items {
-            list_store.append(&Self::get_item_model(project_item));
+            let item_model = Self::get_item_model(project_item);
+            list_store.append(&item_model);
+            if selected_item == Some(item_model.property("id")) {
+                selected_index = Some(idx);
+            }
+            idx += 1;
         }
         let selection_model = gtk::SingleSelection::new(Some(list_store));
+        if let Some(idx) = selected_index {
+            selection_model.set_selected(idx);
+        }
         self.imp()
             .project_item_list
             .set_model(Some(&selection_model));
@@ -194,11 +205,19 @@ impl ProjectItemList {
                     .upcast::<gio::ListModel>()
                     .item(idx)
                     .unwrap();
-                f(model.property::<i32>("id"), ProjectItemType::from_repr(model.property::<u8>("project-item-type")).unwrap());
+                f(
+                    model.property::<i32>("id"),
+                    ProjectItemType::from_repr(model.property::<u8>("project-item-type")).unwrap(),
+                );
             })
     }
 
-    pub fn fetch_project_items(&mut self, db_sender: &mpsc::Sender<SqlFunc>, project_id: i32) {
+    pub fn fetch_project_items(
+        &mut self,
+        db_sender: &mpsc::Sender<SqlFunc>,
+        project_id: i32,
+        selected_item: Option<i32>,
+    ) {
         let (sender, receiver) = async_channel::bounded(1);
         db_sender
             .send(SqlFunc::new(move |sql_conn| {
@@ -250,7 +269,7 @@ impl ProjectItemList {
         let mut s = self.clone();
         glib::spawn_future_local(async move {
             let (items, group_start_indices) = receiver.recv().await.unwrap();
-            s.set_project_items(&items, group_start_indices);
+            s.set_project_items(&items, group_start_indices, selected_item);
         });
     }
 

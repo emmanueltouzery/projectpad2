@@ -76,7 +76,7 @@ mod imp {
 
             self.project_item_list
                 .get()
-                .set_project_items(&Vec::new(), HashMap::new());
+                .set_project_items(&Vec::new(), HashMap::new(), None);
             // let app = ProjectpadApplication::default();
             // let sender = app.imp().sender.clone();
             // let player = app.imp().player.clone();
@@ -179,9 +179,7 @@ impl ProjectpadApplicationWindow {
                     .main_or_search
                     .set_visible_child_name("main");
 
-                w.set_active_project(project_id, None);
-                w.imp().project_item.set_project_item_type(search_item_type);
-                w.imp().project_item.set_item_id(item_id)
+                w.set_active_project(project_id, Some((item_id, search_item_type)));
             }),
         );
 
@@ -210,9 +208,16 @@ impl ProjectpadApplicationWindow {
             let project = receiver.recv().await.unwrap();
             w.imp().project_menu_button.set_label(&project.name);
         });
-        self.imp()
-            .project_item_list
-            .get()
-            .fetch_project_items(&db_sender, project_id);
+        self.imp().project_item_list.get().fetch_project_items(
+            &db_sender,
+            project_id,
+            selected_item.map(|(id, _type)| id),
+        );
+        if let Some((selected_id, selected_item_type)) = selected_item {
+            self.imp()
+                .project_item
+                .set_project_item_type(selected_item_type);
+            self.imp().project_item.set_item_id(selected_id)
+        }
     }
 }

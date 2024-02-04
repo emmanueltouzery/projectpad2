@@ -90,4 +90,12 @@ impl SearchItemListModel {
             self.imp().items.borrow_mut().push(item.clone());
         }
     }
+
+    pub fn get_search_item(&self, index: u32) -> Option<(i32, u8)> {
+        if let Some(search_item_model) = self.imp().items.borrow().get(index as usize) {
+            Some((search_item_model.id(), search_item_model.search_item_type()))
+        } else {
+            None
+        }
+    }
 }

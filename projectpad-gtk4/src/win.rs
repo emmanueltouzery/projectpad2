@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::panic;
 use std::sync::mpsc;
 
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::search::search_item_list::SearchItemList;
 
 use super::widgets::project_item_list::ProjectItemList;
 use adw::subclass::prelude::*;
@@ -139,8 +139,6 @@ impl ProjectpadApplicationWindow {
 
         win.imp().search_entry.connect_search_changed(
             glib::clone!(@weak win as w => move |entry| {
-                        dbg!(entry.text());
-
                 let (sender, receiver) = async_channel::bounded(1);
                 let search_text = entry.text().as_str().to_owned();
 
@@ -163,6 +161,19 @@ impl ProjectpadApplicationWindow {
                 });
                 }
             ),
+        );
+
+        win.imp().search_item_list.connect_closure(
+            "activate-item",
+            false,
+            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList, item_id: i32, search_item_type: u8| {
+                dbg!(item_id);
+                dbg!(search_item_type);
+                w.imp().split_view.set_show_sidebar(true);
+                w.imp()
+                    .main_or_search
+                    .set_visible_child_name("main");
+            }),
         );
 
         win

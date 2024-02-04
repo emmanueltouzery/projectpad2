@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
@@ -14,6 +12,9 @@ use super::search_item_list_model::SearchItemListModel;
 use super::search_item_model::{Env, SearchItemModel, SearchItemType};
 
 mod imp {
+    use std::sync::OnceLock;
+
+    use glib::subclass::Signal;
     use gtk::{
         subclass::{
             prelude::{BoxImpl, ObjectImpl, ObjectSubclass},
@@ -52,6 +53,16 @@ mod imp {
         fn constructed(&self) {
             self.obj().init_list();
         }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("activate-item")
+                    // item id + search_item_type
+                    .param_types([i32::static_type(), u8::static_type()])
+                    .build()]
+            })
+        }
     }
 
     impl WidgetImpl for SearchItemList {}
@@ -78,6 +89,14 @@ impl SearchItemList {
             Some(&gtk::BuilderRustScope::new()),
             "/com/github/emmanueltouzery/projectpad2/src/widgets/search/search_item_header_row.ui",
         )));
+        self.imp().search_item_list.connect_activate(
+            clone!(@strong self as this => move |list, item_idx| {
+                let gtk_model: gtk::SingleSelection = list.model().unwrap().downcast().unwrap();
+                let model: SearchItemListModel = gtk_model.model().unwrap().downcast().unwrap();
+                let (item_id, item_type) = model.get_search_item(item_idx).unwrap();
+                this.emit_by_name::<()>("activate-item", &[&item_id, &item_type]);
+            }),
+        );
     }
 
     pub fn set_search_items(&mut self, search_result: SearchResult) {

@@ -80,11 +80,7 @@ impl SearchItemList {
         )));
     }
 
-    pub fn set_search_items(
-        &mut self,
-        search_result: SearchResult,
-        group_start_indices: HashMap<i32, String>,
-    ) {
+    pub fn set_search_items(&mut self, search_result: SearchResult) {
         let mut list_store = SearchItemListModel::new();
         for project in &search_result.projects {
             list_store.append(&Self::get_project_model(project));
@@ -93,41 +89,44 @@ impl SearchItemList {
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                list_store.append(&Self::get_server_model(server));
+                list_store.append(&Self::get_server_model(server, project));
                 for server_website in search_result
                     .server_websites
                     .iter()
                     .filter(|sw| sw.server_id == server.id)
                 {
-                    list_store.append(&Self::get_server_website_model(server_website));
+                    list_store.append(&Self::get_server_website_model(server_website, project));
                 }
                 for server_note in search_result
                     .server_notes
                     .iter()
                     .filter(|sn| sn.server_id == server.id)
                 {
-                    list_store.append(&Self::get_server_note_model(server_note));
+                    list_store.append(&Self::get_server_note_model(server_note, project));
                 }
                 for server_user in search_result
                     .server_extra_users
                     .iter()
                     .filter(|su| su.server_id == server.id)
                 {
-                    list_store.append(&Self::get_server_extra_user_account_model(server_user));
+                    list_store.append(&Self::get_server_extra_user_account_model(
+                        server_user,
+                        project,
+                    ));
                 }
                 for server_db in search_result
                     .server_databases
                     .iter()
                     .filter(|sd| sd.server_id == server.id)
                 {
-                    list_store.append(&Self::get_server_database_model(server_db));
+                    list_store.append(&Self::get_server_database_model(server_db, project));
                 }
                 for server_poi in search_result
                     .server_pois
                     .iter()
                     .filter(|sp| sp.server_id == server.id)
                 {
-                    list_store.append(&Self::get_server_poi_model(server_poi));
+                    list_store.append(&Self::get_server_poi_model(server_poi, project));
                 }
             }
             for server_link in search_result
@@ -135,21 +134,21 @@ impl SearchItemList {
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                list_store.append(&Self::get_server_link_model(server_link));
+                list_store.append(&Self::get_server_link_model(server_link, project));
             }
             for project_note in search_result
                 .project_notes
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                list_store.append(&Self::get_project_note_model(project_note));
+                list_store.append(&Self::get_project_note_model(project_note, project));
             }
             for project_poi in search_result
                 .project_pois
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                list_store.append(&Self::get_project_poi_model(project_poi));
+                list_store.append(&Self::get_project_poi_model(project_poi, project));
             }
         }
 
@@ -173,93 +172,96 @@ impl SearchItemList {
         )
     }
 
-    fn get_server_model(server: &Server) -> SearchItemModel {
+    fn get_server_model(server: &Server, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             server.id,
             SearchItemType::Server,
             server.desc.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_server_website_model(item: &ServerWebsite) -> SearchItemModel {
+    fn get_server_website_model(item: &ServerWebsite, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ServerWebsite,
             item.desc.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_server_note_model(item: &ServerNote) -> SearchItemModel {
+    fn get_server_note_model(item: &ServerNote, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ServerNote,
             item.title.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_server_extra_user_account_model(item: &ServerExtraUserAccount) -> SearchItemModel {
+    fn get_server_extra_user_account_model(
+        item: &ServerExtraUserAccount,
+        project: &Project,
+    ) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ServerNote,
             item.desc.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_server_database_model(item: &ServerDatabase) -> SearchItemModel {
+    fn get_server_database_model(item: &ServerDatabase, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ServerDatabase,
             item.desc.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_server_poi_model(item: &ServerPointOfInterest) -> SearchItemModel {
+    fn get_server_poi_model(item: &ServerPointOfInterest, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ServerPoi,
             item.desc.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_server_link_model(item: &ServerLink) -> SearchItemModel {
+    fn get_server_link_model(item: &ServerLink, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ServerLink,
             item.desc.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_project_note_model(item: &ProjectNote) -> SearchItemModel {
+    fn get_project_note_model(item: &ProjectNote, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ProjectNote,
             item.title.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 
-    fn get_project_poi_model(item: &ProjectPointOfInterest) -> SearchItemModel {
+    fn get_project_poi_model(item: &ProjectPointOfInterest, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
             SearchItemType::ProjectPointOfInterest,
             item.desc.clone(),
             Env::Prod, // TODO
-            None,
+            Some(project.name.to_owned()),
         )
     }
 }

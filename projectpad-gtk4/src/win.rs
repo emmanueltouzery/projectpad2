@@ -45,6 +45,8 @@ mod imp {
         pub search_item_list: TemplateChild<SearchItemList>,
         #[template_child]
         pub main_or_search: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub split_view: TemplateChild<adw::OverlaySplitView>,
     }
 
     #[glib::object_subclass]
@@ -126,9 +128,13 @@ impl ProjectpadApplicationWindow {
         win.imp()
             .search_toggle_btn
             .connect_clicked(glib::clone!(@weak win as w => move |_| {
+                // new_is_main reflects the state that we want after the toggle
+                let new_is_main = w.imp().main_or_search.visible_child_name() == Some("search".into());
                 w.imp()
                     .main_or_search
-                    .set_visible_child_name(if w.imp().main_or_search.visible_child_name() == Some("main".into()) { "search" } else { "main" });
+                    .set_visible_child_name(if new_is_main { "main" } else { "search" });
+                w.imp()
+                    .split_view.set_show_sidebar(new_is_main);
             }));
 
         win.imp().search_entry.connect_search_changed(
@@ -152,7 +158,7 @@ impl ProjectpadApplicationWindow {
                     let search_res = receiver.recv().await.unwrap();
                     // probably a switcher for the main window for the search mode and a new search
                     // widget
-                    sil.set_search_items(search_res, HashMap::new());
+                    sil.set_search_items(search_res);
 
                 });
                 }

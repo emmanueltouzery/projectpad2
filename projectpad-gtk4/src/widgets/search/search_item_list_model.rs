@@ -50,13 +50,14 @@ mod imp {
         fn section(&self, position_: u32) -> (u32, u32) {
             let position = position_ as usize;
             let projects_indices = self.projects_indices.borrow();
+            let items = self.items.borrow();
             let mut cur_pos = 0;
             while cur_pos < projects_indices.len() {
                 if projects_indices[cur_pos] >= position {
                     return (
                         projects_indices[cur_pos] as u32,
                         if cur_pos == projects_indices.len() - 1 {
-                            projects_indices.len()
+                            items.len()
                         } else {
                             projects_indices[cur_pos + 1]
                         } as u32,
@@ -85,7 +86,8 @@ impl SearchItemListModel {
                 .projects_indices
                 .borrow_mut()
                 .push(self.imp().items.borrow().len());
+        } else {
+            self.imp().items.borrow_mut().push(item.clone());
         }
-        self.imp().items.borrow_mut().push(item.clone());
     }
 }

@@ -18,7 +18,7 @@
             <property name="halign">start</property>
             <property name="ellipsize">end</property>
             <binding name="label">
-              <lookup name="title" type="SearchItemModel">
+              <lookup name="group_name" type="SearchItemModel">
                 <lookup name="item">GtkListHeader</lookup>
               </lookup>
             </binding>

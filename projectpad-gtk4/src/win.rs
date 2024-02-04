@@ -7,13 +7,15 @@ use crate::widgets::search::search_item_list::SearchItemList;
 
 use super::widgets::project_item_list::ProjectItemList;
 use adw::subclass::prelude::*;
+use diesel::prelude::*;
 use glib::subclass;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
+use projectpadsql::models::Project;
 
 mod imp {
-    use std::collections::HashMap;
+    use std::{cell::RefCell, collections::HashMap};
 
     use crate::widgets::{project_item::ProjectItem, search::search_item_list::SearchItemList};
 
@@ -36,6 +38,8 @@ mod imp {
         #[template_child]
         pub edit_btn: TemplateChild<gtk::ToggleButton>,
         #[template_child]
+        pub project_menu_button: TemplateChild<gtk::MenuButton>,
+        #[template_child]
         pub project_popover_menu: TemplateChild<gtk::PopoverMenu>,
         #[template_child]
         pub search_toggle_btn: TemplateChild<gtk::ToggleButton>,
@@ -47,6 +51,8 @@ mod imp {
         pub main_or_search: TemplateChild<gtk::Stack>,
         #[template_child]
         pub split_view: TemplateChild<adw::OverlaySplitView>,
+
+        pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
     }
 
     #[glib::object_subclass]
@@ -114,6 +120,7 @@ glib::wrapper! {
 impl ProjectpadApplicationWindow {
     pub fn new(db_sender: mpsc::Sender<SqlFunc>) -> Self {
         let win = glib::Object::new::<Self>();
+        win.imp().sql_channel.replace(Some(db_sender.clone()));
         win.imp().project_item_list.connect_activate(
             glib::clone!(@weak win as w => move |project_item_id, project_item_type| {
                 w.imp().project_item.set_project_item_type(project_item_type as u8);
@@ -166,16 +173,46 @@ impl ProjectpadApplicationWindow {
         win.imp().search_item_list.connect_closure(
             "activate-item",
             false,
-            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList, item_id: i32, search_item_type: u8| {
+            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList, project_id: i32, item_id: i32, search_item_type: u8| {
                 w.imp().split_view.set_show_sidebar(true);
                 w.imp()
                     .main_or_search
                     .set_visible_child_name("main");
+
+                w.set_active_project(project_id, None);
                 w.imp().project_item.set_project_item_type(search_item_type);
                 w.imp().project_item.set_item_id(item_id)
             }),
         );
 
         win
+    }
+
+    pub fn get_sql_channel(&self) -> mpsc::Sender<SqlFunc> {
+        self.imp().sql_channel.borrow().clone().unwrap()
+    }
+
+    pub fn set_active_project(&self, project_id: i32, selected_item: Option<(i32, u8)>) {
+        let db_sender = self.get_sql_channel();
+        let (sender, receiver) = async_channel::bounded::<Project>(1);
+        db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                let project = prj::project
+                    .filter(prj::id.eq(project_id))
+                    .first::<Project>(sql_conn)
+                    .unwrap();
+                sender.send_blocking(project).unwrap();
+            }))
+            .unwrap();
+        let w = self.clone();
+        glib::spawn_future_local(async move {
+            let project = receiver.recv().await.unwrap();
+            w.imp().project_menu_button.set_label(&project.name);
+        });
+        self.imp()
+            .project_item_list
+            .get()
+            .fetch_project_items(&db_sender, project_id);
     }
 }

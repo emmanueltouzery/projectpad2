@@ -25,7 +25,7 @@
               <object class="AdwHeaderBar">
                 <property name="show-title">False</property>
                 <child type="start">
-                  <object class="GtkMenuButton">
+                  <object class="GtkMenuButton" id="project_menu_button">
                     <property name="label">Default project</property>
                     <property name="popover">
                       <object class="GtkPopoverMenu" id="project_popover_menu">

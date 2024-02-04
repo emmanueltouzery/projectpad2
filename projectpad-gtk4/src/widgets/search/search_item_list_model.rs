@@ -91,9 +91,13 @@ impl SearchItemListModel {
         }
     }
 
-    pub fn get_search_item(&self, index: u32) -> Option<(i32, u8)> {
+    pub fn get_search_item(&self, index: u32) -> Option<(i32, i32, u8)> {
         if let Some(search_item_model) = self.imp().items.borrow().get(index as usize) {
-            Some((search_item_model.id(), search_item_model.search_item_type()))
+            Some((
+                search_item_model.project_id(),
+                search_item_model.id(),
+                search_item_model.search_item_type(),
+            ))
         } else {
             None
         }

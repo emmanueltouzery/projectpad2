@@ -110,14 +110,10 @@ impl ProjectpadApplication {
             &(1).to_variant(),
         );
         let w = window.clone();
-        let chan = self.get_sql_channel();
         select_project_action.connect_change_state(move |action, parameter| {
             println!("{} / {:#?}", action, parameter);
             let project_id = parameter.unwrap().get::<i32>().unwrap();
-            w.imp()
-                .project_item_list
-                .get()
-                .fetch_project_items(&chan, project_id);
+            w.set_active_project(project_id, None);
         });
         window.add_action(&select_project_action);
         dbg!(&window.list_actions());

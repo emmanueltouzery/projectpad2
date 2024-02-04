@@ -167,12 +167,12 @@ impl ProjectpadApplicationWindow {
             "activate-item",
             false,
             glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList, item_id: i32, search_item_type: u8| {
-                dbg!(item_id);
-                dbg!(search_item_type);
                 w.imp().split_view.set_show_sidebar(true);
                 w.imp()
                     .main_or_search
                     .set_visible_child_name("main");
+                w.imp().project_item.set_project_item_type(search_item_type);
+                w.imp().project_item.set_item_id(item_id)
             }),
         );
 

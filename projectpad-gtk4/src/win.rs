@@ -29,7 +29,7 @@ mod imp {
     };
 
     #[derive(Debug, Default, CompositeTemplate)]
-    #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/gtk_builder.ui")]
+    #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/win.ui")]
     pub struct ProjectpadApplicationWindow {
         #[template_child]
         pub project_item_list: TemplateChild<ProjectItemList>,
@@ -180,8 +180,11 @@ impl ProjectpadApplicationWindow {
                     .set_visible_child_name("main");
 
                 w.set_active_project_and_item(project_id, Some((item_id, search_item_type)));
+
+                w.imp()
+                    .search_toggle_btn.set_active(false);
             }),
-        );
+            );
 
         win
     }

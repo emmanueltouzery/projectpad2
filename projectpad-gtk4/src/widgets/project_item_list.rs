@@ -116,13 +116,20 @@ impl ProjectItemList {
             }
             idx += 1;
         }
-        let selection_model = gtk::SingleSelection::new(Some(list_store));
+        let sel_model = if let Some(s_model) = self.imp().project_item_list.model() {
+            let _sel_model = s_model.downcast::<gtk::SingleSelection>().unwrap();
+            _sel_model.set_model(Some(&list_store));
+            _sel_model
+        } else {
+            let selection_model = gtk::SingleSelection::new(Some(list_store));
+            self.imp()
+                .project_item_list
+                .set_model(Some(&selection_model));
+            selection_model
+        };
         if let Some(idx) = selected_index {
-            selection_model.set_selected(idx);
+            sel_model.set_selected(idx);
         }
-        self.imp()
-            .project_item_list
-            .set_model(Some(&selection_model));
     }
 
     fn environment_type_to_env(et: EnvironmentType) -> Env {
@@ -198,18 +205,18 @@ impl ProjectItemList {
     pub fn connect_activate<F: Fn(i32, ProjectItemType) + 'static>(&self, f: F) -> SignalHandlerId {
         self.imp()
             .project_item_list
-            .connect_activate(move |list, idx| {
-                let model = list
-                    .model()
-                    .unwrap()
-                    .upcast::<gio::ListModel>()
+            .model()
+            .unwrap()
+            .connect_selection_changed(glib::clone!(@weak self as s => move |selection_model, _idx, _items_count| {
+                let idx = selection_model.downcast_ref::<gtk::SingleSelection>().unwrap().selected();
+                let model = selection_model
                     .item(idx)
                     .unwrap();
                 f(
                     model.property::<i32>("id"),
                     ProjectItemType::from_repr(model.property::<u8>("project-item-type")).unwrap(),
                 );
-            })
+            }))
     }
 
     pub fn fetch_project_items(

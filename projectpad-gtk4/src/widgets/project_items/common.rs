@@ -1,4 +1,5 @@
 use adw::prelude::*;
+use gtk::gdk;
 
 use crate::widgets::project_item::WidgetMode;
 
@@ -57,4 +58,12 @@ pub fn get_contents_box_with_header(title: &str, widget_mode: WidgetMode) -> gtk
 
     vbox.append(&header_box);
     vbox
+}
+
+pub fn copy_to_clipboard(text: &str) {
+    if let Some(display) = gdk::Display::default() {
+        display.clipboard().set_text(text);
+        // relm.stream()
+        //     .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
+    }
 }

@@ -7,7 +7,10 @@ use gtk::{gdk, subclass::prelude::*};
 use projectpadsql::models::{ProjectNote, ServerNote};
 
 use crate::{
-    app::ProjectpadApplication, notes, sql_thread::SqlFunc, widgets::project_item::WidgetMode,
+    app::ProjectpadApplication,
+    notes,
+    sql_thread::SqlFunc,
+    widgets::{project_item::WidgetMode, project_items::common::copy_to_clipboard},
 };
 
 use super::common;
@@ -271,7 +274,7 @@ impl Note {
             println!("{} / {:#?}", action, parameter);
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
             if let Some(p) = sp.borrow().get(password_index) {
-                Self::copy_to_clipboard(&p.data);
+                copy_to_clipboard(&p.data);
                 tp.add_toast(adw::Toast::new("Password copied to the clipboard"));
             }
         });
@@ -348,14 +351,6 @@ impl Note {
         );
         popover.set_menu_model(Some(&menu_model));
         popover.popup();
-    }
-
-    fn copy_to_clipboard(text: &str) {
-        if let Some(display) = gdk::Display::default() {
-            display.clipboard().set_text(text);
-            // relm.stream()
-            //     .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
-        }
     }
 
     fn iter_matches_tags(iter: &gtk::TextIter, tags: &[&str]) -> bool {

@@ -8,10 +8,14 @@ use projectpadsql::models::{
 };
 use std::{
     collections::{BTreeSet, HashMap},
+    rc::Rc,
     sync::mpsc,
 };
 
-use super::{common, note};
+use super::{
+    common::{self, copy_to_clipboard},
+    note,
+};
 
 #[derive(Clone, Debug)]
 pub enum ServerItem {
@@ -215,27 +219,27 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: Wid
     DetailsRow::new(
         "Address",
         &channel_data.server.ip,
-        Some("edit-copy-symbolic"),
+        SuffixAction::copy(&channel_data.server.ip),
     )
     .add(widget_mode, &server_item0);
 
     DetailsRow::new(
         "Username",
         &channel_data.server.username,
-        Some("edit-copy-symbolic"),
+        SuffixAction::copy(&channel_data.server.username),
     )
     .add(widget_mode, &server_item0);
 
     DetailsRow::new_password(
         "Password",
         &channel_data.server.password,
-        Some("edit-copy-symbolic"),
+        SuffixAction::copy(&channel_data.server.password),
     )
     .add(widget_mode, &server_item0);
     DetailsRow::new(
         "Text",
         &channel_data.server.text,
-        Some("edit-copy-symbolic"),
+        SuffixAction::copy(&channel_data.server.text),
     )
     .add(widget_mode, &server_item0);
 
@@ -293,32 +297,50 @@ struct DetailsRow<'a> {
     pub subtitle: &'a str,
     pub suffix_icon: Option<&'static str>,
     pub password_mode: PasswordMode,
+    pub action: Option<Rc<Box<dyn Fn() -> ()>>>,
+}
+
+struct SuffixAction {
+    icon: &'static str,
+    action: Rc<Box<dyn Fn() -> ()>>,
+}
+
+impl SuffixAction {
+    fn copy(txt: &str) -> Option<SuffixAction> {
+        let t = txt.to_owned();
+        Some(SuffixAction {
+            icon: "edit-copy-symbolic",
+            action: Rc::new(Box::new(move || copy_to_clipboard(&t))),
+        })
+    }
 }
 
 impl DetailsRow<'_> {
     fn new<'a>(
         title: &'a str,
         subtitle: &'a str,
-        suffix_icon: Option<&'static str>,
+        suffix_action: Option<SuffixAction>,
     ) -> DetailsRow<'a> {
         DetailsRow {
             title,
             subtitle,
-            suffix_icon,
             password_mode: PasswordMode::PlainText,
+            suffix_icon: suffix_action.as_ref().map(|a| a.icon),
+            action: suffix_action.as_ref().map(|a| a.action.clone()),
         }
     }
 
     fn new_password<'a>(
         title: &'a str,
         subtitle: &'a str,
-        suffix_icon: Option<&'static str>,
+        suffix_action: Option<SuffixAction>,
     ) -> DetailsRow<'a> {
         DetailsRow {
             title,
             subtitle,
-            suffix_icon,
             password_mode: PasswordMode::Password,
+            suffix_icon: suffix_action.as_ref().map(|a| a.icon),
+            action: suffix_action.as_ref().map(|a| a.action.clone()),
         }
     }
 
@@ -346,6 +368,14 @@ impl DetailsRow<'_> {
                 .build();
             if let Some(i) = self.suffix_icon {
                 e.add_suffix(&gtk::Image::builder().icon_name(i).build());
+                // e.set_activatable_widget(Some(&e));
+            }
+            if let Some(a) = self.action.as_ref() {
+                e.set_activatable(true);
+                let c_a = a.clone();
+                e.connect_activated(move |_ar| {
+                    c_a();
+                });
             }
             group.add(&e);
         }
@@ -469,14 +499,28 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
         .description("Website")
         .title(&w.desc)
         .build();
-    DetailsRow::new("Address", &w.url, Some("web-browser-symbolic"))
-        .add(widget_mode, &server_item1);
+    let url = w.url.clone();
+    DetailsRow::new(
+        "Address",
+        &w.url,
+        Some(SuffixAction {
+            icon: "web-browser-symbolic",
+            action: Rc::new(Box::new(move || {
+                gtk::UriLauncher::new(&url).launch(
+                    None::<&gtk::Window>,
+                    None::<&gio::Cancellable>,
+                    |_| {},
+                );
+            })),
+        }),
+    )
+    .add(widget_mode, &server_item1);
 
-    DetailsRow::new("Username", &w.username, Some("edit-copy-symbolic"))
+    DetailsRow::new("Username", &w.username, SuffixAction::copy(&w.username))
         .add(widget_mode, &server_item1);
-    DetailsRow::new_password("Password", &w.password, Some("edit-copy-symbolic"))
+    DetailsRow::new_password("Password", &w.password, SuffixAction::copy(&w.password))
         .add(widget_mode, &server_item1);
-    DetailsRow::new("Text", &w.text, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);
+    DetailsRow::new("Text", &w.text, SuffixAction::copy(&w.text)).add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
         add_group_edit_suffix(&server_item1, &w.desc);
@@ -498,12 +542,13 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
         .description(desc)
         .title(&poi.desc)
         .build();
-    DetailsRow::new("Path", &poi.path, Some("edit-copy-symbolic")).add(widget_mode, &server_item1);
+    DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path))
+        .add(widget_mode, &server_item1);
     let field_name = match poi.interest_type {
         InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
         _ => "Text",
     };
-    DetailsRow::new(field_name, &poi.text, Some("edit-copy-symbolic"))
+    DetailsRow::new(field_name, &poi.text, SuffixAction::copy(&poi.text))
         .add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {

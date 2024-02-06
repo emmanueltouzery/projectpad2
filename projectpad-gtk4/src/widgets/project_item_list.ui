@@ -3,7 +3,14 @@
   <template class="ProjectItemList" parent="GtkBox">
     <property name="orientation">vertical</property>
     <child>
-      <object class="GtkListView" id="project_item_list">
+      <object class="GtkScrolledWindow">
+        <property name="hscrollbar-policy">never</property>
+        <property name="child">
+          <object class="GtkListView" id="project_item_list">
+            <property name="valign">fill</property>
+            <property name="vexpand">True</property>
+          </object>
+        </property>
       </object>
     </child>
   </template>

@@ -116,19 +116,17 @@ impl ProjectItemList {
             }
             idx += 1;
         }
-        let sel_model = if let Some(s_model) = self.imp().project_item_list.model() {
+        if let Some(s_model) = self.imp().project_item_list.model() {
             let _sel_model = s_model.downcast::<gtk::SingleSelection>().unwrap();
             _sel_model.set_model(Some(&list_store));
-            _sel_model
         } else {
             let selection_model = gtk::SingleSelection::new(Some(list_store));
             self.imp()
                 .project_item_list
                 .set_model(Some(&selection_model));
-            selection_model
-        };
+        }
         if let Some(idx) = selected_index {
-            sel_model.set_selected(idx);
+            self.imp().project_item_list.scroll_to(idx, gtk::ListScrollFlags::SELECT, None);
         }
     }
 

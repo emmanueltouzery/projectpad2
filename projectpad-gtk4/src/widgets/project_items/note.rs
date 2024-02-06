@@ -3,8 +3,6 @@ use std::sync::mpsc;
 
 use adw::prelude::*;
 use glib::*;
-use gtk::prelude::*;
-use gtk::subclass::widget::CompositeTemplate;
 use gtk::{gdk, subclass::prelude::*};
 use projectpadsql::models::{ProjectNote, ServerNote};
 
@@ -24,22 +22,17 @@ mod imp {
     use crate::notes::ItemDataInfo;
 
     use super::*;
-    use gtk::{
-        subclass::{
-            prelude::{ObjectImpl, ObjectSubclass},
-            widget::{CompositeTemplateInitializingExt, WidgetImpl},
-        },
-        CompositeTemplate, TemplateChild,
+    use gtk::subclass::{
+        prelude::{ObjectImpl, ObjectSubclass},
+        widget::WidgetImpl,
     };
     use std::{
         cell::{Cell, RefCell},
         rc::Rc,
     };
 
-    // #[derive(Properties, Debug, Default, CompositeTemplate)]
     #[derive(Properties, Debug, Default)]
     #[properties(wrapper_type = super::Note)]
-    // #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/note.ui")]
     pub struct Note {
         #[property(get, set)]
         edit_mode: Cell<bool>,

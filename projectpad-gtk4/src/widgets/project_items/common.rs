@@ -1,7 +1,7 @@
 use adw::prelude::*;
 use gtk::gdk;
 
-use crate::widgets::project_item::WidgetMode;
+use crate::{app::ProjectpadApplication, widgets::project_item::WidgetMode};
 
 pub fn get_contents_box_with_header(title: &str, widget_mode: WidgetMode) -> gtk::Box {
     let vbox = gtk::Box::builder()
@@ -63,7 +63,12 @@ pub fn get_contents_box_with_header(title: &str, widget_mode: WidgetMode) -> gtk
 pub fn copy_to_clipboard(text: &str) {
     if let Some(display) = gdk::Display::default() {
         display.clipboard().set_text(text);
-        // relm.stream()
-        //     .emit(Msg::ShowInfoBar("Copied to the clipboard".to_string()));
+
+        let toast_overlay = gio::Application::default()
+            .expect("Failed to retrieve application singleton")
+            .downcast::<ProjectpadApplication>()
+            .unwrap()
+            .get_toast_overlay();
+        toast_overlay.add_toast(adw::Toast::new("Copied to the clipboard"));
     }
 }

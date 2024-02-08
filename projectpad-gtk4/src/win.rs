@@ -51,6 +51,8 @@ mod imp {
         pub main_or_search: TemplateChild<gtk::Stack>,
         #[template_child]
         pub split_view: TemplateChild<adw::OverlaySplitView>,
+        #[template_child]
+        pub toast_overlay: TemplateChild<adw::ToastOverlay>,
 
         pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
     }
@@ -222,5 +224,9 @@ impl ProjectpadApplicationWindow {
                 .set_project_item_type(selected_item_type);
             self.imp().project_item.set_item_id(selected_id)
         }
+    }
+
+    pub fn get_toast_overlay(&self) -> adw::ToastOverlay {
+        self.imp().toast_overlay.get()
     }
 }

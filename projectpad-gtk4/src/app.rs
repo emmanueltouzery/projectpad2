@@ -215,6 +215,16 @@ impl ProjectpadApplication {
         window.present();
         window
     }
+
+    pub fn get_toast_overlay(&self) -> adw::ToastOverlay {
+        self.imp()
+            .window
+            .get()
+            .unwrap()
+            .upgrade()
+            .unwrap()
+            .get_toast_overlay()
+    }
 }
 
 impl Default for ProjectpadApplication {

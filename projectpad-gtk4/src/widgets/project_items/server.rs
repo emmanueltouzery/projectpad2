@@ -504,7 +504,7 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
         "Address",
         &w.url,
         Some(SuffixAction {
-            icon: "web-browser-symbolic",
+            icon: "external-link-alt-symbolic",
             action: Rc::new(Box::new(move || {
                 gtk::UriLauncher::new(&url).launch(
                     None::<&gtk::Window>,

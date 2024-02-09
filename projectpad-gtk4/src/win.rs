@@ -38,6 +38,8 @@ mod imp {
         #[template_child]
         pub edit_btn: TemplateChild<gtk::ToggleButton>,
         #[template_child]
+        pub edit_btn_contents: TemplateChild<adw::ButtonContent>,
+        #[template_child]
         pub project_menu_button: TemplateChild<gtk::MenuButton>,
         #[template_child]
         pub project_popover_menu: TemplateChild<gtk::PopoverMenu>,
@@ -187,6 +189,57 @@ impl ProjectpadApplicationWindow {
                     .search_toggle_btn.set_active(false);
             }),
             );
+
+        win.imp()
+            .edit_btn
+            .bind_property(
+                "active",
+                win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
+                "label",
+            )
+            .transform_to(|_, active: bool| Some(if active { "View" } else { "Edit" }.to_value()))
+            .sync_create()
+            .build();
+
+        win.imp()
+            .edit_btn
+            .bind_property(
+                "active",
+                win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
+                "icon-name",
+            )
+            .transform_to(|_, active: bool| {
+                Some(
+                    if active {
+                        "view-reveal-symbolic"
+                    } else {
+                        "document-edit-symbolic"
+                    }
+                    .to_value(),
+                )
+            })
+            .sync_create()
+            .build();
+
+        win.imp()
+            .edit_btn
+            .bind_property(
+                "active",
+                win.imp().edit_btn.upcast_ref::<gtk::Widget>(),
+                "css-classes",
+            )
+            .transform_to(|_, active: bool| {
+                Some(
+                    if active {
+                        ["pill", "suggested-action"]
+                    } else {
+                        ["pill", "destructive-action"]
+                    }
+                    .to_value(),
+                )
+            })
+            .sync_create()
+            .build();
 
         win
     }

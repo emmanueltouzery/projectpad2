@@ -145,9 +145,10 @@
                                 <property name="use-underline">true</property>
                                 <style>
                                   <class name="pill"/>
+                                  <class name="destructive-action"/>
                                 </style>
                                 <property name="child">
-                                  <object class="AdwButtonContent">
+                                  <object class="AdwButtonContent" id="edit_btn_contents">
                                     <property name="icon-name">document-edit-symbolic</property>
                                     <property name="label" translatable="yes">_Edit</property>
                                     <property name="use-underline">True</property>

@@ -189,7 +189,7 @@ impl ProjectpadApplicationWindow {
                     .main_or_search
                     .set_visible_child_name("main");
 
-                w.set_active_project_and_item(project_id, Some((item_id, search_item_type)));
+                w.set_active_project_item(Some((item_id, search_item_type)));
 
                 w.imp()
                     .search_toggle_btn.set_active(false);
@@ -258,7 +258,13 @@ impl ProjectpadApplicationWindow {
         self.imp().sql_channel.borrow().clone().unwrap()
     }
 
-    pub fn set_active_project_and_item(&self, project_id: i32, selected_item: Option<(i32, u8)>) {
+    pub fn set_active_project_item(&self, selected_item: Option<(i32, u8)>) {
+        let project_id = self
+            .action_state("select-project")
+            .unwrap()
+            .get::<i32>()
+            .unwrap();
+
         let db_sender = self.get_sql_channel();
         let (sender, receiver) = async_channel::bounded::<Project>(1);
         db_sender

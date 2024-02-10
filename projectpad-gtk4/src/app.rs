@@ -112,9 +112,8 @@ impl ProjectpadApplication {
         let w = window.clone();
         select_project_action.connect_change_state(move |action, parameter| {
             println!("{} / {:#?}", action, parameter);
-            let project_id = parameter.unwrap().get::<i32>().unwrap();
             action.set_state(parameter.as_ref().unwrap());
-            w.set_active_project_and_item(project_id, None);
+            w.set_active_project_item(None);
         });
         window.add_action(&select_project_action);
         dbg!(&window.list_actions());
@@ -172,8 +171,9 @@ impl ProjectpadApplication {
                 .downcast::<ProjectpadApplication>()
                 .unwrap();
             let window = app.imp().window.get().unwrap();
-            let binding = window.upgrade();
-            let popover = &binding.as_ref().unwrap().imp().project_popover_menu;
+            let win_binding = window.upgrade();
+            let win_binding_ref = win_binding.as_ref().unwrap();
+            let popover = &win_binding_ref.imp().project_popover_menu;
             let menu_model = gio::Menu::new();
             for prj in prjs {
                 // println!(
@@ -187,6 +187,8 @@ impl ProjectpadApplication {
                 );
             }
             popover.set_menu_model(Some(&menu_model));
+
+            win_binding_ref.set_active_project_item(None);
         });
     }
 

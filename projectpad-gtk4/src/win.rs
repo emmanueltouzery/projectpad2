@@ -131,12 +131,14 @@ impl ProjectpadApplicationWindow {
     pub fn new(db_sender: mpsc::Sender<SqlFunc>) -> Self {
         let win = glib::Object::new::<Self>();
         win.imp().sql_channel.replace(Some(db_sender.clone()));
-        win.imp().project_item_list.connect_activate(
-            glib::clone!(@weak win as w => move |project_item_id, project_item_type| {
+        win.imp().project_item_list.connect_closure(
+            "activate-item",
+            false,
+            glib::closure_local!(@strong win as w => move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8| {
                 w.imp().project_item.set_project_item_type(project_item_type as u8);
-                w.imp().project_item.set_item_id(project_item_id)
+                w.imp().project_item.set_item_id(item_id)
             }),
-        );
+            );
 
         win.imp().search_entry.connect_show(|entry| {
             entry.grab_focus();

@@ -10,8 +10,7 @@ use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
 use projectpadsql::models::{
-    EnvironmentType, InterestType, Project, ProjectNote, ProjectPointOfInterest, Server,
-    ServerAccessType, ServerLink, ServerType,
+    EnvironmentType, ProjectNote, ProjectPointOfInterest, Server, ServerLink,
 };
 
 use crate::sql_thread::SqlFunc;
@@ -32,6 +31,9 @@ pub enum ProjectItem {
 // https://gtk-rs.org/gtk4-rs/stable/latest/book/todo_1.html
 // https://gitlab.com/news-flash/news_flash_gtk/-/blob/master/src/article_list/models/article.rs?ref_type=heads
 mod imp {
+    use std::sync::OnceLock;
+
+    use glib::subclass::Signal;
     use gtk::{
         subclass::{
             prelude::{BoxImpl, ObjectImpl, ObjectSubclass},
@@ -70,6 +72,16 @@ mod imp {
         fn constructed(&self) {
             self.obj().init_list();
         }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("activate-item")
+                    // item id + project_item_type
+                    .param_types([i32::static_type(), u8::static_type()])
+                    .build()]
+            })
+        }
     }
 
     impl WidgetImpl for ProjectItemList {}
@@ -99,7 +111,7 @@ impl ProjectItemList {
     }
 
     pub fn set_project_items(
-        &mut self,
+        &self,
         project_items: &[ProjectItem],
         group_start_indices: HashMap<i32, String>,
         selected_item: Option<i32>,
@@ -108,6 +120,7 @@ impl ProjectItemList {
         list_store.set_group_start_indices(project_items.len(), group_start_indices);
         let mut idx = 0;
         let mut selected_index = None;
+
         for project_item in project_items {
             let item_model = Self::get_item_model(project_item);
             list_store.append(&item_model);
@@ -115,6 +128,20 @@ impl ProjectItemList {
                 selected_index = Some(idx);
             }
             idx += 1;
+        }
+        if selected_item.is_none() && !project_items.is_empty() {
+            // None == select first item (if any)
+            selected_index = Some(0);
+
+            if let Some(first_item) = list_store.item(0) {
+                self.emit_by_name::<()>(
+                    "activate-item",
+                    &[
+                        &first_item.property_value("id"),
+                        &first_item.property_value("project-item-type"),
+                    ],
+                );
+            }
         }
         if let Some(s_model) = self.imp().project_item_list.model() {
             let _sel_model = s_model.downcast::<gtk::SingleSelection>().unwrap();
@@ -124,9 +151,26 @@ impl ProjectItemList {
             self.imp()
                 .project_item_list
                 .set_model(Some(&selection_model));
+
+            self.imp()
+            .project_item_list
+            .model()
+            .unwrap()
+            .connect_selection_changed(glib::clone!(@weak self as s => move |sel_model, _idx, _items_count| {
+                let idx = sel_model.downcast_ref::<gtk::SingleSelection>().unwrap().selected();
+                let model = sel_model
+                    .item(idx)
+                    .unwrap();
+                s.emit_by_name::<()>("activate-item", &[
+                    &model.property_value("id"),
+                    &model.property_value("project-item-type"),
+                ])
+            }));
         }
         if let Some(idx) = selected_index {
-            self.imp().project_item_list.scroll_to(idx, gtk::ListScrollFlags::SELECT, None);
+            self.imp()
+                .project_item_list
+                .scroll_to(idx, gtk::ListScrollFlags::SELECT, None);
         }
     }
 
@@ -198,23 +242,6 @@ impl ProjectItemList {
                 //     InterestType::PoiBackupArchive => Icon::ARCHIVE,
                 // },
             }
-    }
-
-    pub fn connect_activate<F: Fn(i32, ProjectItemType) + 'static>(&self, f: F) -> SignalHandlerId {
-        self.imp()
-            .project_item_list
-            .model()
-            .unwrap()
-            .connect_selection_changed(glib::clone!(@weak self as s => move |selection_model, _idx, _items_count| {
-                let idx = selection_model.downcast_ref::<gtk::SingleSelection>().unwrap().selected();
-                let model = selection_model
-                    .item(idx)
-                    .unwrap();
-                f(
-                    model.property::<i32>("id"),
-                    ProjectItemType::from_repr(model.property::<u8>("project-item-type")).unwrap(),
-                );
-            }))
     }
 
     pub fn fetch_project_items(

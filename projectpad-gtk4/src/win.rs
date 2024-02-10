@@ -15,20 +15,25 @@ use gtk::subclass::widget::CompositeTemplate;
 use projectpadsql::models::Project;
 
 mod imp {
-    use std::{cell::RefCell, collections::HashMap};
+    use std::{
+        cell::{Cell, RefCell},
+        collections::HashMap,
+    };
 
     use crate::widgets::{project_item::ProjectItem, search::search_item_list::SearchItemList};
 
     use super::*;
+    use glib::{subclass::prelude::ObjectImpl, ObjectExt, Properties};
     use gtk::{
         subclass::{
-            prelude::{ObjectImpl, ObjectSubclass},
+            prelude::ObjectSubclass,
             widget::{CompositeTemplateInitializingExt, WidgetImpl},
         },
         CompositeTemplate, TemplateChild,
     };
 
-    #[derive(Debug, Default, CompositeTemplate)]
+    #[derive(Properties, Debug, Default, CompositeTemplate)]
+    #[properties(wrapper_type = super::ProjectpadApplicationWindow)]
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/win.ui")]
     pub struct ProjectpadApplicationWindow {
         #[template_child]
@@ -36,7 +41,7 @@ mod imp {
         #[template_child]
         pub project_item: TemplateChild<ProjectItem>,
         #[template_child]
-        pub edit_btn: TemplateChild<gtk::ToggleButton>,
+        pub edit_btn: TemplateChild<gtk::Button>,
         #[template_child]
         pub edit_btn_contents: TemplateChild<adw::ButtonContent>,
         #[template_child]
@@ -56,6 +61,9 @@ mod imp {
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
 
+        #[property(get, set)]
+        edit_mode: Cell<bool>,
+
         pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
     }
 
@@ -74,6 +82,7 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for ProjectpadApplicationWindow {
         fn constructed(&self) {
             self.parent_constructed();
@@ -87,9 +96,6 @@ mod imp {
 
             // self.obj().setup_widgets(sender.clone(), player);
             // self.obj().setup_gactions(sender);
-            self.edit_btn
-                .bind_property("active", &self.project_item.get(), "edit_mode")
-                .build();
         }
     }
 
@@ -190,56 +196,60 @@ impl ProjectpadApplicationWindow {
             }),
             );
 
-        win.imp()
-            .edit_btn
-            .bind_property(
-                "active",
-                win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
-                "label",
+        win.bind_property(
+            "edit-mode",
+            win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
+            "label",
+        )
+        .transform_to(|_, active: bool| Some(if active { "View" } else { "Edit" }.to_value()))
+        .sync_create()
+        .build();
+
+        win.bind_property(
+            "edit-mode",
+            win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
+            "icon-name",
+        )
+        .transform_to(|_, active: bool| {
+            Some(
+                if active {
+                    "view-reveal-symbolic"
+                } else {
+                    "document-edit-symbolic"
+                }
+                .to_value(),
             )
-            .transform_to(|_, active: bool| Some(if active { "View" } else { "Edit" }.to_value()))
-            .sync_create()
+        })
+        .sync_create()
+        .build();
+
+        win.bind_property(
+            "edit-mode",
+            win.imp().edit_btn.upcast_ref::<gtk::Widget>(),
+            "css-classes",
+        )
+        .transform_to(|_, active: bool| {
+            Some(
+                if active {
+                    ["pill", "suggested-action"]
+                } else {
+                    ["pill", "destructive-action"]
+                }
+                .to_value(),
+            )
+        })
+        .sync_create()
+        .build();
+
+        win.bind_property("edit-mode", &win.imp().project_item.get(), "edit_mode")
             .build();
 
         win.imp()
             .edit_btn
-            .bind_property(
-                "active",
-                win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
-                "icon-name",
-            )
-            .transform_to(|_, active: bool| {
-                Some(
-                    if active {
-                        "view-reveal-symbolic"
-                    } else {
-                        "document-edit-symbolic"
-                    }
-                    .to_value(),
-                )
-            })
-            .sync_create()
-            .build();
-
-        win.imp()
-            .edit_btn
-            .bind_property(
-                "active",
-                win.imp().edit_btn.upcast_ref::<gtk::Widget>(),
-                "css-classes",
-            )
-            .transform_to(|_, active: bool| {
-                Some(
-                    if active {
-                        ["pill", "suggested-action"]
-                    } else {
-                        ["pill", "destructive-action"]
-                    }
-                    .to_value(),
-                )
-            })
-            .sync_create()
-            .build();
+            .connect_clicked(glib::clone!(@weak win as w => move |_| {
+                let edit_mode = w.property::<bool>("edit-mode");
+                w.set_property("edit-mode", (!edit_mode).to_value());
+            }));
 
         win
     }

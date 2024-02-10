@@ -38,7 +38,7 @@
                     <child type="end">
                       <object class="GtkButton" id="add_project_item">
                         <property name="icon-name">list-add-symbolic</property>
-                        <property name="visible" bind-source="edit_btn" bind-property="active" bind-flags="bidirectional|sync-create"/>
+                        <!-- <property name="visible" bind-source="app_win" bind-property="edit_mode" bind-flags="bidirectional|sync-create"/> -->
                       </object>
                     </child>
                   </object>
@@ -137,7 +137,7 @@
                               </object>
                             </child>
                             <child type="overlay">
-                              <object class="GtkToggleButton" id="edit_btn">
+                              <object class="GtkButton" id="edit_btn">
                                 <property name="valign">end</property>
                                 <property name="halign">end</property>
                                 <property name="margin-bottom">15</property>

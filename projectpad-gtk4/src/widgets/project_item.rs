@@ -1,5 +1,4 @@
 use adw::prelude::*;
-use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;

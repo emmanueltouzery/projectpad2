@@ -113,6 +113,7 @@ impl ProjectpadApplication {
         select_project_action.connect_change_state(move |action, parameter| {
             println!("{} / {:#?}", action, parameter);
             let project_id = parameter.unwrap().get::<i32>().unwrap();
+            action.set_state(parameter.as_ref().unwrap());
             w.set_active_project_and_item(project_id, None);
         });
         window.add_action(&select_project_action);

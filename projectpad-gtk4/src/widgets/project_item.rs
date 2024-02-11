@@ -136,7 +136,16 @@ impl ProjectItem {
                 //     widget_mode,
                 // )
             }
+            Some(ProjectItemType::ProjectPointOfInterest) => {
+                super::project_items::project_poi::load_and_display_project_poi(
+                    &self.imp().project_item,
+                    db_sender,
+                    item_id,
+                    widget_mode,
+                )
+            }
             _ => {
+                // TODO remove the fallback case
                 eprintln!("unhandled item type!");
             }
         }

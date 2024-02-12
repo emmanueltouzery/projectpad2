@@ -310,6 +310,10 @@ fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &
             ServerItem::Website(w) => display_server_website(w, widget_mode, &cur_parent),
             ServerItem::PointOfInterest(poi) => display_server_poi(poi, widget_mode, &cur_parent),
             ServerItem::Note(n) => display_server_note(n, widget_mode, &cur_parent),
+            ServerItem::ExtraUserAccount(u) => {
+                display_server_extra_user_account(u, widget_mode, &cur_parent)
+            }
+            // TODO remove fallback
             _ => {}
         }
     }
@@ -433,6 +437,36 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
     if widget_mode == WidgetMode::Edit {
         add_group_edit_suffix(&server_item1, &poi.desc);
     }
+
+    vbox.append(&server_item1);
+}
+
+fn display_server_extra_user_account(
+    user: &ServerExtraUserAccount,
+    widget_mode: WidgetMode,
+    vbox: &gtk::Box,
+) {
+    let server_item1 = adw::PreferencesGroup::builder()
+        .description("Extra user")
+        // .title(&poi.desc)
+        .build();
+    DetailsRow::new(
+        "Username",
+        &user.username,
+        SuffixAction::copy(&user.username),
+    )
+    .add(widget_mode, &server_item1);
+    DetailsRow::new_password(
+        "Password",
+        &user.password,
+        SuffixAction::copy(&user.password),
+    )
+    .add(widget_mode, &server_item1);
+
+    if widget_mode == WidgetMode::Edit {
+        add_group_edit_suffix(&server_item1, &user.username);
+    }
+    // TODO auth key
 
     vbox.append(&server_item1);
 }

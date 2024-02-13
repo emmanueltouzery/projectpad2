@@ -3,8 +3,8 @@ use adw::prelude::*;
 use diesel::prelude::*;
 use itertools::Itertools;
 use projectpadsql::models::{
-    InterestType, Server, ServerDatabase, ServerExtraUserAccount, ServerNote,
-    ServerPointOfInterest, ServerWebsite,
+    InterestType, Server, ServerAccessType, ServerDatabase, ServerExtraUserAccount, ServerNote,
+    ServerPointOfInterest, ServerType, ServerWebsite,
 };
 use std::{
     collections::{BTreeSet, HashMap},
@@ -242,6 +242,44 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: Wid
         SuffixAction::copy(&channel_data.server.text),
     )
     .add(widget_mode, &server_item0);
+
+    if widget_mode == WidgetMode::Edit {
+        // server type
+        let server_type_combo = adw::ComboRow::new();
+        server_type_combo.set_title("Server Type");
+        let server_type_model = gtk::StringList::new(&[
+            "Application",
+            "Database",
+            "HTTP server or proxy",
+            "Monitoring",
+            "Reporting",
+        ]);
+        server_type_combo.set_model(Some(&server_type_model));
+        server_type_combo.set_selected(match channel_data.server.server_type {
+            ServerType::SrvApplication => 0,
+            ServerType::SrvDatabase => 1,
+            ServerType::SrvHttpOrProxy => 2,
+            ServerType::SrvMonitoring => 3,
+            ServerType::SrvReporting => 4,
+        });
+
+        server_item0.add(&server_type_combo);
+
+        // access type
+        let access_type_combo = adw::ComboRow::new();
+        access_type_combo.set_title("Access Type");
+        let access_type_model =
+            gtk::StringList::new(&["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"]);
+        access_type_combo.set_model(Some(&access_type_model));
+        access_type_combo.set_selected(match channel_data.server.access_type {
+            ServerAccessType::SrvAccessRdp => 0,
+            ServerAccessType::SrvAccessSsh => 1,
+            ServerAccessType::SrvAccessSshTunnel => 2,
+            ServerAccessType::SrvAccessWww => 3,
+        });
+
+        server_item0.add(&access_type_combo);
+    }
 
     vbox.append(&server_item0);
 

@@ -191,6 +191,8 @@ impl ProjectpadApplicationWindow {
                     .main_or_search
                     .set_visible_child_name("main");
 
+                ActionGroupExt::activate_action(&w, "select-project", Some(&project_id.to_variant()));
+
                 w.set_active_project_item(Some((item_id, search_item_type)));
 
                 w.imp()

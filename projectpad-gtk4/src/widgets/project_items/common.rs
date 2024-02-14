@@ -185,6 +185,28 @@ impl DetailsRow<'_> {
                 );
                 e.add_suffix(&widget);
             }
+            if self.password_mode == PasswordMode::Password {
+                let widget = gtk::Button::builder()
+                    .css_classes(["flat"])
+                    .icon_name("view-reveal-symbolic")
+                    .build();
+                let ar = e.clone();
+                let st = self.subtitle.to_owned();
+                widget.connect_closure(
+                    "clicked",
+                    false,
+                    glib::closure_local!(|b: gtk::Button| {
+                        if b.icon_name() == Some("view-reveal-symbolic".into()) {
+                            ar.set_subtitle(&st);
+                            b.set_icon_name("view-conceal-symbolic");
+                        } else {
+                            ar.set_subtitle("●●●●");
+                            b.set_icon_name("view-reveal-symbolic");
+                        }
+                    }),
+                );
+                e.add_suffix(&widget);
+            }
             if let Some(SuffixAction { icon, action }) = self.main_action.as_ref() {
                 e.add_suffix(&gtk::Image::builder().icon_name(*icon).build());
                 e.set_activatable(true);

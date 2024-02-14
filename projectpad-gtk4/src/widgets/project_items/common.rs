@@ -84,9 +84,9 @@ pub enum PasswordMode {
 pub struct DetailsRow<'a> {
     pub title: &'a str,
     pub subtitle: &'a str,
-    pub suffix_icon: Option<&'static str>,
     pub password_mode: PasswordMode,
-    pub action: Option<Rc<Box<dyn Fn() -> ()>>>,
+    pub main_action: Option<SuffixAction>,
+    pub suffix_actions: &'a [SuffixAction],
 }
 
 pub struct SuffixAction {
@@ -102,34 +102,49 @@ impl SuffixAction {
             action: Rc::new(Box::new(move || copy_to_clipboard(&t))),
         })
     }
+
+    pub fn link(url: &str) -> SuffixAction {
+        let u = url.to_owned();
+        SuffixAction {
+            icon: "external-link-alt-symbolic",
+            action: Rc::new(Box::new(move || {
+                gtk::UriLauncher::new(&u).launch(
+                    None::<&gtk::Window>,
+                    None::<&gio::Cancellable>,
+                    |_| {},
+                );
+            })),
+        }
+    }
 }
 
 impl DetailsRow<'_> {
     pub fn new<'a>(
         title: &'a str,
         subtitle: &'a str,
-        suffix_action: Option<SuffixAction>,
+        main_action: Option<SuffixAction>,
+        suffix_actions: &'a [SuffixAction],
     ) -> DetailsRow<'a> {
         DetailsRow {
             title,
             subtitle,
             password_mode: PasswordMode::PlainText,
-            suffix_icon: suffix_action.as_ref().map(|a| a.icon),
-            action: suffix_action.as_ref().map(|a| a.action.clone()),
+            main_action,
+            suffix_actions,
         }
     }
 
     pub fn new_password<'a>(
         title: &'a str,
         subtitle: &'a str,
-        suffix_action: Option<SuffixAction>,
+        main_action: Option<SuffixAction>,
     ) -> DetailsRow<'a> {
         DetailsRow {
             title,
             subtitle,
             password_mode: PasswordMode::Password,
-            suffix_icon: suffix_action.as_ref().map(|a| a.icon),
-            action: suffix_action.as_ref().map(|a| a.action.clone()),
+            main_action,
+            suffix_actions: &[],
         }
     }
 
@@ -155,13 +170,25 @@ impl DetailsRow<'_> {
                 // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
                 .css_classes(["property"])
                 .build();
-            if let Some(i) = self.suffix_icon {
-                e.add_suffix(&gtk::Image::builder().icon_name(i).build());
-                // e.set_activatable_widget(Some(&e));
+            for suffix in self.suffix_actions.iter() {
+                let widget = gtk::Button::builder()
+                    .css_classes(["flat"])
+                    .icon_name(suffix.icon)
+                    .build();
+                let a = suffix.action.clone();
+                widget.connect_closure(
+                    "clicked",
+                    false,
+                    glib::closure_local!(|_b: gtk::Button| {
+                        a();
+                    }),
+                );
+                e.add_suffix(&widget);
             }
-            if let Some(a) = self.action.as_ref() {
+            if let Some(SuffixAction { icon, action }) = self.main_action.as_ref() {
+                e.add_suffix(&gtk::Image::builder().icon_name(*icon).build());
                 e.set_activatable(true);
-                let c_a = a.clone();
+                let c_a = action.clone();
                 e.connect_activated(move |_ar| {
                     c_a();
                 });

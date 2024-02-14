@@ -56,13 +56,14 @@ fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mod
 
     let prefs_group = adw::PreferencesGroup::builder().title(desc).build();
 
-    DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path))
+    DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path), &[])
         .add(widget_mode, &prefs_group);
 
     DetailsRow::new(
         poi_get_text_label(poi.interest_type),
         &poi.text,
         SuffixAction::copy(&poi.text),
+        &[],
     )
     .add(widget_mode, &prefs_group);
 

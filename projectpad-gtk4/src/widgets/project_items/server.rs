@@ -216,10 +216,16 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: Wid
 
     let server_item0 = adw::PreferencesGroup::builder().build();
 
+    let address_suffix_www = [SuffixAction::link(&channel_data.server.ip)];
     DetailsRow::new(
         "Address",
         &channel_data.server.ip,
         SuffixAction::copy(&channel_data.server.ip),
+        if channel_data.server.access_type == ServerAccessType::SrvAccessWww {
+            &address_suffix_www
+        } else {
+            &[]
+        },
     )
     .add(widget_mode, &server_item0);
 
@@ -227,6 +233,7 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: Wid
         "Username",
         &channel_data.server.username,
         SuffixAction::copy(&channel_data.server.username),
+        &[],
     )
     .add(widget_mode, &server_item0);
 
@@ -240,6 +247,7 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: Wid
         "Text",
         &channel_data.server.text,
         SuffixAction::copy(&channel_data.server.text),
+        &[],
     )
     .add(widget_mode, &server_item0);
 
@@ -421,27 +429,20 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
         .title(&w.desc)
         .build();
     let url = w.url.clone();
+    DetailsRow::new("Address", &w.url, Some(SuffixAction::link(&w.url)), &[])
+        .add(widget_mode, &server_item1);
+
     DetailsRow::new(
-        "Address",
-        &w.url,
-        Some(SuffixAction {
-            icon: "external-link-alt-symbolic",
-            action: Rc::new(Box::new(move || {
-                gtk::UriLauncher::new(&url).launch(
-                    None::<&gtk::Window>,
-                    None::<&gio::Cancellable>,
-                    |_| {},
-                );
-            })),
-        }),
+        "Username",
+        &w.username,
+        SuffixAction::copy(&w.username),
+        &[],
     )
     .add(widget_mode, &server_item1);
-
-    DetailsRow::new("Username", &w.username, SuffixAction::copy(&w.username))
-        .add(widget_mode, &server_item1);
     DetailsRow::new_password("Password", &w.password, SuffixAction::copy(&w.password))
         .add(widget_mode, &server_item1);
-    DetailsRow::new("Text", &w.text, SuffixAction::copy(&w.text)).add(widget_mode, &server_item1);
+    DetailsRow::new("Text", &w.text, SuffixAction::copy(&w.text), &[])
+        .add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
         add_group_edit_suffix(&server_item1, &w.desc);
@@ -463,13 +464,13 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
         .description(desc)
         .title(&poi.desc)
         .build();
-    DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path))
+    DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path), &[])
         .add(widget_mode, &server_item1);
     let field_name = match poi.interest_type {
         InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
         _ => "Text",
     };
-    DetailsRow::new(field_name, &poi.text, SuffixAction::copy(&poi.text))
+    DetailsRow::new(field_name, &poi.text, SuffixAction::copy(&poi.text), &[])
         .add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
@@ -492,6 +493,7 @@ fn display_server_extra_user_account(
         "Username",
         &user.username,
         SuffixAction::copy(&user.username),
+        &[],
     )
     .add(widget_mode, &server_item1);
     DetailsRow::new_password(

@@ -3,7 +3,10 @@ use std::rc::Rc;
 use adw::prelude::*;
 use gtk::gdk;
 
-use crate::{app::ProjectpadApplication, widgets::project_item::WidgetMode};
+use crate::{
+    app::ProjectpadApplication,
+    widgets::{environment_picker::EnvironmentPicker, project_item::WidgetMode},
+};
 
 pub fn get_contents_box_with_header(title: &str, widget_mode: WidgetMode) -> gtk::Box {
     let vbox = gtk::Box::builder()
@@ -50,10 +53,13 @@ pub fn get_contents_box_with_header(title: &str, widget_mode: WidgetMode) -> gtk
     header_box.append(&header_second_col);
 
     if widget_mode == WidgetMode::Edit {
+        let environment_picker = EnvironmentPicker::new();
+        environment_picker.set_halign(gtk::Align::End);
+        environment_picker.set_hexpand(true);
+        header_box.append(&environment_picker);
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
             .halign(gtk::Align::End)
-            .hexpand(true)
             .build();
         header_box.append(&delete_btn);
     }

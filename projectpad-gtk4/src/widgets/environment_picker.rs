@@ -104,6 +104,13 @@ impl EnvironmentPicker {
 
         let dropdown_clone = dropdown.clone();
         let item_to_info_clone = item_to_info.clone();
+
+        let item_to_signal_id = Rc::new(RefCell::new(HashMap::<
+            gtk::ListItem,
+            glib::SignalHandlerId,
+        >::new()));
+
+        let item_to_signal_id_clone = item_to_signal_id.clone();
         list_item_factory.connect_bind(move |_factory, list_item_obj| {
             let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
             let str_obj = list_item.item();
@@ -142,7 +149,7 @@ impl EnvironmentPicker {
                 0.0
             });
 
-            dropdown_clone.connect_closure(
+            let signal_id = dropdown_clone.connect_closure(
                 "notify::selected-item",
                 false,
                 glib::closure_local!(@strong check_mark as cm, @strong str_obj as o => move |dd: gtk::DropDown, _item: glib::ParamSpec| {
@@ -152,6 +159,16 @@ impl EnvironmentPicker {
                         0.0
                     });
                 }),
+            );
+            item_to_signal_id_clone.borrow_mut().insert(list_item.clone(), signal_id);
+        });
+
+        let dropdown_clone2 = dropdown.clone();
+        list_item_factory.connect_unbind(move |_factory, list_item_obj| {
+            let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
+            glib::signal_handler_disconnect(
+                &dropdown_clone2,
+                item_to_signal_id.borrow_mut().remove(list_item).unwrap(),
             );
         });
 

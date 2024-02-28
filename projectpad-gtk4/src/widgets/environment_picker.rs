@@ -58,65 +58,77 @@ struct DropdownListItemInfo {
     check_mark: gtk::Image,
 }
 
-impl EnvironmentPicker {
-    pub fn new() -> Self {
-        let this = glib::Object::new::<Self>();
-        let dropdown = gtk::DropDown::from_strings(&["DEV", "STG", "UAT", "PRD"]);
+#[derive(PartialEq, Eq)]
+enum DropDownFactoryMode {
+    Item,
+    ListItem,
+}
 
-        let item_to_info = Rc::new(RefCell::new(
-            HashMap::<gtk::ListItem, DropdownListItemInfo>::new(),
-        ));
+fn dropdown_get_factory(
+    dropdown: &gtk::DropDown,
+    mode: DropDownFactoryMode,
+) -> gtk::SignalListItemFactory {
+    let item_to_info = Rc::new(RefCell::new(
+        HashMap::<gtk::ListItem, DropdownListItemInfo>::new(),
+    ));
 
-        let list_item_factory = gtk::SignalListItemFactory::new();
-        let item_to_info_clone0 = item_to_info.clone();
-        // pattern partly taken from the gtk4-demo "Selections"
-        list_item_factory.connect_setup(move |_factory, list_item_obj| {
-            let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
-            let hbox = gtk::Box::builder().spacing(10).build();
-            let vbox = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-            let first_label = gtk::Label::builder()
-                .css_classes(["heading"])
-                .halign(gtk::Align::Start)
-                .build();
-            let second_label = gtk::Label::builder()
-                .css_classes(["dim-label"])
-                .halign(gtk::Align::Start)
-                .build();
-            vbox.append(&first_label);
+    let list_item_factory = gtk::SignalListItemFactory::new();
+    let item_to_info_clone0 = item_to_info.clone();
+    // pattern partly taken from the gtk4-demo "Selections"
+    list_item_factory.connect_setup(move |_factory, list_item_obj| {
+        let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
+        let hbox = gtk::Box::builder().spacing(10).build();
+        let vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        let first_label = gtk::Label::builder()
+            .css_classes(["heading"])
+            .halign(gtk::Align::Start)
+            .vexpand(mode != DropDownFactoryMode::ListItem)
+            .valign(if mode == DropDownFactoryMode::ListItem {
+                gtk::Align::Start
+            } else {
+                gtk::Align::Center
+            })
+            .build();
+        let second_label = gtk::Label::builder()
+            .css_classes(["dim-label"])
+            .halign(gtk::Align::Start)
+            .build();
+        vbox.append(&first_label);
+        if mode == DropDownFactoryMode::ListItem {
             vbox.append(&second_label);
+        }
 
-            let check_mark = gtk::Image::from_icon_name("object-select-symbolic");
+        let check_mark = gtk::Image::from_icon_name("object-select-symbolic");
 
-            hbox.append(&vbox);
+        hbox.append(&vbox);
+        if mode == DropDownFactoryMode::ListItem {
             hbox.append(&check_mark);
-            list_item.set_child(Some(&hbox));
-            item_to_info_clone0.borrow_mut().insert(
-                list_item.clone(),
-                DropdownListItemInfo {
-                    first_label,
-                    second_label,
-                    check_mark,
-                },
-            );
-        });
+        }
+        list_item.set_child(Some(&hbox));
+        item_to_info_clone0.borrow_mut().insert(
+            list_item.clone(),
+            DropdownListItemInfo {
+                first_label,
+                second_label,
+                check_mark,
+            },
+        );
+    });
 
-        let dropdown_clone = dropdown.clone();
-        let item_to_info_clone = item_to_info.clone();
+    let dropdown_clone = dropdown.clone();
+    let item_to_info_clone = item_to_info.clone();
 
-        let item_to_signal_id = Rc::new(RefCell::new(HashMap::<
-            gtk::ListItem,
-            glib::SignalHandlerId,
-        >::new()));
+    let item_to_signal_id = Rc::new(RefCell::new(
+        HashMap::<gtk::ListItem, glib::SignalHandlerId>::new(),
+    ));
 
-        let item_to_signal_id_clone = item_to_signal_id.clone();
-        list_item_factory.connect_bind(move |_factory, list_item_obj| {
+    let item_to_signal_id_clone = item_to_signal_id.clone();
+    list_item_factory.connect_bind(move |_factory, list_item_obj| {
             let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
             let str_obj = list_item.item();
 
-            dbg!(&dropdown_clone.selected_item());
-            dbg!(list_item_obj);
             let item_info_b = item_to_info_clone.borrow();
             let item_info = item_info_b.get(list_item).unwrap();
             let check_mark = item_info.check_mark.clone();
@@ -163,16 +175,30 @@ impl EnvironmentPicker {
             item_to_signal_id_clone.borrow_mut().insert(list_item.clone(), signal_id);
         });
 
-        let dropdown_clone2 = dropdown.clone();
-        list_item_factory.connect_unbind(move |_factory, list_item_obj| {
-            let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
-            glib::signal_handler_disconnect(
-                &dropdown_clone2,
-                item_to_signal_id.borrow_mut().remove(list_item).unwrap(),
-            );
-        });
+    let dropdown_clone2 = dropdown.clone();
+    list_item_factory.connect_unbind(move |_factory, list_item_obj| {
+        let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
+        glib::signal_handler_disconnect(
+            &dropdown_clone2,
+            item_to_signal_id.borrow_mut().remove(list_item).unwrap(),
+        );
+    });
+
+    list_item_factory
+}
+
+impl EnvironmentPicker {
+    pub fn new() -> Self {
+        let this = glib::Object::new::<Self>();
+
+        let dropdown = gtk::DropDown::from_strings(&["DEV", "STG", "UAT", "PRD"]);
+
+        let list_item_factory = dropdown_get_factory(&dropdown, DropDownFactoryMode::ListItem);
+        let item_factory = dropdown_get_factory(&dropdown, DropDownFactoryMode::Item);
 
         dropdown.set_list_factory(Some(&list_item_factory));
+        dropdown.set_factory(Some(&item_factory));
+
         this.set_child(Some(&dropdown));
         this
     }

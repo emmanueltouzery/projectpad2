@@ -127,6 +127,13 @@ impl EnvironmentPicker {
                 _ => unreachable!(),
             };
             item_info.first_label.set_label(str_val.as_str());
+            item_info.first_label.set_css_classes(&["caption-heading", match str_val.as_str() {
+                "PRD" => "project-item-prod",
+                "UAT" => "project-item-uat",
+                "STG" => "project-item-staging",
+                "DEV" => "project-item-dev",
+                _ => unreachable!(),
+            }]);
             item_info.second_label.set_label(desc);
 
             check_mark.set_opacity(if dropdown_clone.selected_item() == str_obj {

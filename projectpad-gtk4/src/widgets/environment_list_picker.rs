@@ -35,28 +35,36 @@ glib::wrapper! {
 impl EnvironmentListPicker {
     pub fn new(envs: HashSet<EnvironmentType>) -> Self {
         let this = glib::Object::new::<Self>();
-        let hbox = gtk::Box::builder().css_classes(["linked"]).build();
+        let hbox = gtk::Box::builder()
+            .css_classes(["linked"])
+            .homogeneous(true)
+            .valign(gtk::Align::Center)
+            .build();
         hbox.append(
             &gtk::ToggleButton::builder()
                 .label("DEV")
+                .css_classes(["toggle-project-item-dev", "caption-heading"])
                 .active(envs.contains(&EnvironmentType::EnvDevelopment))
                 .build(),
         );
         hbox.append(
             &gtk::ToggleButton::builder()
                 .label("STG")
+                .css_classes(["toggle-project-item-staging", "caption-heading"])
                 .active(envs.contains(&EnvironmentType::EnvStage))
                 .build(),
         );
         hbox.append(
             &gtk::ToggleButton::builder()
                 .label("UAT")
+                .css_classes(["toggle-project-item-uat", "caption-heading"])
                 .active(envs.contains(&EnvironmentType::EnvUat))
                 .build(),
         );
         hbox.append(
             &gtk::ToggleButton::builder()
                 .label("PRD")
+                .css_classes(["toggle-project-item-prod", "caption-heading"])
                 .active(envs.contains(&EnvironmentType::EnvProd))
                 .build(),
         );

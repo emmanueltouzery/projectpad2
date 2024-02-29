@@ -192,6 +192,7 @@ impl EnvironmentPicker {
         let this = glib::Object::new::<Self>();
 
         let dropdown = gtk::DropDown::from_strings(&["DEV", "STG", "UAT", "PRD"]);
+        dropdown.set_css_classes(&["flat"]);
 
         let list_item_factory = dropdown_get_factory(&dropdown, DropDownFactoryMode::ListItem);
         let item_factory = dropdown_get_factory(&dropdown, DropDownFactoryMode::Item);

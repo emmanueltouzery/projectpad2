@@ -16,3 +16,7 @@
 .frame-group {
   padding: 20px;
 }
+
+dropdown.flat:not(:hover) button {
+  background: transparent;
+}

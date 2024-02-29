@@ -1,6 +1,7 @@
 use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
+use projectpadsql::models::EnvironmentType;
 use strum_macros::FromRepr;
 
 #[derive(FromRepr, Debug, PartialEq)]
@@ -49,32 +50,25 @@ glib::wrapper! {
     pub struct ProjectItemModel(ObjectSubclass<imp::ProjectItemModel>);
 }
 
-pub enum Env {
-    Dev,
-    Staging,
-    Uat,
-    Prod,
-}
-
-fn env_to_css(val: &Env) -> Vec<String> {
+fn env_to_css(val: &EnvironmentType) -> Vec<String> {
     vec![
         match val {
-            Env::Dev => "project-item-dev",
-            Env::Staging => "project-item-staging",
-            Env::Uat => "project-item-uat",
-            Env::Prod => "project-item-prod",
+            EnvironmentType::EnvDevelopment => "project-item-dev",
+            EnvironmentType::EnvStage => "project-item-staging",
+            EnvironmentType::EnvUat => "project-item-uat",
+            EnvironmentType::EnvProd => "project-item-prod",
         }
         .to_string(),
         "caption-heading".to_string(),
     ]
 }
 
-fn env_to_desc(val: &Env) -> String {
+fn env_to_desc(val: &EnvironmentType) -> String {
     match val {
-        Env::Dev => "DEV",
-        Env::Staging => "STG",
-        Env::Uat => "UAT",
-        Env::Prod => "PRD",
+        EnvironmentType::EnvDevelopment => "DEV",
+        EnvironmentType::EnvStage => "STG",
+        EnvironmentType::EnvUat => "UAT",
+        EnvironmentType::EnvProd => "PRD",
     }
     .to_string()
 }
@@ -84,7 +78,7 @@ impl ProjectItemModel {
         id: i32,
         project_item_type: ProjectItemType,
         title: String,
-        environment: Env,
+        environment: EnvironmentType,
         group_name: Option<String>,
     ) -> Self {
         Object::builder()

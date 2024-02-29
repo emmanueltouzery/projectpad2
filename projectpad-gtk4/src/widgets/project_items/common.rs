@@ -1,14 +1,28 @@
-use std::rc::Rc;
+use std::{collections::HashSet, rc::Rc};
 
 use adw::prelude::*;
 use gtk::gdk;
+use projectpadsql::models::EnvironmentType;
 
 use crate::{
     app::ProjectpadApplication,
-    widgets::{environment_picker::EnvironmentPicker, project_item::WidgetMode},
+    widgets::{
+        environment_list_picker::EnvironmentListPicker, environment_picker::EnvironmentPicker,
+        project_item::WidgetMode,
+    },
 };
 
-pub fn get_contents_box_with_header(title: &str, widget_mode: WidgetMode) -> gtk::Box {
+pub enum EnvOrEnvs {
+    Env(EnvironmentType),
+    Envs(HashSet<EnvironmentType>),
+    None,
+}
+
+pub fn get_contents_box_with_header(
+    title: &str,
+    env: EnvOrEnvs,
+    widget_mode: WidgetMode,
+) -> gtk::Box {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
@@ -53,10 +67,16 @@ pub fn get_contents_box_with_header(title: &str, widget_mode: WidgetMode) -> gtk
     header_box.append(&header_second_col);
 
     if widget_mode == WidgetMode::Edit {
-        let environment_picker = EnvironmentPicker::new();
-        environment_picker.set_halign(gtk::Align::End);
-        environment_picker.set_hexpand(true);
-        header_box.append(&environment_picker);
+        let environment_picker = match env {
+            EnvOrEnvs::Env(e) => Some(EnvironmentPicker::new(e).upcast::<gtk::Widget>()),
+            EnvOrEnvs::Envs(es) => Some(EnvironmentListPicker::new(es).upcast::<gtk::Widget>()),
+            EnvOrEnvs::None => None,
+        };
+        if let Some(ep) = environment_picker {
+            ep.set_halign(gtk::Align::End);
+            ep.set_hexpand(true);
+            header_box.append(&ep);
+        }
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
             .halign(gtk::Align::End)

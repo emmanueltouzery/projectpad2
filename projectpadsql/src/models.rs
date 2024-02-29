@@ -86,6 +86,7 @@ pub enum ServerAccessType {
     Deserialize,
 )]
 #[diesel(sql_type = Varchar)]
+#[derive(Hash)]
 pub enum EnvironmentType {
     EnvDevelopment,
     EnvUat,

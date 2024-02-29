@@ -17,7 +17,7 @@ use crate::sql_thread::SqlFunc;
 
 use super::{
     project_item_list_model::ProjectItemListModel,
-    project_item_model::{Env, ProjectItemModel, ProjectItemType},
+    project_item_model::{ProjectItemModel, ProjectItemType},
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -174,22 +174,13 @@ impl ProjectItemList {
         }
     }
 
-    fn environment_type_to_env(et: EnvironmentType) -> Env {
-        match et {
-            EnvironmentType::EnvDevelopment => Env::Dev,
-            EnvironmentType::EnvUat => Env::Uat,
-            EnvironmentType::EnvStage => Env::Staging,
-            EnvironmentType::EnvProd => Env::Prod,
-        }
-    }
-
     fn get_item_model(project_item: &ProjectItem) -> ProjectItemModel {
         match project_item {
             ProjectItem::Server(srv) => ProjectItemModel::new(
                 srv.id,
                 ProjectItemType::Server,
                 srv.desc.clone(),
-                Self::environment_type_to_env(srv.environment),
+                srv.environment,
                 srv.group_name.clone()
             ),
             //     markup: if srv.is_retired {
@@ -211,7 +202,7 @@ impl ProjectItemList {
                 link.id,
                 ProjectItemType::ServerLink,
                 link.desc.clone(),
-                Self::environment_type_to_env(link.environment),
+                link.environment,
                 link.group_name.clone()
             ),
             //     markup: glib::markup_escape_text(&link.desc).to_string(),
@@ -222,7 +213,7 @@ impl ProjectItemList {
                 note.id,
                 ProjectItemType::ProjectNote,
                 note.title.clone(),
-                Env::Prod, // TODO has_prod, has...
+                EnvironmentType::EnvProd, // TODO has_prod, has...
                 note.group_name.clone()
             ),
             //     markup: glib::markup_escape_text(&note.title).to_string(),
@@ -230,7 +221,7 @@ impl ProjectItemList {
             //     icon: Icon::NOTE,
             // },
             ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(
-                poi.id, ProjectItemType::ProjectPointOfInterest, poi.desc.clone(), Env::Prod, poi.group_name.clone()) // TODO env
+                poi.id, ProjectItemType::ProjectPointOfInterest, poi.desc.clone(), EnvironmentType::EnvProd, poi.group_name.clone()) // TODO env
                 // markup: glib::markup_escape_text(&poi.desc).to_string(),
                 // group_name: poi.group_name.as_ref().cloned(),
                 // icon: match poi.interest_type {

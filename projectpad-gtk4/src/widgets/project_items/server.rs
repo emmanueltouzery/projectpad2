@@ -202,7 +202,11 @@ pub fn load_and_display_server(
 }
 
 fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: WidgetMode) {
-    let vbox = common::get_contents_box_with_header(&channel_data.server.desc, widget_mode);
+    let vbox = common::get_contents_box_with_header(
+        &channel_data.server.desc,
+        common::EnvOrEnvs::Env(channel_data.server.environment),
+        widget_mode,
+    );
 
     // let server_ar = adw::ActionRow::builder().title("Server name").build();
     // server_ar.add_suffix(

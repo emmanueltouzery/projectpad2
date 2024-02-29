@@ -1,3 +1,4 @@
+pub mod environment_list_picker;
 pub mod environment_picker;
 pub mod project_item;
 pub mod project_item_list;

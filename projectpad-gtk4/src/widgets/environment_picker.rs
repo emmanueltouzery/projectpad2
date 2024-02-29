@@ -1,46 +1,25 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use adw::prelude::*;
-use glib::*;
-use gtk::subclass::prelude::*;
+use projectpadsql::models::EnvironmentType;
 
 mod imp {
-    use super::*;
-    use std::cell::Cell;
-
-    use glib::Properties;
     use gtk::subclass::{
         prelude::{ObjectImpl, ObjectSubclass},
         widget::WidgetImpl,
     };
-    use projectpadsql::models::EnvironmentType;
 
-    #[derive(Properties, Debug, Default)]
-    #[properties(wrapper_type = super::EnvironmentPicker)]
-    pub struct EnvironmentPicker {
-        #[property(get, set)]
-        pub environment: Cell<u8>,
-    }
+    #[derive(Debug, Default)]
+    pub struct EnvironmentPicker {}
 
     #[glib::object_subclass]
     impl ObjectSubclass for EnvironmentPicker {
         const NAME: &'static str = "EnvironmentPicker";
         type ParentType = adw::Bin;
         type Type = super::EnvironmentPicker;
-
-        fn class_init(klass: &mut Self::Class) {
-            // Self::bind_template(klass);
-        }
-
-        fn instance_init(obj: &subclass::InitializingObject<Self>) {
-            // obj.init_template();
-        }
     }
 
-    #[glib::derived_properties]
-    impl ObjectImpl for EnvironmentPicker {
-        fn constructed(&self) {}
-    }
+    impl ObjectImpl for EnvironmentPicker {}
 
     impl WidgetImpl for EnvironmentPicker {}
 
@@ -188,7 +167,7 @@ fn dropdown_get_factory(
 }
 
 impl EnvironmentPicker {
-    pub fn new() -> Self {
+    pub fn new(env: EnvironmentType) -> Self {
         let this = glib::Object::new::<Self>();
 
         let dropdown = gtk::DropDown::from_strings(&["DEV", "STG", "UAT", "PRD"]);
@@ -199,6 +178,13 @@ impl EnvironmentPicker {
 
         dropdown.set_list_factory(Some(&list_item_factory));
         dropdown.set_factory(Some(&item_factory));
+
+        dropdown.set_selected(match env {
+            EnvironmentType::EnvDevelopment => 0,
+            EnvironmentType::EnvStage => 1,
+            EnvironmentType::EnvUat => 2,
+            EnvironmentType::EnvProd => 3,
+        });
 
         this.set_child(Some(&dropdown));
         this

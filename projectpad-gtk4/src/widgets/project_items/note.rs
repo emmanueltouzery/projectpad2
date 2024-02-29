@@ -1,10 +1,10 @@
 use diesel::prelude::*;
-use std::sync::mpsc;
+use std::{collections::HashSet, sync::mpsc};
 
 use adw::prelude::*;
 use glib::*;
 use gtk::{gdk, subclass::prelude::*};
-use projectpadsql::models::{ProjectNote, ServerNote};
+use projectpadsql::models::{EnvironmentType, ProjectNote, ServerNote};
 
 use crate::{
     app::ProjectpadApplication,
@@ -13,10 +13,11 @@ use crate::{
     widgets::{project_item::WidgetMode, project_items::common::copy_to_clipboard},
 };
 
-use super::common;
+use super::common::{self, EnvOrEnvs};
 
 struct NoteInfo<'a> {
     title: &'a str,
+    env: EnvOrEnvs,
     contents: &'a str,
     display_header: bool,
 }
@@ -145,8 +146,22 @@ impl Note {
         let p = self.clone();
         glib::spawn_future_local(async move {
             let channel_data = receiver.recv().await.unwrap();
+            let mut env_set = HashSet::new();
+            if channel_data.has_uat {
+                env_set.insert(EnvironmentType::EnvUat);
+            }
+            if channel_data.has_dev {
+                env_set.insert(EnvironmentType::EnvDevelopment);
+            }
+            if channel_data.has_stage {
+                env_set.insert(EnvironmentType::EnvStage);
+            }
+            if channel_data.has_prod {
+                env_set.insert(EnvironmentType::EnvProd);
+            }
             p.display_note_contents(NoteInfo {
                 title: &channel_data.title,
+                env: EnvOrEnvs::Envs(env_set),
                 contents: &channel_data.contents,
                 display_header: true,
             });
@@ -171,6 +186,7 @@ impl Note {
             let channel_data = receiver.recv().await.unwrap();
             p.display_note_contents(NoteInfo {
                 title: &channel_data.title,
+                env: EnvOrEnvs::None,
                 contents: &channel_data.contents,
                 display_header: false,
             });
@@ -189,7 +205,7 @@ impl Note {
             WidgetMode::Show
         };
         let vbox = if note.display_header {
-            common::get_contents_box_with_header(&note.title, widget_mode)
+            common::get_contents_box_with_header(&note.title, note.env, widget_mode)
         } else {
             gtk::Box::builder().build()
         };

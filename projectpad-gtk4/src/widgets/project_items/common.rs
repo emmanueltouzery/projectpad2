@@ -49,7 +49,8 @@ pub fn get_contents_box_with_header(
     if widget_mode == WidgetMode::Edit {
         let server = gtk::Entry::builder()
             .text(title)
-            .halign(gtk::Align::Start)
+            .halign(gtk::Align::Fill)
+            .hexpand(true)
             .css_classes(["title-1"])
             // .description("desc")
             .build();
@@ -79,6 +80,8 @@ pub fn get_contents_box_with_header(
         }
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
+            .css_classes(["destructive-action"])
+            .valign(gtk::Align::Center)
             .halign(gtk::Align::End)
             .build();
         header_box.append(&delete_btn);

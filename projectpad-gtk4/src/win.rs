@@ -191,9 +191,11 @@ impl ProjectpadApplicationWindow {
                     .main_or_search
                     .set_visible_child_name("main");
 
-                ActionGroupExt::activate_action(&w, "select-project", Some(&project_id.to_variant()));
-
-                w.set_active_project_item(Some((item_id, search_item_type)));
+                let select_project_param = glib::VariantDict::new(None);
+                select_project_param.insert("project_id", project_id);
+                select_project_param.insert("item_id", Some(item_id));
+                select_project_param.insert("item_type", Some(search_item_type));
+                ActionGroupExt::activate_action(&w, "select-project", Some(&select_project_param.to_variant()));
 
                 w.imp()
                     .search_toggle_btn.set_active(false);
@@ -262,11 +264,13 @@ impl ProjectpadApplicationWindow {
         self.imp().sql_channel.borrow().clone().unwrap()
     }
 
-    pub fn set_active_project_item(&self, selected_item: Option<(i32, u8)>) {
-        let project_id = self
-            .action_state("select-project")
+    // TODO rename
+    pub fn set_active_project_item(&self) {
+        let project_state = glib::VariantDict::new(self.action_state("select-project").as_ref());
+        let project_id = project_state.lookup::<i32>("project_id").unwrap().unwrap();
+        let item_id = project_state
+            .lookup::<Option<i32>>("item_id")
             .unwrap()
-            .get::<i32>()
             .unwrap();
 
         let db_sender = self.get_sql_channel();
@@ -286,17 +290,10 @@ impl ProjectpadApplicationWindow {
             let project = receiver.recv().await.unwrap();
             w.imp().project_menu_button.set_label(&project.name);
         });
-        self.imp().project_item_list.get().fetch_project_items(
-            &db_sender,
-            project_id,
-            selected_item.map(|(id, _type)| id),
-        );
-        if let Some((selected_id, selected_item_type)) = selected_item {
-            self.imp()
-                .project_item
-                .set_project_item_type(selected_item_type);
-            self.imp().project_item.set_item_id(selected_id)
-        }
+        self.imp()
+            .project_item_list
+            .get()
+            .fetch_project_items(&db_sender, project_id, item_id);
     }
 
     pub fn get_toast_overlay(&self) -> adw::ToastOverlay {

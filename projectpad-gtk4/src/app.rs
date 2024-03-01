@@ -98,6 +98,11 @@ impl ProjectpadApplication {
     }
 
     fn setup_actions(&self, window: &ProjectpadApplicationWindow) {
+        let select_project_variant = glib::VariantDict::new(None);
+        select_project_variant.insert("project_id", 1); // TODO
+        select_project_variant.insert("item_id", None::<i32>);
+        select_project_variant.insert("item_type", None::<u8>);
+
         // let select_project_action =
         //     gio::SimpleAction::new("select-project", Some(glib::VariantTy::INT64));
         // select_project_action.connect_activate(|action, parameter| {
@@ -105,15 +110,14 @@ impl ProjectpadApplication {
         // });
         let select_project_action = gio::SimpleAction::new_stateful(
             "select-project",
-            Some(&i32::static_variant_type()),
-            // None,
-            &(1).to_variant(),
+            Some(&glib::VariantDict::static_variant_type()),
+            &select_project_variant.to_variant(),
         );
         let w = window.clone();
         select_project_action.connect_change_state(move |action, parameter| {
             println!("{} / {:#?}", action, parameter);
             action.set_state(parameter.as_ref().unwrap());
-            w.set_active_project_item(None);
+            w.set_active_project_item();
         });
         window.add_action(&select_project_action);
         dbg!(&window.list_actions());
@@ -175,20 +179,22 @@ impl ProjectpadApplication {
             let win_binding_ref = win_binding.as_ref().unwrap();
             let popover = &win_binding_ref.imp().project_popover_menu;
             let menu_model = gio::Menu::new();
+            let select_project_variant = glib::VariantDict::new(None);
             for prj in prjs {
-                // println!(
-                //     "{}",
-                //     gio::Action::print_detailed_name("win.select-project", Some(&1.to_variant()))
-                // );
-                println!("{}", format!("win.select-project({})", prj.id));
+                select_project_variant.insert("project_id", prj.id);
+                select_project_variant.insert("item_id", None::<i32>);
+                select_project_variant.insert("item_type", None::<u8>);
                 menu_model.append(
                     Some(&prj.name),
-                    Some(&format!("win.select-project({})", prj.id)),
+                    Some(&gio::Action::print_detailed_name(
+                        "win.select-project",
+                        Some(&select_project_variant.end()),
+                    )),
                 );
             }
             popover.set_menu_model(Some(&menu_model));
 
-            win_binding_ref.set_active_project_item(None);
+            win_binding_ref.set_active_project_item();
         });
     }
 

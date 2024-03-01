@@ -1,4 +1,3 @@
-use std::cell::OnceCell;
 use std::sync::mpsc;
 
 use adw::subclass::prelude::*;
@@ -53,7 +52,6 @@ mod imp {
             let app = self.obj();
             let window = app.create_window();
             let _ = app.imp().window.set(window.downgrade());
-            app.setup_actions(&window);
             app.unlock_db();
             // let window = app.create_window();
             // let _ = self.window.set(window.downgrade());
@@ -97,9 +95,10 @@ impl ProjectpadApplication {
         self.imp().sql_channel.borrow().clone().unwrap()
     }
 
-    fn setup_actions(&self, window: &ProjectpadApplicationWindow) {
+    fn setup_actions(&self, window: &ProjectpadApplicationWindow, cur_project: Option<&Project>) {
         let select_project_variant = glib::VariantDict::new(None);
-        select_project_variant.insert("project_id", 1); // TODO
+        select_project_variant.insert("project_id", cur_project.unwrap().id); // TODO first startup
+                                                                              // if no projects
         select_project_variant.insert("item_id", None::<i32>);
         select_project_variant.insert("item_type", None::<u8>);
 
@@ -141,13 +140,14 @@ impl ProjectpadApplication {
             // dbg!("running the app");
             // self.run();
             // dbg!("after running the app");
+            let app_clone = self.clone();
             glib::spawn_future_local(async move {
                 let unlock_success = receiver.recv().await.unwrap();
                 if unlock_success {
                     // TODO run_prepare_db
                     // TODO request_update_welcome_status
 
-                    Self::fetch_projects(&channel2);
+                    app_clone.fetch_projects(&channel2);
                 } else {
                     // self.display_unlock_dialog();
                 }
@@ -158,7 +158,7 @@ impl ProjectpadApplication {
         }
     }
 
-    fn fetch_projects(sql_channel: &mpsc::Sender<SqlFunc>) {
+    fn fetch_projects(&self, sql_channel: &mpsc::Sender<SqlFunc>) {
         let (sender, receiver) = async_channel::bounded(1);
         sql_channel
             .send(SqlFunc::new(move |sql_conn| {
@@ -168,6 +168,7 @@ impl ProjectpadApplication {
                 // s.send(prjs).unwrap();
             }))
             .unwrap();
+        let app_clone = self.clone();
         glib::spawn_future_local(async move {
             let prjs = receiver.recv().await.unwrap();
             let app = gio::Application::default()
@@ -180,6 +181,7 @@ impl ProjectpadApplication {
             let popover = &win_binding_ref.imp().project_popover_menu;
             let menu_model = gio::Menu::new();
             let select_project_variant = glib::VariantDict::new(None);
+            app_clone.setup_actions(&win_binding_ref, prjs.first());
             for prj in prjs {
                 select_project_variant.insert("project_id", prj.id);
                 select_project_variant.insert("item_id", None::<i32>);

@@ -232,6 +232,10 @@ impl Note {
                 notes::note_markdown_to_text_buffer(contents, &crate::notes::build_tag_table());
             let text_view = gtk::TextView::builder()
                 .buffer(&note_buffer_info.buffer)
+                .left_margin(10)
+                .right_margin(10)
+                .top_margin(10)
+                .bottom_margin(10)
                 .editable(false)
                 .build();
             self.register_events(&text_view, &toast_parent);

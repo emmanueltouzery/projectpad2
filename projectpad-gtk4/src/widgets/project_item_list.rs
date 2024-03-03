@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     sync::mpsc,
 };
 
@@ -18,6 +18,7 @@ use crate::sql_thread::SqlFunc;
 use super::{
     project_item_list_model::ProjectItemListModel,
     project_item_model::{ProjectItemModel, ProjectItemType},
+    project_items::note::Note,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -180,7 +181,7 @@ impl ProjectItemList {
                 srv.id,
                 ProjectItemType::Server,
                 srv.desc.clone(),
-                srv.environment,
+                HashSet::from([srv.environment]),
                 srv.group_name.clone()
             ),
             //     markup: if srv.is_retired {
@@ -202,7 +203,7 @@ impl ProjectItemList {
                 link.id,
                 ProjectItemType::ServerLink,
                 link.desc.clone(),
-                link.environment,
+                HashSet::from([link.environment]),
                 link.group_name.clone()
             ),
             //     markup: glib::markup_escape_text(&link.desc).to_string(),
@@ -213,7 +214,7 @@ impl ProjectItemList {
                 note.id,
                 ProjectItemType::ProjectNote,
                 note.title.clone(),
-                EnvironmentType::EnvProd, // TODO has_prod, has...
+                Note::get_envs(note),
                 note.group_name.clone()
             ),
             //     markup: glib::markup_escape_text(&note.title).to_string(),
@@ -221,7 +222,7 @@ impl ProjectItemList {
             //     icon: Icon::NOTE,
             // },
             ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(
-                poi.id, ProjectItemType::ProjectPointOfInterest, poi.desc.clone(), EnvironmentType::EnvProd, poi.group_name.clone()) // TODO env
+                poi.id, ProjectItemType::ProjectPointOfInterest, poi.desc.clone(), HashSet::new(), poi.group_name.clone())
                 // markup: glib::markup_escape_text(&poi.desc).to_string(),
                 // group_name: poi.group_name.as_ref().cloned(),
                 // icon: match poi.interest_type {

@@ -146,26 +146,30 @@ impl Note {
         let p = self.clone();
         glib::spawn_future_local(async move {
             let channel_data = receiver.recv().await.unwrap();
-            let mut env_set = HashSet::new();
-            if channel_data.has_uat {
-                env_set.insert(EnvironmentType::EnvUat);
-            }
-            if channel_data.has_dev {
-                env_set.insert(EnvironmentType::EnvDevelopment);
-            }
-            if channel_data.has_stage {
-                env_set.insert(EnvironmentType::EnvStage);
-            }
-            if channel_data.has_prod {
-                env_set.insert(EnvironmentType::EnvProd);
-            }
             p.display_note_contents(NoteInfo {
                 title: &channel_data.title,
-                env: EnvOrEnvs::Envs(env_set),
+                env: EnvOrEnvs::Envs(Self::get_envs(&channel_data)),
                 contents: &channel_data.contents,
                 display_header: true,
             });
         });
+    }
+
+    pub fn get_envs(project_note: &ProjectNote) -> HashSet<EnvironmentType> {
+        let mut env_set = HashSet::new();
+        if project_note.has_uat {
+            env_set.insert(EnvironmentType::EnvUat);
+        }
+        if project_note.has_dev {
+            env_set.insert(EnvironmentType::EnvDevelopment);
+        }
+        if project_note.has_stage {
+            env_set.insert(EnvironmentType::EnvStage);
+        }
+        if project_note.has_prod {
+            env_set.insert(EnvironmentType::EnvProd);
+        }
+        env_set
     }
 
     fn load_and_display_server_note(&self, note_id: i32) {

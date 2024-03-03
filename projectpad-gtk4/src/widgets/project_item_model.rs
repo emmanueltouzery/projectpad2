@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
@@ -26,9 +28,13 @@ mod imp {
         #[property(get, set)]
         title: Rc<RefCell<String>>,
         #[property(get, set)]
-        env_desc: Rc<RefCell<String>>,
+        has_dev: Rc<RefCell<bool>>,
         #[property(get, set)]
-        env_classes: Rc<RefCell<Vec<String>>>,
+        has_stg: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        has_uat: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        has_prod: Rc<RefCell<bool>>,
         #[property(get, set)]
         group_name: Rc<RefCell<String>>,
         #[property(get, set)]
@@ -50,43 +56,35 @@ glib::wrapper! {
     pub struct ProjectItemModel(ObjectSubclass<imp::ProjectItemModel>);
 }
 
-fn env_to_css(val: &EnvironmentType) -> Vec<String> {
-    vec![
-        match val {
-            EnvironmentType::EnvDevelopment => "project-item-dev",
-            EnvironmentType::EnvStage => "project-item-staging",
-            EnvironmentType::EnvUat => "project-item-uat",
-            EnvironmentType::EnvProd => "project-item-prod",
-        }
-        .to_string(),
-        "caption-heading".to_string(),
-    ]
-}
-
-fn env_to_desc(val: &EnvironmentType) -> String {
-    match val {
-        EnvironmentType::EnvDevelopment => "DEV",
-        EnvironmentType::EnvStage => "STG",
-        EnvironmentType::EnvUat => "UAT",
-        EnvironmentType::EnvProd => "PRD",
-    }
-    .to_string()
-}
-
 impl ProjectItemModel {
     pub fn new(
         id: i32,
         project_item_type: ProjectItemType,
         title: String,
-        environment: EnvironmentType,
+        environments: HashSet<EnvironmentType>,
         group_name: Option<String>,
     ) -> Self {
+        let has_all_envs = environments.len() == 4;
         Object::builder()
             .property("id", id)
             .property("project-item-type", project_item_type as u8)
             .property("title", title)
-            .property("env-desc", env_to_desc(&environment))
-            .property("env-classes", env_to_css(&environment))
+            .property(
+                "has-dev",
+                !has_all_envs && environments.contains(&EnvironmentType::EnvDevelopment),
+            )
+            .property(
+                "has-stg",
+                !has_all_envs && environments.contains(&EnvironmentType::EnvStage),
+            )
+            .property(
+                "has-uat",
+                !has_all_envs && environments.contains(&EnvironmentType::EnvUat),
+            )
+            .property(
+                "has-prod",
+                !has_all_envs && environments.contains(&EnvironmentType::EnvProd),
+            )
             .property("group-name", group_name.unwrap_or("".to_string()))
             .build()
     }

@@ -26,13 +26,55 @@
         </child>
         <child>
           <object class="GtkLabel">
-            <binding name="css-classes">
-              <lookup name="env-classes" type="ProjectItemModel">
+            <style>
+              <class name="project-item-dev" />
+              <class name="caption-heading" />
+            </style>
+            <property name="label">DEV</property>
+            <binding name="visible">
+              <lookup name="has-dev" type="ProjectItemModel">
                 <lookup name="item">GtkListItem</lookup>
               </lookup>
             </binding>
-            <binding name="label">
-              <lookup name="env-desc" type="ProjectItemModel">
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <style>
+              <class name="project-item-stg" />
+              <class name="caption-heading" />
+            </style>
+            <property name="label">STG</property>
+            <binding name="visible">
+              <lookup name="has-stg" type="ProjectItemModel">
+                <lookup name="item">GtkListItem</lookup>
+              </lookup>
+            </binding>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <style>
+              <class name="project-item-uat" />
+              <class name="caption-heading" />
+            </style>
+            <property name="label">UAT</property>
+            <binding name="visible">
+              <lookup name="has-uat" type="ProjectItemModel">
+                <lookup name="item">GtkListItem</lookup>
+              </lookup>
+            </binding>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <style>
+              <class name="project-item-prod" />
+              <class name="caption-heading" />
+            </style>
+            <property name="label">PRD</property>
+            <binding name="visible">
+              <lookup name="has-prod" type="ProjectItemModel">
                 <lookup name="item">GtkListItem</lookup>
               </lookup>
             </binding>

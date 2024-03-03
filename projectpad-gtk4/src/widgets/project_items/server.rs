@@ -3,17 +3,16 @@ use adw::prelude::*;
 use diesel::prelude::*;
 use itertools::Itertools;
 use projectpadsql::models::{
-    InterestType, Server, ServerAccessType, ServerDatabase, ServerExtraUserAccount, ServerNote,
-    ServerPointOfInterest, ServerType, ServerWebsite,
+    InterestType, RunOn, Server, ServerAccessType, ServerDatabase, ServerExtraUserAccount,
+    ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
 };
 use std::{
     collections::{BTreeSet, HashMap},
-    rc::Rc,
     sync::mpsc,
 };
 
 use super::{
-    common::{self, copy_to_clipboard, DetailsRow, SuffixAction},
+    common::{self, DetailsRow, SuffixAction},
     note,
 };
 
@@ -479,6 +478,40 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
 
     if widget_mode == WidgetMode::Edit {
         add_group_edit_suffix(&server_item1, &poi.desc);
+
+        // run on
+        let run_on_combo = adw::ComboRow::new();
+        run_on_combo.set_title("Run on");
+        let run_on_model = gtk::StringList::new(&["Client", "Server"]);
+        run_on_combo.set_model(Some(&run_on_model));
+        run_on_combo.set_selected(match poi.run_on {
+            RunOn::RunOnClient => 0,
+            RunOn::RunOnServer => 1,
+        });
+
+        server_item1.add(&run_on_combo);
+
+        let interest_type_combo = adw::ComboRow::new();
+        interest_type_combo.set_title("Interest Type");
+        let interest_type_model = gtk::StringList::new(&[
+            "Application",
+            "Backup/archive",
+            "Command to run",
+            "Command to run (terminal)",
+            "Config file",
+            "Log file",
+        ]);
+        interest_type_combo.set_model(Some(&interest_type_model));
+        interest_type_combo.set_selected(match poi.interest_type {
+            InterestType::PoiApplication => 0,
+            InterestType::PoiBackupArchive => 1,
+            InterestType::PoiCommandToRun => 2,
+            InterestType::PoiCommandTerminal => 3,
+            InterestType::PoiConfigFile => 4,
+            InterestType::PoiLogFile => 5,
+        });
+
+        server_item1.add(&interest_type_combo);
     }
 
     vbox.append(&server_item1);

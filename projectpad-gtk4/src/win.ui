@@ -145,7 +145,7 @@
                                 <property name="use-underline">true</property>
                                 <style>
                                   <class name="pill"/>
-                                  <class name="destructive-action"/>
+                                  <class name="suggested-action"/>
                                 </style>
                                 <property name="child">
                                   <object class="AdwButtonContent" id="edit_btn_contents">

@@ -229,24 +229,6 @@ impl ProjectpadApplicationWindow {
         .sync_create()
         .build();
 
-        win.bind_property(
-            "edit-mode",
-            win.imp().edit_btn.upcast_ref::<gtk::Widget>(),
-            "css-classes",
-        )
-        .transform_to(|_, active: bool| {
-            Some(
-                if active {
-                    ["pill", "suggested-action"]
-                } else {
-                    ["pill", "destructive-action"]
-                }
-                .to_value(),
-            )
-        })
-        .sync_create()
-        .build();
-
         win.bind_property("edit-mode", &win.imp().project_item.get(), "edit_mode")
             .build();
 

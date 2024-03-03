@@ -46,13 +46,13 @@ fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mod
     let vbox =
         common::get_contents_box_with_header(&poi.desc, common::EnvOrEnvs::None, widget_mode);
 
-    let desc = match poi.interest_type {
-        InterestType::PoiLogFile => "Log file",
-        InterestType::PoiConfigFile => "Config file",
-        InterestType::PoiApplication => "Application",
-        InterestType::PoiCommandToRun => "Command to run",
-        InterestType::PoiBackupArchive => "Backup/Archive",
-        InterestType::PoiCommandTerminal => "Command to run",
+    let (desc, idx) = match poi.interest_type {
+        InterestType::PoiApplication => ("Application", 0),
+        InterestType::PoiBackupArchive => ("Backup/Archive", 1),
+        InterestType::PoiCommandToRun => ("Command to run", 2),
+        InterestType::PoiCommandTerminal => ("Command to run", 3),
+        InterestType::PoiConfigFile => ("Config file", 4),
+        InterestType::PoiLogFile => ("Log file", 5),
     };
 
     let prefs_group = adw::PreferencesGroup::builder().title(desc).build();
@@ -67,6 +67,23 @@ fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mod
         &[],
     )
     .add(widget_mode, &prefs_group);
+
+    if widget_mode == WidgetMode::Edit {
+        let interest_type_combo = adw::ComboRow::new();
+        interest_type_combo.set_title("Interest Type");
+        let interest_type_model = gtk::StringList::new(&[
+            "Application",
+            "Backup/archive",
+            "Command to run",
+            "Command to run (terminal)",
+            "Config file",
+            "Log file",
+        ]);
+        interest_type_combo.set_model(Some(&interest_type_model));
+        interest_type_combo.set_selected(idx);
+
+        prefs_group.add(&interest_type_combo);
+    }
 
     vbox.append(&prefs_group);
     parent.set_child(Some(&vbox));

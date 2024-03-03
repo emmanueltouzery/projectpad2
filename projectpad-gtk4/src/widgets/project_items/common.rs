@@ -58,6 +58,7 @@ pub fn get_contents_box_with_header(
     } else {
         let server = gtk::Label::builder()
             .label(title)
+            .wrap(true)
             .halign(gtk::Align::Start)
             .css_classes(["title-1"])
             // .description("desc")

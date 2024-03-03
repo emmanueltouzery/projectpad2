@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
-use projectpadsql::models::EnvironmentType;
+use projectpadsql::models::{EnvironmentType, Project};
 use strum_macros::FromRepr;
 
 #[derive(FromRepr, Debug, PartialEq)]
@@ -58,13 +58,14 @@ glib::wrapper! {
 
 impl ProjectItemModel {
     pub fn new(
+        project: &Project,
         id: i32,
         project_item_type: ProjectItemType,
         title: String,
         environments: HashSet<EnvironmentType>,
         group_name: Option<String>,
     ) -> Self {
-        let has_all_envs = environments.len() == 4;
+        let has_all_envs = Self::project_get_envs(project).is_subset(&environments);
         Object::builder()
             .property("id", id)
             .property("project-item-type", project_item_type as u8)
@@ -87,6 +88,23 @@ impl ProjectItemModel {
             )
             .property("group-name", group_name.unwrap_or("".to_string()))
             .build()
+    }
+
+    fn project_get_envs(project: &Project) -> HashSet<EnvironmentType> {
+        let mut env_set = HashSet::new();
+        if project.has_uat {
+            env_set.insert(EnvironmentType::EnvUat);
+        }
+        if project.has_dev {
+            env_set.insert(EnvironmentType::EnvDevelopment);
+        }
+        if project.has_stage {
+            env_set.insert(EnvironmentType::EnvStage);
+        }
+        if project.has_prod {
+            env_set.insert(EnvironmentType::EnvProd);
+        }
+        env_set
     }
 }
 

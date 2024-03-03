@@ -10,7 +10,7 @@ use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
 use projectpadsql::models::{
-    EnvironmentType, ProjectNote, ProjectPointOfInterest, Server, ServerLink,
+    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerLink,
 };
 
 use crate::sql_thread::SqlFunc;
@@ -113,6 +113,7 @@ impl ProjectItemList {
 
     pub fn set_project_items(
         &self,
+        project: &Project,
         project_items: &[ProjectItem],
         group_start_indices: HashMap<i32, String>,
         selected_item: Option<i32>,
@@ -123,7 +124,7 @@ impl ProjectItemList {
         let mut selected_index = None;
 
         for project_item in project_items {
-            let item_model = Self::get_item_model(project_item);
+            let item_model = Self::get_item_model(project, project_item);
             list_store.append(&item_model);
             if selected_item == Some(item_model.property("id")) {
                 selected_index = Some(idx);
@@ -175,9 +176,10 @@ impl ProjectItemList {
         }
     }
 
-    fn get_item_model(project_item: &ProjectItem) -> ProjectItemModel {
+    fn get_item_model(project: &Project, project_item: &ProjectItem) -> ProjectItemModel {
         match project_item {
             ProjectItem::Server(srv) => ProjectItemModel::new(
+                project,
                 srv.id,
                 ProjectItemType::Server,
                 srv.desc.clone(),
@@ -200,6 +202,7 @@ impl ProjectItemList {
             //     },
             // },
             ProjectItem::ServerLink(link) => ProjectItemModel::new(
+                project,
                 link.id,
                 ProjectItemType::ServerLink,
                 link.desc.clone(),
@@ -211,6 +214,7 @@ impl ProjectItemList {
             //     icon: Icon::SERVER_LINK,
             // },
             ProjectItem::ProjectNote(note) => ProjectItemModel::new(
+                project,
                 note.id,
                 ProjectItemType::ProjectNote,
                 note.title.clone(),
@@ -222,6 +226,7 @@ impl ProjectItemList {
             //     icon: Icon::NOTE,
             // },
             ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(
+                project,
                 poi.id, ProjectItemType::ProjectPointOfInterest, poi.desc.clone(), HashSet::new(), poi.group_name.clone())
                 // markup: glib::markup_escape_text(&poi.desc).to_string(),
                 // group_name: poi.group_name.as_ref().cloned(),
@@ -239,14 +244,14 @@ impl ProjectItemList {
     pub fn fetch_project_items(
         &mut self,
         db_sender: &mpsc::Sender<SqlFunc>,
-        project_id: i32,
+        project: Project,
         selected_item: Option<i32>,
     ) {
         let (sender, receiver) = async_channel::bounded(1);
         db_sender
             .send(SqlFunc::new(move |sql_conn| {
                 let (servers, lsrvs, prj_notes, prj_pois) =
-                    Self::fetch_project_items_sql(sql_conn, Some(project_id));
+                    Self::fetch_project_items_sql(sql_conn, Some(project.id));
 
                 let mut group_names: BTreeSet<&String> = servers
                     .iter()
@@ -290,10 +295,10 @@ impl ProjectItemList {
                 sender.send_blocking((items, group_start_indices)).unwrap();
             }))
             .unwrap();
-        let mut s = self.clone();
+        let s = self.clone();
         glib::spawn_future_local(async move {
             let (items, group_start_indices) = receiver.recv().await.unwrap();
-            s.set_project_items(&items, group_start_indices, selected_item);
+            s.set_project_items(&project, &items, group_start_indices, selected_item);
         });
     }
 
@@ -356,7 +361,7 @@ impl ProjectItemList {
                     .order((lsrv::group_name.asc(), lsrv::desc.asc()))
                     .load::<ServerLink>(sql_conn)
                     .unwrap();
-                let mut prj_query = pnt::project_note
+                let prj_query = pnt::project_note
                     .filter(pnt::project_id.eq(pid))
                     .into_boxed();
                 // prj_query = match env {

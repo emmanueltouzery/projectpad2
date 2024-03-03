@@ -87,9 +87,9 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.project_item_list
-                .get()
-                .set_project_items(&Vec::new(), HashMap::new(), None);
+            // self.project_item_list
+            //     .get()
+            //     .set_project_items(&Vec::new(), HashMap::new(), None);
             // let app = ProjectpadApplication::default();
             // let sender = app.imp().sender.clone();
             // let player = app.imp().player.clone();
@@ -289,11 +289,11 @@ impl ProjectpadApplicationWindow {
         glib::spawn_future_local(async move {
             let project = receiver.recv().await.unwrap();
             w.imp().project_menu_button.set_label(&project.name);
+            w.imp()
+                .project_item_list
+                .get()
+                .fetch_project_items(&db_sender, project, item_id);
         });
-        self.imp()
-            .project_item_list
-            .get()
-            .fetch_project_items(&db_sender, project_id, item_id);
     }
 
     pub fn get_toast_overlay(&self) -> adw::ToastOverlay {

@@ -186,6 +186,7 @@ impl ProjectpadApplication {
                 select_project_variant.insert("project_id", prj.id);
                 select_project_variant.insert("item_id", None::<i32>);
                 select_project_variant.insert("item_type", None::<u8>);
+                select_project_variant.insert("search_item_type", None::<u8>);
                 menu_model.append(
                     Some(&prj.name),
                     Some(&gio::Action::print_detailed_name(

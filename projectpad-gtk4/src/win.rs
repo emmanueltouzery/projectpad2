@@ -4,6 +4,7 @@ use std::sync::mpsc;
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::search::search_item_list::SearchItemList;
+use crate::widgets::search::search_item_model::SearchItemType;
 
 use super::widgets::project_item_list::ProjectItemList;
 use adw::subclass::prelude::*;
@@ -254,9 +255,14 @@ impl ProjectpadApplicationWindow {
             .lookup::<Option<i32>>("item_id")
             .unwrap()
             .unwrap();
+        let search_item_type = project_state
+            .lookup::<Option<u8>>("item_type")
+            .unwrap()
+            .and_then(std::convert::identity)
+            .and_then(SearchItemType::from_repr);
 
         let db_sender = self.get_sql_channel();
-        let (sender, receiver) = async_channel::bounded::<Project>(1);
+        let (sender, receiver) = async_channel::bounded::<(Project, Option<i32>, Option<i32>)>(1);
         db_sender
             .send(SqlFunc::new(move |sql_conn| {
                 use projectpadsql::schema::project::dsl as prj;
@@ -264,17 +270,72 @@ impl ProjectpadApplicationWindow {
                     .filter(prj::id.eq(project_id))
                     .first::<Project>(sql_conn)
                     .unwrap();
-                sender.send_blocking(project).unwrap();
+
+                dbg!(&search_item_type);
+
+                let (project_item_id, server_item_id) = match search_item_type {
+                    // TODO special handling needed for serverlink here?
+                    Some(SearchItemType::ServerWebsite) => {
+                        use projectpadsql::schema::server_website::dsl as srv_www;
+                        (
+                            srv_www::server_website
+                                .filter(srv_www::id.eq(item_id.unwrap()))
+                                .select(srv_www::server_id)
+                                .first::<i32>(sql_conn)
+                                .ok(),
+                            item_id,
+                        )
+                    }
+                    Some(SearchItemType::ServerPoi) => {
+                        use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+                        (
+                            srv_poi::server_point_of_interest
+                                .filter(srv_poi::id.eq(item_id.unwrap()))
+                                .select(srv_poi::server_id)
+                                .first::<i32>(sql_conn)
+                                .ok(),
+                            item_id,
+                        )
+                    }
+                    Some(SearchItemType::ServerNote) => {
+                        use projectpadsql::schema::server_note::dsl as srv_note;
+                        (
+                            srv_note::server_note
+                                .filter(srv_note::id.eq(item_id.unwrap()))
+                                .select(srv_note::server_id)
+                                .first::<i32>(sql_conn)
+                                .ok(),
+                            item_id,
+                        )
+                    }
+                    Some(SearchItemType::ServerDatabase) => {
+                        use projectpadsql::schema::server_database::dsl as srv_db;
+                        (
+                            srv_db::server_database
+                                .filter(srv_db::id.eq(item_id.unwrap()))
+                                .select(srv_db::server_id)
+                                .first::<i32>(sql_conn)
+                                .ok(),
+                            item_id,
+                        )
+                    }
+                    _ => (item_id, None),
+                };
+
+                sender
+                    .send_blocking((project, project_item_id, server_item_id))
+                    .unwrap();
             }))
             .unwrap();
         let w = self.clone();
         glib::spawn_future_local(async move {
-            let project = receiver.recv().await.unwrap();
+            let (project, project_item_id, server_item_id) = receiver.recv().await.unwrap();
             w.imp().project_menu_button.set_label(&project.name);
-            w.imp()
-                .project_item_list
-                .get()
-                .fetch_project_items(&db_sender, project, item_id);
+            w.imp().project_item_list.get().fetch_project_items(
+                &db_sender,
+                project,
+                project_item_id,
+            );
         });
     }
 

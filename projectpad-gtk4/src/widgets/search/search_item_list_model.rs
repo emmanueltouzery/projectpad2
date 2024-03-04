@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};

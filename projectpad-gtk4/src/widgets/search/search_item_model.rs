@@ -3,7 +3,7 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use strum_macros::FromRepr;
 
-#[derive(FromRepr, Debug, PartialEq)]
+#[derive(FromRepr, Debug, PartialEq, Copy, Clone)]
 #[repr(u8)]
 pub enum SearchItemType {
     Server = 1,

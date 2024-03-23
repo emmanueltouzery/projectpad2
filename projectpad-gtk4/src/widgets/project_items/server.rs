@@ -9,6 +9,7 @@ use projectpadsql::models::{
 use std::{
     collections::{BTreeSet, HashMap},
     sync::mpsc,
+    time::Duration,
 };
 
 use super::{
@@ -67,11 +68,14 @@ pub struct ChannelData {
 }
 
 pub fn load_and_display_server(
+    vadj: &gtk::Adjustment,
     parent: &adw::Bin,
     db_sender: mpsc::Sender<SqlFunc>,
-    server_id: Option<i32>,
+    server_id: i32,
+    server_item_id: Option<i32>,
     widget_mode: WidgetMode,
 ) {
+    dbg!(&server_item_id);
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
@@ -81,15 +85,14 @@ pub fn load_and_display_server(
             use projectpadsql::schema::server_note::dsl as srv_note;
             use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
             use projectpadsql::schema::server_website::dsl as srv_www;
-            let sid = server_id.unwrap();
             let (server, items, databases_for_websites, websites_for_databases) = {
                 let server = srv::server
-                    .filter(srv::id.eq(sid))
+                    .filter(srv::id.eq(server_id))
                     .first::<Server>(sql_conn)
                     .unwrap();
 
                 let server_websites = srv_www::server_website
-                    .filter(srv_www::server_id.eq(sid))
+                    .filter(srv_www::server_id.eq(server_id))
                     .order(srv_www::desc.asc())
                     .load::<ServerWebsite>(sql_conn)
                     .unwrap();
@@ -112,7 +115,7 @@ pub fn load_and_display_server(
 
                 servers.extend(
                     srv_poi::server_point_of_interest
-                        .filter(srv_poi::server_id.eq(sid))
+                        .filter(srv_poi::server_id.eq(server_id))
                         .order(srv_poi::desc.asc())
                         .load::<ServerPointOfInterest>(sql_conn)
                         .unwrap()
@@ -121,7 +124,7 @@ pub fn load_and_display_server(
                 );
                 servers.extend(
                     srv_note::server_note
-                        .filter(srv_note::server_id.eq(sid))
+                        .filter(srv_note::server_id.eq(server_id))
                         .order(srv_note::title.asc())
                         .load::<ServerNote>(sql_conn)
                         .unwrap()
@@ -130,7 +133,7 @@ pub fn load_and_display_server(
                 );
                 servers.extend(
                     &mut srv_usr::server_extra_user_account
-                        .filter(srv_usr::server_id.eq(sid))
+                        .filter(srv_usr::server_id.eq(server_id))
                         .order(srv_usr::desc.asc())
                         .load::<ServerExtraUserAccount>(sql_conn)
                         .unwrap()
@@ -139,7 +142,7 @@ pub fn load_and_display_server(
                 );
 
                 let databases = srv_db::server_database
-                    .filter(srv_db::server_id.eq(sid))
+                    .filter(srv_db::server_id.eq(server_id))
                     .order(srv_db::desc.asc())
                     .load::<ServerDatabase>(sql_conn)
                     .unwrap();
@@ -194,13 +197,21 @@ pub fn load_and_display_server(
         .unwrap();
 
     let p = parent.clone();
+    let v = vadj.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        display_server(&p, channel_data, widget_mode);
+        display_server(&v, &p, channel_data, server_item_id, widget_mode);
     });
 }
 
-fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: WidgetMode) {
+fn display_server(
+    vadj: &gtk::Adjustment,
+    parent: &adw::Bin,
+    channel_data: ChannelData,
+    server_item_id: Option<i32>,
+    widget_mode: WidgetMode,
+) {
+    dbg!(&server_item_id);
     let vbox = common::get_contents_box_with_header(
         &channel_data.server.desc,
         common::EnvOrEnvs::Env(channel_data.server.environment),
@@ -294,7 +305,7 @@ fn display_server(parent: &adw::Bin, channel_data: ChannelData, widget_mode: Wid
 
     vbox.append(&server_item0);
 
-    add_server_items(&channel_data, widget_mode, &vbox);
+    add_server_items(vadj, &channel_data, server_item_id, widget_mode, &vbox);
 
     if widget_mode == WidgetMode::Edit {
         // let (frame, frame_box) = group_frame("", WidgetMode::Edit);
@@ -335,9 +346,16 @@ fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMe
     gtk::PopoverMenu::builder().menu_model(&add_menu).build()
 }
 
-fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &gtk::Box) {
+fn add_server_items(
+    vadj: &gtk::Adjustment,
+    channel_data: &ChannelData,
+    focused_server_item_id: Option<i32>,
+    widget_mode: WidgetMode,
+    vbox: &gtk::Box,
+) {
     let mut cur_parent = vbox.clone();
     let mut cur_group_name = None::<&str>;
+    dbg!(focused_server_item_id);
 
     for server_item in channel_data.server_items.iter() {
         let group_name = server_item.group_name();
@@ -364,6 +382,22 @@ fn add_server_items(channel_data: &ChannelData, widget_mode: WidgetMode, vbox: &
             }
             // TODO remove fallback
             _ => {}
+        }
+        if Some(server_item.get_id()) == focused_server_item_id {
+            let me = cur_parent.last_child().unwrap().clone();
+            let v = vbox.clone();
+            let va = vadj.clone();
+
+            glib::spawn_future_local(async move {
+                // TODO crappy but doesn't work without the wait..
+                glib::timeout_future(Duration::from_millis(50)).await;
+                va.set_value(dbg!(me
+                    .compute_bounds(&v.upcast::<gtk::Widget>())
+                    .unwrap()
+                    .top_left()
+                    .y()
+                    .into()));
+            });
         }
     }
     if cur_group_name.is_some() {

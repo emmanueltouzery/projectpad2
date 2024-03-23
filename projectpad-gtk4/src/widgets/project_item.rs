@@ -29,12 +29,6 @@ mod imp {
 
         #[property(get, set)]
         edit_mode: Cell<bool>,
-
-        #[property(get, set)]
-        pub item_id: Cell<i32>,
-
-        #[property(get, set)]
-        pub project_item_type: Cell<u8>,
     }
 
     #[glib::object_subclass]
@@ -54,24 +48,7 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for ProjectItem {
-        fn constructed(&self) {
-            //     self.obj().init_list();
-            let _ = self
-                .obj()
-                .connect_edit_mode_notify(|project_item: &super::ProjectItem| {
-                    // println!("edit mode changed: {}", project_item.edit_mode());
-                    // TODO maybe don't reload widgets completely when toggling edit mode?
-                    project_item.display_item();
-                });
-            // TODO this is crappy. the owner sets project_item_type and then item_id and we react
-            // only on the second. there must be a better way...
-            let _ = self
-                .obj()
-                .connect_item_id_notify(|project_item: &super::ProjectItem| {
-                    // println!("edit mode changed: {}", project_item.edit_mode());
-                    project_item.display_item();
-                });
-        }
+        fn constructed(&self) {}
     }
 
     impl WidgetImpl for ProjectItem {}
@@ -100,14 +77,21 @@ impl WidgetMode {
 }
 
 impl ProjectItem {
-    fn display_item(&self) {
-        println!("projectitem::display_item_id({})", self.imp().item_id.get());
+    pub fn display_item(
+        &self,
+        vadj: &gtk::Adjustment,
+        item_id: i32,
+        item_type: ProjectItemType,
+        sub_item_id: Option<i32>,
+    ) {
+        println!(
+            "projectitem::display_item_id({}, {:?})",
+            item_id, sub_item_id
+        );
         let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
         // TODO receive the item type besides the item_id and switch on item type here
         // also possibly receive the ProjectItem, telling me much more than the id
         let db_sender = app.unwrap().get_sql_channel();
-        let item_id = Some(self.imp().item_id.get());
-        let item_type = ProjectItemType::from_repr(self.imp().project_item_type.get());
         let widget_mode = if self.edit_mode() {
             WidgetMode::Edit
         } else {
@@ -115,17 +99,19 @@ impl ProjectItem {
         };
 
         match item_type {
-            Some(ProjectItemType::Server) => super::project_items::server::load_and_display_server(
+            ProjectItemType::Server => super::project_items::server::load_and_display_server(
+                &vadj,
                 &self.imp().project_item,
                 db_sender,
                 item_id,
+                sub_item_id,
                 widget_mode,
             ),
-            Some(ProjectItemType::ProjectNote) => {
+            ProjectItemType::ProjectNote => {
                 let note = note::Note::new();
                 // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
                 // it feels even worse (would like not to rebuild the widget every time...)
-                note.set_project_note_id(&item_id.unwrap());
+                note.set_project_note_id(&item_id);
                 note.set_edit_mode(self.edit_mode());
                 self.imp().project_item.set_child(Some(
                     // &note::Note::new().set_note_id(&glib::Value::from(item_id)),
@@ -136,7 +122,7 @@ impl ProjectItem {
                 //     widget_mode,
                 // )
             }
-            Some(ProjectItemType::ProjectPointOfInterest) => {
+            ProjectItemType::ProjectPointOfInterest => {
                 super::project_items::project_poi::load_and_display_project_poi(
                     &self.imp().project_item,
                     db_sender,

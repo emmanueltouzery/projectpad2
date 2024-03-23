@@ -6,7 +6,7 @@ use gtk::subclass::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project};
 use strum_macros::FromRepr;
 
-#[derive(FromRepr, Debug, PartialEq)]
+#[derive(FromRepr, Debug, PartialEq, Clone, Copy)]
 #[repr(u8)]
 pub enum ProjectItemType {
     Server = 1,

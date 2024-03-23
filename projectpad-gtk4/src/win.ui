@@ -121,7 +121,7 @@
                               <object class="AdwNavigationPage">
                                 <property name="title" translatable="yes">Content</property>
                                 <property name="child">
-                                  <object class="GtkScrolledWindow">
+                                  <object class="GtkScrolledWindow" id="project_scrolled_window">
                                     <property name="child">
                                       <object class="AdwClamp">
                                         <property name="maximum-size">750</property>

@@ -3,6 +3,7 @@ use std::sync::mpsc;
 
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::project_item_model::ProjectItemType;
 use crate::widgets::search::search_item_list::SearchItemList;
 use crate::widgets::search::search_item_model::SearchItemType;
 
@@ -16,10 +17,7 @@ use gtk::subclass::widget::CompositeTemplate;
 use projectpadsql::models::Project;
 
 mod imp {
-    use std::{
-        cell::{Cell, RefCell},
-        collections::HashMap,
-    };
+    use std::cell::{Cell, RefCell};
 
     use crate::widgets::{project_item::ProjectItem, search::search_item_list::SearchItemList};
 
@@ -61,6 +59,8 @@ mod imp {
         pub split_view: TemplateChild<adw::OverlaySplitView>,
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
+        pub project_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
 
         #[property(get, set)]
         edit_mode: Cell<bool>,
@@ -132,12 +132,14 @@ impl ProjectpadApplicationWindow {
     pub fn new(db_sender: mpsc::Sender<SqlFunc>) -> Self {
         let win = glib::Object::new::<Self>();
         win.imp().sql_channel.replace(Some(db_sender.clone()));
+        let project_vadj = win.imp().project_scrolled_window.vadjustment().clone();
         win.imp().project_item_list.connect_closure(
             "activate-item",
             false,
-            glib::closure_local!(@strong win as w => move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8| {
-                w.imp().project_item.set_project_item_type(project_item_type as u8);
-                w.imp().project_item.set_item_id(item_id)
+            glib::closure_local!(@strong win as w, @strong project_vadj as pva => move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8, sub_item_id: i32| {
+                dbg!(sub_item_id);
+                let item_type = ProjectItemType::from_repr(project_item_type).unwrap();
+                w.imp().project_item.display_item(&pva, item_id, item_type, Some(sub_item_id).filter(|v| *v != -1));
             }),
             );
 
@@ -186,7 +188,8 @@ impl ProjectpadApplicationWindow {
         win.imp().search_item_list.connect_closure(
             "activate-item",
             false,
-            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList, project_id: i32, item_id: i32, search_item_type: u8| {
+            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList, project_id: i32, item_id: i32, search_item_type: u8, server_id: i32| {
+                dbg!(server_id);
                 w.imp().split_view.set_show_sidebar(true);
                 w.imp()
                     .main_or_search
@@ -196,6 +199,7 @@ impl ProjectpadApplicationWindow {
                 select_project_param.insert("project_id", project_id);
                 select_project_param.insert("item_id", Some(item_id));
                 select_project_param.insert("item_type", Some(search_item_type));
+                select_project_param.insert("server_id", Some(server_id));
                 ActionGroupExt::activate_action(&w, "select-project", Some(&select_project_param.to_variant()));
 
                 w.imp()
@@ -251,6 +255,7 @@ impl ProjectpadApplicationWindow {
     pub fn set_active_project_item(&self) {
         let project_state = glib::VariantDict::new(self.action_state("select-project").as_ref());
         let project_id = project_state.lookup::<i32>("project_id").unwrap().unwrap();
+        // let server_id = project_state.lookup::<i32>("server_id").unwrap().unwrap();
         let item_id = project_state
             .lookup::<Option<i32>>("item_id")
             .unwrap()
@@ -335,6 +340,7 @@ impl ProjectpadApplicationWindow {
                 &db_sender,
                 project,
                 project_item_id,
+                server_item_id,
             );
         });
     }

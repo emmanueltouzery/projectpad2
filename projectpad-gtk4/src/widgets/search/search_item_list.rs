@@ -58,8 +58,13 @@ mod imp {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
             SIGNALS.get_or_init(|| {
                 vec![Signal::builder("activate-item")
-                    // project id + item id + search_item_type
-                    .param_types([i32::static_type(), i32::static_type(), u8::static_type()])
+                    // project id + item id + search_item_type + optionally server item id
+                    .param_types([
+                        i32::static_type(),
+                        i32::static_type(),
+                        u8::static_type(),
+                        i32::static_type(),
+                    ])
                     .build()]
             })
         }
@@ -93,8 +98,8 @@ impl SearchItemList {
             clone!(@strong self as this => move |list, item_idx| {
                 let gtk_model: gtk::SingleSelection = list.model().unwrap().downcast().unwrap();
                 let model: SearchItemListModel = gtk_model.model().unwrap().downcast().unwrap();
-                let (project_id, item_id, item_type) = model.get_search_item(item_idx).unwrap();
-                this.emit_by_name::<()>("activate-item", &[&project_id, &item_id, &item_type]);
+                let (project_id, item_id, item_type, sub_id) = model.get_search_item(item_idx).unwrap();
+                this.emit_by_name::<()>("activate-item", &[&project_id, &item_id, &item_type, &sub_id]);
             }),
         );
     }
@@ -184,6 +189,7 @@ impl SearchItemList {
     fn get_project_model(project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             project.id,
+            None,
             project.id,
             SearchItemType::Project,
             project.name.clone(),
@@ -195,6 +201,7 @@ impl SearchItemList {
     fn get_server_model(server: &Server, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             server.id,
+            None,
             project.id,
             SearchItemType::Server,
             server.desc.clone(),
@@ -206,6 +213,7 @@ impl SearchItemList {
     fn get_server_website_model(item: &ServerWebsite, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            Some(item.server_id),
             project.id,
             SearchItemType::ServerWebsite,
             item.desc.clone(),
@@ -217,6 +225,7 @@ impl SearchItemList {
     fn get_server_note_model(item: &ServerNote, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            Some(item.server_id),
             project.id,
             SearchItemType::ServerNote,
             item.title.clone(),
@@ -231,6 +240,7 @@ impl SearchItemList {
     ) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            Some(item.server_id),
             project.id,
             SearchItemType::ServerNote,
             item.desc.clone(),
@@ -242,6 +252,7 @@ impl SearchItemList {
     fn get_server_database_model(item: &ServerDatabase, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            Some(item.server_id),
             project.id,
             SearchItemType::ServerDatabase,
             item.desc.clone(),
@@ -253,6 +264,7 @@ impl SearchItemList {
     fn get_server_poi_model(item: &ServerPointOfInterest, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            Some(item.server_id),
             project.id,
             SearchItemType::ServerPoi,
             item.desc.clone(),
@@ -264,6 +276,7 @@ impl SearchItemList {
     fn get_server_link_model(item: &ServerLink, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            None, // TODO is that correct?
             project.id,
             SearchItemType::ServerLink,
             item.desc.clone(),
@@ -275,6 +288,7 @@ impl SearchItemList {
     fn get_project_note_model(item: &ProjectNote, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            None,
             project.id,
             SearchItemType::ProjectNote,
             item.title.clone(),
@@ -286,6 +300,7 @@ impl SearchItemList {
     fn get_project_poi_model(item: &ProjectPointOfInterest, project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             item.id,
+            None,
             project.id,
             SearchItemType::ProjectPointOfInterest,
             item.desc.clone(),

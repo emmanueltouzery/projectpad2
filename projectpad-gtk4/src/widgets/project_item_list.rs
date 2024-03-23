@@ -9,9 +9,7 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
-use projectpadsql::models::{
-    EnvironmentType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerLink,
-};
+use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server, ServerLink};
 
 use crate::sql_thread::SqlFunc;
 
@@ -78,8 +76,8 @@ mod imp {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
             SIGNALS.get_or_init(|| {
                 vec![Signal::builder("activate-item")
-                    // item id + project_item_type
-                    .param_types([i32::static_type(), u8::static_type()])
+                    // item id + project_item_type + optionally server item
+                    .param_types([i32::static_type(), u8::static_type(), i32::static_type()])
                     .build()]
             })
         }
@@ -117,7 +115,9 @@ impl ProjectItemList {
         project_items: &[ProjectItem],
         group_start_indices: HashMap<i32, String>,
         selected_item: Option<i32>,
+        selected_sub_item: Option<i32>,
     ) {
+        dbg!(selected_sub_item);
         let mut list_store = ProjectItemListModel::new();
         list_store.set_group_start_indices(project_items.len(), group_start_indices);
         let mut idx = 0;
@@ -131,49 +131,88 @@ impl ProjectItemList {
             }
             idx += 1;
         }
+        dbg!(selected_sub_item);
         if selected_item.is_none() && !project_items.is_empty() {
-            // None == select first item (if any)
-            selected_index = Some(0);
-
             if let Some(first_item) = list_store.item(0) {
+                // None == select first item (if any)
+                selected_index = Some(0);
                 self.emit_by_name::<()>(
                     "activate-item",
                     &[
-                        &first_item.property_value("id"),
-                        &first_item.property_value("project-item-type"),
+                        &first_item.property_value("id").get::<i32>().unwrap(),
+                        &first_item
+                            .property_value("project-item-type")
+                            .get::<u8>()
+                            .unwrap(),
+                        dbg!(&selected_sub_item.unwrap_or(-1)),
                     ],
                 );
             }
         }
+        dbg!(selected_sub_item);
         if let Some(s_model) = self.imp().project_item_list.model() {
             let _sel_model = s_model.downcast::<gtk::SingleSelection>().unwrap();
             _sel_model.set_model(Some(&list_store));
         } else {
-            let selection_model = gtk::SingleSelection::new(Some(list_store));
+            dbg!(selected_sub_item);
+            let selection_model = gtk::SingleSelection::new(Some(list_store.clone()));
             self.imp()
                 .project_item_list
                 .set_model(Some(&selection_model));
-
-            self.imp()
-            .project_item_list
-            .model()
-            .unwrap()
-            .connect_selection_changed(glib::clone!(@weak self as s => move |sel_model, _idx, _items_count| {
-                let idx = sel_model.downcast_ref::<gtk::SingleSelection>().unwrap().selected();
-                let model = sel_model
-                    .item(idx)
-                    .unwrap();
-                s.emit_by_name::<()>("activate-item", &[
-                    &model.property_value("id"),
-                    &model.property_value("project-item-type"),
-                ])
-            }));
         }
+
         if let Some(idx) = selected_index {
             self.imp()
                 .project_item_list
                 .scroll_to(idx, gtk::ListScrollFlags::SELECT, None);
+
+            if let Some(list_item) = list_store.item(idx) {
+                self.emit_by_name::<()>(
+                    "activate-item",
+                    &[
+                        &selected_item.unwrap_or_else(|| {
+                            list_store
+                                .item(0)
+                                .unwrap()
+                                .property_value("id")
+                                .get::<i32>()
+                                .unwrap()
+                        }),
+                        &list_item
+                            .property_value("project-item-type")
+                            .get::<u8>()
+                            .unwrap(),
+                        dbg!(&dbg!(selected_sub_item).unwrap_or(-1)), // <----
+                    ],
+                );
+            }
         }
+
+        self.imp()
+            .project_item_list
+            .model()
+            .unwrap()
+            .connect_selection_changed(
+                glib::clone!(@weak self as s  => move |sel_model, _idx, _items_count| {
+                let idx = sel_model
+                    .downcast_ref::<gtk::SingleSelection>()
+                    .unwrap()
+                    .selected();
+                let model = sel_model.item(idx).unwrap();
+                dbg!(&model);
+                s.emit_by_name::<()>(
+                    "activate-item",
+                    &[
+                        &model.property_value("id").get::<i32>().unwrap(),
+                        &model
+                            .property_value("project-item-type")
+                            .get::<u8>()
+                            .unwrap(),
+                            &glib::Value::from(-1)
+                    ],
+                )
+                }),
+            );
     }
 
     fn get_item_model(project: &Project, project_item: &ProjectItem) -> ProjectItemModel {
@@ -246,6 +285,7 @@ impl ProjectItemList {
         db_sender: &mpsc::Sender<SqlFunc>,
         project: Project,
         selected_item: Option<i32>,
+        selected_sub_item: Option<i32>,
     ) {
         let (sender, receiver) = async_channel::bounded(1);
         db_sender
@@ -298,7 +338,13 @@ impl ProjectItemList {
         let s = self.clone();
         glib::spawn_future_local(async move {
             let (items, group_start_indices) = receiver.recv().await.unwrap();
-            s.set_project_items(&project, &items, group_start_indices, selected_item);
+            s.set_project_items(
+                &project,
+                &items,
+                group_start_indices,
+                selected_item,
+                selected_sub_item,
+            );
         });
     }
 

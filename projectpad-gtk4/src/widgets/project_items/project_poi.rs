@@ -11,16 +11,15 @@ use super::common::{self, DetailsRow, SuffixAction};
 pub fn load_and_display_project_poi(
     parent: &adw::Bin,
     db_sender: mpsc::Sender<SqlFunc>,
-    project_poi_id: Option<i32>,
+    project_poi_id: i32,
     widget_mode: WidgetMode,
 ) {
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
-            let pid = project_poi_id.unwrap();
             let poi = prj_poi::project_point_of_interest
-                .filter(prj_poi::id.eq(pid))
+                .filter(prj_poi::id.eq(project_poi_id))
                 .first::<ProjectPointOfInterest>(sql_conn)
                 .unwrap();
 

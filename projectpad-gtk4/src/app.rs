@@ -101,6 +101,7 @@ impl ProjectpadApplication {
                                                                               // if no projects
         select_project_variant.insert("item_id", None::<i32>);
         select_project_variant.insert("item_type", None::<u8>);
+        select_project_variant.insert("server_id", None::<i32>);
 
         // let select_project_action =
         //     gio::SimpleAction::new("select-project", Some(glib::VariantTy::INT64));

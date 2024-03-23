@@ -30,6 +30,8 @@ mod imp {
         #[property(get, set)]
         project_id: Rc<RefCell<i32>>,
         #[property(get, set)]
+        server_id: Rc<RefCell<i32>>,
+        #[property(get, set)]
         title: Rc<RefCell<String>>,
         #[property(get, set)]
         env_desc: Rc<RefCell<String>>,
@@ -89,6 +91,7 @@ fn env_to_desc(val: &Env) -> String {
 impl SearchItemModel {
     pub fn new(
         id: i32,
+        server_id: Option<i32>,
         project_id: i32,
         search_item_type: SearchItemType,
         title: String,
@@ -98,6 +101,7 @@ impl SearchItemModel {
         Object::builder()
             .property("id", id)
             .property("project-id", project_id)
+            .property("server-id", server_id.unwrap_or(-1))
             .property("search-item-type", search_item_type as u8)
             .property("title", title)
             .property("env-desc", env_to_desc(&environment))

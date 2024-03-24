@@ -9,9 +9,10 @@ use crate::{
 };
 
 mod imp {
-    use std::cell::Cell;
+    use std::{cell::Cell, sync::OnceLock};
 
     use super::*;
+    use glib::subclass::Signal;
     use gtk::{
         subclass::{
             prelude::{ObjectImpl, ObjectSubclass},
@@ -29,6 +30,19 @@ mod imp {
 
         #[property(get, set)]
         edit_mode: Cell<bool>,
+
+        // these properties are meant to be set all at once
+        // using GObjectExt.set_properties START
+        #[property(get, set)]
+        pub item_id: Cell<i32>,
+
+        #[property(get, set)]
+        pub project_item_type: Cell<u8>,
+
+        #[property(get, set)]
+        pub sub_item_id: Cell<i32>,
+        // these properties are meant to be set all at once
+        // using GObjectExt.set_properties END
     }
 
     #[glib::object_subclass]
@@ -48,7 +62,30 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for ProjectItem {
-        fn constructed(&self) {}
+        fn constructed(&self) {
+            let _ = self
+                .obj()
+                .connect_edit_mode_notify(|project_item: &super::ProjectItem| {
+                    // println!("edit mode changed: {}", project_item.edit_mode());
+                    // TODO maybe don't reload widgets completely when toggling edit mode?
+                    project_item.refresh_item();
+                });
+            let _ = self
+                .obj()
+                .connect_item_id_notify(|project_item: &super::ProjectItem| {
+                    // println!("edit mode changed: {}", project_item.edit_mode());
+                    project_item.refresh_item();
+                });
+        }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("request-scroll")
+                    .param_types([f32::static_type()])
+                    .build()]
+            })
+        }
     }
 
     impl WidgetImpl for ProjectItem {}
@@ -77,18 +114,17 @@ impl WidgetMode {
 }
 
 impl ProjectItem {
-    pub fn display_item(
-        &self,
-        vadj: &gtk::Adjustment,
-        item_id: i32,
-        item_type: ProjectItemType,
-        sub_item_id: Option<i32>,
-    ) {
+    pub fn refresh_item(&self) {
         println!(
-            "projectitem::display_item_id({}, {:?})",
-            item_id, sub_item_id
+            "projectitem::refresh_item({}, {}, {:?})",
+            self.imp().item_id.get(),
+            self.imp().sub_item_id.get(),
+            ProjectItemType::from_repr(self.imp().project_item_type.get())
         );
         let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
+        let item_id = self.imp().item_id.get();
+        let sub_item_id = Some(self.imp().sub_item_id.get());
+        let item_type = ProjectItemType::from_repr(self.imp().project_item_type.get());
         // TODO receive the item type besides the item_id and switch on item type here
         // also possibly receive the ProjectItem, telling me much more than the id
         let db_sender = app.unwrap().get_sql_channel();
@@ -99,18 +135,19 @@ impl ProjectItem {
         };
 
         match item_type {
-            ProjectItemType::Server => super::project_items::server::load_and_display_server(
-                &vadj,
+            Some(ProjectItemType::Server) => super::project_items::server::load_and_display_server(
                 &self.imp().project_item,
                 db_sender,
                 item_id,
                 sub_item_id,
                 widget_mode,
+                &self,
             ),
-            ProjectItemType::ProjectNote => {
+            Some(ProjectItemType::ProjectNote) => {
                 let note = note::Note::new();
                 // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
                 // it feels even worse (would like not to rebuild the widget every time...)
+                // move to set_properties with freeze_notify
                 note.set_project_note_id(&item_id);
                 note.set_edit_mode(self.edit_mode());
                 self.imp().project_item.set_child(Some(
@@ -122,7 +159,7 @@ impl ProjectItem {
                 //     widget_mode,
                 // )
             }
-            ProjectItemType::ProjectPointOfInterest => {
+            Some(ProjectItemType::ProjectPointOfInterest) => {
                 super::project_items::project_poi::load_and_display_project_poi(
                     &self.imp().project_item,
                     db_sender,

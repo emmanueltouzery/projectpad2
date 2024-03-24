@@ -3,7 +3,7 @@ use std::sync::mpsc;
 
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
-use crate::widgets::project_item_model::ProjectItemType;
+use crate::widgets::project_item::ProjectItem;
 use crate::widgets::search::search_item_list::SearchItemList;
 use crate::widgets::search::search_item_model::SearchItemType;
 
@@ -132,16 +132,29 @@ impl ProjectpadApplicationWindow {
     pub fn new(db_sender: mpsc::Sender<SqlFunc>) -> Self {
         let win = glib::Object::new::<Self>();
         win.imp().sql_channel.replace(Some(db_sender.clone()));
-        let project_vadj = win.imp().project_scrolled_window.vadjustment().clone();
         win.imp().project_item_list.connect_closure(
             "activate-item",
             false,
-            glib::closure_local!(@strong win as w, @strong project_vadj as pva => move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8, sub_item_id: i32| {
-                dbg!(sub_item_id);
-                let item_type = ProjectItemType::from_repr(project_item_type).unwrap();
-                w.imp().project_item.display_item(&pva, item_id, item_type, Some(sub_item_id).filter(|v| *v != -1));
+            glib::closure_local!(@strong win as w =>
+                                 move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8, sub_item_id: i32| {
+                println!("set_properties {} {} {}", item_id, sub_item_id, project_item_type);
+                let _freeze_guard = w.imp().project_item.freeze_notify(); // https://github.com/gtk-rs/gtk-rs-core/issues/1339
+                w.imp().project_item.set_properties(
+                    &[
+                    ("item-id", &item_id),
+                    ("sub-item-id", &sub_item_id),
+                    ("project-item-type", &project_item_type),
+                    ]);
             }),
             );
+        win.imp().project_item.connect_closure(
+            "request-scroll",
+            false,
+            glib::closure_local!(@strong win as w => move |_project_item: ProjectItem, offset: f32| {
+              let vadj = w.imp().project_scrolled_window.vadjustment();
+              vadj.set_value(offset.into());
+            }),
+        );
 
         win.imp().search_entry.connect_show(|entry| {
             entry.grab_focus();

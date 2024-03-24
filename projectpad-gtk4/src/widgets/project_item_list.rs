@@ -117,7 +117,6 @@ impl ProjectItemList {
         selected_item: Option<i32>,
         selected_sub_item: Option<i32>,
     ) {
-        dbg!(selected_sub_item);
         let mut list_store = ProjectItemListModel::new();
         list_store.set_group_start_indices(project_items.len(), group_start_indices);
         let mut idx = 0;
@@ -131,7 +130,6 @@ impl ProjectItemList {
             }
             idx += 1;
         }
-        dbg!(selected_sub_item);
         if selected_item.is_none() && !project_items.is_empty() {
             if let Some(first_item) = list_store.item(0) {
                 // None == select first item (if any)
@@ -144,17 +142,15 @@ impl ProjectItemList {
                             .property_value("project-item-type")
                             .get::<u8>()
                             .unwrap(),
-                        dbg!(&selected_sub_item.unwrap_or(-1)),
+                        &selected_sub_item.unwrap_or(-1),
                     ],
                 );
             }
         }
-        dbg!(selected_sub_item);
         if let Some(s_model) = self.imp().project_item_list.model() {
             let _sel_model = s_model.downcast::<gtk::SingleSelection>().unwrap();
             _sel_model.set_model(Some(&list_store));
         } else {
-            dbg!(selected_sub_item);
             let selection_model = gtk::SingleSelection::new(Some(list_store.clone()));
             self.imp()
                 .project_item_list
@@ -182,7 +178,7 @@ impl ProjectItemList {
                             .property_value("project-item-type")
                             .get::<u8>()
                             .unwrap(),
-                        dbg!(&dbg!(selected_sub_item).unwrap_or(-1)), // <----
+                        &selected_sub_item.unwrap_or(-1),
                     ],
                 );
             }
@@ -199,7 +195,6 @@ impl ProjectItemList {
                     .unwrap()
                     .selected();
                 let model = sel_model.item(idx).unwrap();
-                dbg!(&model);
                 s.emit_by_name::<()>(
                     "activate-item",
                     &[

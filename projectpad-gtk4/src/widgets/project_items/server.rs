@@ -1,4 +1,8 @@
-use crate::{notes, sql_thread::SqlFunc, widgets::project_item::WidgetMode};
+use crate::{
+    notes,
+    sql_thread::SqlFunc,
+    widgets::project_item::{ProjectItem, WidgetMode},
+};
 use adw::prelude::*;
 use diesel::prelude::*;
 use itertools::Itertools;
@@ -68,13 +72,14 @@ pub struct ChannelData {
 }
 
 pub fn load_and_display_server(
-    vadj: &gtk::Adjustment,
     parent: &adw::Bin,
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     server_item_id: Option<i32>,
     widget_mode: WidgetMode,
+    project_item: &ProjectItem,
 ) {
+    dbg!(&server_id);
     dbg!(&server_item_id);
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
@@ -197,21 +202,20 @@ pub fn load_and_display_server(
         .unwrap();
 
     let p = parent.clone();
-    let v = vadj.clone();
+    let pi = project_item.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        display_server(&v, &p, channel_data, server_item_id, widget_mode);
+        display_server(&p, channel_data, server_item_id, widget_mode, &pi);
     });
 }
 
 fn display_server(
-    vadj: &gtk::Adjustment,
     parent: &adw::Bin,
     channel_data: ChannelData,
     server_item_id: Option<i32>,
     widget_mode: WidgetMode,
+    project_item: &ProjectItem,
 ) {
-    dbg!(&server_item_id);
     let vbox = common::get_contents_box_with_header(
         &channel_data.server.desc,
         common::EnvOrEnvs::Env(channel_data.server.environment),
@@ -305,7 +309,13 @@ fn display_server(
 
     vbox.append(&server_item0);
 
-    add_server_items(vadj, &channel_data, server_item_id, widget_mode, &vbox);
+    add_server_items(
+        &channel_data,
+        server_item_id,
+        widget_mode,
+        &vbox,
+        project_item,
+    );
 
     if widget_mode == WidgetMode::Edit {
         // let (frame, frame_box) = group_frame("", WidgetMode::Edit);
@@ -347,11 +357,11 @@ fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMe
 }
 
 fn add_server_items(
-    vadj: &gtk::Adjustment,
     channel_data: &ChannelData,
     focused_server_item_id: Option<i32>,
     widget_mode: WidgetMode,
     vbox: &gtk::Box,
+    project_item: &ProjectItem,
 ) {
     let mut cur_parent = vbox.clone();
     let mut cur_group_name = None::<&str>;
@@ -386,17 +396,19 @@ fn add_server_items(
         if Some(server_item.get_id()) == focused_server_item_id {
             let me = cur_parent.last_child().unwrap().clone();
             let v = vbox.clone();
-            let va = vadj.clone();
 
+            let pi = project_item.clone();
             glib::spawn_future_local(async move {
                 // TODO crappy but doesn't work without the wait..
                 glib::timeout_future(Duration::from_millis(50)).await;
-                va.set_value(dbg!(me
-                    .compute_bounds(&v.upcast::<gtk::Widget>())
-                    .unwrap()
-                    .top_left()
-                    .y()
-                    .into()));
+                pi.emit_by_name::<()>(
+                    "request-scroll",
+                    &[&me
+                        .compute_bounds(&v.upcast::<gtk::Widget>())
+                        .unwrap()
+                        .top_left()
+                        .y()],
+                );
             });
         }
     }

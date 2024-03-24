@@ -460,6 +460,7 @@ fn finish_server_item_group(cur_parent: &gtk::Box, widget_mode: WidgetMode) {
 fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, title: &str) {
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
+        .css_classes(["destructive-action"])
         .build();
     let edit_desc_entry = gtk::Entry::builder()
         .text(title)

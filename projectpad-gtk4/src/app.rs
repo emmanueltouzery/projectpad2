@@ -183,6 +183,16 @@ impl ProjectpadApplication {
             let menu_model = gio::Menu::new();
             let select_project_variant = glib::VariantDict::new(None);
             app_clone.setup_actions(&win_binding_ref, prjs.first());
+
+            let w = app_clone.imp().window.get().unwrap().upgrade().unwrap();
+            if !prjs.is_empty() {
+                select_project_variant.insert("project_id", prjs.first().unwrap().id);
+                select_project_variant.insert("item_id", None::<i32>);
+                select_project_variant.insert("item_type", None::<u8>);
+                select_project_variant.insert("search_item_type", None::<u8>);
+                w.change_action_state("select-project", &select_project_variant.end());
+            }
+
             for prj in prjs {
                 select_project_variant.insert("project_id", prj.id);
                 select_project_variant.insert("item_id", None::<i32>);

@@ -478,7 +478,6 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
         .description("Website")
         .title(&w.desc)
         .build();
-    let url = w.url.clone();
     DetailsRow::new("Address", &w.url, Some(SuffixAction::link(&w.url)), &[])
         .add(widget_mode, &server_item1);
 

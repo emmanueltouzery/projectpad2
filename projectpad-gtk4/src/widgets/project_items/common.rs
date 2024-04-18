@@ -20,6 +20,7 @@ pub enum EnvOrEnvs {
 
 pub fn get_contents_box_with_header(
     title: &str,
+    group_name: Option<&str>,
     env: EnvOrEnvs,
     widget_mode: WidgetMode,
 ) -> gtk::Box {
@@ -89,6 +90,16 @@ pub fn get_contents_box_with_header(
     }
 
     vbox.append(&header_box);
+
+    if widget_mode == WidgetMode::Edit {
+        // ability to change the item's group
+        let hbox = gtk::Box::builder().build();
+        hbox.append(&gtk::Label::builder().label("Group").build());
+        // TODO base upon "suggestion entry", Lists->selections in gtk4-demo
+        hbox.append(&gtk::Entry::builder().text(group_name.unwrap_or("")).build());
+        vbox.append(&hbox);
+    }
+
     vbox
 }
 

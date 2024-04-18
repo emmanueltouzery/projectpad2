@@ -218,6 +218,7 @@ fn display_server(
 ) {
     let vbox = common::get_contents_box_with_header(
         &channel_data.server.desc,
+        channel_data.server.group_name.as_deref(),
         common::EnvOrEnvs::Env(channel_data.server.environment),
         widget_mode,
     );

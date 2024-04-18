@@ -42,8 +42,12 @@ fn poi_get_text_label(interest_type: InterestType) -> &'static str {
 }
 
 fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mode: WidgetMode) {
-    let vbox =
-        common::get_contents_box_with_header(&poi.desc, common::EnvOrEnvs::None, widget_mode);
+    let vbox = common::get_contents_box_with_header(
+        &poi.desc,
+        poi.group_name.as_deref(),
+        common::EnvOrEnvs::None,
+        widget_mode,
+    );
 
     let (desc, idx) = match poi.interest_type {
         InterestType::PoiApplication => ("Application", 0),

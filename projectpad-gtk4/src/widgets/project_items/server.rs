@@ -317,18 +317,6 @@ fn display_server(
         project_item,
     );
 
-    if widget_mode == WidgetMode::Edit {
-        // let (frame, frame_box) = group_frame("", WidgetMode::Edit);
-        // finish_server_item_group(&frame_box, WidgetMode::Edit);
-        // vbox.append(&frame);
-
-        let add_btn = gtk::MenuButton::builder()
-            .icon_name("list-add-symbolic")
-            .hexpand(true)
-            .popover(&add_server_item_popover(IncludeAddGroup::Yes))
-            .build();
-        vbox.append(&add_btn);
-    }
     parent.set_child(Some(&vbox));
 }
 
@@ -366,9 +354,25 @@ fn add_server_items(
     let mut cur_parent = vbox.clone();
     let mut cur_group_name = None::<&str>;
     dbg!(focused_server_item_id);
+    let mut started_groups = false;
 
     for server_item in channel_data.server_items.iter() {
         let group_name = server_item.group_name();
+
+        if !started_groups && group_name.is_some() && widget_mode == WidgetMode::Edit {
+            // let (frame, frame_box) = group_frame("", WidgetMode::Edit);
+            // finish_server_item_group(&frame_box, WidgetMode::Edit);
+            // vbox.append(&frame);
+
+            let add_btn = gtk::MenuButton::builder()
+                .icon_name("list-add-symbolic")
+                .hexpand(true)
+                .popover(&add_server_item_popover(IncludeAddGroup::Yes))
+                .build();
+            vbox.append(&add_btn);
+
+            started_groups = true;
+        }
         if group_name != cur_group_name {
             if let Some(grp) = group_name {
                 let (frame, frame_box) = group_frame(grp, widget_mode);

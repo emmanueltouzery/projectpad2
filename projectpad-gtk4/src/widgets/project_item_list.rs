@@ -30,7 +30,7 @@ pub enum ProjectItem {
 // https://gtk-rs.org/gtk4-rs/stable/latest/book/todo_1.html
 // https://gitlab.com/news-flash/news_flash_gtk/-/blob/master/src/article_list/models/article.rs?ref_type=heads
 mod imp {
-    use std::sync::OnceLock;
+    use std::{cell::Cell, sync::OnceLock};
 
     use glib::subclass::Signal;
     use gtk::{
@@ -43,13 +43,17 @@ mod imp {
 
     use super::*;
 
-    #[derive(Debug, Default, CompositeTemplate)]
+    #[derive(Debug, Default, Properties, CompositeTemplate)]
+    #[properties(wrapper_type = super::ProjectItemList)]
     #[template(
         resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item_list.ui"
     )]
     pub struct ProjectItemList {
         #[template_child]
         pub project_item_list: TemplateChild<gtk::ListView>,
+
+        #[property(get, set)]
+        edit_mode: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -67,6 +71,7 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for ProjectItemList {
         fn constructed(&self) {
             self.obj().init_list();

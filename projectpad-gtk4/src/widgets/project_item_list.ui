@@ -13,5 +13,11 @@
         </property>
       </object>
     </child>
+    <child type="end">
+      <object class="GtkButton" id="add_project_item">
+        <property name="icon-name">list-add-symbolic</property>
+        <property name="visible" bind-source="ProjectItemList" bind-property="edit_mode" bind-flags="bidirectional|sync-create"/>
+      </object>
+    </child>
   </template>
 </interface>

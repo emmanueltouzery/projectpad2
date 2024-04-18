@@ -49,6 +49,7 @@
                     <property name="title" translatable="yes">Sidebar</property>
                     <property name="child">
                       <object class="ProjectItemList" id="project_item_list">
+                        <property name="edit_mode" bind-source="ProjectpadApplicationWindow" bind-property="edit_mode" bind-flags="bidirectional|sync-create"/>
                         <property name="vexpand">True</property>
                       </object>
                     </property>

@@ -501,9 +501,6 @@ fn add_group_edit_suffix(
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
         .css_classes(["destructive-action"])
-        .build();
-    let edit_desc_entry = gtk::Entry::builder()
-        .text(title)
         .valign(gtk::Align::Center)
         .build();
     let edit_btn = gtk::Button::builder()
@@ -514,17 +511,48 @@ fn add_group_edit_suffix(
         .build();
     edit_btn.connect_closure("clicked", false, edit_closure);
     let suffix_box = gtk::Box::builder().spacing(15).build();
-    suffix_box.append(&edit_desc_entry);
     suffix_box.append(&delete_btn);
     suffix_box.append(&edit_btn);
     server_item1.set_header_suffix(Some(&suffix_box));
 }
 
 fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk::Box) {
-    let server_item1 = adw::PreferencesGroup::builder()
-        .description("Website")
-        .title(&w.desc)
-        .build();
+    let server_item1 = server_website_contents(w, WidgetMode::Show, vbox);
+    if widget_mode == WidgetMode::Edit {
+        add_group_edit_suffix(
+            &server_item1,
+            &w.desc,
+            glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
+                let cbox = gtk::Box::builder().orientation(gtk::Orientation::Vertical).build();
+                let header_bar = adw::HeaderBar::builder().build();
+                cbox.append(&header_bar);
+                let item_box = gtk::Box::builder().orientation(gtk::Orientation::Vertical).build();
+                server_website_contents(&w1, WidgetMode::Edit, &item_box);
+                cbox.append(&adw::Clamp::builder().margin_top(10).child(&item_box).build());
+                let dialog = adw::Dialog::builder()
+                    .title("Edit Server Website")
+                    .content_width(600)
+                    .content_height(400)
+                    .child(&cbox).build();
+                dialog.present(&v);
+            }),
+        );
+    }
+}
+
+fn server_website_contents(
+    w: &ServerWebsite,
+    widget_mode: WidgetMode,
+    vbox: &gtk::Box,
+) -> adw::PreferencesGroup {
+    let server_item1 = adw::PreferencesGroup::builder().build();
+    if widget_mode == WidgetMode::Show {
+        server_item1.set_title(&w.desc);
+        server_item1.set_description(Some("Website"));
+    } else {
+        server_item1.set_title("Website");
+        DetailsRow::new("Description", &w.desc, None, &[]).add(widget_mode, &server_item1);
+    }
     DetailsRow::new("Address", &w.url, Some(SuffixAction::link(&w.url)), &[])
         .add(widget_mode, &server_item1);
 
@@ -540,17 +568,9 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
     DetailsRow::new("Text", &w.text, SuffixAction::copy(&w.text), &[])
         .add(widget_mode, &server_item1);
 
-    if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(
-            &server_item1,
-            &w.desc,
-            glib::closure_local!(|_b: gtk::Button| {
-                // let dialog = adw::Dialog::new();
-            }),
-        );
-    }
-
     vbox.append(&server_item1);
+
+    server_item1
 }
 
 fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox: &gtk::Box) {

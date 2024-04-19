@@ -670,6 +670,29 @@ fn display_server_extra_user_account(
     widget_mode: WidgetMode,
     vbox: &gtk::Box,
 ) {
+    let server_item1 = server_extra_user_account_contents(user, widget_mode, vbox);
+
+    if widget_mode == WidgetMode::Edit {
+        add_group_edit_suffix(
+            &server_item1,
+            glib::closure_local!(@strong user as u, @strong vbox as v => move |_b: gtk::Button| {
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                server_extra_user_account_contents(&u, WidgetMode::Edit, &item_box);
+
+                display_item_edit_dialog(&v, item_box);
+            }),
+        );
+    }
+    // TODO auth key
+}
+
+fn server_extra_user_account_contents(
+    user: &ServerExtraUserAccount,
+    widget_mode: WidgetMode,
+    vbox: &gtk::Box,
+) -> adw::PreferencesGroup {
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Extra user")
         // .title(&poi.desc)
@@ -688,17 +711,9 @@ fn display_server_extra_user_account(
     )
     .add(widget_mode, &server_item1);
 
-    if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(
-            &server_item1,
-            glib::closure_local!(|_b: gtk::Button| {
-                println!("editing server www");
-            }),
-        );
-    }
-    // TODO auth key
-
     vbox.append(&server_item1);
+
+    server_item1
 }
 
 fn truncate(s: &str, max_chars: usize) -> &str {

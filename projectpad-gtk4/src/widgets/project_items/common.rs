@@ -87,6 +87,17 @@ pub fn get_contents_box_with_header(
             .halign(gtk::Align::End)
             .build();
         header_box.append(&delete_btn);
+
+        let edit_btn = gtk::Button::builder()
+            .icon_name("document-edit-symbolic")
+            .css_classes(["suggested-action"])
+            .valign(gtk::Align::Center)
+            .halign(gtk::Align::End)
+            .build();
+        if widget_mode != WidgetMode::Edit {
+            edit_btn.set_hexpand(true);
+        }
+        header_box.append(&edit_btn);
     }
 
     vbox.append(&header_box);

@@ -11,12 +11,12 @@ includedir_codegen = "0.6.0"
 
 
 [dependencies]
-gtk = { version = "0.7.3", package = "gtk4", features = ["v4_12"] }
-cairo-rs = "0.18.3"
-pango = "0.18.3"
-glib = "0.18.4"
-gio = "0.18.4"
-adw = { version = "0.5.3", package = "libadwaita", features = ["v1_4"] }
+gtk = { version = "0.8.1", package = "gtk4", features = ["v4_12"] }
+cairo-rs = "0.19.4"
+pango = "0.19.3"
+glib = "0.19.4"
+gio = "0.19.4"
+adw = { version = "0.6.0", package = "libadwaita", features = ["v1_4"] }
 projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "2.0.4", features = ["sqlite"] }
 includedir = "0.6.0"
@@ -27,4 +27,4 @@ itertools = "0.10.0"
 strum = "0.25.0"
 strum_macros = "0.25.3"
 pulldown-cmark = { version = "0.8.0", default-features = false }
-sourceview5 = "0.7.1"
+sourceview5 = "0.8.0"

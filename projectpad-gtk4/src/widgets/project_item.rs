@@ -1,3 +1,5 @@
+use std::cell::Ref;
+
 use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
@@ -8,8 +10,20 @@ use crate::{
     widgets::{project_item_model::ProjectItemType, project_items::note},
 };
 
+#[derive(Debug, Default, PartialEq, Eq)]
+pub enum ProjectItemEditMode {
+    #[default]
+    None,
+    ProjectItem,
+    Group(String),
+}
+
 mod imp {
-    use std::{cell::Cell, sync::OnceLock};
+    use std::{
+        cell::{Cell, RefCell},
+        rc::Rc,
+        sync::OnceLock,
+    };
 
     use super::*;
     use glib::subclass::Signal;
@@ -43,6 +57,9 @@ mod imp {
         pub sub_item_id: Cell<i32>,
         // these properties are meant to be set all at once
         // using GObjectExt.set_properties END
+
+        // TODO pub?
+        pub edit_mode_items: Rc<RefCell<ProjectItemEditMode>>,
     }
 
     #[glib::object_subclass]
@@ -172,5 +189,14 @@ impl ProjectItem {
                 eprintln!("unhandled item type!");
             }
         }
+    }
+
+    pub fn edit_mode_items(&self) -> Ref<ProjectItemEditMode> {
+        self.imp().edit_mode_items.borrow()
+    }
+
+    pub fn set_edit_mode_items(&self, edit_mode_items: ProjectItemEditMode) {
+        self.imp().edit_mode_items.replace(edit_mode_items);
+        self.refresh_item();
     }
 }

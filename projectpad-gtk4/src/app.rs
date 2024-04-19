@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use adw::subclass::prelude::*;
 use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
-use glib::{ObjectExt, Properties};
+use glib::Properties;
 use gtk::subclass::prelude::DerivedObjectProperties;
 use gtk::{gdk, gio, glib};
 use gtk::{prelude::*, CssProvider};
@@ -115,7 +115,6 @@ impl ProjectpadApplication {
         );
         let w = window.clone();
         select_project_action.connect_change_state(move |action, parameter| {
-            println!("{} / {:#?}", action, parameter);
             action.set_state(parameter.as_ref().unwrap());
             w.set_active_project_item();
         });

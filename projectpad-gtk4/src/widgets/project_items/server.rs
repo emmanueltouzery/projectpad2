@@ -1,17 +1,20 @@
 use crate::{
     notes,
     sql_thread::SqlFunc,
-    widgets::project_item::{ProjectItem, WidgetMode},
+    widgets::project_item::{ProjectItem, ProjectItemEditMode, WidgetMode},
 };
 use adw::prelude::*;
 use diesel::prelude::*;
+use glib::closure_local;
 use itertools::Itertools;
 use projectpadsql::models::{
     InterestType, RunOn, Server, ServerAccessType, ServerDatabase, ServerExtraUserAccount,
     ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
 };
 use std::{
+    cell::RefCell,
     collections::{BTreeSet, HashMap},
+    rc::Rc,
     sync::mpsc,
     time::Duration,
 };
@@ -202,10 +205,10 @@ pub fn load_and_display_server(
         .unwrap();
 
     let p = parent.clone();
-    let pi = project_item.clone();
+    let mut pi = project_item.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        display_server(&p, channel_data, server_item_id, widget_mode, &pi);
+        display_server(&p, channel_data, server_item_id, widget_mode, &mut pi);
     });
 }
 
@@ -376,7 +379,7 @@ fn add_server_items(
         }
         if group_name != cur_group_name {
             if let Some(grp) = group_name {
-                let (frame, frame_box) = group_frame(grp, widget_mode);
+                let (frame, frame_box) = group_frame(grp, widget_mode, project_item);
                 cur_parent = frame_box;
                 vbox.append(&frame);
                 cur_group_name = group_name;
@@ -422,30 +425,58 @@ fn add_server_items(
     }
 }
 
-fn group_frame(group_name: &str, widget_mode: WidgetMode) -> (gtk::Frame, gtk::Box) {
+fn group_frame(
+    group_name: &str,
+    widget_mode: WidgetMode,
+    project_item: &ProjectItem,
+) -> (gtk::Frame, gtk::Box) {
     let frame = gtk::Frame::builder().build();
     let frame_box = gtk::Box::builder()
         .css_classes(["card", "frame-group"])
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
         .build();
+    let frame_header = gtk::Box::builder().build();
     if widget_mode == WidgetMode::Show {
-        frame_box.append(
+        frame_header.append(
             &gtk::Label::builder()
                 .css_classes(["heading"])
                 .halign(gtk::Align::Start)
+                .hexpand(true)
                 .label(group_name)
                 .build(),
         );
     } else {
-        frame_box.append(
+        frame_header.append(
             &gtk::Entry::builder()
                 .css_classes(["heading"])
                 .halign(gtk::Align::Start)
+                .hexpand(true)
                 .text(group_name)
                 .build(),
         );
     }
+
+    let icon_name = match *project_item.edit_mode_items() {
+        ProjectItemEditMode::Group(ref g) if g == group_name => "view-reveal-symbolic",
+        _ => "document-edit-symbolic",
+    };
+
+    let edit_btn = gtk::Button::builder()
+        .css_classes(["suggested-action"])
+        .valign(gtk::Align::Center)
+        .halign(gtk::Align::End)
+        .icon_name(icon_name)
+        .build();
+
+    let gn = group_name.to_string();
+    let pi = project_item.clone();
+    edit_btn.connect_clicked(move |_| {
+        pi.set_edit_mode_items(ProjectItemEditMode::Group(gn.clone()));
+    });
+    frame_header.append(&edit_btn);
+
+    frame_box.append(&frame_header);
     frame_box.append(&gtk::Separator::builder().build());
     frame.set_child(Some(&frame_box));
     (frame, frame_box)
@@ -462,7 +493,11 @@ fn finish_server_item_group(cur_parent: &gtk::Box, widget_mode: WidgetMode) {
     }
 }
 
-fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, title: &str) {
+fn add_group_edit_suffix(
+    server_item1: &adw::PreferencesGroup,
+    title: &str,
+    edit_closure: glib::RustClosure,
+) {
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
         .css_classes(["destructive-action"])
@@ -471,10 +506,17 @@ fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, title: &str) {
         .text(title)
         .valign(gtk::Align::Center)
         .build();
-
+    let edit_btn = gtk::Button::builder()
+        .icon_name("document-edit-symbolic")
+        .css_classes(["suggested-action"])
+        .valign(gtk::Align::Center)
+        .halign(gtk::Align::End)
+        .build();
+    edit_btn.connect_closure("clicked", false, edit_closure);
     let suffix_box = gtk::Box::builder().spacing(15).build();
     suffix_box.append(&edit_desc_entry);
     suffix_box.append(&delete_btn);
+    suffix_box.append(&edit_btn);
     server_item1.set_header_suffix(Some(&suffix_box));
 }
 
@@ -499,7 +541,13 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
         .add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(&server_item1, &w.desc);
+        add_group_edit_suffix(
+            &server_item1,
+            &w.desc,
+            glib::closure_local!(|_b: gtk::Button| {
+                // let dialog = adw::Dialog::new();
+            }),
+        );
     }
 
     vbox.append(&server_item1);
@@ -528,7 +576,13 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
         .add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(&server_item1, &poi.desc);
+        add_group_edit_suffix(
+            &server_item1,
+            &poi.desc,
+            glib::closure_local!(|_b: gtk::Button| {
+                println!("editing server www");
+            }),
+        );
 
         // run on
         let run_on_combo = adw::ComboRow::new();
@@ -592,7 +646,13 @@ fn display_server_extra_user_account(
     .add(widget_mode, &server_item1);
 
     if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(&server_item1, &user.username);
+        add_group_edit_suffix(
+            &server_item1,
+            &user.username,
+            glib::closure_local!(|_b: gtk::Button| {
+                println!("editing server www");
+            }),
+        );
     }
     // TODO auth key
 
@@ -629,7 +689,13 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
         .build();
 
     if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(&server_item1, &note.title);
+        add_group_edit_suffix(
+            &server_item1,
+            &note.title,
+            glib::closure_local!(|_b: gtk::Button| {
+                println!("editing server www");
+            }),
+        );
     }
 
     note_view.set_height_request(500);

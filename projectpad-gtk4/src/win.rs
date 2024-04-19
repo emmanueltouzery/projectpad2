@@ -22,7 +22,7 @@ mod imp {
     use crate::widgets::{project_item::ProjectItem, search::search_item_list::SearchItemList};
 
     use super::*;
-    use glib::{subclass::prelude::ObjectImpl, ObjectExt, Properties};
+    use glib::{subclass::prelude::ObjectImpl, Properties};
     use gtk::{
         subclass::{
             prelude::ObjectSubclass,

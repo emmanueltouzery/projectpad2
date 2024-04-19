@@ -2,6 +2,7 @@ use diesel::prelude::*;
 use std::{collections::HashSet, sync::mpsc};
 
 use adw::prelude::*;
+use glib::property::PropertySet;
 use glib::*;
 use gtk::{gdk, subclass::prelude::*};
 use projectpadsql::models::{EnvironmentType, ProjectNote, ServerNote};
@@ -295,7 +296,7 @@ impl Note {
         let sp = self.imp().note_passwords.clone();
         let tp = toast_parent.clone();
         copy_password_action.connect_activate(move |action, parameter| {
-            println!("{} / {:#?}", action, parameter);
+            // println!("{} / {:#?}", action, parameter);
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
             if let Some(p) = sp.borrow().get(password_index) {
                 copy_to_clipboard(&p.data);
@@ -309,7 +310,7 @@ impl Note {
         let sp = self.imp().note_passwords.clone();
         let tp = toast_parent.clone();
         reveal_password_action.connect_activate(move |action, parameter| {
-            println!("{} / {:#?}", action, parameter);
+            // println!("{} / {:#?}", action, parameter);
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
             if let Some(p) = sp.borrow().get(password_index) {
                 tp.add_toast(adw::Toast::new(&format!("The password is: {}", p.data)));

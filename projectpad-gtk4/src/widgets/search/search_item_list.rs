@@ -1,4 +1,7 @@
 use glib::*;
+use gtk::prelude::Cast;
+use gtk::prelude::ObjectExt;
+use gtk::prelude::StaticType;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use projectpadsql::models::{

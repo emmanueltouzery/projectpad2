@@ -5,14 +5,12 @@ use crate::{
 };
 use adw::prelude::*;
 use diesel::prelude::*;
-use glib::closure_local;
 use itertools::Itertools;
 use projectpadsql::models::{
     InterestType, RunOn, Server, ServerAccessType, ServerDatabase, ServerExtraUserAccount,
     ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
 };
 use std::{
-    cell::RefCell,
     collections::{BTreeSet, HashMap},
     rc::Rc,
     sync::mpsc,
@@ -493,11 +491,7 @@ fn finish_server_item_group(cur_parent: &gtk::Box, widget_mode: WidgetMode) {
     }
 }
 
-fn add_group_edit_suffix(
-    server_item1: &adw::PreferencesGroup,
-    title: &str,
-    edit_closure: glib::RustClosure,
-) {
+fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: glib::RustClosure) {
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
         .css_classes(["destructive-action"])
@@ -516,25 +510,39 @@ fn add_group_edit_suffix(
     server_item1.set_header_suffix(Some(&suffix_box));
 }
 
+fn display_item_edit_dialog(v: &gtk::Box, item_box: gtk::Box) {
+    let cbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    let header_bar = adw::HeaderBar::builder().build();
+    cbox.append(&header_bar);
+    cbox.append(
+        &adw::Clamp::builder()
+            .margin_top(10)
+            .child(&item_box)
+            .build(),
+    );
+    let dialog = adw::Dialog::builder()
+        .title("Edit Server Website")
+        .content_width(600)
+        .content_height(400)
+        .child(&cbox)
+        .build();
+    dialog.present(v);
+}
+
 fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk::Box) {
     let server_item1 = server_website_contents(w, WidgetMode::Show, vbox);
     if widget_mode == WidgetMode::Edit {
         add_group_edit_suffix(
             &server_item1,
-            &w.desc,
             glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
-                let cbox = gtk::Box::builder().orientation(gtk::Orientation::Vertical).build();
-                let header_bar = adw::HeaderBar::builder().build();
-                cbox.append(&header_bar);
-                let item_box = gtk::Box::builder().orientation(gtk::Orientation::Vertical).build();
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
                 server_website_contents(&w1, WidgetMode::Edit, &item_box);
-                cbox.append(&adw::Clamp::builder().margin_top(10).child(&item_box).build());
-                let dialog = adw::Dialog::builder()
-                    .title("Edit Server Website")
-                    .content_width(600)
-                    .content_height(400)
-                    .child(&cbox).build();
-                dialog.present(&v);
+
+                display_item_edit_dialog(&v, item_box);
             }),
         );
     }
@@ -574,6 +582,28 @@ fn server_website_contents(
 }
 
 fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox: &gtk::Box) {
+    let server_item1 = server_poi_contents(poi, WidgetMode::Show, vbox);
+
+    if widget_mode == WidgetMode::Edit {
+        add_group_edit_suffix(
+            &server_item1,
+            glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                server_poi_contents(&p, WidgetMode::Edit, &item_box);
+
+                display_item_edit_dialog(&v, item_box);
+            }),
+        );
+    }
+}
+
+fn server_poi_contents(
+    poi: &ServerPointOfInterest,
+    widget_mode: WidgetMode,
+    vbox: &gtk::Box,
+) -> adw::PreferencesGroup {
     let desc = match poi.interest_type {
         InterestType::PoiLogFile => "Log file",
         InterestType::PoiConfigFile => "Config file",
@@ -595,15 +625,9 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
     DetailsRow::new(field_name, &poi.text, SuffixAction::copy(&poi.text), &[])
         .add(widget_mode, &server_item1);
 
-    if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(
-            &server_item1,
-            &poi.desc,
-            glib::closure_local!(|_b: gtk::Button| {
-                println!("editing server www");
-            }),
-        );
+    vbox.append(&server_item1);
 
+    if widget_mode == WidgetMode::Edit {
         // run on
         let run_on_combo = adw::ComboRow::new();
         run_on_combo.set_title("Run on");
@@ -635,11 +659,10 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
             InterestType::PoiConfigFile => 4,
             InterestType::PoiLogFile => 5,
         });
-
         server_item1.add(&interest_type_combo);
     }
 
-    vbox.append(&server_item1);
+    server_item1
 }
 
 fn display_server_extra_user_account(
@@ -668,7 +691,6 @@ fn display_server_extra_user_account(
     if widget_mode == WidgetMode::Edit {
         add_group_edit_suffix(
             &server_item1,
-            &user.username,
             glib::closure_local!(|_b: gtk::Button| {
                 println!("editing server www");
             }),
@@ -711,7 +733,6 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
     if widget_mode == WidgetMode::Edit {
         add_group_edit_suffix(
             &server_item1,
-            &note.title,
             glib::closure_local!(|_b: gtk::Button| {
                 println!("editing server www");
             }),

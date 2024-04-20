@@ -1,7 +1,10 @@
 use crate::{
     notes,
     sql_thread::SqlFunc,
-    widgets::project_item::{ProjectItem, ProjectItemEditMode, WidgetMode},
+    widgets::{
+        project_item::{ProjectItem, ProjectItemEditMode, WidgetMode},
+        project_items::common::display_item_edit_dialog,
+    },
 };
 use adw::prelude::*;
 use diesel::prelude::*;
@@ -535,27 +538,6 @@ fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: gli
     suffix_box.append(&delete_btn);
     suffix_box.append(&edit_btn);
     server_item1.set_header_suffix(Some(&suffix_box));
-}
-
-fn display_item_edit_dialog(v: &gtk::Box, item_box: gtk::Box) {
-    let cbox = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .build();
-    let header_bar = adw::HeaderBar::builder().build();
-    cbox.append(&header_bar);
-    cbox.append(
-        &adw::Clamp::builder()
-            .margin_top(10)
-            .child(&item_box)
-            .build(),
-    );
-    let dialog = adw::Dialog::builder()
-        .title("Edit Server Website")
-        .content_width(600)
-        .content_height(400)
-        .child(&cbox)
-        .build();
-    dialog.present(v);
 }
 
 fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk::Box) {

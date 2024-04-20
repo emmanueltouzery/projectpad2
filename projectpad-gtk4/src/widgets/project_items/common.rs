@@ -18,6 +18,27 @@ pub enum EnvOrEnvs {
     None,
 }
 
+pub fn display_item_edit_dialog(v: &gtk::Box, item_box: gtk::Box) {
+    let cbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    let header_bar = adw::HeaderBar::builder().build();
+    cbox.append(&header_bar);
+    cbox.append(
+        &adw::Clamp::builder()
+            .margin_top(10)
+            .child(&item_box)
+            .build(),
+    );
+    let dialog = adw::Dialog::builder()
+        .title("Edit Server Website")
+        .content_width(600)
+        .content_height(400)
+        .child(&cbox)
+        .build();
+    dialog.present(v);
+}
+
 pub fn get_contents_box_with_header(
     title: &str,
     group_name: Option<&str>,

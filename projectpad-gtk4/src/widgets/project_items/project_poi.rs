@@ -4,7 +4,10 @@ use std::sync::mpsc;
 
 use projectpadsql::models::{InterestType, ProjectPointOfInterest};
 
-use crate::{sql_thread::SqlFunc, widgets::project_item::WidgetMode};
+use crate::{
+    sql_thread::SqlFunc,
+    widgets::{project_item::WidgetMode, project_items::common::display_item_edit_dialog},
+};
 
 use super::common::{self, DetailsRow, SuffixAction};
 
@@ -42,13 +45,51 @@ fn poi_get_text_label(interest_type: InterestType) -> &'static str {
 }
 
 fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mode: WidgetMode) {
-    let vbox = common::get_contents_box_with_header(
+    let (header_box, vbox) = project_poi_contents(&poi, WidgetMode::Show);
+    if widget_mode == WidgetMode::Edit {
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .css_classes(["destructive-action"])
+            .valign(gtk::Align::Center)
+            .halign(gtk::Align::End)
+            .build();
+        header_box.append(&delete_btn);
+
+        let edit_btn = gtk::Button::builder()
+            .icon_name("document-edit-symbolic")
+            .css_classes(["suggested-action"])
+            .valign(gtk::Align::Center)
+            .halign(gtk::Align::End)
+            .build();
+        if widget_mode != WidgetMode::Edit {
+            edit_btn.set_hexpand(true);
+        }
+        header_box.append(&edit_btn);
+
+        edit_btn.connect_closure(
+            "clicked",
+            false,
+            glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
+                let (_, vbox) = project_poi_contents(&p, WidgetMode::Edit);
+
+                display_item_edit_dialog(&v, vbox);
+            }),
+        );
+    }
+
+    parent.set_child(Some(&vbox));
+}
+
+fn project_poi_contents(
+    poi: &ProjectPointOfInterest,
+    widget_mode: WidgetMode,
+) -> (gtk::Box, gtk::Box) {
+    let (header_box, vbox) = common::get_contents_box_with_header(
         &poi.desc,
         poi.group_name.as_deref(),
         common::EnvOrEnvs::None,
         widget_mode,
-    )
-    .1;
+    );
 
     let (desc, idx) = match poi.interest_type {
         InterestType::PoiApplication => ("Application", 0),
@@ -90,5 +131,6 @@ fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mod
     }
 
     vbox.append(&prefs_group);
-    parent.set_child(Some(&vbox));
+
+    (header_box, vbox)
 }

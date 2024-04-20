@@ -1,12 +1,22 @@
 use gtk::prelude::*;
 
 mod imp {
+    use gtk::subclass::prelude::*;
+    use std::cell::Cell;
+
     use super::*;
-    use glib::subclass::{prelude::ObjectImpl, types::ObjectSubclass};
+    use glib::{
+        subclass::{prelude::ObjectImpl, types::ObjectSubclass},
+        Properties,
+    };
     use gtk::{gdk, subclass::widget::WidgetImpl};
 
-    #[derive(Default)]
-    pub struct EditModeSwitch {}
+    #[derive(Properties, Default)]
+    #[properties(wrapper_type = super::EditModeSwitch)]
+    pub struct EditModeSwitch {
+        #[property(get, set)]
+        edit_mode: Cell<bool>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for EditModeSwitch {
@@ -15,7 +25,17 @@ mod imp {
         type Type = super::EditModeSwitch;
     }
 
-    impl ObjectImpl for EditModeSwitch {}
+    #[glib::derived_properties]
+    impl ObjectImpl for EditModeSwitch {
+        fn constructed(&self) {
+            let s = self.obj().clone();
+            let _ = self
+                .obj()
+                .connect_edit_mode_notify(move |_switch: &super::EditModeSwitch| {
+                    s.queue_draw();
+                });
+        }
+    }
 
     impl WidgetImpl for EditModeSwitch {
         fn measure(&self, orientation: gtk::Orientation, _for_size: i32) -> (i32, i32, i32, i32) {
@@ -37,14 +57,26 @@ mod imp {
                 &bg_color,
             );
 
+            let x_offset = if self.obj().edit_mode() { 20.0 } else { 0.0 };
+
+            snapshot.save();
+            snapshot.translate(&graphene::Point::new(x_offset, 0.0));
             snapshot.append_fill(
                 &gsk4::Path::parse("M 0 12 A 1 1 0 0 0 24 12 M 0 12 A 1 1 0 0 1 24 12").unwrap(),
                 gsk4::FillRule::Winding,
                 &fg_color,
             );
+            snapshot.restore();
 
-            let icon_paintable = gtk::IconTheme::default().lookup_icon(
-                "view-reveal-symbolic",
+            let icon_paintable = gtk::IconTheme::for_display(
+                &gdk::Display::default().expect("Could not connect to a display."),
+            )
+            .lookup_icon(
+                if self.obj().edit_mode() {
+                    "document-edit-symbolic"
+                } else {
+                    "view-reveal-symbolic"
+                },
                 &[],
                 16,
                 16,
@@ -58,7 +90,7 @@ mod imp {
             //     .unwrap();
 
             snapshot.save();
-            snapshot.translate(&graphene::Point::new(4.0, 4.0));
+            snapshot.translate(&graphene::Point::new(x_offset + 4.0, 4.0));
             icon_paintable.snapshot_symbolic(snapshot, 16.0, 16.0, &[gdk::RGBA::BLACK]);
             snapshot.restore();
         }

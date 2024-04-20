@@ -60,7 +60,7 @@
             <property name="content">
               <object class="AdwToolbarView">
                 <child type="top">
-                  <object class="AdwHeaderBar">
+                  <object class="AdwHeaderBar" id="header_bar">
                     <!-- https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/adaptive-layouts.html -->
                     <child type="start">
                       <object class="GtkToggleButton" id="show_sidebar_button">
@@ -68,6 +68,8 @@
                         <property name="active">True</property>
                         <property name="visible" bind-source="split_view" bind-property="collapsed" bind-flags="bidirectional|sync-create"/>
                       </object>
+                      <!-- <object class="EditModeSwitch">
+                      </object> -->
                     </child>
                     <child type="end">
                       <object class="GtkMenuButton">

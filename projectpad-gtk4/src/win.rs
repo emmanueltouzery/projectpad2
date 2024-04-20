@@ -3,6 +3,7 @@ use std::sync::mpsc;
 
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::edit_mode_switch::EditModeSwitch;
 use crate::widgets::project_item::ProjectItem;
 use crate::widgets::search::search_item_list::SearchItemList;
 use crate::widgets::search::search_item_model::SearchItemType;
@@ -61,6 +62,8 @@ mod imp {
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
         pub project_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
+        #[template_child]
+        pub header_bar: TemplateChild<adw::HeaderBar>,
 
         #[property(get, set)]
         edit_mode: Cell<bool>,
@@ -256,6 +259,11 @@ impl ProjectpadApplicationWindow {
                 let edit_mode = w.property::<bool>("edit-mode");
                 w.set_property("edit-mode", (!edit_mode).to_value());
             }));
+
+        let edit_mode_switch = EditModeSwitch::new();
+        edit_mode_switch.set_valign(gtk::Align::Center);
+        win.imp().header_bar.pack_start(&edit_mode_switch);
+        win.imp().header_bar.pack_start(&gtk::Switch::new());
 
         win
     }

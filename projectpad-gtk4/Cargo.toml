@@ -11,7 +11,7 @@ includedir_codegen = "0.6.0"
 
 
 [dependencies]
-gtk = { version = "0.8.1", package = "gtk4", features = ["v4_12"] }
+gtk = { version = "0.8.1", package = "gtk4", features = ["v4_14"] }
 cairo-rs = "0.19.4"
 pango = "0.19.3"
 glib = "0.19.4"
@@ -28,3 +28,5 @@ strum = "0.25.0"
 strum_macros = "0.25.3"
 pulldown-cmark = { version = "0.8.0", default-features = false }
 sourceview5 = "0.8.0"
+graphene-rs = "0.19.2"
+gsk4 = "0.8.1"

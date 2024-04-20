@@ -48,8 +48,10 @@ mod imp {
         fn snapshot(&self, snapshot: &gtk::Snapshot) {
             // let widget = self.obj();
 
-            let bg_color = gdk::RGBA::parse("#555555").unwrap();
-            let fg_color = gdk::RGBA::parse("#eeeeee").unwrap();
+            // TODO deprecated
+            let style_context = self.obj().style_context();
+            let bg_color = style_context.lookup_color("accent_bg_color").unwrap();
+            let fg_color = style_context.lookup_color("accent_fg_color").unwrap();
 
             snapshot.append_fill(
                 &gsk4::Path::parse("M 12 0 A 1 1 0 0 0 12 24 L 32 24 A 12 12 0 0 0 32 0").unwrap(),

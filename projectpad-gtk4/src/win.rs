@@ -263,7 +263,13 @@ impl ProjectpadApplicationWindow {
         let edit_mode_switch = EditModeSwitch::new();
         edit_mode_switch.set_valign(gtk::Align::Center);
         win.imp().header_bar.pack_start(&edit_mode_switch);
-        win.imp().header_bar.pack_start(&gtk::Switch::new());
+        edit_mode_switch.connect_closure(
+            "toggled",
+            false,
+            glib::closure_local!(@strong win as w => move |_switch: EditModeSwitch, edit_mode: bool| {
+                w.set_property("edit-mode", edit_mode.to_value());
+            }),
+        );
 
         win
     }

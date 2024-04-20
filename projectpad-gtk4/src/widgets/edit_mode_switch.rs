@@ -2,11 +2,11 @@ use gtk::prelude::*;
 
 mod imp {
     use gtk::subclass::prelude::*;
-    use std::cell::Cell;
+    use std::{cell::Cell, sync::OnceLock};
 
     use super::*;
     use glib::{
-        subclass::{prelude::ObjectImpl, types::ObjectSubclass},
+        subclass::{prelude::ObjectImpl, types::ObjectSubclass, Signal},
         Properties,
     };
     use gtk::{gdk, subclass::widget::WidgetImpl};
@@ -66,12 +66,23 @@ mod imp {
                                 .anim_offset
                                 .set(if edit_mode { 0.0 } else { 20.0 });
                             switch.queue_draw();
+
+                            switch.emit_by_name::<()>("toggled", &[&(!edit_mode)]);
                             glib::ControlFlow::Break
                         }
                     },
                 );
             });
             self.obj().add_controller(gesture);
+        }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("toggled")
+                    .param_types([bool::static_type()])
+                    .build()]
+            })
         }
     }
 

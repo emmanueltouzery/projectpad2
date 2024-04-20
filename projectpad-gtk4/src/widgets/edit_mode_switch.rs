@@ -11,11 +11,15 @@ mod imp {
     };
     use gtk::{gdk, subclass::widget::WidgetImpl};
 
+    const ANIM_DURATION_MICROS: f64 = 150000.0;
+
     #[derive(Properties, Default)]
     #[properties(wrapper_type = super::EditModeSwitch)]
     pub struct EditModeSwitch {
         #[property(get, set)]
         edit_mode: Cell<bool>,
+
+        anim_offset: Cell<f32>,
     }
 
     #[glib::object_subclass]
@@ -39,7 +43,33 @@ mod imp {
             let o = self.obj().clone();
             gesture.connect_released(move |gesture, _, _, _| {
                 gesture.set_state(gtk::EventSequenceState::Claimed);
-                o.set_edit_mode(!o.edit_mode());
+                let start_micros = o.frame_clock().unwrap().frame_time();
+                o.add_tick_callback(
+                    move |switch: &super::EditModeSwitch, clock: &gdk::FrameClock| {
+                        let elapsed_micros: f64 =
+                            ((clock.frame_time() - start_micros) as i32).into();
+                        let edit_mode = switch.edit_mode();
+                        let ratio = (elapsed_micros / ANIM_DURATION_MICROS) as f32;
+                        if ratio < 1.0 {
+                            let offset = if edit_mode {
+                                20.0 * (1.0 - ratio)
+                            } else {
+                                20.0 * ratio
+                            };
+                            switch.imp().anim_offset.set(offset);
+                            switch.queue_draw();
+                            glib::ControlFlow::Continue
+                        } else {
+                            switch.set_edit_mode(!edit_mode);
+                            switch
+                                .imp()
+                                .anim_offset
+                                .set(if edit_mode { 0.0 } else { 20.0 });
+                            switch.queue_draw();
+                            glib::ControlFlow::Break
+                        }
+                    },
+                );
             });
             self.obj().add_controller(gesture);
         }
@@ -67,7 +97,7 @@ mod imp {
                 &bg_color,
             );
 
-            let x_offset = if self.obj().edit_mode() { 20.0 } else { 0.0 };
+            let x_offset = self.anim_offset.get();
 
             snapshot.save();
             snapshot.translate(&graphene::Point::new(x_offset, 0.0));

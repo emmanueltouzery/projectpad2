@@ -47,7 +47,8 @@ fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mod
         poi.group_name.as_deref(),
         common::EnvOrEnvs::None,
         widget_mode,
-    );
+    )
+    .1;
 
     let (desc, idx) = match poi.interest_type {
         InterestType::PoiApplication => ("Application", 0),

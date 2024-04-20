@@ -210,7 +210,7 @@ impl Note {
             WidgetMode::Show
         };
         let vbox = if note.display_header {
-            common::get_contents_box_with_header(&note.title, None, note.env, widget_mode)
+            common::get_contents_box_with_header(&note.title, None, note.env, widget_mode).1
         } else {
             gtk::Box::builder().build()
         };

@@ -23,7 +23,7 @@ pub fn get_contents_box_with_header(
     group_name: Option<&str>,
     env: EnvOrEnvs,
     widget_mode: WidgetMode,
-) -> gtk::Box {
+) -> (gtk::Box, gtk::Box) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
@@ -45,6 +45,7 @@ pub fn get_contents_box_with_header(
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
         .valign(gtk::Align::Center)
+        .hexpand(true)
         .build();
 
     if widget_mode == WidgetMode::Edit {
@@ -80,24 +81,6 @@ pub fn get_contents_box_with_header(
             ep.set_hexpand(true);
             header_box.append(&ep);
         }
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .css_classes(["destructive-action"])
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .build();
-        header_box.append(&delete_btn);
-
-        let edit_btn = gtk::Button::builder()
-            .icon_name("document-edit-symbolic")
-            .css_classes(["suggested-action"])
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .build();
-        if widget_mode != WidgetMode::Edit {
-            edit_btn.set_hexpand(true);
-        }
-        header_box.append(&edit_btn);
     }
 
     vbox.append(&header_box);
@@ -111,7 +94,7 @@ pub fn get_contents_box_with_header(
         vbox.append(&hbox);
     }
 
-    vbox
+    (header_box, vbox)
 }
 
 pub fn copy_to_clipboard(text: &str) {

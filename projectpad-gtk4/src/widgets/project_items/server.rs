@@ -12,7 +12,6 @@ use projectpadsql::models::{
 };
 use std::{
     collections::{BTreeSet, HashMap},
-    rc::Rc,
     sync::mpsc,
     time::Duration,
 };
@@ -217,10 +216,52 @@ fn display_server(
     widget_mode: WidgetMode,
     project_item: &ProjectItem,
 ) {
-    let vbox = common::get_contents_box_with_header(
-        &channel_data.server.desc,
-        channel_data.server.group_name.as_deref(),
-        common::EnvOrEnvs::Env(channel_data.server.environment),
+    let (header_box, vbox) = server_contents(&channel_data.server, WidgetMode::Show);
+    if widget_mode == WidgetMode::Edit {
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .css_classes(["destructive-action"])
+            .valign(gtk::Align::Center)
+            .halign(gtk::Align::End)
+            .build();
+        header_box.append(&delete_btn);
+
+        let edit_btn = gtk::Button::builder()
+            .icon_name("document-edit-symbolic")
+            .css_classes(["suggested-action"])
+            .valign(gtk::Align::Center)
+            .halign(gtk::Align::End)
+            .build();
+        if widget_mode != WidgetMode::Edit {
+            edit_btn.set_hexpand(true);
+        }
+        header_box.append(&edit_btn);
+
+        edit_btn.connect_closure("clicked", false,
+            glib::closure_local!(@strong channel_data.server as s, @strong vbox as v => move |_b: gtk::Button| {
+                let (_, vbox) = server_contents(&s, WidgetMode::Edit);
+
+                display_item_edit_dialog(&v, vbox);
+            }),
+        );
+    }
+
+    add_server_items(
+        &channel_data,
+        server_item_id,
+        widget_mode,
+        &vbox,
+        project_item,
+    );
+
+    parent.set_child(Some(&vbox));
+}
+
+fn server_contents(server: &Server, widget_mode: WidgetMode) -> (gtk::Box, gtk::Box) {
+    let (header_box, vbox) = common::get_contents_box_with_header(
+        &server.desc,
+        server.group_name.as_deref(),
+        common::EnvOrEnvs::Env(server.environment),
         widget_mode,
     );
 
@@ -233,15 +274,14 @@ fn display_server(
     //         .build(),
     // );
     // server.add(&server_ar);
-
     let server_item0 = adw::PreferencesGroup::builder().build();
 
-    let address_suffix_www = [SuffixAction::link(&channel_data.server.ip)];
+    let address_suffix_www = [SuffixAction::link(&server.ip)];
     DetailsRow::new(
         "Address",
-        &channel_data.server.ip,
-        SuffixAction::copy(&channel_data.server.ip),
-        if channel_data.server.access_type == ServerAccessType::SrvAccessWww {
+        &server.ip,
+        SuffixAction::copy(&server.ip),
+        if server.access_type == ServerAccessType::SrvAccessWww {
             &address_suffix_www
         } else {
             &[]
@@ -251,25 +291,20 @@ fn display_server(
 
     DetailsRow::new(
         "Username",
-        &channel_data.server.username,
-        SuffixAction::copy(&channel_data.server.username),
+        &server.username,
+        SuffixAction::copy(&server.username),
         &[],
     )
     .add(widget_mode, &server_item0);
 
     DetailsRow::new_password(
         "Password",
-        &channel_data.server.password,
-        SuffixAction::copy(&channel_data.server.password),
+        &server.password,
+        SuffixAction::copy(&server.password),
     )
     .add(widget_mode, &server_item0);
-    DetailsRow::new(
-        "Text",
-        &channel_data.server.text,
-        SuffixAction::copy(&channel_data.server.text),
-        &[],
-    )
-    .add(widget_mode, &server_item0);
+    DetailsRow::new("Text", &server.text, SuffixAction::copy(&server.text), &[])
+        .add(widget_mode, &server_item0);
 
     if widget_mode == WidgetMode::Edit {
         // server type
@@ -283,7 +318,7 @@ fn display_server(
             "Reporting",
         ]);
         server_type_combo.set_model(Some(&server_type_model));
-        server_type_combo.set_selected(match channel_data.server.server_type {
+        server_type_combo.set_selected(match server.server_type {
             ServerType::SrvApplication => 0,
             ServerType::SrvDatabase => 1,
             ServerType::SrvHttpOrProxy => 2,
@@ -299,7 +334,7 @@ fn display_server(
         let access_type_model =
             gtk::StringList::new(&["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"]);
         access_type_combo.set_model(Some(&access_type_model));
-        access_type_combo.set_selected(match channel_data.server.access_type {
+        access_type_combo.set_selected(match server.access_type {
             ServerAccessType::SrvAccessRdp => 0,
             ServerAccessType::SrvAccessSsh => 1,
             ServerAccessType::SrvAccessSshTunnel => 2,
@@ -311,15 +346,7 @@ fn display_server(
 
     vbox.append(&server_item0);
 
-    add_server_items(
-        &channel_data,
-        server_item_id,
-        widget_mode,
-        &vbox,
-        project_item,
-    );
-
-    parent.set_child(Some(&vbox));
+    (header_box, vbox)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use std::{collections::HashSet, sync::mpsc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::mpsc};
 
 use adw::prelude::*;
 use glib::property::PropertySet;
@@ -9,13 +9,17 @@ use projectpadsql::models::{EnvironmentType, ProjectNote, ServerNote};
 
 use crate::{
     app::ProjectpadApplication,
-    notes,
+    notes::{self, ItemDataInfo},
     sql_thread::SqlFunc,
-    widgets::{project_item::WidgetMode, project_items::common::copy_to_clipboard},
+    widgets::{
+        project_item::WidgetMode,
+        project_items::common::{copy_to_clipboard, display_item_edit_dialog, DialogClamp},
+    },
 };
 
 use super::common::{self, EnvOrEnvs};
 
+#[derive(Clone)]
 struct NoteInfo<'a> {
     title: &'a str,
     env: EnvOrEnvs,
@@ -48,7 +52,7 @@ mod imp {
         #[property(get, set)]
         pub server_note_id: Cell<i32>,
 
-        pub note_links: RefCell<Vec<ItemDataInfo>>,
+        pub note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         pub note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
     }
 
@@ -209,21 +213,99 @@ impl Note {
         } else {
             WidgetMode::Show
         };
-        let vbox = if note.display_header {
-            common::get_contents_box_with_header(&note.title, None, note.env, widget_mode).1
+        if note.display_header {
+            // project note, we handle the editing
+            let (header_box, vbox) = Self::note_contents(
+                note.clone(),
+                self.imp().note_links.clone(),
+                self.imp().note_passwords.clone(),
+                WidgetMode::Show,
+            );
+
+            if widget_mode == WidgetMode::Edit {
+                let delete_btn = gtk::Button::builder()
+                    .icon_name("user-trash-symbolic")
+                    .css_classes(["destructive-action"])
+                    .valign(gtk::Align::Center)
+                    .halign(gtk::Align::End)
+                    .build();
+                header_box.append(&delete_btn);
+
+                let edit_btn = gtk::Button::builder()
+                    .icon_name("document-edit-symbolic")
+                    .css_classes(["suggested-action"])
+                    .valign(gtk::Align::Center)
+                    .halign(gtk::Align::End)
+                    .build();
+                if widget_mode != WidgetMode::Edit {
+                    edit_btn.set_hexpand(true);
+                }
+                header_box.append(&edit_btn);
+
+                let note_links = self.imp().note_links.clone();
+                let note_passwords = self.imp().note_passwords.clone();
+                let t = note.title.to_owned();
+                let c = note.contents.to_owned();
+
+                edit_btn.connect_closure(
+                    "clicked",
+                    false,
+                    glib::closure_local!(@strong t as _t,
+                                         @strong c as _c,
+                                         @strong vbox as v,
+                                         @strong note_links as nl,
+                                         @strong note_passwords as np => move |_b: gtk::Button| {
+                        let n = NoteInfo {
+                            title: &_t,
+                            env: note.env.clone(),
+                            contents: &_c,
+                            display_header: note.display_header,
+                        };
+                        let (_, vbox) = Self::note_contents(n.clone(), nl.clone(), np.clone(), WidgetMode::Edit);
+                        vbox.set_margin_start(30);
+                        vbox.set_margin_end(30);
+
+                        display_item_edit_dialog(&v, "Edit Note", vbox, 6000, 6000, DialogClamp::No);
+                    }),
+                    );
+            }
+            self.set_child(Some(&vbox));
         } else {
-            gtk::Box::builder().build()
+            // server note, the parent handles the editing
+            let vbox = Self::note_contents(
+                note,
+                self.imp().note_links.clone(),
+                self.imp().note_passwords.clone(),
+                widget_mode,
+            )
+            .1;
+            self.set_child(Some(&vbox));
+        }
+    }
+
+    fn note_contents(
+        note: NoteInfo,
+        note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
+        note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
+        widget_mode: WidgetMode,
+    ) -> (gtk::Box, gtk::Box) {
+        let (header_box, vbox) = if note.display_header {
+            common::get_contents_box_with_header(&note.title, None, note.env, widget_mode)
+        } else {
+            (gtk::Box::builder().build(), gtk::Box::builder().build())
         };
-        self.set_child(Some(&vbox));
 
         let (note_view, _scrolled_window) =
-            self.get_note_contents_widget(&note.contents, widget_mode);
+            Self::get_note_contents_widget(note_links, note_passwords, &note.contents, widget_mode);
 
         vbox.append(&note_view);
+
+        (header_box, vbox)
     }
 
     pub fn get_note_contents_widget(
-        &self,
+        note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
+        note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         contents: &str,
         widget_mode: WidgetMode,
     ) -> (gtk::Widget, gtk::ScrolledWindow) {
@@ -239,9 +321,14 @@ impl Note {
                 .bottom_margin(10)
                 .editable(false)
                 .build();
-            self.register_events(&text_view, &toast_parent);
-            self.imp().note_links.set(note_buffer_info.links);
-            self.imp().note_passwords.set(note_buffer_info.passwords);
+            Self::register_events(
+                note_links.clone(),
+                note_passwords.clone(),
+                &text_view,
+                &toast_parent,
+            );
+            note_links.set(note_buffer_info.links);
+            note_passwords.set(note_buffer_info.passwords);
             text_view.upcast::<gtk::Widget>()
         } else {
             let buf = sourceview5::Buffer::with_language(
@@ -283,17 +370,21 @@ impl Note {
         (widget, scrolled_text_view)
     }
 
-    fn register_events(&self, text_view: &gtk::TextView, toast_parent: &adw::ToastOverlay) {
+    fn register_events(
+        note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
+        note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
+        text_view: &gtk::TextView,
+        toast_parent: &adw::ToastOverlay,
+    ) {
         let gesture_ctrl = gtk::GestureClick::new();
         let tv = text_view.clone();
-        let s = self.clone();
 
         let action_group = gio::SimpleActionGroup::new();
         text_view.insert_action_group("note", Some(&action_group));
 
         let copy_password_action =
             gio::SimpleAction::new("copy-password", Some(&i32::static_variant_type()));
-        let sp = self.imp().note_passwords.clone();
+        let sp = note_passwords.clone();
         let tp = toast_parent.clone();
         copy_password_action.connect_activate(move |action, parameter| {
             // println!("{} / {:#?}", action, parameter);
@@ -307,7 +398,7 @@ impl Note {
 
         let reveal_password_action =
             gio::SimpleAction::new("reveal-password", Some(&i32::static_variant_type()));
-        let sp = self.imp().note_passwords.clone();
+        let sp = note_passwords.clone();
         let tp = toast_parent.clone();
         reveal_password_action.connect_activate(move |action, parameter| {
             // println!("{} / {:#?}", action, parameter);
@@ -324,9 +415,7 @@ impl Note {
             if let Some(iter) = tv.iter_at_location(bx, by) {
                 let offset = iter.offset();
                 if Self::iter_matches_tags(&iter, &[notes::TAG_LINK, notes::TAG_PASSWORD]) {
-                    if let Some(link) = s
-                        .imp()
-                        .note_links
+                    if let Some(link) = note_links
                         .borrow()
                         .iter()
                         .find(|l| l.start_offset <= offset && l.end_offset > offset)
@@ -336,14 +425,12 @@ impl Note {
                             None::<&gio::Cancellable>,
                             |_| {},
                         );
-                    } else if let Some(pass_idx) = s
-                        .imp()
-                        .note_passwords
+                    } else if let Some(pass_idx) = note_passwords
                         .borrow()
                         .iter()
                         .position(|l| l.start_offset <= offset && l.end_offset > offset)
                     {
-                        s.password_popover(&tv, pass_idx, &tv.iter_location(&iter));
+                        Self::password_popover(&tv, pass_idx, &tv.iter_location(&iter));
                     }
                 }
             }
@@ -351,12 +438,7 @@ impl Note {
         text_view.add_controller(gesture_ctrl);
     }
 
-    fn password_popover(
-        &self,
-        text_view: &gtk::TextView,
-        pass_idx: usize,
-        position: &gdk::Rectangle,
-    ) {
+    fn password_popover(text_view: &gtk::TextView, pass_idx: usize, position: &gdk::Rectangle) {
         // i'd initialize the popover in the init & reuse it,
         // but i can't get the toplevel there, probably things
         // are not fully initialized yet.

@@ -6,7 +6,10 @@ use projectpadsql::models::{InterestType, ProjectPointOfInterest};
 
 use crate::{
     sql_thread::SqlFunc,
-    widgets::{project_item::WidgetMode, project_items::common::display_item_edit_dialog},
+    widgets::{
+        project_item::WidgetMode,
+        project_items::common::{display_item_edit_dialog, DialogClamp},
+    },
 };
 
 use super::common::{self, DetailsRow, SuffixAction};
@@ -72,7 +75,7 @@ fn display_project_oi(parent: &adw::Bin, poi: ProjectPointOfInterest, widget_mod
             glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
                 let (_, vbox) = project_poi_contents(&p, WidgetMode::Edit);
 
-                display_item_edit_dialog(&v, vbox);
+                display_item_edit_dialog(&v, "Edit project POI", vbox, 600, 600, DialogClamp::Yes);
             }),
         );
     }

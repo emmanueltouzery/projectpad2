@@ -12,28 +12,46 @@ use crate::{
     },
 };
 
+#[derive(Clone)]
 pub enum EnvOrEnvs {
     Env(EnvironmentType),
     Envs(HashSet<EnvironmentType>),
     None,
 }
 
-pub fn display_item_edit_dialog(v: &gtk::Box, item_box: gtk::Box) {
+#[derive(PartialEq, Eq)]
+pub enum DialogClamp {
+    Yes,
+    No,
+}
+
+pub fn display_item_edit_dialog(
+    v: &gtk::Box,
+    title: &str,
+    item_box: gtk::Box,
+    width: i32,
+    height: i32,
+    clamp: DialogClamp,
+) {
     let cbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
     let header_bar = adw::HeaderBar::builder().build();
     cbox.append(&header_bar);
-    cbox.append(
-        &adw::Clamp::builder()
+    let contents = if clamp == DialogClamp::Yes {
+        adw::Clamp::builder()
             .margin_top(10)
             .child(&item_box)
-            .build(),
-    );
+            .build()
+            .upcast::<gtk::Widget>()
+    } else {
+        item_box.upcast::<gtk::Widget>()
+    };
+    cbox.append(&contents);
     let dialog = adw::Dialog::builder()
-        .title("Edit Server Website")
-        .content_width(600)
-        .content_height(400)
+        .title(title)
+        .content_width(width)
+        .content_height(height)
         .child(&cbox)
         .build();
     dialog.present(v);

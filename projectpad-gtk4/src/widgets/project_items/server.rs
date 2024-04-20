@@ -3,7 +3,7 @@ use crate::{
     sql_thread::SqlFunc,
     widgets::{
         project_item::{ProjectItem, ProjectItemEditMode, WidgetMode},
-        project_items::common::display_item_edit_dialog,
+        project_items::common::{display_item_edit_dialog, DialogClamp},
     },
 };
 use adw::prelude::*;
@@ -244,7 +244,7 @@ fn display_server(
             glib::closure_local!(@strong channel_data.server as s, @strong vbox as v => move |_b: gtk::Button| {
                 let (_, vbox) = server_contents(&s, WidgetMode::Edit);
 
-                display_item_edit_dialog(&v, vbox);
+                display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
             }),
         );
     }
@@ -551,7 +551,7 @@ fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk
                     .build();
                 server_website_contents(&w1, WidgetMode::Edit, &item_box);
 
-                display_item_edit_dialog(&v, item_box);
+                display_item_edit_dialog(&v, "Edit Website", item_box, 600, 600, DialogClamp::Yes);
             }),
         );
     }
@@ -602,7 +602,7 @@ fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox
                     .build();
                 server_poi_contents(&p, WidgetMode::Edit, &item_box);
 
-                display_item_edit_dialog(&v, item_box);
+                display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
             }),
         );
     }
@@ -690,7 +690,7 @@ fn display_server_extra_user_account(
                     .build();
                 server_extra_user_account_contents(&u, WidgetMode::Edit, &item_box);
 
-                display_item_edit_dialog(&v, item_box);
+                display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
             }),
         );
     }
@@ -745,8 +745,10 @@ fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::B
                     .orientation(gtk::Orientation::Vertical)
                     .build();
                 server_note_contents(&n, WidgetMode::Edit, &item_box);
+                item_box.set_margin_start(30);
+                item_box.set_margin_end(30);
 
-                display_item_edit_dialog(&v, item_box);
+                display_item_edit_dialog(&v, "Edit Note", item_box, 6000, 6000, DialogClamp::No);
             }),
         );
     }

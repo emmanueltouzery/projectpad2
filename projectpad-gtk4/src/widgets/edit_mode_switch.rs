@@ -34,6 +34,14 @@ mod imp {
                 .connect_edit_mode_notify(move |_switch: &super::EditModeSwitch| {
                     s.queue_draw();
                 });
+
+            let gesture = gtk::GestureClick::new();
+            let o = self.obj().clone();
+            gesture.connect_released(move |gesture, _, _, _| {
+                gesture.set_state(gtk::EventSequenceState::Claimed);
+                o.set_edit_mode(!o.edit_mode());
+            });
+            self.obj().add_controller(gesture);
         }
     }
 

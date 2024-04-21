@@ -182,11 +182,20 @@ pub fn get_contents_box_with_header(
 
     if widget_mode == WidgetMode::Edit {
         // ability to change the item's group
+        // if you add another default entry, increase the 2 a little lower
         let mut group_name_items = vec!["No group", "New group..."];
         group_name_items.extend(all_group_names.iter().map(String::as_str));
         let hbox = gtk::Box::builder().spacing(10).build();
         hbox.append(&gtk::Label::builder().label("Group").build());
-        hbox.append(&gtk::DropDown::from_strings(&group_name_items));
+        let dropdown = gtk::DropDown::from_strings(&group_name_items);
+        hbox.append(&dropdown);
+        if let Some(gn) = group_name {
+            if let Some(pos) = all_group_names.iter().position(|x| x == gn) {
+                dropdown.set_selected(
+                    (pos + 2/* 2 due to the default entries no group+new group */) as u32,
+                );
+            }
+        }
         vbox.append(&hbox);
     }
 

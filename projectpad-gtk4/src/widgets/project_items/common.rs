@@ -188,6 +188,17 @@ pub fn get_contents_box_with_header(
         let hbox = gtk::Box::builder().spacing(10).build();
         hbox.append(&gtk::Label::builder().label("Group").build());
         let dropdown = gtk::DropDown::from_strings(&group_name_items);
+        dropdown.connect_selected_item_notify(|dropdown: &gtk::DropDown| {
+            if dropdown.selected() == 1 {
+                // new group, ask the user for the name
+                // check the other modals i created
+                ask_user(
+                    "New Group",
+                    "Group Name",
+                    &(*dropdown).clone().upcast::<gtk::Widget>(),
+                );
+            }
+        });
         hbox.append(&dropdown);
         if let Some(gn) = group_name {
             if let Some(pos) = all_group_names.iter().position(|x| x == gn) {
@@ -200,6 +211,57 @@ pub fn get_contents_box_with_header(
     }
 
     (header_box, vbox)
+}
+
+pub fn ask_user(title: &str, msg: &str, parent: &gtk::Widget) {
+    let contents_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    let header_bar = gtk::HeaderBar::builder()
+        .title_widget(&gtk::Label::new(Some(title)))
+        .show_title_buttons(false)
+        .build();
+    let cancel_btn = gtk::Button::builder().label("Cancel").build();
+    header_bar.pack_start(&cancel_btn);
+    let save_btn = gtk::Button::builder()
+        .label("Create")
+        .css_classes(["suggested-action"])
+        .build();
+    header_bar.pack_end(&save_btn);
+    contents_box.append(&header_bar);
+    let item_box = gtk::Box::builder()
+        .spacing(10)
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    item_box.append(
+        &gtk::Label::builder()
+            .label(msg)
+            .halign(gtk::Align::Start)
+            .build(),
+    );
+    let entry = gtk::Entry::builder().hexpand(true).build();
+    item_box.append(&entry);
+    let contents = adw::Clamp::builder()
+        .margin_top(10)
+        .margin_start(10)
+        .margin_end(10)
+        .child(&item_box)
+        .build();
+    contents_box.append(&contents);
+    let dialog = adw::Dialog::builder()
+        .title(title)
+        .content_width(450)
+        .content_height(150)
+        .child(&contents_box)
+        .build();
+    dialog.present(parent);
+    entry.grab_focus();
+
+    let dlg = dialog.clone();
+    cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
+        dlg.close();
+    });
+    save_btn.connect_clicked(move |_btn: &gtk::Button| {});
 }
 
 pub fn copy_to_clipboard(text: &str) {

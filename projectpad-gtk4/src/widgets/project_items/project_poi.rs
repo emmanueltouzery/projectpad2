@@ -57,14 +57,6 @@ fn display_project_oi(
 ) {
     let (header_box, vbox) = project_poi_contents(&poi, project_group_names, WidgetMode::Show);
     if widget_mode == WidgetMode::Edit {
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .css_classes(["destructive-action"])
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .build();
-        header_box.append(&delete_btn);
-
         let edit_btn = gtk::Button::builder()
             .icon_name("document-edit-symbolic")
             .css_classes(["suggested-action"])
@@ -75,6 +67,14 @@ fn display_project_oi(
             edit_btn.set_hexpand(true);
         }
         header_box.append(&edit_btn);
+
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .css_classes(["destructive-action"])
+            .valign(gtk::Align::Center)
+            .halign(gtk::Align::End)
+            .build();
+        header_box.append(&delete_btn);
 
         let pgn = project_group_names.to_vec();
         edit_btn.connect_closure(

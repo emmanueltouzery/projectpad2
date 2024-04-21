@@ -227,14 +227,6 @@ fn display_server(
         WidgetMode::Show,
     );
     if widget_mode == WidgetMode::Edit {
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .css_classes(["destructive-action"])
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .build();
-        header_box.append(&delete_btn);
-
         let edit_btn = gtk::Button::builder()
             .icon_name("document-edit-symbolic")
             .css_classes(["suggested-action"])
@@ -245,6 +237,14 @@ fn display_server(
             edit_btn.set_hexpand(true);
         }
         header_box.append(&edit_btn);
+
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .css_classes(["destructive-action"])
+            .valign(gtk::Align::Center)
+            .halign(gtk::Align::End)
+            .build();
+        header_box.append(&delete_btn);
 
         let pgn = channel_data.project_group_names.clone();
         edit_btn.connect_closure("clicked", false,
@@ -534,21 +534,21 @@ fn finish_server_item_group(cur_parent: &gtk::Box, widget_mode: WidgetMode) {
 }
 
 fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: glib::RustClosure) {
-    let delete_btn = gtk::Button::builder()
-        .icon_name("user-trash-symbolic")
-        .css_classes(["destructive-action"])
-        .valign(gtk::Align::Center)
-        .build();
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
         .css_classes(["suggested-action"])
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
         .build();
+    let delete_btn = gtk::Button::builder()
+        .icon_name("user-trash-symbolic")
+        .css_classes(["destructive-action"])
+        .valign(gtk::Align::Center)
+        .build();
     edit_btn.connect_closure("clicked", false, edit_closure);
     let suffix_box = gtk::Box::builder().spacing(15).build();
-    suffix_box.append(&delete_btn);
     suffix_box.append(&edit_btn);
+    suffix_box.append(&delete_btn);
     server_item1.set_header_suffix(Some(&suffix_box));
 }
 

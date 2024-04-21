@@ -13,7 +13,9 @@ use crate::{
     sql_thread::SqlFunc,
     widgets::{
         project_item::WidgetMode,
-        project_items::common::{copy_to_clipboard, display_item_edit_dialog, DialogClamp},
+        project_items::common::{
+            copy_to_clipboard, display_item_edit_dialog, get_project_group_names, DialogClamp,
+        },
     },
 };
 
@@ -25,6 +27,8 @@ struct NoteInfo<'a> {
     env: EnvOrEnvs,
     contents: &'a str,
     display_header: bool,
+    group_name: Option<&'a str>,
+    all_group_names: &'a [String],
 }
 
 mod imp {
@@ -145,17 +149,22 @@ impl Note {
                     .filter(prj_note::id.eq(note_id))
                     .first::<ProjectNote>(sql_conn)
                     .unwrap();
-                sender.send_blocking(note).unwrap();
+
+                let project_group_names = get_project_group_names(sql_conn, note.project_id);
+
+                sender.send_blocking((note, project_group_names)).unwrap();
             }))
             .unwrap();
         let p = self.clone();
         glib::spawn_future_local(async move {
-            let channel_data = receiver.recv().await.unwrap();
+            let (channel_data, project_group_names) = receiver.recv().await.unwrap();
             p.display_note_contents(NoteInfo {
                 title: &channel_data.title,
                 env: EnvOrEnvs::Envs(Self::get_envs(&channel_data)),
                 contents: &channel_data.contents,
                 display_header: true,
+                group_name: channel_data.group_name.as_deref(),
+                all_group_names: &project_group_names,
             });
         });
     }
@@ -198,6 +207,8 @@ impl Note {
                 env: EnvOrEnvs::None,
                 contents: &channel_data.contents,
                 display_header: false,
+                group_name: None,
+                all_group_names: &[],
             });
         });
     }
@@ -246,12 +257,16 @@ impl Note {
                 let note_passwords = self.imp().note_passwords.clone();
                 let t = note.title.to_owned();
                 let c = note.contents.to_owned();
+                let g = note.group_name.map(|g| g.to_owned());
+                let a = note.all_group_names.to_vec();
 
                 edit_btn.connect_closure(
                     "clicked",
                     false,
                     glib::closure_local!(@strong t as _t,
                                          @strong c as _c,
+                                         @strong g as _g,
+                                         @strong a as _a,
                                          @strong vbox as v,
                                          @strong note_links as nl,
                                          @strong note_passwords as np => move |_b: gtk::Button| {
@@ -260,6 +275,8 @@ impl Note {
                             env: note.env.clone(),
                             contents: &_c,
                             display_header: note.display_header,
+                            group_name: _g.as_deref(),
+                            all_group_names: &_a
                         };
                         let (_, vbox) = Self::note_contents(n.clone(), nl.clone(), np.clone(), WidgetMode::Edit);
                         vbox.set_margin_start(30);
@@ -290,7 +307,13 @@ impl Note {
         widget_mode: WidgetMode,
     ) -> (gtk::Box, gtk::Box) {
         let (header_box, vbox) = if note.display_header {
-            common::get_contents_box_with_header(&note.title, None, note.env, widget_mode)
+            common::get_contents_box_with_header(
+                &note.title,
+                note.group_name,
+                note.all_group_names,
+                note.env,
+                widget_mode,
+            )
         } else {
             (gtk::Box::builder().build(), gtk::Box::builder().build())
         };

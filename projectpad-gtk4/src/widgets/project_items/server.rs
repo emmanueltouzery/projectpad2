@@ -3,7 +3,7 @@ use crate::{
     sql_thread::SqlFunc,
     widgets::{
         project_item::{ProjectItem, ProjectItemEditMode, WidgetMode},
-        project_items::common::{display_item_edit_dialog, DialogClamp},
+        project_items::common::{display_item_edit_dialog, get_project_group_names, DialogClamp},
     },
 };
 use adw::prelude::*;
@@ -72,6 +72,7 @@ pub struct ChannelData {
     group_start_indices: HashMap<i32, String>,
     databases_for_websites: HashMap<i32, ServerDatabase>,
     websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
+    project_group_names: Vec<String>,
 }
 
 pub fn load_and_display_server(
@@ -82,8 +83,6 @@ pub fn load_and_display_server(
     widget_mode: WidgetMode,
     project_item: &ProjectItem,
 ) {
-    dbg!(&server_id);
-    dbg!(&server_item_id);
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
@@ -192,6 +191,8 @@ pub fn load_and_display_server(
                 );
             }
 
+            let project_group_names = get_project_group_names(sql_conn, server.project_id);
+
             sender
                 .send_blocking(ChannelData {
                     server,
@@ -199,6 +200,7 @@ pub fn load_and_display_server(
                     group_start_indices,
                     databases_for_websites,
                     websites_for_databases,
+                    project_group_names,
                 })
                 .unwrap();
         }))
@@ -219,7 +221,11 @@ fn display_server(
     widget_mode: WidgetMode,
     project_item: &ProjectItem,
 ) {
-    let (header_box, vbox) = server_contents(&channel_data.server, WidgetMode::Show);
+    let (header_box, vbox) = server_contents(
+        &channel_data.server,
+        &channel_data.project_group_names,
+        WidgetMode::Show,
+    );
     if widget_mode == WidgetMode::Edit {
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
@@ -240,9 +246,10 @@ fn display_server(
         }
         header_box.append(&edit_btn);
 
+        let pgn = channel_data.project_group_names.clone();
         edit_btn.connect_closure("clicked", false,
-            glib::closure_local!(@strong channel_data.server as s, @strong vbox as v => move |_b: gtk::Button| {
-                let (_, vbox) = server_contents(&s, WidgetMode::Edit);
+            glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
+                let (_, vbox) = server_contents(&s, &pgn_, WidgetMode::Edit);
 
                 display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
             }),
@@ -260,10 +267,15 @@ fn display_server(
     parent.set_child(Some(&vbox));
 }
 
-fn server_contents(server: &Server, widget_mode: WidgetMode) -> (gtk::Box, gtk::Box) {
+fn server_contents(
+    server: &Server,
+    project_group_names: &[String],
+    widget_mode: WidgetMode,
+) -> (gtk::Box, gtk::Box) {
     let (header_box, vbox) = common::get_contents_box_with_header(
         &server.desc,
         server.group_name.as_deref(),
+        project_group_names,
         common::EnvOrEnvs::Env(server.environment),
         widget_mode,
     );

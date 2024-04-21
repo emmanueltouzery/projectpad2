@@ -1,8 +1,9 @@
 use std::{collections::HashSet, rc::Rc};
 
 use adw::prelude::*;
+use diesel::prelude::*;
 use gtk::gdk;
-use projectpadsql::models::EnvironmentType;
+use projectpadsql::{models::EnvironmentType, schema};
 
 use crate::{
     app::ProjectpadApplication,
@@ -57,9 +58,64 @@ pub fn display_item_edit_dialog(
     dialog.present(v);
 }
 
+pub fn get_project_group_names(
+    sql_conn: &mut diesel::SqliteConnection,
+    project_id: i32,
+) -> Vec<String> {
+    use schema::project_note::dsl as pnote;
+    use schema::project_point_of_interest::dsl as ppoi;
+    use schema::server::dsl as srv;
+    let server_group_names = srv::server
+        .filter(
+            srv::project_id
+                .eq(project_id)
+                .and(srv::group_name.is_not_null()),
+        )
+        .order(srv::group_name.asc())
+        .select(srv::group_name)
+        .load(sql_conn)
+        .unwrap();
+    let mut prj_poi_group_names = ppoi::project_point_of_interest
+        .filter(
+            ppoi::project_id
+                .eq(project_id)
+                .and(ppoi::group_name.is_not_null()),
+        )
+        .order(ppoi::group_name.asc())
+        .select(ppoi::group_name)
+        .load(sql_conn)
+        .unwrap();
+    let mut prj_note_group_names = pnote::project_note
+        .filter(
+            pnote::project_id
+                .eq(project_id)
+                .and(pnote::group_name.is_not_null()),
+        )
+        .order(pnote::group_name.asc())
+        .select(pnote::group_name)
+        .load(sql_conn)
+        .unwrap();
+
+    let mut project_group_names = server_group_names;
+    project_group_names.append(&mut prj_poi_group_names);
+    project_group_names.append(&mut prj_note_group_names);
+    let mut project_group_names_no_options: Vec<_> = project_group_names
+        .into_iter()
+        .map(|n: Option<String>| n.unwrap())
+        .collect();
+    project_group_names_no_options.sort();
+    project_group_names_no_options.dedup();
+    project_group_names_no_options
+}
+
+/// for the group names, i could require just the project id,
+/// but the problem are notes, for which we share the code
+/// between project notes and server notes (and these are
+/// different groups...)
 pub fn get_contents_box_with_header(
     title: &str,
     group_name: Option<&str>,
+    all_group_names: &[String],
     env: EnvOrEnvs,
     widget_mode: WidgetMode,
 ) -> (gtk::Box, gtk::Box) {
@@ -126,10 +182,11 @@ pub fn get_contents_box_with_header(
 
     if widget_mode == WidgetMode::Edit {
         // ability to change the item's group
-        let hbox = gtk::Box::builder().build();
+        let mut group_name_items = vec!["No group", "New group..."];
+        group_name_items.extend(all_group_names.iter().map(String::as_str));
+        let hbox = gtk::Box::builder().spacing(10).build();
         hbox.append(&gtk::Label::builder().label("Group").build());
-        // TODO base upon "suggestion entry", Lists->selections in gtk4-demo
-        hbox.append(&gtk::Entry::builder().text(group_name.unwrap_or("")).build());
+        hbox.append(&gtk::DropDown::from_strings(&group_name_items));
         vbox.append(&hbox);
     }
 

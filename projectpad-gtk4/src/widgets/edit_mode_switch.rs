@@ -97,7 +97,7 @@ mod imp {
         fn snapshot(&self, snapshot: &gtk::Snapshot) {
             // let widget = self.obj();
 
-            // TODO deprecated
+            // TODO deprecated https://discourse.gnome.org/t/replacement-for-gtk-snapshot-render-background/20562
             let style_context = self.obj().style_context();
             let bg_color = style_context.lookup_color("accent_bg_color").unwrap();
             let fg_color = style_context.lookup_color("accent_fg_color").unwrap();
@@ -135,14 +135,11 @@ mod imp {
                 gtk::IconLookupFlags::FORCE_SYMBOLIC,
             );
 
-            // dbg!(gtk::Image::from_icon_name("view-reveal-symbolic").icon_name());
-            // let icon_paintable = gtk::Image::from_icon_name("view-reveal-symbolic")
-            //     .paintable()
-            //     .unwrap();
-
             snapshot.save();
             snapshot.translate(&graphene::Point::new(x_offset + 4.0, 4.0));
+            snapshot.push_blur(1.1); // sadly i didn't find a better way => https://discourse.gnome.org/t/draw-symbolic-icon-on-snapshot-antialias/20556
             icon_paintable.snapshot_symbolic(snapshot, 16.0, 16.0, &[gdk::RGBA::BLACK]);
+            snapshot.pop();
             snapshot.restore();
         }
     }

@@ -41,10 +41,6 @@ mod imp {
         #[template_child]
         pub project_item: TemplateChild<ProjectItem>,
         #[template_child]
-        pub edit_btn: TemplateChild<gtk::Button>,
-        #[template_child]
-        pub edit_btn_contents: TemplateChild<adw::ButtonContent>,
-        #[template_child]
         pub project_menu_button: TemplateChild<gtk::MenuButton>,
         #[template_child]
         pub project_popover_menu: TemplateChild<gtk::PopoverMenu>,
@@ -223,42 +219,8 @@ impl ProjectpadApplicationWindow {
             }),
             );
 
-        win.bind_property(
-            "edit-mode",
-            win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
-            "label",
-        )
-        .transform_to(|_, active: bool| Some(if active { "View" } else { "Edit" }.to_value()))
-        .sync_create()
-        .build();
-
-        win.bind_property(
-            "edit-mode",
-            win.imp().edit_btn_contents.upcast_ref::<gtk::Widget>(),
-            "icon-name",
-        )
-        .transform_to(|_, active: bool| {
-            Some(
-                if active {
-                    "view-reveal-symbolic"
-                } else {
-                    "document-edit-symbolic"
-                }
-                .to_value(),
-            )
-        })
-        .sync_create()
-        .build();
-
         win.bind_property("edit-mode", &win.imp().project_item.get(), "edit_mode")
             .build();
-
-        win.imp()
-            .edit_btn
-            .connect_clicked(glib::clone!(@weak win as w => move |_| {
-                let edit_mode = w.property::<bool>("edit-mode");
-                w.set_property("edit-mode", (!edit_mode).to_value());
-            }));
 
         let edit_mode_switch = EditModeSwitch::new();
         edit_mode_switch.set_valign(gtk::Align::Center);

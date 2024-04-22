@@ -182,20 +182,31 @@ pub fn get_contents_box_with_header(
 
     if widget_mode == WidgetMode::Edit {
         // ability to change the item's group
-        // if you add another default entry, increase the 2 a little lower
-        let mut group_name_items = vec!["No group", "New group..."];
+        // if you add another default entry, increase the 1 a little lower
+        let mut group_name_items = vec!["New group..."];
         group_name_items.extend(all_group_names.iter().map(String::as_str));
         let hbox = gtk::Box::builder().spacing(10).build();
         hbox.append(&gtk::Label::builder().label("Group").build());
-        let dropdown = gtk::DropDown::from_strings(&group_name_items);
-        dropdown.connect_selected_item_notify(|dropdown: &gtk::DropDown| {
-            if dropdown.selected() == 1 {
+        let dropdown_entries_store = gtk::StringList::new(&group_name_items);
+        let dropdown = gtk::DropDown::builder()
+            .model(&dropdown_entries_store)
+            .build();
+        let store = dropdown_entries_store.clone();
+        dropdown.connect_selected_item_notify(move |dropdown: &gtk::DropDown| {
+            if dropdown.selected() == 0 {
+                // new group
+                let dds = store.clone();
+                let d = dropdown.clone();
                 // new group, ask the user for the name
                 // check the other modals i created
                 ask_user(
                     "New Group",
                     "Group Name",
                     &(*dropdown).clone().upcast::<gtk::Widget>(),
+                    Box::new(move |name| {
+                        dds.append(&name);
+                        d.set_selected(dds.n_items() - 1);
+                    }),
                 );
             }
         });
@@ -203,9 +214,11 @@ pub fn get_contents_box_with_header(
         if let Some(gn) = group_name {
             if let Some(pos) = all_group_names.iter().position(|x| x == gn) {
                 dropdown.set_selected(
-                    (pos + 2/* 2 due to the default entries no group+new group */) as u32,
+                    (pos + 1/* 1 due to the default entries no group+new group */) as u32,
                 );
             }
+        } else {
+            dropdown.set_selected(dropdown_entries_store.n_items() + 1); // 1 past the end => "none"
         }
         vbox.append(&hbox);
     }
@@ -213,7 +226,7 @@ pub fn get_contents_box_with_header(
     (header_box, vbox)
 }
 
-pub fn ask_user(title: &str, msg: &str, parent: &gtk::Widget) {
+pub fn ask_user(title: &str, msg: &str, parent: &gtk::Widget, handle_save: Box<dyn Fn(String)>) {
     let contents_box = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -261,7 +274,12 @@ pub fn ask_user(title: &str, msg: &str, parent: &gtk::Widget) {
     cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
         dlg.close();
     });
-    save_btn.connect_clicked(move |_btn: &gtk::Button| {});
+    let dlg = dialog.clone();
+    let e = entry.clone();
+    save_btn.connect_clicked(move |_btn: &gtk::Button| {
+        handle_save(e.text().to_string());
+        dlg.close();
+    });
 }
 
 pub fn copy_to_clipboard(text: &str) {

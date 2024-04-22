@@ -419,7 +419,7 @@ fn add_server_items(
         }
         if group_name != cur_group_name {
             if let Some(grp) = group_name {
-                let (frame, frame_box) = group_frame(grp, widget_mode, project_item);
+                let (frame, frame_box) = group_frame(grp, widget_mode);
                 cur_parent = frame_box;
                 vbox.append(&frame);
                 cur_group_name = group_name;
@@ -465,11 +465,7 @@ fn add_server_items(
     }
 }
 
-fn group_frame(
-    group_name: &str,
-    widget_mode: WidgetMode,
-    project_item: &ProjectItem,
-) -> (gtk::Frame, gtk::Box) {
+fn group_frame(group_name: &str, widget_mode: WidgetMode) -> (gtk::Frame, gtk::Box) {
     let frame = gtk::Frame::builder().build();
     let frame_box = gtk::Box::builder()
         .css_classes(["card", "frame-group"])
@@ -496,25 +492,6 @@ fn group_frame(
                 .build(),
         );
     }
-
-    let icon_name = match *project_item.edit_mode_items() {
-        ProjectItemEditMode::Group(ref g) if g == group_name => "view-reveal-symbolic",
-        _ => "document-edit-symbolic",
-    };
-
-    let edit_btn = gtk::Button::builder()
-        .css_classes(["suggested-action"])
-        .valign(gtk::Align::Center)
-        .halign(gtk::Align::End)
-        .icon_name(icon_name)
-        .build();
-
-    let gn = group_name.to_string();
-    let pi = project_item.clone();
-    edit_btn.connect_clicked(move |_| {
-        pi.set_edit_mode_items(ProjectItemEditMode::Group(gn.clone()));
-    });
-    frame_header.append(&edit_btn);
 
     frame_box.append(&frame_header);
     frame_box.append(&gtk::Separator::builder().build());

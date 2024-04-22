@@ -59,7 +59,6 @@ fn display_project_oi(
     if widget_mode == WidgetMode::Edit {
         let edit_btn = gtk::Button::builder()
             .icon_name("document-edit-symbolic")
-            .css_classes(["suggested-action"])
             .valign(gtk::Align::Center)
             .halign(gtk::Align::End)
             .build();

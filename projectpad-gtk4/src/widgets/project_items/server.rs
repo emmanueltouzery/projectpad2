@@ -229,7 +229,6 @@ fn display_server(
     if widget_mode == WidgetMode::Edit {
         let edit_btn = gtk::Button::builder()
             .icon_name("document-edit-symbolic")
-            .css_classes(["suggested-action"])
             .valign(gtk::Align::Center)
             .halign(gtk::Align::End)
             .build();
@@ -513,7 +512,6 @@ fn finish_server_item_group(cur_parent: &gtk::Box, widget_mode: WidgetMode) {
 fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: glib::RustClosure) {
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
-        .css_classes(["suggested-action"])
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
         .build();

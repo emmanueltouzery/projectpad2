@@ -87,6 +87,13 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
+            self.obj().connect_action_state_changed(
+                Some("select-project"),
+                |_win, _action_name, st| {
+                    println!("action state changed #{st}");
+                },
+            );
+
             // self.project_item_list
             //     .get()
             //     .set_project_items(&Vec::new(), HashMap::new(), None);
@@ -200,7 +207,8 @@ impl ProjectpadApplicationWindow {
         win.imp().search_item_list.connect_closure(
             "activate-item",
             false,
-            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList, project_id: i32, item_id: i32, search_item_type: u8, server_id: i32| {
+            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList,
+                                   project_id: i32, item_id: i32, search_item_type: u8, server_id: i32| {
                 dbg!(server_id);
                 w.imp().split_view.set_show_sidebar(true);
                 w.imp()
@@ -209,10 +217,15 @@ impl ProjectpadApplicationWindow {
 
                 let select_project_param = glib::VariantDict::new(None);
                 select_project_param.insert("project_id", project_id);
+                //
                 select_project_param.insert("item_id", Some(item_id));
                 select_project_param.insert("item_type", Some(search_item_type));
                 select_project_param.insert("server_id", Some(server_id));
-                ActionGroupExt::activate_action(&w, "select-project", Some(&select_project_param.to_variant()));
+                // select_project_param.insert("item_id", None::<i32>);
+                // select_project_param.insert("item_type", None::<u8>);
+                // select_project_param.insert("search_item_type", None::<u8>);
+                dbg!("it me");
+                w.change_action_state("select-project-item", &dbg!(select_project_param.end()));
 
                 w.imp()
                     .search_toggle_btn.set_active(false);
@@ -242,13 +255,17 @@ impl ProjectpadApplicationWindow {
 
     // TODO rename
     pub fn set_active_project_item(&self) {
-        let project_state = glib::VariantDict::new(self.action_state("select-project").as_ref());
-        let project_id = project_state.lookup::<i32>("project_id").unwrap().unwrap();
+        let project_state =
+            glib::VariantDict::new(self.action_state("select-project-item").as_ref());
+        let project_id =
+            // i32::try_from(project_state.lookup::<i64>("project_id").unwrap().unwrap()).unwrap();
+            project_state.lookup::<i32>("project_id").unwrap().unwrap();
         // let server_id = project_state.lookup::<i32>("server_id").unwrap().unwrap();
         let item_id = project_state
             .lookup::<Option<i32>>("item_id")
             .unwrap()
             .unwrap();
+        dbg!(&item_id);
         let search_item_type = project_state
             .lookup::<Option<u8>>("item_type")
             .unwrap()

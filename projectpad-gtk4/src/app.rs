@@ -103,22 +103,35 @@ impl ProjectpadApplication {
         select_project_variant.insert("item_type", None::<u8>);
         select_project_variant.insert("server_id", None::<i32>);
 
-        // let select_project_action =
-        //     gio::SimpleAction::new("select-project", Some(glib::VariantTy::INT64));
-        // select_project_action.connect_activate(|action, parameter| {
-        //     println!("{} / {:#?}", action, parameter);
-        // });
-        let select_project_action = gio::SimpleAction::new_stateful(
-            "select-project",
+        let select_project_action =
+            gio::SimpleAction::new("select-project", Some(glib::VariantTy::INT32));
+        window.add_action(&select_project_action);
+        let w = window.clone();
+        select_project_action.connect_activate(move |_action, parameter| {
+            dbg!(&parameter);
+            dbg!(&parameter.as_ref().unwrap().get::<i64>());
+            // println!("{} / {:#?}", action, parameter);
+            let select_project_variant = glib::VariantDict::new(None);
+            select_project_variant.insert("project_id", parameter.unwrap().get::<i32>().unwrap());
+            select_project_variant.insert("item_id", None::<i32>);
+            select_project_variant.insert("item_type", None::<u8>);
+            select_project_variant.insert("search_item_type", None::<u8>);
+            w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
+        });
+        let select_project_item_action = gio::SimpleAction::new_stateful(
+            // probably rename this to select-project-item, then uncomment the select-project just
+            // above, and have it trigger this, but with the default item id
+            "select-project-item",
             Some(&glib::VariantDict::static_variant_type()),
             &select_project_variant.to_variant(),
         );
         let w = window.clone();
-        select_project_action.connect_change_state(move |action, parameter| {
+        select_project_item_action.connect_change_state(move |action, parameter| {
+            dbg!(&parameter);
             action.set_state(parameter.as_ref().unwrap());
             w.set_active_project_item();
         });
-        window.add_action(&select_project_action);
+        window.add_action(&select_project_item_action);
         dbg!(&window.list_actions());
     }
 
@@ -184,12 +197,13 @@ impl ProjectpadApplication {
             app_clone.setup_actions(&win_binding_ref, prjs.first());
 
             let w = app_clone.imp().window.get().unwrap().upgrade().unwrap();
+
             if !prjs.is_empty() {
                 select_project_variant.insert("project_id", prjs.first().unwrap().id);
                 select_project_variant.insert("item_id", None::<i32>);
                 select_project_variant.insert("item_type", None::<u8>);
                 select_project_variant.insert("search_item_type", None::<u8>);
-                w.change_action_state("select-project", &select_project_variant.end());
+                w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
             }
 
             for prj in prjs {
@@ -197,11 +211,17 @@ impl ProjectpadApplication {
                 select_project_variant.insert("item_id", None::<i32>);
                 select_project_variant.insert("item_type", None::<u8>);
                 select_project_variant.insert("search_item_type", None::<u8>);
+                // tie this menu to a gsimpleaction without state but with a parameter, which is
+                // the project to activate
+                dbg!(Some(&gio::Action::print_detailed_name(
+                    "win.select-project",
+                    Some(&prj.id.to_variant()),
+                )));
                 menu_model.append(
                     Some(&prj.name),
                     Some(&gio::Action::print_detailed_name(
                         "win.select-project",
-                        Some(&select_project_variant.end()),
+                        Some(&prj.id.to_variant()),
                     )),
                 );
             }

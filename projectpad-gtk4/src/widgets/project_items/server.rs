@@ -409,7 +409,7 @@ fn add_server_items(
         match server_item {
             ServerItem::Website(w) => display_server_website(w, &cur_parent),
             ServerItem::PointOfInterest(poi) => display_server_poi(poi, &cur_parent),
-            ServerItem::Note(n) => display_server_note(n, &cur_parent),
+            ServerItem::Note(n) => display_server_note(n, &cur_parent, focused_server_item_id),
             ServerItem::ExtraUserAccount(u) => display_server_extra_user_account(u, &cur_parent),
             // TODO remove fallback
             _ => {}
@@ -666,8 +666,8 @@ fn truncate(s: &str, max_chars: usize) -> &str {
     }
 }
 
-fn display_server_note(note: &ServerNote, vbox: &gtk::Box) {
-    let server_item1 = server_note_contents(note, WidgetMode::Show, vbox);
+fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_id: Option<i32>) {
+    let server_item1 = server_note_contents(note, WidgetMode::Show, focused_server_item_id, vbox);
     // let (note_view, note_view_scrolled_window) =
     //     note::get_note_contents_widget(&note.contents, widget_mode);
 
@@ -677,7 +677,7 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box) {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            server_note_contents(&n, WidgetMode::Edit, &item_box);
+            server_note_contents(&n, WidgetMode::Edit, None, &item_box);
             item_box.set_margin_start(30);
             item_box.set_margin_end(30);
 
@@ -689,6 +689,7 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box) {
 fn server_note_contents(
     note: &ServerNote,
     widget_mode: WidgetMode,
+    focused_server_item_id: Option<i32>,
     vbox: &gtk::Box,
 ) -> adw::PreferencesGroup {
     let contents_head = notes::note_markdown_to_quick_preview(&note.contents)
@@ -717,6 +718,10 @@ fn server_note_contents(
             .build();
 
         row.add_row(&note_view);
+
+        if Some(note.id) == focused_server_item_id {
+            row.set_expanded(true);
+        }
 
         server_item1.add(&row);
     } else {

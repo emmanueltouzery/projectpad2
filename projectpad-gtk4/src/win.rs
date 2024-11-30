@@ -170,32 +170,14 @@ impl ProjectpadApplicationWindow {
                     .set_visible_child_name(if new_is_main { "main" } else { "search" });
                 w.imp()
                     .split_view.set_show_sidebar(new_is_main);
+
+                w.trigger_search();
             }));
 
         win.imp().search_entry.connect_search_changed(
-            glib::clone!(@weak win as w => move |entry| {
-                let (sender, receiver) = async_channel::bounded(1);
-                let search_text = entry.text().as_str().to_owned();
-
-                let search_spec = search_engine::search_parse(&search_text);
-                let f = search_spec.search_pattern;
-                db_sender
-                    .send(SqlFunc::new(move |sql_conn| {
-                        let res = search_engine::run_search_filter(sql_conn, search_engine::SearchItemsType::All, &f, &None, false);
-                        sender.send_blocking(res).unwrap();
-                    }))
-                    .unwrap();
-                // let mut s = self.clone();
-                    let mut sil = w.imp().search_item_list.clone();
-                glib::spawn_future_local(async move {
-                    let search_res = receiver.recv().await.unwrap();
-                    // probably a switcher for the main window for the search mode and a new search
-                    // widget
-                    sil.set_search_items(search_res);
-
-                });
-                }
-            ),
+            glib::clone!(@weak win as w => move |_entry| {
+                w.trigger_search();
+            }),
         );
 
         win.imp().search_item_list.connect_closure(
@@ -227,6 +209,38 @@ impl ProjectpadApplicationWindow {
             );
 
         win
+    }
+
+    fn trigger_search(&self) {
+        let (sender, receiver) = async_channel::bounded(1);
+        let search_text = self.imp().search_entry.text().as_str().to_owned();
+
+        let search_spec = search_engine::search_parse(&search_text);
+        let f = search_spec.search_pattern;
+        self.imp()
+            .sql_channel
+            .borrow()
+            .clone()
+            .unwrap()
+            .send(SqlFunc::new(move |sql_conn| {
+                let res = search_engine::run_search_filter(
+                    sql_conn,
+                    search_engine::SearchItemsType::All,
+                    &f,
+                    &None,
+                    false,
+                );
+                sender.send_blocking(res).unwrap();
+            }))
+            .unwrap();
+        // let mut s = self.clone();
+        let mut sil = self.imp().search_item_list.clone();
+        glib::spawn_future_local(async move {
+            let search_res = receiver.recv().await.unwrap();
+            // probably a switcher for the main window for the search mode and a new search
+            // widget
+            sil.set_search_items(search_res);
+        });
     }
 
     pub fn get_sql_channel(&self) -> mpsc::Sender<SqlFunc> {

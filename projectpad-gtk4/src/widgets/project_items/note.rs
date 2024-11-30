@@ -233,33 +233,32 @@ impl Note {
                 WidgetMode::Show,
             );
 
-            if widget_mode == WidgetMode::Edit {
-                let edit_btn = gtk::Button::builder()
-                    .icon_name("document-edit-symbolic")
-                    .valign(gtk::Align::Center)
-                    .halign(gtk::Align::End)
-                    .build();
-                if widget_mode != WidgetMode::Edit {
-                    edit_btn.set_hexpand(true);
-                }
-                header_box.append(&edit_btn);
+            let edit_btn = gtk::Button::builder()
+                .icon_name("document-edit-symbolic")
+                .valign(gtk::Align::Center)
+                .halign(gtk::Align::End)
+                .build();
+            if widget_mode != WidgetMode::Edit {
+                edit_btn.set_hexpand(true);
+            }
+            header_box.append(&edit_btn);
 
-                let delete_btn = gtk::Button::builder()
-                    .icon_name("user-trash-symbolic")
-                    .css_classes(["destructive-action"])
-                    .valign(gtk::Align::Center)
-                    .halign(gtk::Align::End)
-                    .build();
-                header_box.append(&delete_btn);
+            let delete_btn = gtk::Button::builder()
+                .icon_name("user-trash-symbolic")
+                .css_classes(["destructive-action"])
+                .valign(gtk::Align::Center)
+                .halign(gtk::Align::End)
+                .build();
+            header_box.append(&delete_btn);
 
-                let note_links = self.imp().note_links.clone();
-                let note_passwords = self.imp().note_passwords.clone();
-                let t = note.title.to_owned();
-                let c = note.contents.to_owned();
-                let g = note.group_name.map(|g| g.to_owned());
-                let a = note.all_group_names.to_vec();
+            let note_links = self.imp().note_links.clone();
+            let note_passwords = self.imp().note_passwords.clone();
+            let t = note.title.to_owned();
+            let c = note.contents.to_owned();
+            let g = note.group_name.map(|g| g.to_owned());
+            let a = note.all_group_names.to_vec();
 
-                edit_btn.connect_closure(
+            edit_btn.connect_closure(
                     "clicked",
                     false,
                     glib::closure_local!(@strong t as _t,
@@ -284,7 +283,6 @@ impl Note {
                         display_item_edit_dialog(&v, "Edit Note", vbox, 6000, 6000, DialogClamp::No);
                     }),
                     );
-            }
             self.set_child(Some(&vbox));
         } else {
             // server note, the parent handles the editing

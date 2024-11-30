@@ -80,7 +80,6 @@ pub fn load_and_display_server(
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     server_item_id: Option<i32>,
-    widget_mode: WidgetMode,
     project_item: &ProjectItem,
 ) {
     let (sender, receiver) = async_channel::bounded(1);
@@ -210,7 +209,7 @@ pub fn load_and_display_server(
     let mut pi = project_item.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        display_server(&p, channel_data, server_item_id, widget_mode, &mut pi);
+        display_server(&p, channel_data, server_item_id, &mut pi);
     });
 }
 
@@ -218,7 +217,6 @@ fn display_server(
     parent: &adw::Bin,
     channel_data: ChannelData,
     server_item_id: Option<i32>,
-    widget_mode: WidgetMode,
     project_item: &ProjectItem,
 ) {
     let (header_box, vbox) = server_contents(
@@ -226,53 +224,39 @@ fn display_server(
         &channel_data.project_group_names,
         WidgetMode::Show,
     );
-    if widget_mode == WidgetMode::Edit {
-        let add_btn = gtk::MenuButton::builder()
-            .icon_name("list-add-symbolic")
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .popover(&add_server_item_popover(IncludeAddGroup::Yes))
-            .build();
-        if widget_mode != WidgetMode::Edit {
-            add_btn.set_hexpand(true);
-        }
-        header_box.append(&add_btn);
+    let add_btn = gtk::MenuButton::builder()
+        .icon_name("list-add-symbolic")
+        .valign(gtk::Align::Center)
+        .halign(gtk::Align::End)
+        .popover(&add_server_item_popover(IncludeAddGroup::Yes))
+        .build();
+    header_box.append(&add_btn);
 
-        let edit_btn = gtk::Button::builder()
-            .icon_name("document-edit-symbolic")
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .build();
-        if widget_mode != WidgetMode::Edit {
-            edit_btn.set_hexpand(true);
-        }
-        header_box.append(&edit_btn);
+    let edit_btn = gtk::Button::builder()
+        .icon_name("document-edit-symbolic")
+        .valign(gtk::Align::Center)
+        .halign(gtk::Align::End)
+        .build();
+    header_box.append(&edit_btn);
 
-        let delete_btn = gtk::Button::builder()
-            .icon_name("user-trash-symbolic")
-            .css_classes(["destructive-action"])
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .build();
-        header_box.append(&delete_btn);
+    let delete_btn = gtk::Button::builder()
+        .icon_name("user-trash-symbolic")
+        .css_classes(["destructive-action"])
+        .valign(gtk::Align::Center)
+        .halign(gtk::Align::End)
+        .build();
+    header_box.append(&delete_btn);
 
-        let pgn = channel_data.project_group_names.clone();
-        edit_btn.connect_closure("clicked", false,
+    let pgn = channel_data.project_group_names.clone();
+    edit_btn.connect_closure("clicked", false,
             glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
                 let (_, vbox) = server_contents(&s, &pgn_, WidgetMode::Edit);
 
                 display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
             }),
         );
-    }
 
-    add_server_items(
-        &channel_data,
-        server_item_id,
-        widget_mode,
-        &vbox,
-        project_item,
-    );
+    add_server_items(&channel_data, server_item_id, &vbox, project_item);
 
     parent.set_child(Some(&vbox));
 }
@@ -401,7 +385,6 @@ fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMe
 fn add_server_items(
     channel_data: &ChannelData,
     focused_server_item_id: Option<i32>,
-    widget_mode: WidgetMode,
     vbox: &gtk::Box,
     project_item: &ProjectItem,
 ) {
@@ -414,7 +397,7 @@ fn add_server_items(
 
         if group_name != cur_group_name {
             if let Some(grp) = group_name {
-                let (frame, frame_box) = group_frame(grp, widget_mode);
+                let (frame, frame_box) = group_frame(grp);
                 cur_parent = frame_box;
                 vbox.append(&frame);
                 cur_group_name = group_name;
@@ -424,12 +407,10 @@ fn add_server_items(
             cur_parent = vbox.clone();
         }
         match server_item {
-            ServerItem::Website(w) => display_server_website(w, widget_mode, &cur_parent),
-            ServerItem::PointOfInterest(poi) => display_server_poi(poi, widget_mode, &cur_parent),
-            ServerItem::Note(n) => display_server_note(n, widget_mode, &cur_parent),
-            ServerItem::ExtraUserAccount(u) => {
-                display_server_extra_user_account(u, widget_mode, &cur_parent)
-            }
+            ServerItem::Website(w) => display_server_website(w, &cur_parent),
+            ServerItem::PointOfInterest(poi) => display_server_poi(poi, &cur_parent),
+            ServerItem::Note(n) => display_server_note(n, &cur_parent),
+            ServerItem::ExtraUserAccount(u) => display_server_extra_user_account(u, &cur_parent),
             // TODO remove fallback
             _ => {}
         }
@@ -454,7 +435,7 @@ fn add_server_items(
     }
 }
 
-fn group_frame(group_name: &str, widget_mode: WidgetMode) -> (gtk::Frame, gtk::Box) {
+fn group_frame(group_name: &str) -> (gtk::Frame, gtk::Box) {
     let frame = gtk::Frame::builder().build();
     let frame_box = gtk::Box::builder()
         .css_classes(["card", "frame-group"])
@@ -462,36 +443,22 @@ fn group_frame(group_name: &str, widget_mode: WidgetMode) -> (gtk::Frame, gtk::B
         .spacing(20)
         .build();
     let frame_header = gtk::Box::builder().build();
-    if widget_mode == WidgetMode::Show {
-        frame_header.append(
-            &gtk::Label::builder()
-                .css_classes(["heading"])
-                .halign(gtk::Align::Start)
-                .hexpand(true)
-                .label(group_name)
-                .build(),
-        );
-    } else {
-        frame_header.append(
-            &gtk::Entry::builder()
-                .css_classes(["heading"])
-                .halign(gtk::Align::Start)
-                .hexpand(true)
-                .text(group_name)
-                .build(),
-        );
+    frame_header.append(
+        &gtk::Entry::builder()
+            .css_classes(["heading"])
+            .halign(gtk::Align::Start)
+            .hexpand(true)
+            .text(group_name)
+            .build(),
+    );
 
-        let add_btn = gtk::MenuButton::builder()
-            .icon_name("list-add-symbolic")
-            .valign(gtk::Align::Center)
-            .halign(gtk::Align::End)
-            .popover(&add_server_item_popover(IncludeAddGroup::Yes))
-            .build();
-        if widget_mode != WidgetMode::Edit {
-            add_btn.set_hexpand(true);
-        }
-        frame_header.append(&add_btn);
-    }
+    let add_btn = gtk::MenuButton::builder()
+        .icon_name("list-add-symbolic")
+        .valign(gtk::Align::Center)
+        .halign(gtk::Align::End)
+        .popover(&add_server_item_popover(IncludeAddGroup::Yes))
+        .build();
+    frame_header.append(&add_btn);
 
     frame_box.append(&frame_header);
     frame_box.append(&gtk::Separator::builder().build());
@@ -517,21 +484,19 @@ fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: gli
     server_item1.set_header_suffix(Some(&suffix_box));
 }
 
-fn display_server_website(w: &ServerWebsite, widget_mode: WidgetMode, vbox: &gtk::Box) {
+fn display_server_website(w: &ServerWebsite, vbox: &gtk::Box) {
     let server_item1 = server_website_contents(w, WidgetMode::Show, vbox);
-    if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(
-            &server_item1,
-            glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
-                let item_box = gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
-                server_website_contents(&w1, WidgetMode::Edit, &item_box);
+    add_group_edit_suffix(
+        &server_item1,
+        glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
+            let item_box = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+            server_website_contents(&w1, WidgetMode::Edit, &item_box);
 
-                display_item_edit_dialog(&v, "Edit Website", item_box, 600, 600, DialogClamp::Yes);
-            }),
-        );
-    }
+            display_item_edit_dialog(&v, "Edit Website", item_box, 600, 600, DialogClamp::Yes);
+        }),
+    );
 }
 
 fn server_website_contents(
@@ -567,22 +532,20 @@ fn server_website_contents(
     server_item1
 }
 
-fn display_server_poi(poi: &ServerPointOfInterest, widget_mode: WidgetMode, vbox: &gtk::Box) {
+fn display_server_poi(poi: &ServerPointOfInterest, vbox: &gtk::Box) {
     let server_item1 = server_poi_contents(poi, WidgetMode::Show, vbox);
 
-    if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(
-            &server_item1,
-            glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
-                let item_box = gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
-                server_poi_contents(&p, WidgetMode::Edit, &item_box);
+    add_group_edit_suffix(
+        &server_item1,
+        glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
+            let item_box = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+            server_poi_contents(&p, WidgetMode::Edit, &item_box);
 
-                display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
-            }),
-        );
-    }
+            display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
+        }),
+    );
 }
 
 fn server_poi_contents(
@@ -651,26 +614,20 @@ fn server_poi_contents(
     server_item1
 }
 
-fn display_server_extra_user_account(
-    user: &ServerExtraUserAccount,
-    widget_mode: WidgetMode,
-    vbox: &gtk::Box,
-) {
-    let server_item1 = server_extra_user_account_contents(user, widget_mode, vbox);
+fn display_server_extra_user_account(user: &ServerExtraUserAccount, vbox: &gtk::Box) {
+    let server_item1 = server_extra_user_account_contents(user, WidgetMode::Show, vbox);
 
-    if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(
-            &server_item1,
-            glib::closure_local!(@strong user as u, @strong vbox as v => move |_b: gtk::Button| {
-                let item_box = gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
-                server_extra_user_account_contents(&u, WidgetMode::Edit, &item_box);
+    add_group_edit_suffix(
+        &server_item1,
+        glib::closure_local!(@strong user as u, @strong vbox as v => move |_b: gtk::Button| {
+            let item_box = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+            server_extra_user_account_contents(&u, WidgetMode::Edit, &item_box);
 
-                display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
-            }),
-        );
-    }
+            display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
+        }),
+    );
     // TODO auth key
 }
 
@@ -709,26 +666,24 @@ fn truncate(s: &str, max_chars: usize) -> &str {
     }
 }
 
-fn display_server_note(note: &ServerNote, widget_mode: WidgetMode, vbox: &gtk::Box) {
+fn display_server_note(note: &ServerNote, vbox: &gtk::Box) {
     let server_item1 = server_note_contents(note, WidgetMode::Show, vbox);
     // let (note_view, note_view_scrolled_window) =
     //     note::get_note_contents_widget(&note.contents, widget_mode);
 
-    if widget_mode == WidgetMode::Edit {
-        add_group_edit_suffix(
-            &server_item1,
-            glib::closure_local!(@strong note as n, @strong vbox as v => move |_b: gtk::Button| {
-                let item_box = gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
-                server_note_contents(&n, WidgetMode::Edit, &item_box);
-                item_box.set_margin_start(30);
-                item_box.set_margin_end(30);
+    add_group_edit_suffix(
+        &server_item1,
+        glib::closure_local!(@strong note as n, @strong vbox as v => move |_b: gtk::Button| {
+            let item_box = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+            server_note_contents(&n, WidgetMode::Edit, &item_box);
+            item_box.set_margin_start(30);
+            item_box.set_margin_end(30);
 
-                display_item_edit_dialog(&v, "Edit Note", item_box, 6000, 6000, DialogClamp::No);
-            }),
-        );
-    }
+            display_item_edit_dialog(&v, "Edit Note", item_box, 6000, 6000, DialogClamp::No);
+        }),
+    );
 }
 
 fn server_note_contents(

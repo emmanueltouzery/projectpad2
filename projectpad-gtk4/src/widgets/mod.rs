@@ -1,4 +1,3 @@
-pub mod edit_mode_switch;
 pub mod environment_list_picker;
 pub mod environment_picker;
 pub mod project_item;

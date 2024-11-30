@@ -3,7 +3,6 @@ use std::sync::mpsc;
 
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
-use crate::widgets::edit_mode_switch::EditModeSwitch;
 use crate::widgets::project_item::ProjectItem;
 use crate::widgets::search::search_item_list::SearchItemList;
 use crate::widgets::search::search_item_model::SearchItemType;
@@ -32,8 +31,7 @@ mod imp {
         CompositeTemplate, TemplateChild,
     };
 
-    #[derive(Properties, Debug, Default, CompositeTemplate)]
-    #[properties(wrapper_type = super::ProjectpadApplicationWindow)]
+    #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/win.ui")]
     pub struct ProjectpadApplicationWindow {
         #[template_child]
@@ -61,9 +59,6 @@ mod imp {
         #[template_child]
         pub header_bar: TemplateChild<adw::HeaderBar>,
 
-        #[property(get, set)]
-        edit_mode: Cell<bool>,
-
         pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
     }
 
@@ -82,7 +77,6 @@ mod imp {
         }
     }
 
-    #[glib::derived_properties]
     impl ObjectImpl for ProjectpadApplicationWindow {
         fn constructed(&self) {
             self.parent_constructed();
@@ -231,20 +225,6 @@ impl ProjectpadApplicationWindow {
                     .search_toggle_btn.set_active(false);
             }),
             );
-
-        win.bind_property("edit-mode", &win.imp().project_item.get(), "edit_mode")
-            .build();
-
-        let edit_mode_switch = EditModeSwitch::new();
-        edit_mode_switch.set_valign(gtk::Align::Center);
-        win.imp().header_bar.pack_start(&edit_mode_switch);
-        edit_mode_switch.connect_closure(
-            "toggled",
-            false,
-            glib::closure_local!(@strong win as w => move |_switch: EditModeSwitch, edit_mode: bool| {
-                w.set_property("edit-mode", edit_mode.to_value());
-            }),
-        );
 
         win
     }

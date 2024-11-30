@@ -165,7 +165,6 @@ impl ProjectItem {
                     &self.imp().project_item,
                     db_sender,
                     item_id,
-                    WidgetMode::Show,
                 )
             }
             _ => {

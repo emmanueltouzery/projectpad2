@@ -276,13 +276,25 @@ impl ProjectpadApplication {
                 prjs.first()
             };
             if let Some(cur_project) = cur_project_maybe {
-                menu_model.append(
-                    Some(&format!("Edit project {}", cur_project.name)),
+                let project_actions_menu_model = gio::Menu::new();
+
+                project_actions_menu_model.append(Some("Add project"), Some("win.add-project"));
+                project_actions_menu_model.append(
+                    Some(&format!("Edit project: {}", cur_project.name)),
                     Some(&gio::Action::print_detailed_name(
                         "win.edit-project",
                         Some(&cur_project.id.to_variant()),
                     )),
                 );
+                project_actions_menu_model.append(
+                    Some(&format!("Delete project: {}", cur_project.name)),
+                    Some(&gio::Action::print_detailed_name(
+                        "win.delete-project",
+                        Some(&cur_project.id.to_variant()),
+                    )),
+                );
+
+                menu_model.append_section(Some("Project actions"), &project_actions_menu_model);
             }
             // also add project, delete project, plus menu separator
             // the separator is possibly a section: https://gtk-rs.org/gtk-rs-core/stable/0.16/docs/gio/struct.Menu.html

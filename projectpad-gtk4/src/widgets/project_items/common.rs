@@ -37,7 +37,18 @@ pub fn display_item_edit_dialog(
     let cbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
-    let header_bar = adw::HeaderBar::builder().build();
+    let header_bar = adw::HeaderBar::builder()
+        .show_end_title_buttons(false)
+        .show_start_title_buttons(false)
+        .build();
+
+    let cancel_btn = gtk::Button::builder().label("Cancel").build();
+    header_bar.pack_start(&cancel_btn);
+    let save_btn = gtk::Button::builder()
+        .label("Save")
+        .css_classes(["suggested-action"])
+        .build();
+    header_bar.pack_end(&save_btn);
     cbox.append(&header_bar);
     let contents = if clamp == DialogClamp::Yes {
         adw::Clamp::builder()
@@ -55,6 +66,10 @@ pub fn display_item_edit_dialog(
         .content_height(height)
         .child(&cbox)
         .build();
+    let dlg = dialog.clone();
+    cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
+        dlg.close();
+    });
     dialog.present(v);
 }
 

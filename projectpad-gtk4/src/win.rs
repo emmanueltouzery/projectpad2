@@ -17,12 +17,12 @@ use gtk::subclass::widget::CompositeTemplate;
 use projectpadsql::models::Project;
 
 mod imp {
-    use std::cell::{Cell, RefCell};
+    use std::cell::RefCell;
 
     use crate::widgets::{project_item::ProjectItem, search::search_item_list::SearchItemList};
 
     use super::*;
-    use glib::{subclass::prelude::ObjectImpl, Properties};
+    use glib::subclass::prelude::ObjectImpl;
     use gtk::{
         subclass::{
             prelude::ObjectSubclass,

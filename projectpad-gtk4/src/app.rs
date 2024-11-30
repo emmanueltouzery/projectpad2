@@ -69,6 +69,12 @@ glib::wrapper! {
         // @implements gio::ActionMap, gio::ActionGroup;
 }
 
+#[derive(PartialEq, Eq)]
+enum RunMode {
+    FirstRun,
+    Normal,
+}
+
 impl ProjectpadApplication {
     pub fn run(sql_channel: mpsc::Sender<SqlFunc>, is_new_db: bool) -> glib::ExitCode {
         // Create new GObject and downcast it into SwApplication
@@ -126,10 +132,24 @@ impl ProjectpadApplication {
             &select_project_variant.to_variant(),
         );
         let w = window.clone();
+        let s = self.clone();
+        let channel2 = self.imp().sql_channel.borrow().as_ref().unwrap().clone();
         select_project_item_action.connect_change_state(move |action, parameter| {
             dbg!(&parameter);
+            let cur_project_id = glib::VariantDict::new(action.state().as_ref())
+                .lookup::<i32>("project_id")
+                .unwrap();
+            let new_project_id = glib::VariantDict::new(parameter)
+                .lookup::<i32>("project_id")
+                .unwrap();
+            dbg!(cur_project_id);
+            dbg!(new_project_id);
+            let project_changed = cur_project_id != new_project_id;
             action.set_state(parameter.as_ref().unwrap());
             w.set_active_project_item();
+            if project_changed {
+                s.fetch_projects_and_populate_menu(RunMode::Normal, &channel2);
+            }
         });
         window.add_action(&select_project_item_action);
         dbg!(&window.list_actions());
@@ -160,7 +180,7 @@ impl ProjectpadApplication {
                     // TODO run_prepare_db
                     // TODO request_update_welcome_status
 
-                    app_clone.fetch_projects(&channel2);
+                    app_clone.fetch_projects_and_populate_menu(RunMode::FirstRun, &channel2);
                 } else {
                     // self.display_unlock_dialog();
                 }
@@ -171,7 +191,11 @@ impl ProjectpadApplication {
         }
     }
 
-    fn fetch_projects(&self, sql_channel: &mpsc::Sender<SqlFunc>) {
+    fn fetch_projects_and_populate_menu(
+        &self,
+        run_mode: RunMode,
+        sql_channel: &mpsc::Sender<SqlFunc>,
+    ) {
         let (sender, receiver) = async_channel::bounded(1);
         sql_channel
             .send(SqlFunc::new(move |sql_conn| {
@@ -181,6 +205,23 @@ impl ProjectpadApplication {
                 // s.send(prjs).unwrap();
             }))
             .unwrap();
+
+        // get the current project now, but then we'll recompute the menu if/when
+        // the current project change (or indeed if the project list changes)
+        let project_state = glib::VariantDict::new(
+            self.imp()
+                .window
+                .get()
+                .unwrap()
+                .upgrade()
+                .unwrap()
+                .action_state("select-project-item")
+                .as_ref(),
+        );
+        let project_id_maybe =
+            // i32::try_from(project_state.lookup::<i64>("project_id").unwrap().unwrap()).unwrap();
+            project_state.lookup::<i32>("project_id").unwrap();
+
         let app_clone = self.clone();
         glib::spawn_future_local(async move {
             let prjs = receiver.recv().await.unwrap();
@@ -194,11 +235,14 @@ impl ProjectpadApplication {
             let popover = &win_binding_ref.imp().project_popover_menu;
             let menu_model = gio::Menu::new();
             let select_project_variant = glib::VariantDict::new(None);
-            app_clone.setup_actions(&win_binding_ref, prjs.first());
+            if run_mode == RunMode::FirstRun && project_id_maybe.is_none() {
+                // first run only
+                app_clone.setup_actions(&win_binding_ref, prjs.first());
+            }
 
             let w = app_clone.imp().window.get().unwrap().upgrade().unwrap();
 
-            if !prjs.is_empty() {
+            if run_mode == RunMode::FirstRun && !prjs.is_empty() {
                 select_project_variant.insert("project_id", prjs.first().unwrap().id);
                 select_project_variant.insert("item_id", None::<i32>);
                 select_project_variant.insert("item_type", None::<u8>);
@@ -206,7 +250,7 @@ impl ProjectpadApplication {
                 w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
             }
 
-            for prj in prjs {
+            for prj in prjs.iter() {
                 select_project_variant.insert("project_id", prj.id);
                 select_project_variant.insert("item_id", None::<i32>);
                 select_project_variant.insert("item_type", None::<u8>);
@@ -225,6 +269,23 @@ impl ProjectpadApplication {
                     )),
                 );
             }
+
+            let cur_project_maybe = if let Some(project_id) = project_id_maybe {
+                Some(prjs.iter().find(|p| p.id == project_id).unwrap())
+            } else {
+                prjs.first()
+            };
+            if let Some(cur_project) = cur_project_maybe {
+                menu_model.append(
+                    Some(&format!("Edit project {}", cur_project.name)),
+                    Some(&gio::Action::print_detailed_name(
+                        "win.edit-project",
+                        Some(&cur_project.id.to_variant()),
+                    )),
+                );
+            }
+            // also add project, delete project, plus menu separator
+            // the separator is possibly a section: https://gtk-rs.org/gtk-rs-core/stable/0.16/docs/gio/struct.Menu.html
             popover.set_menu_model(Some(&menu_model));
 
             win_binding_ref.set_active_project_item();

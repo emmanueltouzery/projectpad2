@@ -36,11 +36,6 @@
                         </property>
                       </object>
                     </child>
-                    <child type="end">
-                      <object class="GtkButton" id="add_project_item">
-                        <property name="icon-name">list-add-symbolic</property>
-                      </object>
-                    </child>
                   </object>
                 </child>
                 <property name="content">

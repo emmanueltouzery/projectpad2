@@ -54,9 +54,6 @@ mod imp {
         pub sub_item_id: Cell<i32>,
         // these properties are meant to be set all at once
         // using GObjectExt.set_properties END
-
-        // TODO pub?
-        pub edit_mode_items: Rc<RefCell<ProjectItemEditMode>>,
     }
 
     #[glib::object_subclass]
@@ -172,14 +169,5 @@ impl ProjectItem {
                 eprintln!("unhandled item type!");
             }
         }
-    }
-
-    pub fn edit_mode_items(&self) -> Ref<ProjectItemEditMode> {
-        self.imp().edit_mode_items.borrow()
-    }
-
-    pub fn set_edit_mode_items(&self, edit_mode_items: ProjectItemEditMode) {
-        self.imp().edit_mode_items.replace(edit_mode_items);
-        self.refresh_item();
     }
 }

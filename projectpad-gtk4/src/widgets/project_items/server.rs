@@ -443,16 +443,25 @@ fn group_frame(group_name: &str) -> (gtk::Frame, gtk::Box) {
         .build();
     let frame_header = gtk::Box::builder().build();
     frame_header.append(
-        &gtk::Entry::builder()
+        &gtk::Label::builder()
             .css_classes(["heading"])
             .halign(gtk::Align::Start)
             .hexpand(true)
-            .text(group_name)
+            .label(group_name)
             .build(),
     );
 
+    let edit_btn = gtk::Button::builder()
+        .icon_name("document-edit-symbolic")
+        .css_classes(["flat"])
+        .valign(gtk::Align::Center)
+        .halign(gtk::Align::End)
+        .build();
+    frame_header.append(&edit_btn);
+
     let add_btn = gtk::MenuButton::builder()
         .icon_name("list-add-symbolic")
+        .css_classes(["flat"])
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
         .popover(&add_server_item_popover(IncludeAddGroup::Yes))

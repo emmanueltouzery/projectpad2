@@ -117,6 +117,8 @@
                             <property name="child">
                               <object class="AdwToolbarView" id="project_toolbar_view">
                                 <property name="reveal-top-bars">False</property>
+                                <property name="top-bar-style">ADW_TOOLBAR_RAISED</property>
+                                <property name="extend-content-to-top-edge">True</property>
                                 <child type="top">
                                   <object class="GtkBox">
                                     <style>

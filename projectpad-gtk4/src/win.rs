@@ -211,35 +211,107 @@ impl ProjectpadApplicationWindow {
             }),
         );
 
+        let w = win.clone();
+        win.imp().search_entry.connect_activate(move |_| {
+            let search_matches = w.imp().search_item_list.displayed_items();
+            let mut i = 0;
+            let mut level1_item = None::<glib::Object>;
+            let mut level2_item = None::<glib::Object>;
+            let mut level3_item = None::<glib::Object>;
+            while i < search_matches.n_items() {
+                let item_model = search_matches.item(i).unwrap();
+                let search_item_type =
+                    SearchItemType::from_repr(item_model.property("search-item-type")).unwrap();
+                match search_item_type {
+                    SearchItemType::Project => {
+                        if level1_item.is_some() {
+                            return;
+                        }
+                        level1_item = Some(item_model);
+                    }
+                    SearchItemType::Server
+                    | SearchItemType::ServerLink
+                    | SearchItemType::ProjectNote
+                    | SearchItemType::ProjectPointOfInterest => {
+                        if level2_item.is_some() {
+                            return;
+                        }
+                        level2_item = Some(item_model);
+                    }
+                    SearchItemType::ServerWebsite
+                    | SearchItemType::ServerNote
+                    | SearchItemType::ServerDatabase
+                    | SearchItemType::ServerPoi => {
+                        if level3_item.is_some() {
+                            return;
+                        }
+                        level3_item = Some(item_model);
+                    }
+                }
+                i += 1;
+            }
+            if let Some(level3) = level3_item {
+                Self::display_item_from_search(
+                    w.clone(),
+                    level3.property("project-id"),
+                    level3.property("id"),
+                    level3.property("search-item-type"),
+                    level3.property("server-id"),
+                );
+            } else if let Some(level2) = level2_item {
+                Self::display_item_from_search(
+                    w.clone(),
+                    level2.property("project-id"),
+                    level2.property("id"),
+                    level2.property("search-item-type"),
+                    level2.property("server-id"),
+                );
+            } else if let Some(level1) = level2_item {
+                Self::display_item_from_search(
+                    w.clone(),
+                    level1.property("project-id"),
+                    level1.property("id"),
+                    level1.property("search-item-type"),
+                    level1.property("server-id"),
+                );
+            }
+        });
+
         win.imp().search_item_list.connect_closure(
             "activate-item",
             false,
             glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList,
                                    project_id: i32, item_id: i32, search_item_type: u8, server_id: i32| {
-                dbg!(server_id);
-                w.imp().split_view.set_show_sidebar(true);
-                w.imp()
-                    .main_or_search
-                    .set_visible_child_name("main");
-
-                let select_project_param = glib::VariantDict::new(None);
-                select_project_param.insert("project_id", project_id);
-                //
-                select_project_param.insert("item_id", Some(item_id));
-                select_project_param.insert("item_type", Some(search_item_type));
-                select_project_param.insert("server_id", Some(server_id));
-                // select_project_param.insert("item_id", None::<i32>);
-                // select_project_param.insert("item_type", None::<u8>);
-                // select_project_param.insert("search_item_type", None::<u8>);
-                dbg!("it me");
-                w.change_action_state("select-project-item", &dbg!(select_project_param.end()));
-
-                w.imp()
-                    .search_toggle_btn.set_active(false);
+              Self::display_item_from_search(w.clone(), project_id, item_id, search_item_type, server_id);
             }),
             );
 
         win
+    }
+
+    fn display_item_from_search(
+        w: ProjectpadApplicationWindow,
+        project_id: i32,
+        item_id: i32,
+        search_item_type: u8,
+        server_id: i32,
+    ) {
+        w.imp().split_view.set_show_sidebar(true);
+        w.imp().main_or_search.set_visible_child_name("main");
+
+        let select_project_param = glib::VariantDict::new(None);
+        select_project_param.insert("project_id", project_id);
+        //
+        select_project_param.insert("item_id", Some(item_id));
+        select_project_param.insert("item_type", Some(search_item_type));
+        select_project_param.insert("server_id", Some(server_id));
+        // select_project_param.insert("item_id", None::<i32>);
+        // select_project_param.insert("item_type", None::<u8>);
+        // select_project_param.insert("search_item_type", None::<u8>);
+        dbg!("it me");
+        w.change_action_state("select-project-item", &dbg!(select_project_param.end()));
+
+        w.imp().search_toggle_btn.set_active(false);
     }
 
     fn trigger_search(&self) {

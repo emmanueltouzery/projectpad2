@@ -189,6 +189,15 @@ impl SearchItemList {
             .set_model(Some(&selection_model));
     }
 
+    pub fn displayed_items(&self) -> gtk::SingleSelection {
+        self.imp()
+            .search_item_list
+            .model()
+            .unwrap()
+            .downcast::<gtk::SingleSelection>()
+            .unwrap()
+    }
+
     fn get_project_model(project: &Project) -> SearchItemModel {
         SearchItemModel::new(
             project.id,

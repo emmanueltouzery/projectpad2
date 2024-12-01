@@ -1,5 +1,3 @@
-use std::cell::Ref;
-
 use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
@@ -10,20 +8,8 @@ use crate::{
     widgets::{project_item_model::ProjectItemType, project_items::note},
 };
 
-#[derive(Debug, Default, PartialEq, Eq)]
-pub enum ProjectItemEditMode {
-    #[default]
-    None,
-    ProjectItem,
-    Group(String),
-}
-
 mod imp {
-    use std::{
-        cell::{Cell, RefCell},
-        rc::Rc,
-        sync::OnceLock,
-    };
+    use std::{cell::Cell, sync::OnceLock};
 
     use super::*;
     use glib::subclass::Signal;

@@ -43,7 +43,6 @@
                     <property name="title" translatable="yes">Sidebar</property>
                     <property name="child">
                       <object class="ProjectItemList" id="project_item_list">
-                        <property name="edit_mode" bind-source="ProjectpadApplicationWindow" bind-property="edit_mode" bind-flags="bidirectional|sync-create"/>
                         <property name="vexpand">True</property>
                       </object>
                     </property>
@@ -116,14 +115,34 @@
                           <object class="AdwNavigationPage">
                             <property name="title" translatable="yes">Content</property>
                             <property name="child">
-                              <object class="GtkScrolledWindow" id="project_scrolled_window">
-                                <property name="child">
-                                  <object class="AdwClamp">
-                                    <property name="maximum-size">750</property>
-                                    <property name="child">
-                                      <object class="ProjectItem" id="project_item">
-                                        <property name="halign">fill</property>
+                              <object class="AdwToolbarView" id="project_toolbar_view">
+                                <property name="reveal-top-bars">False</property>
+                                <child type="top">
+                                  <object class="GtkBox">
+                                    <style>
+                                      <class name="toolbar"/>
+                                    </style>
+                                    <child>
+                                      <object class="GtkLabel" id="project_item_header_label">
+                                        <style>
+                                          <class name="title-4"/>
+                                        </style>
                                         <property name="hexpand">True</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                                <property name="content">
+                                  <object class="GtkScrolledWindow" id="project_scrolled_window">
+                                    <property name="child">
+                                      <object class="AdwClamp">
+                                        <property name="maximum-size">750</property>
+                                        <property name="child">
+                                          <object class="ProjectItem" id="project_item">
+                                            <property name="halign">fill</property>
+                                            <property name="hexpand">True</property>
+                                          </object>
+                                        </property>
                                       </object>
                                     </property>
                                   </object>

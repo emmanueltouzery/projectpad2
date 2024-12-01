@@ -1,5 +1,7 @@
 use std::panic;
 use std::sync::mpsc;
+use std::sync::Arc;
+use std::time::Duration;
 
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
@@ -57,9 +59,15 @@ mod imp {
         #[template_child]
         pub project_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
+        pub project_toolbar_view: TemplateChild<adw::ToolbarView>,
+        #[template_child]
+        pub project_item_header_label: TemplateChild<gtk::Label>,
+        #[template_child]
         pub header_bar: TemplateChild<adw::HeaderBar>,
 
         pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
+
+        pub timer_id: Arc<RefCell<Option<glib::JoinHandle<()>>>>,
     }
 
     #[glib::object_subclass]
@@ -136,7 +144,7 @@ impl ProjectpadApplicationWindow {
             "activate-item",
             false,
             glib::closure_local!(@strong win as w =>
-                                 move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8, sub_item_id: i32| {
+                                 move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8, sub_item_id: i32, title: String| {
                 println!("set_properties {} {} {}", item_id, sub_item_id, project_item_type);
                 let _freeze_guard = w.imp().project_item.freeze_notify(); // https://github.com/gtk-rs/gtk-rs-core/issues/1339
                 w.imp().project_item.set_properties(
@@ -145,6 +153,7 @@ impl ProjectpadApplicationWindow {
                     ("sub-item-id", &sub_item_id),
                     ("project-item-type", &project_item_type),
                     ]);
+                w.imp().project_item_header_label.set_label(&title);
             }),
             );
         win.imp().project_item.connect_closure(
@@ -155,6 +164,28 @@ impl ProjectpadApplicationWindow {
               vadj.set_value(offset.into());
             }),
         );
+
+        win.imp()
+            .project_scrolled_window
+            .vadjustment()
+            .connect_closure(
+                "value-changed",
+                true,
+                glib::closure_local!(@strong win as w => move |adj: gtk::Adjustment| {
+                    let should_reveal = adj.value() > 0.0;
+                    let tb = w.imp().project_toolbar_view.clone();
+
+                    // debounce the showing/hiding of the top bar, otherwise it can glitch
+                    // to show/hide very fast when you're on the edge
+                    if let Some(id) = w.imp().timer_id.borrow().as_ref() {
+                        id.abort();
+                    }
+                    w.imp().timer_id.replace(Some( glib::spawn_future_local(async move {
+                        glib::timeout_future(Duration::from_millis(300)).await;
+                        tb.set_reveal_top_bars(should_reveal);
+                    })));
+                }),
+            );
 
         win.imp().search_entry.connect_show(|entry| {
             entry.grab_focus();

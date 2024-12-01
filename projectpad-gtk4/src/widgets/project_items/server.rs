@@ -2,7 +2,7 @@ use crate::{
     notes,
     sql_thread::SqlFunc,
     widgets::{
-        project_item::{ProjectItem, ProjectItemEditMode, WidgetMode},
+        project_item::{ProjectItem, WidgetMode},
         project_items::common::{display_item_edit_dialog, get_project_group_names, DialogClamp},
     },
 };

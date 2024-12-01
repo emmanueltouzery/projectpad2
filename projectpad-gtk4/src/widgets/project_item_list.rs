@@ -81,8 +81,13 @@ mod imp {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
             SIGNALS.get_or_init(|| {
                 vec![Signal::builder("activate-item")
-                    // item id + project_item_type + optionally server item
-                    .param_types([i32::static_type(), u8::static_type(), i32::static_type()])
+                    // item id + project_item_type + optionally server item + title
+                    .param_types([
+                        i32::static_type(),
+                        u8::static_type(),
+                        i32::static_type(),
+                        String::static_type(),
+                    ])
                     .build()]
             })
         }
@@ -148,6 +153,7 @@ impl ProjectItemList {
                             .get::<u8>()
                             .unwrap(),
                         &selected_sub_item.unwrap_or(-1),
+                        &first_item.property_value("title").get::<String>().unwrap(),
                     ],
                 );
             }
@@ -184,6 +190,7 @@ impl ProjectItemList {
                             .get::<u8>()
                             .unwrap(),
                         &selected_sub_item.unwrap_or(-1),
+                        &list_item.property_value("title").get::<String>().unwrap(),
                     ],
                 );
             }
@@ -208,7 +215,8 @@ impl ProjectItemList {
                             .property_value("project-item-type")
                             .get::<u8>()
                             .unwrap(),
-                            &glib::Value::from(-1)
+                            &glib::Value::from(-1),
+                        &model.property_value("title").get::<String>().unwrap(),
                     ],
                 )
                 }),
@@ -223,7 +231,7 @@ impl ProjectItemList {
                 ProjectItemType::Server,
                 srv.desc.clone(),
                 HashSet::from([srv.environment]),
-                srv.group_name.clone()
+                srv.group_name.clone(),
             ),
             //     markup: if srv.is_retired {
             //         format!("<i>{}</i>", glib::markup_escape_text(&srv.desc))
@@ -246,7 +254,7 @@ impl ProjectItemList {
                 ProjectItemType::ServerLink,
                 link.desc.clone(),
                 HashSet::from([link.environment]),
-                link.group_name.clone()
+                link.group_name.clone(),
             ),
             //     markup: glib::markup_escape_text(&link.desc).to_string(),
             //     group_name: link.group_name.as_ref().cloned(),
@@ -258,7 +266,7 @@ impl ProjectItemList {
                 ProjectItemType::ProjectNote,
                 note.title.clone(),
                 Note::get_envs(note),
-                note.group_name.clone()
+                note.group_name.clone(),
             ),
             //     markup: glib::markup_escape_text(&note.title).to_string(),
             //     group_name: note.group_name.as_ref().cloned(),
@@ -266,18 +274,22 @@ impl ProjectItemList {
             // },
             ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(
                 project,
-                poi.id, ProjectItemType::ProjectPointOfInterest, poi.desc.clone(), HashSet::new(), poi.group_name.clone())
-                // markup: glib::markup_escape_text(&poi.desc).to_string(),
-                // group_name: poi.group_name.as_ref().cloned(),
-                // icon: match poi.interest_type {
-                //     InterestType::PoiLogFile => Icon::LOG_FILE,
-                //     InterestType::PoiConfigFile => Icon::CONFIG_FILE,
-                //     InterestType::PoiApplication => Icon::COG,
-                //     InterestType::PoiCommandToRun => Icon::TERMINAL,
-                //     InterestType::PoiCommandTerminal => Icon::TERMINAL,
-                //     InterestType::PoiBackupArchive => Icon::ARCHIVE,
-                // },
-            }
+                poi.id,
+                ProjectItemType::ProjectPointOfInterest,
+                poi.desc.clone(),
+                HashSet::new(),
+                poi.group_name.clone(),
+            ), // markup: glib::markup_escape_text(&poi.desc).to_string(),
+               // group_name: poi.group_name.as_ref().cloned(),
+               // icon: match poi.interest_type {
+               //     InterestType::PoiLogFile => Icon::LOG_FILE,
+               //     InterestType::PoiConfigFile => Icon::CONFIG_FILE,
+               //     InterestType::PoiApplication => Icon::COG,
+               //     InterestType::PoiCommandToRun => Icon::TERMINAL,
+               //     InterestType::PoiCommandTerminal => Icon::TERMINAL,
+               //     InterestType::PoiBackupArchive => Icon::ARCHIVE,
+               // },
+        }
     }
 
     pub fn fetch_project_items(

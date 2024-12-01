@@ -143,7 +143,7 @@ pub fn get_contents_box_with_header(
         .margin_top(10)
         .build();
 
-    let header_box = gtk::Box::builder().spacing(10).build();
+    let header_box = gtk::Box::builder().css_classes(["toolbar"]).build();
 
     let server_icon = gtk::Image::builder()
         .icon_name("server")

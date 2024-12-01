@@ -241,7 +241,6 @@ fn display_server(
 
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
-        .css_classes(["destructive-action"])
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
         .build();
@@ -474,11 +473,10 @@ fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: gli
         .build();
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
-        .css_classes(["destructive-action"])
         .valign(gtk::Align::Center)
         .build();
     edit_btn.connect_closure("clicked", false, edit_closure);
-    let suffix_box = gtk::Box::builder().spacing(15).build();
+    let suffix_box = gtk::Box::builder().css_classes(["toolbar"]).build();
     suffix_box.append(&edit_btn);
     suffix_box.append(&delete_btn);
     server_item1.set_header_suffix(Some(&suffix_box));

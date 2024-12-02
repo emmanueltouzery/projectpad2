@@ -13,9 +13,9 @@ use super::widgets::project_item_list::ProjectItemList;
 use adw::subclass::prelude::*;
 use diesel::prelude::*;
 use glib::subclass;
-use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
+use gtk::{gdk, glib};
 use projectpadsql::models::Project;
 
 mod imp {
@@ -194,15 +194,7 @@ impl ProjectpadApplicationWindow {
         win.imp()
             .search_toggle_btn
             .connect_clicked(glib::clone!(@weak win as w => move |_| {
-                // new_is_main reflects the state that we want after the toggle
-                let new_is_main = w.imp().main_or_search.visible_child_name() == Some("search".into());
-                w.imp()
-                    .main_or_search
-                    .set_visible_child_name(if new_is_main { "main" } else { "search" });
-                w.imp()
-                    .split_view.set_show_sidebar(new_is_main);
-
-                w.trigger_search();
+                Self::search_toggled(&w);
             }));
 
         win.imp().search_entry.connect_search_changed(
@@ -211,6 +203,17 @@ impl ProjectpadApplicationWindow {
             }),
         );
 
+        let w0 = win.clone();
+        let key_controller = gtk::EventControllerKey::new();
+        key_controller.connect_key_pressed(move |_controller, keyval, _keycode, _state| {
+            if keyval == gdk::Key::Escape && w0.imp().search_toggle_btn.is_active() {
+                w0.imp().search_toggle_btn.set_active(false);
+                Self::search_toggled(&w0);
+                return glib::Propagation::Stop; // Stop further handling
+            }
+            glib::Propagation::Proceed // Allow other handlers to process the event
+        });
+        win.imp().search_entry.add_controller(key_controller);
         let w = win.clone();
         win.imp().search_entry.connect_activate(move |_| {
             let search_matches = w.imp().search_item_list.displayed_items();
@@ -287,6 +290,19 @@ impl ProjectpadApplicationWindow {
             );
 
         win
+    }
+
+    fn search_toggled(w: &ProjectpadApplicationWindow) {
+        // new_is_main reflects the state that we want after the toggle
+        let new_is_main = w.imp().main_or_search.visible_child_name() == Some("search".into());
+        w.imp()
+            .main_or_search
+            .set_visible_child_name(if new_is_main { "main" } else { "search" });
+        w.imp().split_view.set_show_sidebar(new_is_main);
+
+        if !new_is_main {
+            w.trigger_search();
+        }
     }
 
     fn display_item_from_search(

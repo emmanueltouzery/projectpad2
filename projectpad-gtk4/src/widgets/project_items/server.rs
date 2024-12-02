@@ -572,6 +572,7 @@ fn server_poi_contents(
         .description(desc)
         .title(&poi.desc)
         .build();
+    DetailsRow::new("Description", &poi.desc, None, &[]).add(widget_mode, &server_item1);
     DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path), &[])
         .add(widget_mode, &server_item1);
     let field_name = match poi.interest_type {

@@ -51,6 +51,24 @@ mod imp {
         fn activate(&self) {
             let app = self.obj();
             let window = app.create_window();
+
+            let w = window.clone();
+            let key_controller = gtk::EventControllerKey::new();
+            key_controller.connect_key_pressed(move |_controller, keyval, _keycode, state| {
+                if let Some(k) = keyval.to_unicode() {
+                    if Self::is_plaintext_key(state, keyval)
+                        && !w.imp().search_toggle_btn.is_active()
+                    {
+                        w.imp().search_entry.set_text(&k.to_string());
+                        w.imp().search_entry.set_position(1);
+                        w.imp().search_toggle_btn.set_active(true);
+                        return glib::Propagation::Stop; // Stop further handling
+                    }
+                }
+                glib::Propagation::Proceed // Allow other handlers to process the event
+            });
+            window.add_controller(key_controller);
+
             let _ = app.imp().window.set(window.downgrade());
             app.unlock_db();
             // let window = app.create_window();
@@ -61,6 +79,22 @@ mod imp {
     impl GtkApplicationImpl for ProjectpadApplication {}
 
     impl AdwApplicationImpl for ProjectpadApplication {}
+
+    impl ProjectpadApplication {
+        pub fn is_plaintext_key(e: gdk::ModifierType, keyval: gdk::Key) -> bool {
+            // return false if control and others were pressed
+            // (then the state won't be empty)
+            // could be ctrl-c on notes for instance
+            // whitelist LOCK (shift or caps lock)
+            let mut state = e;
+            state.remove(gdk::ModifierType::LOCK_MASK);
+            state.is_empty()
+                && keyval != gdk::Key::Return
+                && keyval != gdk::Key::KP_Enter
+                && keyval != gdk::Key::Escape
+                && keyval != gdk::Key::Tab
+        }
+    }
 }
 
 glib::wrapper! {

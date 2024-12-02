@@ -193,7 +193,7 @@ impl ProjectpadApplicationWindow {
 
         win.imp()
             .search_toggle_btn
-            .connect_clicked(glib::clone!(@weak win as w => move |_| {
+            .connect_toggled(glib::clone!(@weak win as w => move |_| {
                 Self::search_toggled(&w);
             }));
 
@@ -208,7 +208,6 @@ impl ProjectpadApplicationWindow {
         key_controller.connect_key_pressed(move |_controller, keyval, _keycode, _state| {
             if keyval == gdk::Key::Escape && w0.imp().search_toggle_btn.is_active() {
                 w0.imp().search_toggle_btn.set_active(false);
-                Self::search_toggled(&w0);
                 return glib::Propagation::Stop; // Stop further handling
             }
             glib::Propagation::Proceed // Allow other handlers to process the event
@@ -312,9 +311,6 @@ impl ProjectpadApplicationWindow {
         search_item_type: u8,
         server_id: i32,
     ) {
-        w.imp().split_view.set_show_sidebar(true);
-        w.imp().main_or_search.set_visible_child_name("main");
-
         let select_project_param = glib::VariantDict::new(None);
         select_project_param.insert("project_id", project_id);
         //

@@ -225,12 +225,12 @@ impl Note {
         let parser = pulldown_cmark::Parser::new_ext(note.contents, options);
         let mut header_idx = 0;
 
-        let mut is_in_header = None;
+        let mut is_in_header = None::<usize>;
         parser.for_each(|evt| {
             match (&is_in_header, evt) {
                 (Some(level), pulldown_cmark::Event::Text(v)) => {
                     note_poc_menu.append(
-                        Some(&("#".repeat(*level) + " " + &v)),
+                        Some(&("    ".repeat(*level - 1) + " " + &v)),
                         Some(&format!("menu_actions.jump_to_header({header_idx})")),
                     );
                     is_in_header = None;

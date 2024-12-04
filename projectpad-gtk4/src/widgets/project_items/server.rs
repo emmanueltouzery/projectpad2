@@ -648,6 +648,7 @@ fn server_extra_user_account_contents(
         .description("Extra user")
         // .title(&poi.desc)
         .build();
+    DetailsRow::new("Description", &user.desc, None, &[]).add(widget_mode, &server_item1);
     DetailsRow::new(
         "Username",
         &user.username,

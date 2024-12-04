@@ -211,6 +211,7 @@ pub struct NoteBufferInfo {
     pub links: Vec<ItemDataInfo>,
     pub passwords: Vec<ItemDataInfo>,
     pub separator_anchors: Vec<gtk::TextChildAnchor>,
+    pub header_iters: Vec<gtk::TextIter>,
 }
 
 pub fn note_markdown_to_quick_preview(input: &str) -> String {
@@ -248,6 +249,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
     let mut links = vec![];
     let mut passwords = vec![];
     let mut blockquote_level = 0;
+    let mut header_iters = vec![];
 
     let events_with_passwords = get_events_with_passwords(parser);
 
@@ -373,14 +375,17 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
                 Event::Start(Tag::Heading(1)) => {
                     buffer.insert(&mut end_iter, "\n");
                     active_tags.insert(TAG_HEADER1, end_iter.offset());
+                    header_iters.push(buffer.end_iter());
                 }
                 Event::Start(Tag::Heading(2)) => {
                     buffer.insert(&mut end_iter, "\n");
                     active_tags.insert(TAG_HEADER2, end_iter.offset());
+                    header_iters.push(buffer.end_iter());
                 }
                 Event::Start(Tag::Heading(_)) => {
                     buffer.insert(&mut end_iter, "\n");
                     active_tags.insert(TAG_HEADER3, end_iter.offset());
+                    header_iters.push(buffer.end_iter());
                 }
                 Event::End(Tag::Heading(1)) => {
                     if let Some(start_offset) = active_tags.remove(TAG_HEADER1) {
@@ -457,6 +462,7 @@ pub fn note_markdown_to_text_buffer(input: &str, table: &gtk::TextTagTable) -> N
         links,
         passwords,
         separator_anchors,
+        header_iters,
     }
 }
 

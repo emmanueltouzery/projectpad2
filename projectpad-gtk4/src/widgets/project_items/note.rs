@@ -218,6 +218,35 @@ impl Note {
         app.unwrap().get_sql_channel()
     }
 
+    fn note_toc_menu(note: &NoteInfo) -> gtk::PopoverMenu {
+        let note_poc_menu = gio::Menu::new();
+        let mut options = pulldown_cmark::Options::empty();
+        options.insert(pulldown_cmark::Options::ENABLE_STRIKETHROUGH);
+        let parser = pulldown_cmark::Parser::new_ext(note.contents, options);
+        let mut header_idx = 0;
+
+        let mut is_in_header = None;
+        parser.for_each(|evt| {
+            match (&is_in_header, evt) {
+                (Some(level), pulldown_cmark::Event::Text(v)) => {
+                    note_poc_menu.append(
+                        Some(&("#".repeat(*level) + " " + &v)),
+                        Some(&format!("menu_actions.jump_to_header({header_idx})")),
+                    );
+                    is_in_header = None;
+                    header_idx += 1;
+                }
+                (_, pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading(level))) => {
+                    is_in_header = level.try_into().ok();
+                }
+                _ => {}
+            };
+        });
+        gtk::PopoverMenu::builder()
+            .menu_model(&note_poc_menu)
+            .build()
+    }
+
     fn display_note_contents(&self, note: NoteInfo) {
         let widget_mode = if self.edit_mode() {
             WidgetMode::Edit
@@ -226,21 +255,29 @@ impl Note {
         };
         if note.display_header {
             // project note, we handle the editing
-            let (header_box, vbox) = Self::note_contents(
+            let (header_box, vbox) = self.note_contents(
                 note.clone(),
                 self.imp().note_links.clone(),
                 self.imp().note_passwords.clone(),
                 WidgetMode::Show,
             );
 
+            let toc_btn = gtk::MenuButton::builder()
+                .icon_name("heading")
+                .valign(gtk::Align::Center)
+                .halign(gtk::Align::End)
+                .popover(&Self::note_toc_menu(&note))
+                .build();
+            if widget_mode != WidgetMode::Edit {
+                toc_btn.set_hexpand(true);
+            }
+            header_box.append(&toc_btn);
+
             let edit_btn = gtk::Button::builder()
                 .icon_name("document-edit-symbolic")
                 .valign(gtk::Align::Center)
                 .halign(gtk::Align::End)
                 .build();
-            if widget_mode != WidgetMode::Edit {
-                edit_btn.set_hexpand(true);
-            }
             header_box.append(&edit_btn);
 
             let delete_btn = gtk::Button::builder()
@@ -258,6 +295,7 @@ impl Note {
             let g = note.group_name.map(|g| g.to_owned());
             let a = note.all_group_names.to_vec();
 
+            let s = self.clone();
             edit_btn.connect_closure(
                     "clicked",
                     false,
@@ -276,7 +314,7 @@ impl Note {
                             group_name: _g.as_deref(),
                             all_group_names: &_a
                         };
-                        let (_, vbox) = Self::note_contents(n.clone(), nl.clone(), np.clone(), WidgetMode::Edit);
+                        let (_, vbox) = s.note_contents(n.clone(), nl.clone(), np.clone(), WidgetMode::Edit);
                         vbox.set_margin_start(30);
                         vbox.set_margin_end(30);
 
@@ -286,18 +324,20 @@ impl Note {
             self.set_child(Some(&vbox));
         } else {
             // server note, the parent handles the editing
-            let vbox = Self::note_contents(
-                note,
-                self.imp().note_links.clone(),
-                self.imp().note_passwords.clone(),
-                widget_mode,
-            )
-            .1;
+            let vbox = self
+                .note_contents(
+                    note,
+                    self.imp().note_links.clone(),
+                    self.imp().note_passwords.clone(),
+                    widget_mode,
+                )
+                .1;
             self.set_child(Some(&vbox));
         }
     }
 
     fn note_contents(
+        &self,
         note: NoteInfo,
         note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
@@ -315,8 +355,21 @@ impl Note {
             (gtk::Box::builder().build(), gtk::Box::builder().build())
         };
 
-        let (note_view, _scrolled_window) =
+        let (note_view, scrolled_window, header_iters) =
             Self::get_note_contents_widget(note_links, note_passwords, &note.contents, widget_mode);
+
+        let action_group = gio::SimpleActionGroup::new();
+        action_group.add_action_entries([gio::ActionEntry::builder("jump_to_header")
+            .parameter_type(Some(&i32::static_variant_type()))
+            .activate(move |_, _action, parameter| {
+                let idx = parameter.unwrap().get::<i32>().unwrap();
+                if let Some(tv) = scrolled_window.child().and_downcast::<gtk::TextView>() {
+                    let mut target_iter = header_iters[usize::try_from(idx).unwrap()].clone();
+                    tv.scroll_to_iter(&mut target_iter, 0.0, true, 0.0, 0.0);
+                }
+            })
+            .build()]);
+        self.insert_action_group("menu_actions", Some(&action_group));
 
         vbox.append(&note_view);
 
@@ -328,9 +381,9 @@ impl Note {
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         contents: &str,
         widget_mode: WidgetMode,
-    ) -> (gtk::Widget, gtk::ScrolledWindow) {
+    ) -> (gtk::Widget, gtk::ScrolledWindow, Vec<gtk::TextIter>) {
         let toast_parent = adw::ToastOverlay::new();
-        let text_view = if widget_mode == WidgetMode::Show {
+        let (text_view, header_iters) = if widget_mode == WidgetMode::Show {
             let note_buffer_info =
                 notes::note_markdown_to_text_buffer(contents, &crate::notes::build_tag_table());
             let text_view = gtk::TextView::builder()
@@ -349,7 +402,10 @@ impl Note {
             );
             note_links.set(note_buffer_info.links);
             note_passwords.set(note_buffer_info.passwords);
-            text_view.upcast::<gtk::Widget>()
+            (
+                text_view.upcast::<gtk::Widget>(),
+                note_buffer_info.header_iters,
+            )
         } else {
             let buf = sourceview5::Buffer::with_language(
                 &sourceview5::LanguageManager::default()
@@ -366,7 +422,7 @@ impl Note {
             buf.set_text(contents);
             let view = sourceview5::View::with_buffer(&buf);
             view.set_vexpand(true);
-            view.upcast::<gtk::Widget>()
+            (view.upcast::<gtk::Widget>(), vec![]) // TODO buffer_iters
         };
 
         let scrolled_text_view = gtk::ScrolledWindow::builder()
@@ -387,7 +443,7 @@ impl Note {
             vbox.append(&toast_parent);
             vbox.upcast::<gtk::Widget>()
         };
-        (widget, scrolled_text_view)
+        (widget, scrolled_text_view, header_iters)
     }
 
     fn register_events(

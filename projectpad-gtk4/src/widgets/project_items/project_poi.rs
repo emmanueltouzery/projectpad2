@@ -63,7 +63,6 @@ fn display_project_oi(
 
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
-        .css_classes(["destructive-action"])
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
         .build();

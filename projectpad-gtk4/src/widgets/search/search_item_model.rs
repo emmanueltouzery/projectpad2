@@ -34,6 +34,8 @@ mod imp {
         #[property(get, set)]
         title: Rc<RefCell<String>>,
         #[property(get, set)]
+        icon: Rc<RefCell<String>>,
+        #[property(get, set)]
         env_desc: Rc<RefCell<String>>,
         #[property(get, set)]
         env_classes: Rc<RefCell<Vec<String>>>,
@@ -98,12 +100,24 @@ impl SearchItemModel {
         environment: Env,
         group_name: Option<String>,
     ) -> Self {
+        let icon = match search_item_type {
+            SearchItemType::Server => "server",
+            SearchItemType::ServerLink => "share-square",
+            SearchItemType::ProjectNote => "clipboard",
+            SearchItemType::ProjectPointOfInterest => "cube",
+            SearchItemType::Project => "cubes",
+            SearchItemType::ServerWebsite => "globe",
+            SearchItemType::ServerNote => "clipboard",
+            SearchItemType::ServerDatabase => "database",
+            SearchItemType::ServerPoi => "cube",
+        };
         Object::builder()
             .property("id", id)
             .property("project-id", project_id)
             .property("server-id", server_id.unwrap_or(-1))
             .property("search-item-type", search_item_type as u8)
             .property("title", title)
+            .property("icon", icon)
             .property("env-desc", env_to_desc(&environment))
             .property("env-classes", env_to_css(&environment))
             .property("group-name", group_name.unwrap_or("".to_string()))

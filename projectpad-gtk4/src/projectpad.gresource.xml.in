@@ -14,6 +14,7 @@
     <file alias="server-symbolic.svg">fontawesome-5.13.0/svgs/solid/server.svg</file>
     <file alias="clipboard-symbolic.svg">fontawesome-5.13.0/svgs/solid/clipboard.svg</file>
     <file alias="cube-symbolic.svg">fontawesome-5.13.0/svgs/solid/cube.svg</file>
+    <file alias="cubes-symbolic.svg">fontawesome-5.13.0/svgs/solid/cubes.svg</file>
     <file alias="link-symbolic.svg">fontawesome-5.13.0/svgs/solid/share-square.svg</file>
     <file alias="database-symbolic.svg">fontawesome-5.13.0/svgs/solid/database.svg</file>
     <file alias="monitoring-symbolic.svg">fontawesome-5.13.0/svgs/solid/tachometer-alt.svg</file>

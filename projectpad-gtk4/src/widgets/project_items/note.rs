@@ -58,6 +58,7 @@ mod imp {
 
         pub note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         pub note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
+        pub header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
     }
 
     #[glib::object_subclass]
@@ -259,6 +260,7 @@ impl Note {
                 note.clone(),
                 self.imp().note_links.clone(),
                 self.imp().note_passwords.clone(),
+                self.imp().header_iters.clone(),
                 WidgetMode::Show,
             );
 
@@ -289,6 +291,7 @@ impl Note {
 
             let note_links = self.imp().note_links.clone();
             let note_passwords = self.imp().note_passwords.clone();
+            let header_iters = self.imp().header_iters.clone();
             let t = note.title.to_owned();
             let c = note.contents.to_owned();
             let g = note.group_name.map(|g| g.to_owned());
@@ -304,7 +307,8 @@ impl Note {
                                          @strong a as _a,
                                          @strong vbox as v,
                                          @strong note_links as nl,
-                                         @strong note_passwords as np => move |_b: gtk::Button| {
+                                         @strong note_passwords as np,
+                                         @strong header_iters as hi => move |_b: gtk::Button| {
                         let n = NoteInfo {
                             title: &_t,
                             env: note.env.clone(),
@@ -313,7 +317,7 @@ impl Note {
                             group_name: _g.as_deref(),
                             all_group_names: &_a
                         };
-                        let (_, vbox) = s.note_contents(n.clone(), nl.clone(), np.clone(), WidgetMode::Edit);
+                        let (_, vbox) = s.note_contents(n.clone(), nl.clone(), np.clone(), hi.clone(), WidgetMode::Edit);
                         vbox.set_margin_start(30);
                         vbox.set_margin_end(30);
 
@@ -328,6 +332,7 @@ impl Note {
                     note,
                     self.imp().note_links.clone(),
                     self.imp().note_passwords.clone(),
+                    self.imp().header_iters.clone(),
                     widget_mode,
                 )
                 .1;
@@ -340,6 +345,7 @@ impl Note {
         note: NoteInfo,
         note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
+        header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
         widget_mode: WidgetMode,
     ) -> (gtk::Box, gtk::Box) {
         let (header_box, vbox) = if note.display_header {
@@ -354,16 +360,22 @@ impl Note {
             (gtk::Box::builder().build(), gtk::Box::builder().build())
         };
 
-        let (note_view, scrolled_window, header_iters) =
-            Self::get_note_contents_widget(note_links, note_passwords, &note.contents, widget_mode);
+        let (note_view, scrolled_window) = Self::get_note_contents_widget(
+            note_links,
+            note_passwords,
+            header_iters,
+            &note.contents,
+            widget_mode,
+        );
 
         let action_group = gio::SimpleActionGroup::new();
+        let h_i = self.imp().header_iters.borrow().clone();
         action_group.add_action_entries([gio::ActionEntry::builder("jump_to_header")
             .parameter_type(Some(&i32::static_variant_type()))
             .activate(move |_, _action, parameter| {
                 let idx = parameter.unwrap().get::<i32>().unwrap();
                 if let Some(tv) = scrolled_window.child().and_downcast::<gtk::TextView>() {
-                    let mut target_iter = header_iters[usize::try_from(idx).unwrap()].clone();
+                    let mut target_iter = h_i[usize::try_from(idx).unwrap()].clone();
                     tv.scroll_to_iter(&mut target_iter, 0.0, true, 0.0, 0.0);
                 }
             })
@@ -378,11 +390,12 @@ impl Note {
     pub fn get_note_contents_widget(
         note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
+        header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
         contents: &str,
         widget_mode: WidgetMode,
-    ) -> (gtk::Widget, gtk::ScrolledWindow, Vec<gtk::TextIter>) {
+    ) -> (gtk::Widget, gtk::ScrolledWindow) {
         let toast_parent = adw::ToastOverlay::new();
-        let (text_view, header_iters) = if widget_mode == WidgetMode::Show {
+        let text_view = if widget_mode == WidgetMode::Show {
             let note_buffer_info =
                 notes::note_markdown_to_text_buffer(contents, &crate::notes::build_tag_table());
             let text_view = gtk::TextView::builder()
@@ -401,10 +414,8 @@ impl Note {
             );
             note_links.set(note_buffer_info.links);
             note_passwords.set(note_buffer_info.passwords);
-            (
-                text_view.upcast::<gtk::Widget>(),
-                note_buffer_info.header_iters,
-            )
+            header_iters.set(note_buffer_info.header_iters);
+            text_view.upcast::<gtk::Widget>()
         } else {
             let buf = sourceview5::Buffer::with_language(
                 &sourceview5::LanguageManager::default()
@@ -421,7 +432,7 @@ impl Note {
             buf.set_text(contents);
             let view = sourceview5::View::with_buffer(&buf);
             view.set_vexpand(true);
-            (view.upcast::<gtk::Widget>(), vec![]) // TODO buffer_iters
+            view.upcast::<gtk::Widget>() // TODO buffer_iters?
         };
 
         let scrolled_text_view = gtk::ScrolledWindow::builder()
@@ -442,7 +453,7 @@ impl Note {
             vbox.append(&toast_parent);
             vbox.upcast::<gtk::Widget>()
         };
-        (widget, scrolled_text_view, header_iters)
+        (widget, scrolled_text_view)
     }
 
     fn register_events(

@@ -28,6 +28,8 @@ mod imp {
         #[property(get, set)]
         title: Rc<RefCell<String>>,
         #[property(get, set)]
+        icon: Rc<RefCell<String>>,
+        #[property(get, set)]
         has_dev: Rc<RefCell<bool>>,
         #[property(get, set)]
         has_stg: Rc<RefCell<bool>>,
@@ -66,6 +68,12 @@ impl ProjectItemModel {
         group_name: Option<String>,
     ) -> Self {
         let has_all_envs = Self::project_get_envs(project).is_subset(&environments);
+        let icon = match project_item_type {
+            ProjectItemType::Server => "server",
+            ProjectItemType::ServerLink => "share-square",
+            ProjectItemType::ProjectNote => "clipboard",
+            ProjectItemType::ProjectPointOfInterest => "cube",
+        };
         Object::builder()
             .property("id", id)
             .property("project-item-type", project_item_type as u8)
@@ -87,6 +95,7 @@ impl ProjectItemModel {
                 !has_all_envs && environments.contains(&EnvironmentType::EnvProd),
             )
             .property("group-name", group_name.unwrap_or("".to_string()))
+            .property("icon", icon)
             .build()
     }
 

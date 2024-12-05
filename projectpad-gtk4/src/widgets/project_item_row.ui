@@ -8,7 +8,11 @@
         </style>
         <child>
           <object class="GtkImage">
-            <property name="icon-name">cube</property>
+            <binding name="icon-name">
+              <lookup name="icon" type="ProjectItemModel">
+                <lookup name="item">GtkListItem</lookup>
+              </lookup>
+            </binding>
             <property name="margin-end">3</property>
           </object>
         </child>

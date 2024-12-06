@@ -26,42 +26,42 @@ enum EventExt<'a> {
 
 fn get_events_with_passwords(parser: Parser) -> Vec<EventExt> {
     let mut pass_state = PassState::None;
-    parser.fold(vec![], |mut sofar, evt| match (&pass_state, evt) {
+    parser.fold(vec![], |mut so_far, evt| match (&pass_state, evt) {
         (_, Event::Text(v)) if v.as_ref() == "[" => {
             pass_state = PassState::AfterOpeningBracket(EventExt::StandardEvent(Event::Text(v)));
-            sofar
+            so_far
         }
         (PassState::AfterOpeningBracket(e0), Event::Text(v)) if v.as_ref() == "pass" => {
             pass_state = PassState::AfterPass(vec![
                 e0.clone(),
                 EventExt::StandardEvent(Event::Text(v.clone())),
             ]);
-            sofar
+            so_far
         }
         (PassState::AfterPass(vec0), Event::Code(ref v)) => {
             let pass = v.to_string();
             let mut vec = vec0.clone();
             vec.push(EventExt::StandardEvent(Event::Code(v.clone())));
             pass_state = PassState::AfterBody(vec, pass);
-            sofar
+            so_far
         }
         (PassState::AfterBody(_, p), Event::Text(v)) if v.as_ref() == "]" => {
-            sofar.push(EventExt::Password(p.clone()));
+            so_far.push(EventExt::Password(p.clone()));
             pass_state = PassState::None;
-            sofar
+            so_far
         }
         (ps, evt) => {
             // in case we were in the process of parsing a password and the parsing
             // didn't conclude positively, flush back the events that I held back
             match ps {
-                PassState::AfterOpeningBracket(e) => sofar.push(e.clone()),
-                PassState::AfterPass(es) => sofar.extend(es.clone()),
-                PassState::AfterBody(es, _) => sofar.extend(es.clone()),
+                PassState::AfterOpeningBracket(e) => so_far.push(e.clone()),
+                PassState::AfterPass(es) => so_far.extend(es.clone()),
+                PassState::AfterBody(es, _) => so_far.extend(es.clone()),
                 _ => {}
             }
             pass_state = PassState::None;
-            sofar.push(EventExt::StandardEvent(evt.clone()));
-            sofar
+            so_far.push(EventExt::StandardEvent(evt.clone()));
+            so_far
         }
     })
 }

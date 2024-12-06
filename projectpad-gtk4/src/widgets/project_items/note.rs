@@ -495,10 +495,11 @@ impl Note {
         });
         action_group.add_action(&reveal_password_action);
 
+        let tv2 = tv.clone();
         gesture_ctrl.connect_released(move |_gesture, _n, x, y| {
             let (bx, by) =
-                tv.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
-            if let Some(iter) = tv.iter_at_location(bx, by) {
+                tv2.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
+            if let Some(iter) = tv2.iter_at_location(bx, by) {
                 let offset = iter.offset();
                 if Self::iter_matches_tags(&iter, &[notes::TAG_LINK, notes::TAG_PASSWORD]) {
                     if let Some(link) = note_links
@@ -516,12 +517,38 @@ impl Note {
                         .iter()
                         .position(|l| l.start_offset <= offset && l.end_offset > offset)
                     {
-                        Self::password_popover(&tv, pass_idx, &tv.iter_location(&iter));
+                        Self::password_popover(&tv2, pass_idx, &tv2.iter_location(&iter));
                     }
                 }
             }
         });
         text_view.add_controller(gesture_ctrl);
+
+        let motion_controller = gtk::EventControllerMotion::new();
+        let tv3 = tv.clone();
+        motion_controller.connect_motion(move |_, x, y| {
+            let (bx, by) =
+                tv3.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
+            if let Some(iter) = tv3.iter_at_location(bx, by) {
+                if Self::iter_is_link_or_password(&iter) {
+                    tv3.set_cursor_from_name(Some("pointer"));
+                // } else if let Some(iter) = self.widgets.note_textview.iter_at_location(bx, by) {
+                //     let is_code = Self::iter_matches_tags(&iter, &[crate::notes::TAG_CODE]);
+                //     if is_code {
+                //         self.textview_move_cursor_over_code(iter);
+                //     }
+                } else {
+                    tv3.set_cursor(None);
+                }
+            } else {
+                tv3.set_cursor(None);
+            }
+        });
+        tv.add_controller(motion_controller);
+    }
+
+    fn iter_is_link_or_password(iter: &gtk::TextIter) -> bool {
+        Self::iter_matches_tags(iter, &[crate::notes::TAG_LINK, crate::notes::TAG_PASSWORD])
     }
 
     fn password_popover(text_view: &gtk::TextView, pass_idx: usize, position: &gdk::Rectangle) {

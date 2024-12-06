@@ -16,6 +16,7 @@ use crate::{
         project_items::common::{
             copy_to_clipboard, display_item_edit_dialog, get_project_group_names, DialogClamp,
         },
+        search_bar::SearchBar,
     },
 };
 
@@ -441,7 +442,9 @@ impl Note {
             .hexpand(true)
             .build();
 
-        toast_parent.set_child(Some(&scrolled_text_view));
+        let overlay = gtk::Overlay::builder().child(&scrolled_text_view).build();
+        overlay.add_overlay(&SearchBar::new());
+        toast_parent.set_child(Some(&overlay));
 
         let widget = if widget_mode == WidgetMode::Show {
             toast_parent.clone().upcast::<gtk::Widget>()
@@ -453,6 +456,7 @@ impl Note {
             vbox.append(&toast_parent);
             vbox.upcast::<gtk::Widget>()
         };
+
         (widget, scrolled_text_view)
     }
 
@@ -472,7 +476,7 @@ impl Note {
             gio::SimpleAction::new("copy-password", Some(&i32::static_variant_type()));
         let sp = note_passwords.clone();
         let tp = toast_parent.clone();
-        copy_password_action.connect_activate(move |action, parameter| {
+        copy_password_action.connect_activate(move |_action, parameter| {
             // println!("{} / {:#?}", action, parameter);
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
             if let Some(p) = sp.borrow().get(password_index) {

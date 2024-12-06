@@ -6,3 +6,4 @@ mod project_item_list_model;
 pub mod project_item_model;
 pub mod project_items;
 pub mod search;
+pub mod search_bar;

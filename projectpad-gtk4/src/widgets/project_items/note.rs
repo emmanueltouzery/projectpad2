@@ -443,8 +443,24 @@ impl Note {
             .build();
 
         let overlay = gtk::Overlay::builder().child(&scrolled_text_view).build();
-        overlay.add_overlay(&SearchBar::new());
+        let search_bar = SearchBar::new();
+        let revealer = gtk::Revealer::builder()
+            .child(&search_bar)
+            .halign(gtk::Align::End)
+            .valign(gtk::Align::Start)
+            .vexpand(false)
+            .build();
+        overlay.add_overlay(&revealer);
         toast_parent.set_child(Some(&overlay));
+
+        let r = revealer.clone();
+        search_bar.connect_closure(
+            "esc-pressed",
+            false,
+            glib::closure_local!(move |_: SearchBar| {
+                r.set_reveal_child(false);
+            }),
+        );
 
         let widget = if widget_mode == WidgetMode::Show {
             toast_parent.clone().upcast::<gtk::Widget>()
@@ -456,6 +472,21 @@ impl Note {
             vbox.append(&toast_parent);
             vbox.upcast::<gtk::Widget>()
         };
+
+        let key_controller = gtk::EventControllerKey::new();
+        key_controller.connect_key_pressed(move |_controller, keyval, _keycode, state| {
+            if keyval.to_unicode() == Some('f') && state.contains(gdk::ModifierType::CONTROL_MASK) {
+                revealer.set_reveal_child(true);
+                search_bar.grab_focus();
+                return glib::Propagation::Stop;
+            }
+            if keyval == gdk::Key::Escape {
+                revealer.set_reveal_child(false);
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed // Allow other handlers to process the event
+        });
+        widget.add_controller(key_controller);
 
         (widget, scrolled_text_view)
     }

@@ -4,7 +4,7 @@ use gtk::{gdk, subclass::prelude::*};
 mod imp {
     use std::{cell::RefCell, sync::OnceLock};
 
-    use glib::subclass::Signal;
+    use glib::{subclass::Signal, types::StaticType};
     use gtk::subclass::{
         prelude::{ObjectImpl, ObjectSubclass},
         widget::WidgetImpl,
@@ -25,7 +25,20 @@ mod imp {
     impl ObjectImpl for SearchBar {
         fn signals() -> &'static [Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-            SIGNALS.get_or_init(|| vec![Signal::builder("esc-pressed").build()])
+            SIGNALS.get_or_init(|| {
+                vec![
+                    Signal::builder("esc-pressed").build(),
+                    Signal::builder("prev-pressed")
+                        .param_types([String::static_type()])
+                        .build(),
+                    Signal::builder("next-pressed")
+                        .param_types([String::static_type()])
+                        .build(),
+                    Signal::builder("search-changed")
+                        .param_types([String::static_type()])
+                        .build(),
+                ]
+            })
         }
     }
 
@@ -53,6 +66,11 @@ impl SearchBar {
             .build();
         hbox.append(&search_entry);
 
+        let t1 = this.clone();
+        search_entry.connect_search_changed(move |entry| {
+            t1.emit_by_name::<()>("search-changed", &[&entry.text()]);
+        });
+
         this.imp().search_entry.replace(search_entry.clone());
 
         let key_controller = gtk::EventControllerKey::new();
@@ -66,12 +84,24 @@ impl SearchBar {
         });
         search_entry.add_controller(key_controller);
 
+        let t1 = this.clone();
+        search_entry.connect_activate(move |se| {
+            dbg!("enter!!");
+            t1.emit_by_name::<()>("next-pressed", &[&se.text()]);
+        });
+
         let prev_btn = gtk::Button::builder()
             .margin_top(5)
             .margin_bottom(5)
             .icon_name("go-up")
             .build();
         hbox.append(&prev_btn);
+
+        let t3 = this.clone();
+        let se2 = search_entry.clone();
+        prev_btn.connect_clicked(move |_| {
+            t3.emit_by_name::<()>("prev-pressed", &[&se2.text()]);
+        });
 
         let next_btn = gtk::Button::builder()
             .margin_top(5)
@@ -80,6 +110,12 @@ impl SearchBar {
             .build();
         hbox.append(&next_btn);
 
+        let t4 = this.clone();
+        let se3 = search_entry.clone();
+        next_btn.connect_clicked(move |_| {
+            t4.emit_by_name::<()>("next-pressed", &[&se3.text()]);
+        });
+
         this.set_child(Some(&hbox));
         // https://discourse.gnome.org/t/overlay-widget-is-on-top-of-contents-but-translucent/25490/2
         this.set_css_classes(&["view"]);
@@ -87,7 +123,6 @@ impl SearchBar {
     }
 
     pub fn grab_focus(&self) {
-        dbg!("grab!");
-        dbg!(self.imp().search_entry.borrow().grab_focus());
+        self.imp().search_entry.borrow().grab_focus();
     }
 }

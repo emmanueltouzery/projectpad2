@@ -57,6 +57,8 @@ mod imp {
         #[property(get, set)]
         pub server_note_id: Cell<i32>,
 
+        pub text_view: Rc<RefCell<gtk::TextView>>,
+
         pub note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         pub note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         pub header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
@@ -259,6 +261,7 @@ impl Note {
             // project note, we handle the editing
             let (header_box, vbox) = self.note_contents(
                 note.clone(),
+                self.imp().text_view.clone(),
                 self.imp().note_links.clone(),
                 self.imp().note_passwords.clone(),
                 self.imp().header_iters.clone(),
@@ -297,6 +300,7 @@ impl Note {
             let c = note.contents.to_owned();
             let g = note.group_name.map(|g| g.to_owned());
             let a = note.all_group_names.to_vec();
+            let tv_var = self.imp().text_view.clone();
 
             let s = self.clone();
             edit_btn.connect_closure(
@@ -306,6 +310,7 @@ impl Note {
                                          @strong c as _c,
                                          @strong g as _g,
                                          @strong a as _a,
+                                         @strong tv_var as tv,
                                          @strong vbox as v,
                                          @strong note_links as nl,
                                          @strong note_passwords as np,
@@ -318,7 +323,7 @@ impl Note {
                             group_name: _g.as_deref(),
                             all_group_names: &_a
                         };
-                        let (_, vbox) = s.note_contents(n.clone(), nl.clone(), np.clone(), hi.clone(), WidgetMode::Edit);
+                        let (_, vbox) = s.note_contents(n.clone(), tv.clone(), nl.clone(), np.clone(), hi.clone(), WidgetMode::Edit);
                         vbox.set_margin_start(30);
                         vbox.set_margin_end(30);
 
@@ -331,6 +336,7 @@ impl Note {
             let vbox = self
                 .note_contents(
                     note,
+                    self.imp().text_view.clone(),
                     self.imp().note_links.clone(),
                     self.imp().note_passwords.clone(),
                     self.imp().header_iters.clone(),
@@ -344,6 +350,7 @@ impl Note {
     fn note_contents(
         &self,
         note: NoteInfo,
+        text_view_field: Rc<RefCell<gtk::TextView>>,
         note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
@@ -362,6 +369,7 @@ impl Note {
         };
 
         let (note_view, scrolled_window) = Self::get_note_contents_widget(
+            text_view_field,
             note_links,
             note_passwords,
             header_iters,
@@ -389,6 +397,7 @@ impl Note {
     }
 
     pub fn get_note_contents_widget(
+        text_view_field: Rc<RefCell<gtk::TextView>>,
         note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
@@ -416,6 +425,7 @@ impl Note {
             note_links.set(note_buffer_info.links);
             note_passwords.set(note_buffer_info.passwords);
             header_iters.set(note_buffer_info.header_iters);
+            text_view_field.set(text_view.clone());
             text_view.upcast::<gtk::Widget>()
         } else {
             let buf = sourceview5::Buffer::with_language(
@@ -461,6 +471,40 @@ impl Note {
                 r.set_reveal_child(false);
             }),
         );
+        let tv = text_view_field.clone();
+        search_bar.connect_closure(
+            "search-changed",
+            false,
+            glib::closure_local!(move |_: SearchBar, search: String| {
+                let cur_tv = tv.borrow();
+                Self::apply_search(
+                    &*cur_tv,
+                    cur_tv.buffer().start_iter().forward_search(
+                        &search,
+                        gtk::TextSearchFlags::all(),
+                        None,
+                    ),
+                );
+            }),
+        );
+        let tv2 = text_view_field.clone();
+        search_bar.connect_closure(
+            "prev-pressed",
+            false,
+            glib::closure_local!(move |_: SearchBar, search: String| {
+                let cur_tv = tv2.borrow();
+                Self::note_search_previous(&*cur_tv, Some(&search));
+            }),
+        );
+        let tv3 = text_view_field.clone();
+        search_bar.connect_closure(
+            "next-pressed",
+            false,
+            glib::closure_local!(move |_: SearchBar, search: String| {
+                let cur_tv = tv3.borrow();
+                Self::note_search_next(&*cur_tv, Some(&search));
+            }),
+        );
 
         let widget = if widget_mode == WidgetMode::Show {
             toast_parent.clone().upcast::<gtk::Widget>()
@@ -489,6 +533,46 @@ impl Note {
         widget.add_controller(key_controller);
 
         (widget, scrolled_text_view)
+    }
+
+    fn note_search_next<T>(textview: &T, note_search_text: Option<&str>)
+    where
+        T: TextViewExt,
+    {
+        let buffer = textview.buffer();
+        if let (Some((_start, end)), Some(search)) =
+            (buffer.selection_bounds(), note_search_text.clone())
+        {
+            Self::apply_search(
+                textview,
+                end.forward_search(&search, gtk::TextSearchFlags::all(), None),
+            );
+        }
+    }
+
+    fn note_search_previous<T>(textview: &T, note_search_text: Option<&str>)
+    where
+        T: TextViewExt,
+    {
+        let buffer = textview.buffer();
+        if let (Some((start, _end)), Some(search)) =
+            (buffer.selection_bounds(), note_search_text.clone())
+        {
+            Self::apply_search(
+                textview,
+                start.backward_search(&search, gtk::TextSearchFlags::all(), None),
+            );
+        }
+    }
+
+    fn apply_search<T>(textview: &T, range: Option<(gtk::TextIter, gtk::TextIter)>)
+    where
+        T: TextViewExt,
+    {
+        if let Some((mut start, end)) = range {
+            textview.buffer().select_range(&start, &end);
+            textview.scroll_to_iter(&mut start, 0.0, false, 0.0, 0.0);
+        }
     }
 
     fn register_events(

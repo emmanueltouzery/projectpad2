@@ -32,6 +32,14 @@ struct NoteInfo<'a> {
     all_group_names: &'a [String],
 }
 
+#[derive(Clone, Debug, Default)]
+pub enum ViewOrTextView {
+    View(sourceview5::View),
+    TextView(gtk::TextView),
+    #[default]
+    None,
+}
+
 mod imp {
     use crate::notes::ItemDataInfo;
 
@@ -57,7 +65,7 @@ mod imp {
         #[property(get, set)]
         pub server_note_id: Cell<i32>,
 
-        pub text_view: Rc<RefCell<gtk::TextView>>,
+        pub text_view: Rc<RefCell<ViewOrTextView>>,
 
         pub note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         pub note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
@@ -350,7 +358,7 @@ impl Note {
     fn note_contents(
         &self,
         note: NoteInfo,
-        text_view_field: Rc<RefCell<gtk::TextView>>,
+        text_view_field: Rc<RefCell<ViewOrTextView>>,
         note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
@@ -397,7 +405,7 @@ impl Note {
     }
 
     pub fn get_note_contents_widget(
-        text_view_field: Rc<RefCell<gtk::TextView>>,
+        text_view_field: Rc<RefCell<ViewOrTextView>>,
         note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
@@ -425,7 +433,7 @@ impl Note {
             note_links.set(note_buffer_info.links);
             note_passwords.set(note_buffer_info.passwords);
             header_iters.set(note_buffer_info.header_iters);
-            text_view_field.set(text_view.clone());
+            text_view_field.set(ViewOrTextView::TextView(text_view.clone()));
             text_view.upcast::<gtk::Widget>()
         } else {
             let buf = sourceview5::Buffer::with_language(
@@ -443,6 +451,7 @@ impl Note {
             buf.set_text(contents);
             let view = sourceview5::View::with_buffer(&buf);
             view.set_vexpand(true);
+            text_view_field.set(ViewOrTextView::View(view.clone()));
             view.upcast::<gtk::Widget>() // TODO buffer_iters?
         };
 
@@ -476,15 +485,26 @@ impl Note {
             "search-changed",
             false,
             glib::closure_local!(move |_: SearchBar, search: String| {
-                let cur_tv = tv.borrow();
-                Self::apply_search(
-                    &*cur_tv,
-                    cur_tv.buffer().start_iter().forward_search(
-                        &search,
-                        gtk::TextSearchFlags::all(),
-                        None,
+                let cur_tv = &*tv.borrow();
+                match cur_tv {
+                    ViewOrTextView::View(v) => Self::apply_search(
+                        v,
+                        v.buffer().start_iter().forward_search(
+                            &search,
+                            gtk::TextSearchFlags::all(),
+                            None,
+                        ),
                     ),
-                );
+                    ViewOrTextView::TextView(tv) => Self::apply_search(
+                        tv,
+                        tv.buffer().start_iter().forward_search(
+                            &search,
+                            gtk::TextSearchFlags::all(),
+                            None,
+                        ),
+                    ),
+                    _ => {}
+                }
             }),
         );
         let tv2 = text_view_field.clone();
@@ -493,7 +513,11 @@ impl Note {
             false,
             glib::closure_local!(move |_: SearchBar, search: String| {
                 let cur_tv = tv2.borrow();
-                Self::note_search_previous(&*cur_tv, Some(&search));
+                match &*cur_tv {
+                    ViewOrTextView::View(v) => Self::note_search_previous(v, Some(&search)),
+                    ViewOrTextView::TextView(tv) => Self::note_search_previous(tv, Some(&search)),
+                    _ => {}
+                }
             }),
         );
         let tv3 = text_view_field.clone();
@@ -502,7 +526,11 @@ impl Note {
             false,
             glib::closure_local!(move |_: SearchBar, search: String| {
                 let cur_tv = tv3.borrow();
-                Self::note_search_next(&*cur_tv, Some(&search));
+                match &*cur_tv {
+                    ViewOrTextView::View(v) => Self::note_search_next(v, Some(&search)),
+                    ViewOrTextView::TextView(tv) => Self::note_search_next(tv, Some(&search)),
+                    _ => {}
+                }
             }),
         );
 

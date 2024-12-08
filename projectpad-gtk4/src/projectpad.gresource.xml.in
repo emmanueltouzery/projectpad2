@@ -40,6 +40,7 @@
     <file alias="quote-symbolic.svg">fontawesome-5.13.0/svgs/solid/quote-left.svg</file>
     <file alias="list-ul-symbolic.svg">fontawesome-5.13.0/svgs/solid/list-ul.svg</file>
     <file alias="list-ol-symbolic.svg">fontawesome-5.13.0/svgs/solid/list-ol.svg</file>
+    <file alias="group-symbolic.svg">fontawesome-5.13.0/svgs/solid/folder-open.svg</file>
     <file>com.github.emmanueltouzery.projectpad.svg</file>
   </gresource>
 </gresources>

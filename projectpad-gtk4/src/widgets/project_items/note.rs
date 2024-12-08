@@ -277,7 +277,7 @@ impl Note {
             );
 
             let toc_btn = gtk::MenuButton::builder()
-                .icon_name("heading")
+                .icon_name("list-ol")
                 .valign(gtk::Align::Center)
                 .halign(gtk::Align::End)
                 .popover(&Self::note_toc_menu(&note))

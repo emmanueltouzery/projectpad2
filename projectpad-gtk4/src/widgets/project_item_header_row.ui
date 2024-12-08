@@ -8,7 +8,7 @@
         </style>
         <child>
           <object class="GtkImage">
-            <property name="icon-name">cube</property>
+            <property name="icon-name">group</property>
             <property name="margin-end">3</property>
           </object>
         </child>

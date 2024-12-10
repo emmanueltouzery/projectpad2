@@ -9,6 +9,8 @@ mod keyring_helpers;
 pub mod notes;
 mod search_engine;
 mod sql_thread;
+#[macro_use]
+pub mod sql_util;
 mod win;
 
 fn main() -> glib::ExitCode {

@@ -105,12 +105,6 @@ impl WidgetMode {
 
 impl ProjectItem {
     pub fn refresh_item(&self) {
-        println!(
-            "projectitem::refresh_item({}, {}, {:?})",
-            self.imp().item_id.get(),
-            self.imp().sub_item_id.get(),
-            ProjectItemType::from_repr(self.imp().project_item_type.get())
-        );
         let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
         let item_id = self.imp().item_id.get();
         let sub_item_id = Some(self.imp().sub_item_id.get());

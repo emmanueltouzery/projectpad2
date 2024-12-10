@@ -1,3 +1,4 @@
+use crate::perform_insert_or_update;
 use diesel::prelude::*;
 use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::mpsc};
 
@@ -24,6 +25,7 @@ use super::common::{self, EnvOrEnvs};
 
 #[derive(Clone)]
 struct NoteInfo<'a> {
+    id: i32,
     title: &'a str,
     env: EnvOrEnvs,
     contents: &'a str,
@@ -171,6 +173,7 @@ impl Note {
         glib::spawn_future_local(async move {
             let (channel_data, project_group_names) = receiver.recv().await.unwrap();
             p.display_note_contents(NoteInfo {
+                id: channel_data.id,
                 title: &channel_data.title,
                 env: EnvOrEnvs::Envs(Self::get_envs(&channel_data)),
                 contents: &channel_data.contents,
@@ -215,6 +218,7 @@ impl Note {
         glib::spawn_future_local(async move {
             let channel_data = receiver.recv().await.unwrap();
             p.display_note_contents(NoteInfo {
+                id: channel_data.id,
                 title: &channel_data.title,
                 env: EnvOrEnvs::None,
                 contents: &channel_data.contents,
@@ -324,6 +328,7 @@ impl Note {
                                          @strong note_passwords as np,
                                          @strong header_iters as hi => move |_b: gtk::Button| {
                         let n = NoteInfo {
+                            id: note.id,
                             title: &_t,
                             env: note.env.clone(),
                             contents: &_c,
@@ -335,7 +340,56 @@ impl Note {
                         vbox.set_margin_start(30);
                         vbox.set_margin_end(30);
 
-                        display_item_edit_dialog(&v, "Edit Note", vbox, 6000, 6000, DialogClamp::No);
+                        let (dialog, save_btn) = display_item_edit_dialog(&v, "Edit Note", vbox, 6000, 6000, DialogClamp::No);
+                        let ttv = tv.clone();
+                        let project_note_id = Some(note.id);
+                        save_btn.connect_clicked(move |_| {
+                            match &*ttv.borrow() {
+                                ViewOrTextView::View(v) => {
+                                    let buf = v.buffer();
+                                    let start_iter = buf.start_iter();
+                                    let end_iter = buf.end_iter();
+                                    let new_contents = v.buffer().text(&start_iter, &end_iter, false);
+                                    let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
+                                    let (sender, receiver) = async_channel::bounded(1);
+                                    let db_sender = app.unwrap().get_sql_channel();
+                                    db_sender
+                                        .send(SqlFunc::new(move |sql_conn| {
+                                            use projectpadsql::schema::project_note::dsl as prj_note;
+                                            let changeset = (
+                                                // prj_note::title.eq(new_title.as_str()),
+                                                // // never store Some("") for group, we want None then.
+                                                // prj_note::group_name.eq(new_group
+                                                //     .as_ref()
+                                                //     .map(|s| s.as_str())
+                                                //     .filter(|s| !s.is_empty())),
+                                                    prj_note::contents.eq(new_contents.as_str()),
+                                                    // prj_note::has_dev.eq(new_has_dev),
+                                                    // prj_note::has_stage.eq(new_has_stg),
+                                                    // prj_note::has_uat.eq(new_has_uat),
+                                                    // prj_note::has_prod.eq(new_has_prod),
+                                                    // prj_note::project_id.eq(project_id),
+                                            );
+                                            let project_note_after_result = perform_insert_or_update!(
+                                                sql_conn,
+                                                project_note_id,
+                                                prj_note::project_note,
+                                                prj_note::id,
+                                                changeset,
+                                                ProjectNote,
+                                            );
+                                            sender.send_blocking(project_note_after_result).unwrap();
+                                        })).unwrap();
+
+                                    let d = dialog.clone();
+                                    glib::spawn_future_local(async move {
+                                        let project_note_after_result = receiver.recv().await.unwrap();
+                                        d.close();
+                                    });
+                                },
+                                _ => panic!()
+                            }
+                        });
                     }),
                     );
             self.set_child(Some(&vbox));

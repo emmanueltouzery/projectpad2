@@ -33,7 +33,7 @@ pub fn display_item_edit_dialog(
     width: i32,
     height: i32,
     clamp: DialogClamp,
-) {
+) -> (adw::Dialog, gtk::Button) {
     let cbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -71,6 +71,8 @@ pub fn display_item_edit_dialog(
         dlg.close();
     });
     dialog.present(v);
+
+    (dialog, save_btn)
 }
 
 pub fn get_project_group_names(

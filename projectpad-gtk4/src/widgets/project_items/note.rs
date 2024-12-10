@@ -313,12 +313,13 @@ impl Note {
             let g = note.group_name.map(|g| g.to_owned());
             let a = note.all_group_names.to_vec();
             let tv_var = self.imp().text_view.clone();
-
             let s = self.clone();
+
             edit_btn.connect_closure(
                     "clicked",
                     false,
-                    glib::closure_local!(@strong t as _t,
+                    glib::closure_local!(@strong s as _s,
+                                         @strong t as _t,
                                          @strong c as _c,
                                          @strong g as _g,
                                          @strong a as _a,
@@ -342,7 +343,8 @@ impl Note {
 
                         let (dialog, save_btn) = display_item_edit_dialog(&v, "Edit Note", vbox, 6000, 6000, DialogClamp::No);
                         let ttv = tv.clone();
-                        let project_note_id = Some(note.id);
+                        let project_note_id = note.id;
+                        let s = _s.clone();
                         save_btn.connect_clicked(move |_| {
                             match &*ttv.borrow() {
                                 ViewOrTextView::View(v) => {
@@ -372,7 +374,7 @@ impl Note {
                                             );
                                             let project_note_after_result = perform_insert_or_update!(
                                                 sql_conn,
-                                                project_note_id,
+                                                Some(project_note_id),
                                                 prj_note::project_note,
                                                 prj_note::id,
                                                 changeset,
@@ -382,9 +384,11 @@ impl Note {
                                         })).unwrap();
 
                                     let d = dialog.clone();
+                                    let s1 = s.clone();
                                     glib::spawn_future_local(async move {
                                         let project_note_after_result = receiver.recv().await.unwrap();
                                         d.close();
+                                        s1.clone().load_and_display_project_note(project_note_id);
                                     });
                                 },
                                 _ => panic!()

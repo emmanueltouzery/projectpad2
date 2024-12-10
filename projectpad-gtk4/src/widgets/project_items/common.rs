@@ -9,7 +9,7 @@ use crate::{
     app::ProjectpadApplication,
     widgets::{
         environment_list_picker::EnvironmentListPicker, environment_picker::EnvironmentPicker,
-        project_item::WidgetMode,
+        project_item::WidgetMode, project_item_model::ProjectItemType,
     },
 };
 
@@ -131,6 +131,7 @@ pub fn get_project_group_names(
 /// different groups...)
 pub fn get_contents_box_with_header(
     title: &str,
+    project_item_type: ProjectItemType,
     group_name: Option<&str>,
     all_group_names: &[String],
     env: EnvOrEnvs,
@@ -148,7 +149,7 @@ pub fn get_contents_box_with_header(
     let header_box = gtk::Box::builder().css_classes(["toolbar"]).build();
 
     let server_icon = gtk::Image::builder()
-        .icon_name("server")
+        .icon_name(project_item_type.get_icon())
         .pixel_size(48)
         .build();
     header_box.append(&server_icon);

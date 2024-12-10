@@ -8,6 +8,7 @@ use crate::{
     sql_thread::SqlFunc,
     widgets::{
         project_item::WidgetMode,
+        project_item_model::ProjectItemType,
         project_items::common::{display_item_edit_dialog, get_project_group_names, DialogClamp},
     },
 };
@@ -89,6 +90,7 @@ fn project_poi_contents(
 ) -> (gtk::Box, gtk::Box) {
     let (header_box, vbox) = common::get_contents_box_with_header(
         &poi.desc,
+        ProjectItemType::ProjectPointOfInterest,
         poi.group_name.as_deref(),
         project_group_names,
         common::EnvOrEnvs::None,

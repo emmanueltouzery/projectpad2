@@ -15,6 +15,17 @@ pub enum ProjectItemType {
     ProjectPointOfInterest = 4,
 }
 
+impl ProjectItemType {
+    pub fn get_icon(&self) -> &'static str {
+        match self {
+            ProjectItemType::Server => "server",
+            ProjectItemType::ServerLink => "share-square",
+            ProjectItemType::ProjectNote => "clipboard",
+            ProjectItemType::ProjectPointOfInterest => "cube",
+        }
+    }
+}
+
 mod imp {
     use std::{cell::RefCell, rc::Rc};
 
@@ -68,12 +79,7 @@ impl ProjectItemModel {
         group_name: Option<String>,
     ) -> Self {
         let has_all_envs = Self::project_get_envs(project).is_subset(&environments);
-        let icon = match project_item_type {
-            ProjectItemType::Server => "server",
-            ProjectItemType::ServerLink => "share-square",
-            ProjectItemType::ProjectNote => "clipboard",
-            ProjectItemType::ProjectPointOfInterest => "cube",
-        };
+        let icon = project_item_type.get_icon();
         Object::builder()
             .property("id", id)
             .property("project-item-type", project_item_type as u8)

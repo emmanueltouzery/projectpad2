@@ -1,4 +1,4 @@
-use crate::perform_insert_or_update;
+use crate::{perform_insert_or_update, widgets::project_item_model::ProjectItemType};
 use diesel::prelude::*;
 use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::mpsc};
 
@@ -425,6 +425,7 @@ impl Note {
         let (header_box, vbox) = if note.display_header {
             common::get_contents_box_with_header(
                 &note.title,
+                ProjectItemType::ProjectNote,
                 note.group_name,
                 note.all_group_names,
                 note.env,

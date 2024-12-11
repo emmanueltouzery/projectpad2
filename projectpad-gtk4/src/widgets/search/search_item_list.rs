@@ -254,7 +254,7 @@ impl SearchItemList {
             item.id,
             Some(item.server_id),
             project.id,
-            SearchItemType::ServerNote,
+            SearchItemType::ServerExtraUserAccount,
             item.desc.clone(),
             Env::Prod, // TODO
             Some(project.name.to_owned()),

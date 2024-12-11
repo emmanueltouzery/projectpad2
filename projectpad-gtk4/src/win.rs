@@ -243,6 +243,7 @@ impl ProjectpadApplicationWindow {
                     SearchItemType::ServerWebsite
                     | SearchItemType::ServerNote
                     | SearchItemType::ServerDatabase
+                    | SearchItemType::ServerExtraUserAccount
                     | SearchItemType::ServerPoi => {
                         if level3_item.is_some() {
                             return;
@@ -432,6 +433,17 @@ impl ProjectpadApplicationWindow {
                         use projectpadsql::schema::server_database::dsl as srv_db;
                         (
                             srv_db::server_database
+                                .filter(srv_db::id.eq(item_id.unwrap()))
+                                .select(srv_db::server_id)
+                                .first::<i32>(sql_conn)
+                                .ok(),
+                            item_id,
+                        )
+                    }
+                    Some(SearchItemType::ServerExtraUserAccount) => {
+                        use projectpadsql::schema::server_extra_user_account::dsl as srv_db;
+                        (
+                            srv_db::server_extra_user_account
                                 .filter(srv_db::id.eq(item_id.unwrap()))
                                 .select(srv_db::server_id)
                                 .first::<i32>(sql_conn)

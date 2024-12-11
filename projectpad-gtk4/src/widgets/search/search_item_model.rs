@@ -15,6 +15,7 @@ pub enum SearchItemType {
     ServerNote = 7,
     ServerDatabase = 8,
     ServerPoi = 9,
+    ServerExtraUserAccount = 10,
 }
 
 mod imp {
@@ -110,6 +111,7 @@ impl SearchItemModel {
             SearchItemType::ServerNote => "clipboard",
             SearchItemType::ServerDatabase => "database",
             SearchItemType::ServerPoi => "cube",
+            SearchItemType::ServerExtraUserAccount => "user",
         };
         Object::builder()
             .property("id", id)

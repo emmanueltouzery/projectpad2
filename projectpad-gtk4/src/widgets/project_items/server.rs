@@ -23,6 +23,8 @@ use std::{
 use super::{
     common::{self, DetailsRow, SuffixAction},
     note,
+    project_item_header_edit::ProjectItemHeaderEdit,
+    project_item_header_view::ProjectItemHeaderView,
 };
 
 #[derive(Clone, Debug)]
@@ -266,14 +268,9 @@ fn server_contents(
     project_group_names: &[String],
     widget_mode: WidgetMode,
 ) -> (gtk::Box, gtk::Box) {
-    let (header_box, vbox) = common::get_contents_box_with_header(
-        &server.desc,
-        ProjectItemType::Server,
-        server.group_name.as_deref(),
-        project_group_names,
-        common::EnvOrEnvs::Env(server.environment),
-        widget_mode,
-    );
+    let vbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
 
     // let server_ar = adw::ActionRow::builder().title("Server name").build();
     // server_ar.add_suffix(
@@ -353,6 +350,23 @@ fn server_contents(
 
         server_item0.add(&access_type_combo);
     }
+
+    let header_box = if widget_mode == WidgetMode::Edit {
+        let project_item_header = ProjectItemHeaderEdit::new(
+            ProjectItemType::Server,
+            server.group_name.as_deref(),
+            project_group_names,
+            common::EnvOrEnvs::Env(server.environment),
+        );
+        project_item_header.set_title(server.desc.clone());
+        vbox.append(&project_item_header);
+        project_item_header.header_box()
+    } else {
+        let project_item_header = ProjectItemHeaderView::new(ProjectItemType::Server);
+        project_item_header.set_title(server.desc.clone());
+        vbox.append(&project_item_header);
+        project_item_header.header_box()
+    };
 
     vbox.append(&server_item0);
 

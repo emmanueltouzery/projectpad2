@@ -21,7 +21,11 @@ use crate::{
     },
 };
 
-use super::common::{self, EnvOrEnvs};
+use super::{
+    common::{self, EnvOrEnvs},
+    project_item_header_edit::ProjectItemHeaderEdit,
+    project_item_header_view::ProjectItemHeaderView,
+};
 
 #[derive(Clone)]
 struct NoteInfo<'a> {
@@ -271,7 +275,7 @@ impl Note {
         };
         if note.display_header {
             // project note, we handle the editing
-            let (header_box, vbox) = self.note_contents(
+            let (header_box, vbox, _) = self.note_contents(
                 note.clone(),
                 self.imp().text_view.clone(),
                 self.imp().note_links.clone(),
@@ -337,7 +341,7 @@ impl Note {
                             group_name: _g.as_deref(),
                             all_group_names: &_a
                         };
-                        let (_, vbox) = s.note_contents(n.clone(), tv.clone(), nl.clone(), np.clone(), hi.clone(), WidgetMode::Edit);
+                        let (_, vbox, project_item_header_edit) = s.note_contents(n.clone(), tv.clone(), nl.clone(), np.clone(), hi.clone(), WidgetMode::Edit);
                         vbox.set_margin_start(30);
                         vbox.set_margin_end(30);
 
@@ -345,9 +349,10 @@ impl Note {
                         let ttv = tv.clone();
                         let project_note_id = note.id;
                         let s = _s.clone();
+                        let h_e = project_item_header_edit.clone();
                         save_btn.connect_clicked(move |_| {
-                            match &*ttv.borrow() {
-                                ViewOrTextView::View(v) => {
+                            match (&*ttv.borrow(), &h_e) {
+                                ( ViewOrTextView::View(v), Some(header_edit) ) => {
                                     let buf = v.buffer();
                                     let start_iter = buf.start_iter();
                                     let end_iter = buf.end_iter();
@@ -355,11 +360,12 @@ impl Note {
                                     let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
                                     let (sender, receiver) = async_channel::bounded(1);
                                     let db_sender = app.unwrap().get_sql_channel();
+                                    let title = header_edit.title();
                                     db_sender
                                         .send(SqlFunc::new(move |sql_conn| {
                                             use projectpadsql::schema::project_note::dsl as prj_note;
                                             let changeset = (
-                                                // prj_note::title.eq(new_title.as_str()),
+                                                prj_note::title.eq(title.as_str()),
                                                 // // never store Some("") for group, we want None then.
                                                 // prj_note::group_name.eq(new_group
                                                 //     .as_ref()
@@ -421,19 +427,10 @@ impl Note {
         note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
         header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
         widget_mode: WidgetMode,
-    ) -> (gtk::Box, gtk::Box) {
-        let (header_box, vbox) = if note.display_header {
-            common::get_contents_box_with_header(
-                &note.title,
-                ProjectItemType::ProjectNote,
-                note.group_name,
-                note.all_group_names,
-                note.env,
-                widget_mode,
-            )
-        } else {
-            (gtk::Box::builder().build(), gtk::Box::builder().build())
-        };
+    ) -> (gtk::Box, gtk::Box, Option<ProjectItemHeaderEdit>) {
+        let vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
 
         let (note_view, scrolled_window) = Self::get_note_contents_widget(
             text_view_field,
@@ -458,9 +455,27 @@ impl Note {
             .build()]);
         self.insert_action_group("menu_actions", Some(&action_group));
 
+        let (maybe_project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
+            let project_item_header = ProjectItemHeaderEdit::new(
+                ProjectItemType::ProjectNote,
+                note.group_name,
+                note.all_group_names,
+                note.env,
+            );
+            project_item_header.set_title(note.title);
+            vbox.append(&project_item_header);
+            let hbox = project_item_header.header_box();
+            (Some(project_item_header), hbox)
+        } else {
+            let project_item_header = ProjectItemHeaderView::new(ProjectItemType::ProjectNote);
+            project_item_header.set_title(note.title);
+            vbox.append(&project_item_header);
+            (None, project_item_header.header_box())
+        };
+
         vbox.append(&note_view);
 
-        (header_box, vbox)
+        (header_box, vbox, maybe_project_item_header_edit)
     }
 
     pub fn get_note_contents_widget(

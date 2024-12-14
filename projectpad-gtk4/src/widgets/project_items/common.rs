@@ -125,10 +125,7 @@ pub fn get_project_group_names(
     project_group_names_no_options
 }
 
-/// for the group names, i could require just the project id,
-/// but the problem are notes, for which we share the code
-/// between project notes and server notes (and these are
-/// different groups...)
+/// TODO delete me -- should be replaced by ProjectItemHeaderView/Edit
 pub fn get_contents_box_with_header(
     title: &str,
     project_item_type: ProjectItemType,
@@ -162,23 +159,23 @@ pub fn get_contents_box_with_header(
         .build();
 
     if widget_mode == WidgetMode::Edit {
-        let server = gtk::Entry::builder()
+        let title_entry = gtk::Entry::builder() //
             .text(title)
             .halign(gtk::Align::Fill)
             .hexpand(true)
             .css_classes(["title-1"])
             // .description("desc")
             .build();
-        header_second_col.append(&server);
+        header_second_col.append(&title_entry);
     } else {
-        let server = gtk::Label::builder()
+        let title_label = gtk::Label::builder()
             .label(title)
             .wrap(true)
             .halign(gtk::Align::Start)
             .css_classes(["title-1"])
             // .description("desc")
             .build();
-        header_second_col.append(&server);
+        header_second_col.append(&title_label);
     }
 
     header_box.append(&header_second_col);

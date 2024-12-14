@@ -13,7 +13,11 @@ use crate::{
     },
 };
 
-use super::common::{self, DetailsRow, SuffixAction};
+use super::{
+    common::{self, DetailsRow, SuffixAction},
+    project_item_header_edit::ProjectItemHeaderEdit,
+    project_item_header_view::ProjectItemHeaderView,
+};
 
 pub fn load_and_display_project_poi(
     parent: &adw::Bin,
@@ -88,14 +92,26 @@ fn project_poi_contents(
     project_group_names: &[String],
     widget_mode: WidgetMode,
 ) -> (gtk::Box, gtk::Box) {
-    let (header_box, vbox) = common::get_contents_box_with_header(
-        &poi.desc,
-        ProjectItemType::ProjectPointOfInterest,
-        poi.group_name.as_deref(),
-        project_group_names,
-        common::EnvOrEnvs::None,
-        widget_mode,
-    );
+    let vbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    let header_box = if widget_mode == WidgetMode::Edit {
+        let project_item_header = ProjectItemHeaderEdit::new(
+            ProjectItemType::ProjectPointOfInterest,
+            poi.group_name.as_deref(),
+            project_group_names,
+            common::EnvOrEnvs::None,
+        );
+        project_item_header.set_title(poi.desc.clone());
+        vbox.append(&project_item_header);
+        project_item_header.header_box()
+    } else {
+        let project_item_header =
+            ProjectItemHeaderView::new(ProjectItemType::ProjectPointOfInterest);
+        project_item_header.set_title(poi.desc.clone());
+        vbox.append(&project_item_header);
+        project_item_header.header_box()
+    };
 
     let (desc, idx) = match poi.interest_type {
         InterestType::PoiApplication => ("Application", 0),

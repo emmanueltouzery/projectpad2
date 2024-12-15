@@ -1,6 +1,6 @@
 use crate::{perform_insert_or_update, widgets::project_item_model::ProjectItemType};
 use diesel::prelude::*;
-use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::mpsc};
+use std::{collections::HashSet, sync::mpsc};
 
 use adw::prelude::*;
 use glib::property::PropertySet;
@@ -22,8 +22,7 @@ use crate::{
 };
 
 use super::{
-    common::{self, EnvOrEnvs},
-    project_item_header_edit::ProjectItemHeaderEdit,
+    common::EnvOrEnvs, project_item_header_edit::ProjectItemHeaderEdit,
     project_item_header_view::ProjectItemHeaderView,
 };
 
@@ -38,17 +37,14 @@ struct NoteInfo<'a> {
     all_group_names: &'a [String],
 }
 
-#[derive(Clone, Debug, Default)]
-pub enum ViewOrTextView {
-    View(sourceview5::View),
-    TextView(gtk::TextView),
-    #[default]
-    None,
+#[derive(Debug)]
+pub struct NoteMetaData {
+    pub note_links: Vec<ItemDataInfo>,
+    pub note_passwords: Vec<ItemDataInfo>,
+    pub header_iters: Vec<gtk::TextIter>,
 }
 
 mod imp {
-    use crate::notes::ItemDataInfo;
-
     use super::*;
     use gtk::subclass::{
         prelude::{ObjectImpl, ObjectSubclass},
@@ -71,11 +67,8 @@ mod imp {
         #[property(get, set)]
         pub server_note_id: Cell<i32>,
 
-        pub text_view: Rc<RefCell<ViewOrTextView>>,
-
-        pub note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
-        pub note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
-        pub header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
+        pub text_view: Rc<RefCell<Option<(gtk::TextView, NoteMetaData)>>>,
+        pub text_edit: Rc<RefCell<Option<sourceview5::View>>>,
     }
 
     #[glib::object_subclass]
@@ -84,11 +77,11 @@ mod imp {
         type ParentType = adw::Bin;
         type Type = super::Note;
 
-        fn class_init(klass: &mut Self::Class) {
+        fn class_init(_klass: &mut Self::Class) {
             // Self::bind_template(klass);
         }
 
-        fn instance_init(obj: &subclass::InitializingObject<Self>) {
+        fn instance_init(_obj: &subclass::InitializingObject<Self>) {
             // obj.init_template();
         }
     }
@@ -275,14 +268,7 @@ impl Note {
         };
         if note.display_header {
             // project note, we handle the editing
-            let (header_box, vbox, _) = self.note_contents(
-                note.clone(),
-                self.imp().text_view.clone(),
-                self.imp().note_links.clone(),
-                self.imp().note_passwords.clone(),
-                self.imp().header_iters.clone(),
-                WidgetMode::Show,
-            );
+            let (header_box, vbox, _) = self.note_contents(note.clone(), WidgetMode::Show);
 
             let toc_btn = gtk::MenuButton::builder()
                 .icon_name("list-ol")
@@ -309,14 +295,11 @@ impl Note {
                 .build();
             header_box.append(&delete_btn);
 
-            let note_links = self.imp().note_links.clone();
-            let note_passwords = self.imp().note_passwords.clone();
-            let header_iters = self.imp().header_iters.clone();
             let t = note.title.to_owned();
             let c = note.contents.to_owned();
             let g = note.group_name.map(|g| g.to_owned());
             let a = note.all_group_names.to_vec();
-            let tv_var = self.imp().text_view.clone();
+            let tv_var = self.imp().text_edit.clone();
             let s = self.clone();
 
             edit_btn.connect_closure(
@@ -328,10 +311,7 @@ impl Note {
                                          @strong g as _g,
                                          @strong a as _a,
                                          @strong tv_var as tv,
-                                         @strong vbox as v,
-                                         @strong note_links as nl,
-                                         @strong note_passwords as np,
-                                         @strong header_iters as hi => move |_b: gtk::Button| {
+                                         @strong vbox as v => move |_b: gtk::Button| {
                         let n = NoteInfo {
                             id: note.id,
                             title: &_t,
@@ -341,7 +321,7 @@ impl Note {
                             group_name: _g.as_deref(),
                             all_group_names: &_a
                         };
-                        let (_, vbox, project_item_header_edit) = s.note_contents(n.clone(), tv.clone(), nl.clone(), np.clone(), hi.clone(), WidgetMode::Edit);
+                        let (_, vbox, project_item_header_edit) = s.note_contents(n.clone(),  WidgetMode::Edit);
                         vbox.set_margin_start(30);
                         vbox.set_margin_end(30);
 
@@ -352,7 +332,7 @@ impl Note {
                         let h_e = project_item_header_edit.clone();
                         save_btn.connect_clicked(move |_| {
                             match (&*ttv.borrow(), &h_e) {
-                                ( ViewOrTextView::View(v), Some(header_edit) ) => {
+                                ( Some(v), Some(header_edit) ) => {
                                     let buf = v.buffer();
                                     let start_iter = buf.start_iter();
                                     let end_iter = buf.end_iter();
@@ -405,16 +385,7 @@ impl Note {
             self.set_child(Some(&vbox));
         } else {
             // server note, the parent handles the editing
-            let vbox = self
-                .note_contents(
-                    note,
-                    self.imp().text_view.clone(),
-                    self.imp().note_links.clone(),
-                    self.imp().note_passwords.clone(),
-                    self.imp().header_iters.clone(),
-                    widget_mode,
-                )
-                .1;
+            let vbox = self.note_contents(note, widget_mode).1;
             self.set_child(Some(&vbox));
         }
     }
@@ -422,38 +393,33 @@ impl Note {
     fn note_contents(
         &self,
         note: NoteInfo,
-        text_view_field: Rc<RefCell<ViewOrTextView>>,
-        note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
-        note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
-        header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
         widget_mode: WidgetMode,
     ) -> (gtk::Box, gtk::Box, Option<ProjectItemHeaderEdit>) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
 
-        let (note_view, scrolled_window) = Self::get_note_contents_widget(
-            text_view_field,
-            note_links,
-            note_passwords,
-            header_iters,
-            &note.contents,
-            widget_mode,
-        );
+        let (note_view, scrolled_window) =
+            self.get_note_contents_widget(&note.contents, widget_mode);
 
-        let action_group = gio::SimpleActionGroup::new();
-        let h_i = self.imp().header_iters.borrow().clone();
-        action_group.add_action_entries([gio::ActionEntry::builder("jump_to_header")
-            .parameter_type(Some(&i32::static_variant_type()))
-            .activate(move |_, _action, parameter| {
-                let idx = parameter.unwrap().get::<i32>().unwrap();
-                if let Some(tv) = scrolled_window.child().and_downcast::<gtk::TextView>() {
-                    let mut target_iter = h_i[usize::try_from(idx).unwrap()].clone();
-                    tv.scroll_to_iter(&mut target_iter, 0.0, true, 0.0, 0.0);
-                }
-            })
-            .build()]);
-        self.insert_action_group("menu_actions", Some(&action_group));
+        match (widget_mode, &*self.imp().text_view.borrow()) {
+            (WidgetMode::Show, Some((_, note_metadata))) => {
+                let action_group = gio::SimpleActionGroup::new();
+                let h_i = note_metadata.header_iters.clone();
+                action_group.add_action_entries([gio::ActionEntry::builder("jump_to_header")
+                    .parameter_type(Some(&i32::static_variant_type()))
+                    .activate(move |_, _action, parameter| {
+                        let idx = parameter.unwrap().get::<i32>().unwrap();
+                        if let Some(tv) = scrolled_window.child().and_downcast::<gtk::TextView>() {
+                            let mut target_iter = h_i[usize::try_from(idx).unwrap()].clone();
+                            tv.scroll_to_iter(&mut target_iter, 0.0, true, 0.0, 0.0);
+                        }
+                    })
+                    .build()]);
+                self.insert_action_group("menu_actions", Some(&action_group));
+            }
+            _ => {}
+        }
 
         let (maybe_project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
             let project_item_header = ProjectItemHeaderEdit::new(
@@ -479,10 +445,7 @@ impl Note {
     }
 
     pub fn get_note_contents_widget(
-        text_view_field: Rc<RefCell<ViewOrTextView>>,
-        note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
-        note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
-        header_iters: Rc<RefCell<Vec<gtk::TextIter>>>,
+        &self,
         contents: &str,
         widget_mode: WidgetMode,
     ) -> (gtk::Widget, gtk::ScrolledWindow) {
@@ -498,16 +461,15 @@ impl Note {
                 .bottom_margin(10)
                 .editable(false)
                 .build();
-            Self::register_events(
-                note_links.clone(),
-                note_passwords.clone(),
-                &text_view,
-                &toast_parent,
-            );
-            note_links.set(note_buffer_info.links);
-            note_passwords.set(note_buffer_info.passwords);
-            header_iters.set(note_buffer_info.header_iters);
-            text_view_field.set(ViewOrTextView::TextView(text_view.clone()));
+            self.imp().text_view.set(Some((
+                text_view.clone(),
+                NoteMetaData {
+                    note_links: note_buffer_info.links,
+                    note_passwords: note_buffer_info.passwords,
+                    header_iters: note_buffer_info.header_iters,
+                },
+            )));
+            self.register_events(&text_view, &toast_parent);
             text_view.upcast::<gtk::Widget>()
         } else {
             let buf = sourceview5::Buffer::with_language(
@@ -525,7 +487,7 @@ impl Note {
             buf.set_text(contents);
             let view = sourceview5::View::with_buffer(&buf);
             view.set_vexpand(true);
-            text_view_field.set(ViewOrTextView::View(view.clone()));
+            self.imp().text_edit.set(Some(view.clone()));
             view.upcast::<gtk::Widget>() // TODO buffer_iters?
         };
 
@@ -554,14 +516,16 @@ impl Note {
                 r.set_reveal_child(false);
             }),
         );
-        let tv = text_view_field.clone();
+        let tv = self.imp().text_view.clone();
+        let te = self.imp().text_edit.clone();
         search_bar.connect_closure(
             "search-changed",
             false,
             glib::closure_local!(move |_: SearchBar, search: String| {
                 let cur_tv = &*tv.borrow();
-                match cur_tv {
-                    ViewOrTextView::View(v) => Self::apply_search(
+                let cur_te = &*te.borrow();
+                match (widget_mode, cur_tv, cur_te) {
+                    (WidgetMode::Show, Some((v, _)), _) => Self::apply_search(
                         v,
                         v.buffer().start_iter().forward_search(
                             &search,
@@ -569,7 +533,7 @@ impl Note {
                             None,
                         ),
                     ),
-                    ViewOrTextView::TextView(tv) => Self::apply_search(
+                    (WidgetMode::Edit, _, Some(tv)) => Self::apply_search(
                         tv,
                         tv.buffer().start_iter().forward_search(
                             &search,
@@ -581,28 +545,36 @@ impl Note {
                 }
             }),
         );
-        let tv2 = text_view_field.clone();
+        let tv2 = self.imp().text_view.clone();
+        let te2 = self.imp().text_edit.clone();
         search_bar.connect_closure(
             "prev-pressed",
             false,
             glib::closure_local!(move |_: SearchBar, search: String| {
                 let cur_tv = tv2.borrow();
-                match &*cur_tv {
-                    ViewOrTextView::View(v) => Self::note_search_previous(v, Some(&search)),
-                    ViewOrTextView::TextView(tv) => Self::note_search_previous(tv, Some(&search)),
+                let cur_te = te2.borrow();
+                match (widget_mode, &*cur_tv, &*cur_te) {
+                    (WidgetMode::Show, Some((v, _)), _) => {
+                        Self::note_search_previous(v, Some(&search))
+                    }
+                    (WidgetMode::Edit, _, Some(tv)) => {
+                        Self::note_search_previous(tv, Some(&search))
+                    }
                     _ => {}
                 }
             }),
         );
-        let tv3 = text_view_field.clone();
+        let tv3 = self.imp().text_view.clone();
+        let te3 = self.imp().text_edit.clone();
         search_bar.connect_closure(
             "next-pressed",
             false,
             glib::closure_local!(move |_: SearchBar, search: String| {
                 let cur_tv = tv3.borrow();
-                match &*cur_tv {
-                    ViewOrTextView::View(v) => Self::note_search_next(v, Some(&search)),
-                    ViewOrTextView::TextView(tv) => Self::note_search_next(tv, Some(&search)),
+                let cur_te = te3.borrow();
+                match (widget_mode, &*cur_tv, &*cur_te) {
+                    (WidgetMode::Show, Some((v, _)), _) => Self::note_search_next(v, Some(&search)),
+                    (WidgetMode::Edit, _, Some(tv)) => Self::note_search_next(tv, Some(&search)),
                     _ => {}
                 }
             }),
@@ -677,12 +649,7 @@ impl Note {
         }
     }
 
-    fn register_events(
-        note_links: Rc<RefCell<Vec<ItemDataInfo>>>,
-        note_passwords: Rc<RefCell<Vec<ItemDataInfo>>>,
-        text_view: &gtk::TextView,
-        toast_parent: &adw::ToastOverlay,
-    ) {
+    fn register_events(&self, text_view: &gtk::TextView, toast_parent: &adw::ToastOverlay) {
         let gesture_ctrl = gtk::GestureClick::new();
         let tv = text_view.clone();
 
@@ -691,54 +658,67 @@ impl Note {
 
         let copy_password_action =
             gio::SimpleAction::new("copy-password", Some(&i32::static_variant_type()));
-        let sp = note_passwords.clone();
+        let tv1 = self.imp().text_view.clone();
         let tp = toast_parent.clone();
         copy_password_action.connect_activate(move |_action, parameter| {
             // println!("{} / {:#?}", action, parameter);
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
-            if let Some(p) = sp.borrow().get(password_index) {
-                copy_to_clipboard(&p.data);
-                tp.add_toast(adw::Toast::new("Password copied to the clipboard"));
+            if let Some((_, note_metadata)) = &*tv1.borrow() {
+                if let Some(p) = note_metadata.note_passwords.get(password_index) {
+                    copy_to_clipboard(&p.data);
+                    tp.add_toast(adw::Toast::new("Password copied to the clipboard"));
+                }
             }
         });
         action_group.add_action(&copy_password_action);
 
         let reveal_password_action =
             gio::SimpleAction::new("reveal-password", Some(&i32::static_variant_type()));
-        let sp = note_passwords.clone();
+        let tv2 = self.imp().text_view.clone();
         let tp = toast_parent.clone();
         reveal_password_action.connect_activate(move |action, parameter| {
             // println!("{} / {:#?}", action, parameter);
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
-            if let Some(p) = sp.borrow().get(password_index) {
-                tp.add_toast(adw::Toast::new(&format!("The password is: {}", p.data)));
+            if let Some((_, note_metadata)) = &*tv2.borrow() {
+                if let Some(p) = note_metadata.note_passwords.get(password_index) {
+                    tp.add_toast(adw::Toast::new(&format!("The password is: {}", p.data)));
+                }
             }
         });
         action_group.add_action(&reveal_password_action);
 
-        let tv2 = tv.clone();
+        let tv3 = self.imp().text_view.clone();
         gesture_ctrl.connect_released(move |_gesture, _n, x, y| {
-            let (bx, by) =
-                tv2.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
-            if let Some(iter) = tv2.iter_at_location(bx, by) {
-                let offset = iter.offset();
-                if Self::iter_matches_tags(&iter, &[notes::TAG_LINK, notes::TAG_PASSWORD]) {
-                    if let Some(link) = note_links
-                        .borrow()
-                        .iter()
-                        .find(|l| l.start_offset <= offset && l.end_offset > offset)
-                    {
-                        gtk::UriLauncher::new(&link.data).launch(
-                            None::<&gtk::Window>,
-                            None::<&gio::Cancellable>,
-                            |_| {},
-                        );
-                    } else if let Some(pass_idx) = note_passwords
-                        .borrow()
-                        .iter()
-                        .position(|l| l.start_offset <= offset && l.end_offset > offset)
-                    {
-                        Self::password_popover(&tv2, pass_idx, &tv2.iter_location(&iter));
+            if let Some((tv_widget, note_metadata)) = &*tv3.borrow() {
+                let (bx, by) = tv_widget.window_to_buffer_coords(
+                    gtk::TextWindowType::Widget,
+                    x as i32,
+                    y as i32,
+                );
+                if let Some(iter) = tv_widget.iter_at_location(bx, by) {
+                    let offset = iter.offset();
+                    if Self::iter_matches_tags(&iter, &[notes::TAG_LINK, notes::TAG_PASSWORD]) {
+                        if let Some(link) = note_metadata
+                            .note_links
+                            .iter()
+                            .find(|l| l.start_offset <= offset && l.end_offset > offset)
+                        {
+                            gtk::UriLauncher::new(&link.data).launch(
+                                None::<&gtk::Window>,
+                                None::<&gio::Cancellable>,
+                                |_| {},
+                            );
+                        } else if let Some(pass_idx) = note_metadata
+                            .note_passwords
+                            .iter()
+                            .position(|l| l.start_offset <= offset && l.end_offset > offset)
+                        {
+                            Self::password_popover(
+                                &tv_widget,
+                                pass_idx,
+                                &tv_widget.iter_location(&iter),
+                            );
+                        }
                     }
                 }
             }

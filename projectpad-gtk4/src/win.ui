@@ -117,12 +117,15 @@
                             <property name="child">
                               <object class="AdwToolbarView" id="project_toolbar_view">
                                 <property name="reveal-top-bars">False</property>
-                                <property name="top-bar-style">ADW_TOOLBAR_RAISED</property>
+                                <property name="top-bar-style">ADW_TOOLBAR_FLAT</property>
                                 <property name="extend-content-to-top-edge">True</property>
                                 <child type="top">
                                   <object class="GtkBox">
+                                  <property name="halign">center</property>
+                                  <property name="width-request">400</property>
                                     <style>
                                       <class name="toolbar"/>
+                                      <class name="card"/>
                                     </style>
                                     <child>
                                       <object class="GtkLabel" id="project_item_header_label">

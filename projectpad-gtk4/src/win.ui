@@ -126,6 +126,7 @@
                                     <style>
                                       <class name="toolbar"/>
                                       <class name="card"/>
+                                      <class name="view"/>
                                     </style>
                                     <child>
                                       <object class="GtkLabel" id="project_item_header_label">

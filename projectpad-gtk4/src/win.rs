@@ -289,6 +289,21 @@ impl ProjectpadApplicationWindow {
             }),
             );
 
+        // hide top bar when the mouse is over it, so the user can
+        // trigger actions underneath it (esp since we make it not take
+        // the full width and transparent on the edges)
+        let motion_controller = gtk::EventControllerMotion::new();
+        let top_bar_view = win.imp().project_toolbar_view.clone();
+        let w = win.clone();
+        motion_controller.connect_motion(move |_, _x, y| {
+            if y <= top_bar_view.top_bar_height().into() {
+                w.imp().project_toolbar_view.set_reveal_top_bars(false);
+            }
+        });
+        win.imp()
+            .project_toolbar_view
+            .add_controller(motion_controller);
+
         win
     }
 

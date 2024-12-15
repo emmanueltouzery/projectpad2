@@ -176,12 +176,7 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .left_margin(50)
             .build(),
     );
-    tag_table.add(
-        &gtk::TextTag::builder()
-            .name(TAG_SEARCH_HIGHLIGHT)
-            .background_rgba(&gdk::RGBA::parse("#8a7825").unwrap())
-            .build(),
-    );
+    tag_table.add(&text_tag_search_match());
 
     // explanation on how the list items are implemented:
     // https://stackoverflow.com/a/63291090/516188
@@ -204,6 +199,13 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .build(),
     );
     tag_table
+}
+
+pub fn text_tag_search_match() -> gtk::TextTag {
+    gtk::TextTag::builder()
+        .name(TAG_SEARCH_HIGHLIGHT)
+        .background_rgba(&gdk::RGBA::parse("#8a7825").unwrap())
+        .build()
 }
 
 #[derive(Debug)]

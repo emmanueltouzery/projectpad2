@@ -1,5 +1,6 @@
 use crate::{
-    notes::TAG_SEARCH_HIGHLIGHT, perform_insert_or_update,
+    notes::{text_tag_search_match, TAG_SEARCH_HIGHLIGHT},
+    perform_insert_or_update,
     widgets::project_item_model::ProjectItemType,
 };
 use diesel::prelude::*;
@@ -480,6 +481,9 @@ impl Note {
                     .language("markdown")
                     .unwrap(),
             );
+            buf.upcast_ref::<gtk::TextBuffer>()
+                .tag_table()
+                .add(&text_tag_search_match());
             // https://stackoverflow.com/a/63351603/516188
             // TODO don't hardcode sourceview to dark mode
             // dbg!(&sourceview5::StyleSchemeManager::default().scheme_ids());

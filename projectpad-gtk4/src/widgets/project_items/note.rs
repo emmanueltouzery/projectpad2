@@ -433,13 +433,17 @@ impl Note {
                 note.env,
             );
             project_item_header.set_title(note.title);
-            vbox.append(&project_item_header);
+            if note.display_header {
+                vbox.append(&project_item_header);
+            }
             let hbox = project_item_header.header_box();
             (Some(project_item_header), hbox)
         } else {
             let project_item_header = ProjectItemHeaderView::new(ProjectItemType::ProjectNote);
             project_item_header.set_title(note.title);
-            vbox.append(&project_item_header);
+            if note.display_header {
+                vbox.append(&project_item_header);
+            }
             (None, project_item_header.header_box())
         };
 

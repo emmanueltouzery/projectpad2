@@ -270,6 +270,7 @@ fn server_contents(
 ) -> (gtk::Box, gtk::Box) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
+        .spacing(10)
         .build();
 
     // let server_ar = adw::ActionRow::builder().title("Server name").build();

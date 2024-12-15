@@ -1,6 +1,9 @@
-use crate::{perform_insert_or_update, widgets::project_item_model::ProjectItemType};
+use crate::{
+    notes::TAG_SEARCH_HIGHLIGHT, perform_insert_or_update,
+    widgets::project_item_model::ProjectItemType,
+};
 use diesel::prelude::*;
-use std::{collections::HashSet, sync::mpsc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::mpsc};
 
 use adw::prelude::*;
 use glib::property::PropertySet;
@@ -509,11 +512,14 @@ impl Note {
         toast_parent.set_child(Some(&overlay));
 
         let r = revealer.clone();
+        let tv = self.imp().text_view.clone();
+        let te = self.imp().text_edit.clone();
         search_bar.connect_closure(
             "esc-pressed",
             false,
             glib::closure_local!(move |_: SearchBar| {
                 r.set_reveal_child(false);
+                Self::clear_search(widget_mode, tv.clone(), te.clone());
             }),
         );
         let tv = self.imp().text_view.clone();
@@ -592,6 +598,8 @@ impl Note {
         };
 
         let key_controller = gtk::EventControllerKey::new();
+        let tv = self.imp().text_view.clone();
+        let te = self.imp().text_edit.clone();
         key_controller.connect_key_pressed(move |_controller, keyval, _keycode, state| {
             if keyval.to_unicode() == Some('f') && state.contains(gdk::ModifierType::CONTROL_MASK) {
                 revealer.set_reveal_child(true);
@@ -600,6 +608,7 @@ impl Note {
             }
             if keyval == gdk::Key::Escape {
                 revealer.set_reveal_child(false);
+                Self::clear_search(widget_mode, tv.clone(), te.clone());
                 return glib::Propagation::Stop;
             }
             glib::Propagation::Proceed // Allow other handlers to process the event
@@ -609,17 +618,38 @@ impl Note {
         (widget, scrolled_text_view)
     }
 
+    fn clear_search(
+        widget_mode: WidgetMode,
+        tv: Rc<RefCell<Option<(gtk::TextView, NoteMetaData)>>>,
+        te: Rc<RefCell<Option<sourceview5::View>>>,
+    ) {
+        let cur_tv = &*tv.borrow();
+        let cur_te = &*te.borrow();
+        let buffer = match (widget_mode, cur_tv, cur_te) {
+            (WidgetMode::Show, Some((v, _)), _) => v.buffer(),
+            (WidgetMode::Edit, _, Some(tv)) => tv.buffer(),
+            _ => {
+                panic!()
+            }
+        };
+        buffer.remove_tag_by_name(
+            TAG_SEARCH_HIGHLIGHT,
+            &buffer.start_iter(),
+            &buffer.end_iter(),
+        );
+    }
+
     fn note_search_next<T>(textview: &T, note_search_text: Option<&str>)
     where
         T: TextViewExt,
     {
         let buffer = textview.buffer();
-        if let (Some((_start, end)), Some(search)) =
-            (buffer.selection_bounds(), note_search_text.clone())
-        {
+        if let Some(search) = note_search_text.clone() {
             Self::apply_search(
                 textview,
-                end.forward_search(&search, gtk::TextSearchFlags::all(), None),
+                buffer
+                    .iter_at_offset(buffer.cursor_position() + 1)
+                    .forward_search(&search, gtk::TextSearchFlags::all(), None),
             );
         }
     }
@@ -629,12 +659,12 @@ impl Note {
         T: TextViewExt,
     {
         let buffer = textview.buffer();
-        if let (Some((start, _end)), Some(search)) =
-            (buffer.selection_bounds(), note_search_text.clone())
-        {
+        if let Some(search) = note_search_text.clone() {
             Self::apply_search(
                 textview,
-                start.backward_search(&search, gtk::TextSearchFlags::all(), None),
+                buffer
+                    .iter_at_offset(buffer.cursor_position())
+                    .backward_search(&search, gtk::TextSearchFlags::all(), None),
             );
         }
     }
@@ -643,9 +673,18 @@ impl Note {
     where
         T: TextViewExt,
     {
+        textview.buffer().remove_tag_by_name(
+            TAG_SEARCH_HIGHLIGHT,
+            &textview.buffer().start_iter(),
+            &textview.buffer().end_iter(),
+        );
         if let Some((mut start, end)) = range {
-            textview.buffer().select_range(&start, &end);
+            textview
+                .buffer()
+                .apply_tag_by_name(TAG_SEARCH_HIGHLIGHT, &start, &end);
             textview.scroll_to_iter(&mut start, 0.0, false, 0.0, 0.0);
+            textview.buffer().place_cursor(&start); // so that previous and next work, i need to
+                                                    // know where i "am" now
         }
     }
 

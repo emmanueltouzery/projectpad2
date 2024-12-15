@@ -1,5 +1,5 @@
 use glib::translate::IntoGlib;
-use gtk::prelude::*;
+use gtk::{gdk, prelude::*};
 use pulldown_cmark::{Event, Options, Parser, Tag};
 use std::collections::HashMap;
 
@@ -80,6 +80,7 @@ const TAG_PARAGRAPH: &str = "paragraph";
 const TAG_BLOCKQUOTE1: &str = "blockquote1";
 const TAG_BLOCKQUOTE2: &str = "blockquote2";
 const TAG_BLOCKQUOTE3: &str = "blockquote3";
+pub const TAG_SEARCH_HIGHLIGHT: &str = "search_highlight";
 
 // TODO call only once in the app lifetime
 pub fn build_tag_table() -> gtk::TextTagTable {
@@ -173,6 +174,12 @@ pub fn build_tag_table() -> gtk::TextTagTable {
             .wrap_mode(gtk::WrapMode::Word)
             .left_margin(50)
             .left_margin(50)
+            .build(),
+    );
+    tag_table.add(
+        &gtk::TextTag::builder()
+            .name(TAG_SEARCH_HIGHLIGHT)
+            .background_rgba(&gdk::RGBA::parse("#8a7825").unwrap())
             .build(),
     );
 

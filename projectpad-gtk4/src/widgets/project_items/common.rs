@@ -5,13 +5,7 @@ use diesel::prelude::*;
 use gtk::gdk;
 use projectpadsql::{models::EnvironmentType, schema};
 
-use crate::{
-    app::ProjectpadApplication,
-    widgets::{
-        environment_list_picker::EnvironmentListPicker, environment_picker::EnvironmentPicker,
-        project_item::WidgetMode, project_item_model::ProjectItemType,
-    },
-};
+use crate::{app::ProjectpadApplication, widgets::project_item::WidgetMode};
 
 #[derive(Clone)]
 pub enum EnvOrEnvs {

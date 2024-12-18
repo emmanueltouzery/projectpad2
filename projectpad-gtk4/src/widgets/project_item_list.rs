@@ -3,15 +3,15 @@ use std::{
     sync::mpsc,
 };
 
+use adw::prelude::*;
 use diesel::prelude::*;
 use glib::*;
-use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
 use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server, ServerLink};
 
-use crate::sql_thread::SqlFunc;
+use crate::{app::ProjectpadApplication, sql_thread::SqlFunc};
 
 use super::{
     project_item_list_model::ProjectItemListModel,
@@ -52,6 +52,9 @@ mod imp {
         #[template_child]
         pub project_item_list: TemplateChild<gtk::ListView>,
 
+        #[template_child]
+        pub add_project_item: TemplateChild<gtk::Button>,
+
         #[property(get, set)]
         edit_mode: Cell<bool>,
     }
@@ -75,6 +78,9 @@ mod imp {
     impl ObjectImpl for ProjectItemList {
         fn constructed(&self) {
             self.obj().init_list();
+
+            self.add_project_item
+                .connect_clicked(|_| super::ProjectItemList::display_add_project_item_dialog());
         }
 
         fn signals() -> &'static [Signal] {
@@ -441,5 +447,115 @@ impl ProjectItemList {
             }
             None => (Vec::new(), Vec::new(), Vec::new(), Vec::new()),
         }
+    }
+
+    fn create_project_item_box(
+        icon_name: &'static str,
+        title: &'static str,
+        subtitle: &'static str,
+    ) -> gtk::Box {
+        let btn_vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        btn_vbox.append(
+            &gtk::Label::builder()
+                .css_classes(["header"])
+                .label(title)
+                .halign(gtk::Align::Start)
+                .build(),
+        );
+        btn_vbox.append(
+            &gtk::Label::builder()
+                .css_classes(["dim-label"])
+                .label(subtitle)
+                .halign(gtk::Align::Start)
+                .build(),
+        );
+
+        let btn_hbox = gtk::Box::builder().spacing(10).build();
+        btn_hbox.append(
+            &gtk::Image::builder()
+                .icon_name(icon_name)
+                .icon_size(gtk::IconSize::Large)
+                .build(),
+        );
+        btn_hbox.append(&btn_vbox);
+        btn_hbox
+    }
+
+    fn display_add_project_item_dialog() {
+        let vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+
+        let header_bar = adw::HeaderBar::builder()
+            .show_end_title_buttons(false)
+            .show_start_title_buttons(false)
+            .build();
+
+        let cancel_btn = gtk::Button::builder().label("Cancel").build();
+        header_bar.pack_start(&cancel_btn);
+        vbox.append(&header_bar);
+
+        let cbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .margin_top(15)
+            .margin_start(15)
+            .margin_end(15)
+            .margin_bottom(15)
+            .spacing(10)
+            .build();
+
+        cbox.append(
+            &gtk::Button::builder()
+                .child(&Self::create_project_item_box(
+                    "server",
+                    "Add server",
+                    "machines or virtual machines, with their own IP.",
+                ))
+                .build(),
+        );
+        cbox.append(
+            &gtk::Button::builder()
+                .child(&Self::create_project_item_box(
+                    "cube",
+                    "Add point of interest",
+                    "commands to run or relevant files or folders.",
+                ))
+                .build(),
+        );
+        cbox.append(
+            &gtk::Button::builder()
+                .child(&Self::create_project_item_box(
+                    "clipboard",
+                    "Add project note",
+                    "markdown-formatted text containing free-form text.",
+                ))
+                .build(),
+        );
+        cbox.append(
+            &gtk::Button::builder()
+                .child(&Self::create_project_item_box(
+                    "link",
+                    "Add server link",
+                    "when a server is shared, we can enter it just once and 'link' to it.",
+                ))
+                .build(),
+        );
+        vbox.append(&cbox);
+
+        let dialog = adw::Dialog::builder()
+            .title("Add project item")
+            .child(&vbox)
+            .build();
+        let dlg = dialog.clone();
+        cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
+            dlg.close();
+        });
+
+        let app = gio::Application::default()
+            .and_downcast::<ProjectpadApplication>()
+            .unwrap();
+        dialog.present(&app.active_window().unwrap());
     }
 }

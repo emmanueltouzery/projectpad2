@@ -478,6 +478,16 @@ impl Note {
                 },
             )));
             self.register_events(&text_view, &toast_parent);
+
+            for anchor in &note_buffer_info.separator_anchors {
+                let sep = gtk::Separator::builder()
+                    .margin_top(15)
+                    .margin_bottom(15)
+                    .width_request(350)
+                    .build();
+                text_view.add_child_at_anchor(&sep, anchor);
+            }
+
             text_view.upcast::<gtk::Widget>()
         } else {
             let buf = sourceview5::Buffer::with_language(

@@ -26,6 +26,9 @@ mod imp {
     #[template(resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_item.ui")]
     pub struct ProjectItem {
         #[template_child]
+        pub clamp: TemplateChild<adw::Clamp>,
+
+        #[template_child]
         pub project_item: TemplateChild<adw::Bin>,
 
         // these properties are meant to be set all at once
@@ -114,14 +117,18 @@ impl ProjectItem {
         let db_sender = app.unwrap().get_sql_channel();
 
         match item_type {
-            Some(ProjectItemType::Server) => super::project_items::server::load_and_display_server(
-                &self.imp().project_item,
-                db_sender,
-                item_id,
-                sub_item_id,
-                &self,
-            ),
+            Some(ProjectItemType::Server) => {
+                self.imp().clamp.set_maximum_size(750);
+                super::project_items::server::load_and_display_server(
+                    &self.imp().project_item,
+                    db_sender,
+                    item_id,
+                    sub_item_id,
+                    &self,
+                )
+            }
             Some(ProjectItemType::ProjectNote) => {
+                self.imp().clamp.set_maximum_size(1100);
                 let note = note::Note::new();
                 // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
                 // it feels even worse (would like not to rebuild the widget every time...)
@@ -138,6 +145,7 @@ impl ProjectItem {
                 // )
             }
             Some(ProjectItemType::ProjectPointOfInterest) => {
+                self.imp().clamp.set_maximum_size(750);
                 super::project_items::project_poi::load_and_display_project_poi(
                     &self.imp().project_item,
                     db_sender,

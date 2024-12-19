@@ -2,7 +2,12 @@
 <interface>
   <template class="ProjectItem" parent="AdwBin">
     <child>
-      <object class="AdwBin" id="project_item">
+      <object class="AdwClamp" id="clamp">
+        <property name="maximum-size">750</property>
+        <property name="child">
+          <object class="AdwBin" id="project_item">
+          </object>
+        </property>
       </object>
     </child>
   </template>

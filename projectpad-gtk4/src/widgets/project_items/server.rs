@@ -263,7 +263,7 @@ fn display_server(
     parent.set_child(Some(&vbox));
 }
 
-fn server_contents(
+pub fn server_contents(
     server: &Server,
     project_group_names: &[String],
     widget_mode: WidgetMode,

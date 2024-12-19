@@ -30,8 +30,8 @@ use super::{
     project_item_header_view::ProjectItemHeaderView,
 };
 
-#[derive(Clone)]
-struct NoteInfo<'a> {
+#[derive(Clone, Default)]
+pub struct NoteInfo<'a> {
     id: i32,
     title: &'a str,
     env: EnvOrEnvs,
@@ -394,7 +394,7 @@ impl Note {
         }
     }
 
-    fn note_contents(
+    pub fn note_contents(
         &self,
         note: NoteInfo,
         widget_mode: WidgetMode,

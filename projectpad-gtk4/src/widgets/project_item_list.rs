@@ -14,9 +14,10 @@ use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server
 use crate::{app::ProjectpadApplication, sql_thread::SqlFunc};
 
 use super::{
+    project_item::WidgetMode,
     project_item_list_model::ProjectItemListModel,
     project_item_model::{ProjectItemModel, ProjectItemType},
-    project_items::note::Note,
+    project_items::{note::Note, project_poi::project_poi_contents, server::server_contents},
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -506,33 +507,33 @@ impl ProjectItemList {
             .spacing(10)
             .build();
 
-        cbox.append(
-            &gtk::Button::builder()
-                .child(&Self::create_project_item_box(
-                    "server",
-                    "Add server",
-                    "machines or virtual machines, with their own IP.",
-                ))
-                .build(),
-        );
-        cbox.append(
-            &gtk::Button::builder()
-                .child(&Self::create_project_item_box(
-                    "cube",
-                    "Add point of interest",
-                    "commands to run or relevant files or folders.",
-                ))
-                .build(),
-        );
-        cbox.append(
-            &gtk::Button::builder()
-                .child(&Self::create_project_item_box(
-                    "clipboard",
-                    "Add project note",
-                    "markdown-formatted text containing free-form text.",
-                ))
-                .build(),
-        );
+        let server_btn = gtk::Button::builder()
+            .child(&Self::create_project_item_box(
+                "server",
+                "Add server",
+                "machines or virtual machines, with their own IP.",
+            ))
+            .build();
+        cbox.append(&server_btn);
+
+        let poi_btn = gtk::Button::builder()
+            .child(&Self::create_project_item_box(
+                "cube",
+                "Add point of interest",
+                "commands to run or relevant files or folders.",
+            ))
+            .build();
+        cbox.append(&poi_btn);
+
+        let note_btn = gtk::Button::builder()
+            .child(&Self::create_project_item_box(
+                "clipboard",
+                "Add project note",
+                "markdown-formatted text containing free-form text.",
+            ))
+            .build();
+        cbox.append(&note_btn);
+
         cbox.append(
             &gtk::Button::builder()
                 .child(&Self::create_project_item_box(
@@ -542,12 +543,71 @@ impl ProjectItemList {
                 ))
                 .build(),
         );
-        vbox.append(&cbox);
+
+        let stack = gtk::Stack::builder().build();
+        stack.add_child(&cbox);
+        vbox.append(&stack);
 
         let dialog = adw::Dialog::builder()
             .title("Add project item")
             .child(&vbox)
             .build();
+
+        let s = stack.clone();
+        let dlg = dialog.clone();
+        server_btn.connect_clicked(move |_| {
+            dlg.set_title("Add Server");
+            dlg.set_content_width(600);
+            dlg.set_content_height(600);
+            s.add_named(
+                &adw::Clamp::builder()
+                    .margin_top(10)
+                    .child(&server_contents(&Server::default(), &[], WidgetMode::Edit).1)
+                    .build(),
+                Some("second"),
+            );
+            s.set_visible_child_name("second");
+        });
+
+        let s = stack.clone();
+        let dlg = dialog.clone();
+        poi_btn.connect_clicked(move |_| {
+            dlg.set_title("Add Project POI");
+            dlg.set_content_width(600);
+            dlg.set_content_height(600);
+            s.add_named(
+                &adw::Clamp::builder()
+                    .margin_top(10)
+                    .child(
+                        &project_poi_contents(
+                            &ProjectPointOfInterest::default(),
+                            &[],
+                            WidgetMode::Edit,
+                        )
+                        .1,
+                    )
+                    .build(),
+                Some("second"),
+            );
+            s.set_visible_child_name("second");
+        });
+
+        // let s = stack.clone();
+        // let dlg = dialog.clone();
+        // note_btn.connect_clicked(move |_| {
+        //     dlg.set_title("Add Project Note");
+        //     dlg.set_content_width(600);
+        //     dlg.set_content_height(600);
+        //     s.add_named(
+        //         &adw::Clamp::builder()
+        //             .margin_top(10)
+        //             .child(&Note::note_contents(NoteInfo::default(), &[], WidgetMode::Edit).1)
+        //             .build(),
+        //         Some("second"),
+        //     );
+        //     s.set_visible_child_name("second");
+        // });
+
         let dlg = dialog.clone();
         cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
             dlg.close();

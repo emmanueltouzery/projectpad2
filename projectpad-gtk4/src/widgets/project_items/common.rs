@@ -14,6 +14,12 @@ pub enum EnvOrEnvs {
     None,
 }
 
+impl Default for EnvOrEnvs {
+    fn default() -> Self {
+        EnvOrEnvs::None
+    }
+}
+
 #[derive(PartialEq, Eq)]
 pub enum DialogClamp {
     Yes,

@@ -87,7 +87,7 @@ fn display_project_oi(
     parent.set_child(Some(&vbox));
 }
 
-fn project_poi_contents(
+pub fn project_poi_contents(
     poi: &ProjectPointOfInterest,
     project_group_names: &[String],
     widget_mode: WidgetMode,

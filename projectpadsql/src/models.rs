@@ -46,6 +46,12 @@ pub enum ServerType {
     SrvReporting,
 }
 
+impl Default for ServerType {
+    fn default() -> Self {
+        ServerType::SrvApplication
+    }
+}
+
 #[derive(
     Debug,
     Clone,
@@ -68,6 +74,12 @@ pub enum ServerAccessType {
     SrvAccessRdp,
     SrvAccessWww,
     SrvAccessSshTunnel,
+}
+
+impl Default for ServerAccessType {
+    fn default() -> Self {
+        ServerAccessType::SrvAccessSsh
+    }
 }
 
 #[derive(
@@ -184,7 +196,7 @@ simple_enum!(ServerAccessType);
 simple_enum!(InterestType);
 simple_enum!(RunOn);
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Server {
     pub id: i32,
     pub desc: String,
@@ -217,7 +229,7 @@ pub struct ProjectNote {
     pub project_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ProjectPointOfInterest {
     pub id: i32,
     pub desc: String,

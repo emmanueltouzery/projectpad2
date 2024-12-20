@@ -32,13 +32,13 @@ use super::{
 
 #[derive(Clone, Default)]
 pub struct NoteInfo<'a> {
-    id: i32,
-    title: &'a str,
-    env: EnvOrEnvs,
-    contents: &'a str,
-    display_header: bool,
-    group_name: Option<&'a str>,
-    all_group_names: &'a [String],
+    pub id: i32,
+    pub title: &'a str,
+    pub env: EnvOrEnvs,
+    pub contents: &'a str,
+    pub display_header: bool,
+    pub group_name: Option<&'a str>,
+    pub all_group_names: &'a [String],
 }
 
 #[derive(Debug)]

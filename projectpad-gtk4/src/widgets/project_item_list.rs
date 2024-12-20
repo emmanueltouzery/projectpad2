@@ -17,7 +17,11 @@ use super::{
     project_item::WidgetMode,
     project_item_list_model::ProjectItemListModel,
     project_item_model::{ProjectItemModel, ProjectItemType},
-    project_items::{note::Note, project_poi::project_poi_contents, server::server_contents},
+    project_items::{
+        note::{Note, NoteInfo},
+        project_poi::project_poi_contents,
+        server::server_contents,
+    },
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -592,21 +596,26 @@ impl ProjectItemList {
             s.set_visible_child_name("second");
         });
 
-        // let s = stack.clone();
-        // let dlg = dialog.clone();
-        // note_btn.connect_clicked(move |_| {
-        //     dlg.set_title("Add Project Note");
-        //     dlg.set_content_width(600);
-        //     dlg.set_content_height(600);
-        //     s.add_named(
-        //         &adw::Clamp::builder()
-        //             .margin_top(10)
-        //             .child(&Note::note_contents(NoteInfo::default(), &[], WidgetMode::Edit).1)
-        //             .build(),
-        //         Some("second"),
-        //     );
-        //     s.set_visible_child_name("second");
-        // });
+        let s = stack.clone();
+        let dlg = dialog.clone();
+        note_btn.connect_clicked(move |_| {
+            let note = Note::new();
+            let note_info = {
+                let mut n = NoteInfo::default();
+                n.display_header = true;
+                n
+            };
+            dlg.set_title("Add Project Note");
+            dlg.set_content_width(6000);
+            dlg.set_content_height(6000);
+            let dlg_child = note.note_contents(note_info, WidgetMode::Edit).1;
+            dlg_child.set_margin_start(30);
+            dlg_child.set_margin_end(30);
+            s.add_named(&dlg_child, Some("second"));
+            s.set_visible_child_name("second");
+        });
+
+        // TODO need to add server links too
 
         let dlg = dialog.clone();
         cancel_btn.connect_clicked(move |_btn: &gtk::Button| {

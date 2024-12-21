@@ -337,42 +337,7 @@ impl Note {
                         save_btn.connect_clicked(move |_| {
                             match (&*ttv.borrow(), &h_e) {
                                 ( Some(v), Some(header_edit) ) => {
-                                    let buf = v.buffer();
-                                    let start_iter = buf.start_iter();
-                                    let end_iter = buf.end_iter();
-                                    let new_contents = v.buffer().text(&start_iter, &end_iter, false);
-                                    let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
-                                    let (sender, receiver) = async_channel::bounded(1);
-                                    let db_sender = app.unwrap().get_sql_channel();
-                                    let title = header_edit.title();
-                                    db_sender
-                                        .send(SqlFunc::new(move |sql_conn| {
-                                            use projectpadsql::schema::project_note::dsl as prj_note;
-                                            let changeset = (
-                                                prj_note::title.eq(title.as_str()),
-                                                // // never store Some("") for group, we want None then.
-                                                // prj_note::group_name.eq(new_group
-                                                //     .as_ref()
-                                                //     .map(|s| s.as_str())
-                                                //     .filter(|s| !s.is_empty())),
-                                                    prj_note::contents.eq(new_contents.as_str()),
-                                                    // prj_note::has_dev.eq(new_has_dev),
-                                                    // prj_note::has_stage.eq(new_has_stg),
-                                                    // prj_note::has_uat.eq(new_has_uat),
-                                                    // prj_note::has_prod.eq(new_has_prod),
-                                                    // prj_note::project_id.eq(project_id),
-                                            );
-                                            let project_note_after_result = perform_insert_or_update!(
-                                                sql_conn,
-                                                Some(project_note_id),
-                                                prj_note::project_note,
-                                                prj_note::id,
-                                                changeset,
-                                                ProjectNote,
-                                            );
-                                            sender.send_blocking(project_note_after_result).unwrap();
-                                        })).unwrap();
-
+                                    let receiver = Self::save_project_note(v, header_edit, Some(project_note_id));
                                     let d = dialog.clone();
                                     let s1 = s.clone();
                                     glib::spawn_future_local(async move {
@@ -392,6 +357,57 @@ impl Note {
             let vbox = self.note_contents(note, widget_mode).1;
             self.set_child(Some(&vbox));
         }
+    }
+
+    pub fn save_project_note(
+        v: &sourceview5::View,
+        header_edit: &ProjectItemHeaderEdit,
+        project_note_id: Option<i32>,
+    ) -> async_channel::Receiver<Result<ProjectNote, (String, Option<String>)>> {
+        let buf = v.buffer();
+        let start_iter = buf.start_iter();
+        let end_iter = buf.end_iter();
+        let new_contents = v.buffer().text(&start_iter, &end_iter, false);
+        let app = gio::Application::default()
+            .and_downcast::<ProjectpadApplication>()
+            .unwrap();
+        let (sender, receiver) = async_channel::bounded(1);
+        let db_sender = app.get_sql_channel();
+        let title = header_edit.title();
+        let win = app.imp().window.get().unwrap().upgrade().unwrap();
+        let project_id = glib::VariantDict::new(win.action_state("select-project-item").as_ref())
+            .lookup::<i32>("project_id")
+            .unwrap()
+            .unwrap();
+        db_sender
+            .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project_note::dsl as prj_note;
+                let changeset = (
+                    prj_note::title.eq(title.as_str()),
+                    // // never store Some("") for group, we want None then.
+                    // prj_note::group_name.eq(new_group
+                    //     .as_ref()
+                    //     .map(|s| s.as_str())
+                    //     .filter(|s| !s.is_empty())),
+                    prj_note::contents.eq(new_contents.as_str()),
+                    // prj_note::has_dev.eq(new_has_dev),
+                    // prj_note::has_stage.eq(new_has_stg),
+                    // prj_note::has_uat.eq(new_has_uat),
+                    // prj_note::has_prod.eq(new_has_prod),
+                    prj_note::project_id.eq(project_id),
+                );
+                let project_note_after_result = perform_insert_or_update!(
+                    sql_conn,
+                    project_note_id,
+                    prj_note::project_note,
+                    prj_note::id,
+                    changeset,
+                    ProjectNote,
+                );
+                sender.send_blocking(project_note_after_result).unwrap();
+            }))
+            .unwrap();
+        receiver
     }
 
     pub fn note_contents(

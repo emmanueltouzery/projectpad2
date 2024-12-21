@@ -608,11 +608,32 @@ impl ProjectItemList {
             dlg.set_title("Add Project Note");
             dlg.set_content_width(6000);
             dlg.set_content_height(6000);
-            let dlg_child = note.note_contents(note_info, WidgetMode::Edit).1;
+            let (_, dlg_child, note_header) = note.note_contents(note_info, WidgetMode::Edit);
             dlg_child.set_margin_start(30);
             dlg_child.set_margin_end(30);
             s.add_named(&dlg_child, Some("second"));
             s.set_visible_child_name("second");
+
+            let save_btn = gtk::Button::builder()
+                .label("Save")
+                .css_classes(["suggested-action"])
+                .build();
+            let d = dlg.clone();
+            save_btn.connect_clicked(move |_| {
+                dbg!(note_header.as_ref().unwrap().title());
+                let receiver = Note::save_project_note(
+                    note.imp().text_edit.borrow().as_ref().unwrap(),
+                    note_header.as_ref().unwrap(),
+                    None,
+                );
+                let d = d.clone();
+                glib::spawn_future_local(async move {
+                    let project_note_after_result = receiver.recv().await.unwrap();
+                    dbg!(project_note_after_result);
+                    d.close();
+                });
+            });
+            header_bar.pack_end(&save_btn);
         });
 
         // TODO need to add server links too

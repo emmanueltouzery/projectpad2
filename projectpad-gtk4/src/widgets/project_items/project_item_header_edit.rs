@@ -42,6 +42,8 @@ mod imp {
 
         #[property(get, set)]
         title: Rc<RefCell<String>>,
+        // #[property(get, set)]
+        // environments: Rc<RefCell<Vec<String>>>,
     }
 
     #[glib::object_subclass]
@@ -110,7 +112,11 @@ impl ProjectItemHeaderEdit {
         this.imp().header_second_col.append(&title_entry);
 
         let environment_picker = match env {
-            EnvOrEnvs::Env(e) => Some(EnvironmentPicker::new(e).upcast::<gtk::Widget>()),
+            EnvOrEnvs::Env(e) => {
+                let ep = EnvironmentPicker::new();
+                ep.set_property("environment", (e as i32).to_value());
+                Some(ep.upcast::<gtk::Widget>())
+            }
             EnvOrEnvs::Envs(es) => Some(EnvironmentListPicker::new(es).upcast::<gtk::Widget>()),
             EnvOrEnvs::None => None,
         };

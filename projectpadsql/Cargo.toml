@@ -10,8 +10,8 @@ diesel = { version = "2.0.4", features = ["sqlite"] }
 # want the same version as diesel...
 # https://github.com/diesel-rs/diesel/blob/master/diesel/Cargo.toml
 libsqlite3-sys = { version = ">=0.17.2, <0.26.0", features = ["sqlcipher"] }
-strum = "0.20.0"
-strum_macros = "0.20.1"
+strum = "0.25.0"
+strum_macros = "0.25.3"
 chrono = "0.4.19"
 serde_derive = "1.0.118"
 serde = "1.0.118"

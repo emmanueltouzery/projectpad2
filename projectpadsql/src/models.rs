@@ -8,7 +8,7 @@ use diesel::sqlite::Sqlite;
 use serde_derive::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::string::ToString;
-use strum_macros::{Display, EnumIter, EnumString};
+use strum_macros::{Display, EnumIter, EnumString, FromRepr};
 
 #[derive(Queryable, Debug, Clone, PartialEq, Eq)]
 pub struct Project {
@@ -91,6 +91,7 @@ impl Default for ServerAccessType {
     EnumString,
     AsExpression,
     FromSqlRow,
+    FromRepr,
     Display,
     PartialOrd,
     Ord,
@@ -99,11 +100,12 @@ impl Default for ServerAccessType {
 )]
 #[diesel(sql_type = Varchar)]
 #[derive(Hash)]
+#[repr(u8)]
 pub enum EnvironmentType {
-    EnvDevelopment,
-    EnvUat,
-    EnvStage,
-    EnvProd,
+    EnvDevelopment = 1,
+    EnvStage = 2,
+    EnvUat = 4,
+    EnvProd = 8,
 }
 
 impl Default for EnvironmentType {

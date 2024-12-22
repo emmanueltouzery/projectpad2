@@ -1,16 +1,25 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use adw::prelude::*;
+use gtk::subclass::prelude::*;
 use projectpadsql::models::EnvironmentType;
 
 mod imp {
+    use std::{cell::RefCell, rc::Rc};
+
+    use super::*;
+    use glib::*;
     use gtk::subclass::{
         prelude::{ObjectImpl, ObjectSubclass},
         widget::WidgetImpl,
     };
 
-    #[derive(Debug, Default)]
-    pub struct EnvironmentPicker {}
+    #[derive(Properties, Debug, Default)]
+    #[properties(wrapper_type = super::EnvironmentPicker)]
+    pub struct EnvironmentPicker {
+        #[property(get, set)]
+        environment: Rc<RefCell<i32>>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for EnvironmentPicker {
@@ -19,6 +28,7 @@ mod imp {
         type Type = super::EnvironmentPicker;
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for EnvironmentPicker {}
 
     impl WidgetImpl for EnvironmentPicker {}
@@ -167,7 +177,7 @@ fn dropdown_get_factory(
 }
 
 impl EnvironmentPicker {
-    pub fn new(env: EnvironmentType) -> Self {
+    pub fn new() -> Self {
         let this = glib::Object::new::<Self>();
 
         let dropdown = gtk::DropDown::from_strings(&["DEV", "STG", "UAT", "PRD"]);
@@ -179,12 +189,36 @@ impl EnvironmentPicker {
         dropdown.set_list_factory(Some(&list_item_factory));
         dropdown.set_factory(Some(&item_factory));
 
-        dropdown.set_selected(match env {
-            EnvironmentType::EnvDevelopment => 0,
-            EnvironmentType::EnvStage => 1,
-            EnvironmentType::EnvUat => 2,
-            EnvironmentType::EnvProd => 3,
-        });
+        this.bind_property("environment", &dropdown, "selected")
+            .transform_to(|_, number: i32| {
+                dbg!(number);
+                Some(
+                    match EnvironmentType::from_repr(number.try_into().unwrap())
+                        .unwrap_or(EnvironmentType::EnvDevelopment)
+                    {
+                        EnvironmentType::EnvDevelopment => 0_u32,
+                        EnvironmentType::EnvStage => 1_u32,
+                        EnvironmentType::EnvUat => 2_u32,
+                        EnvironmentType::EnvProd => 3_u32,
+                    }
+                    .to_value(),
+                )
+            })
+            .transform_from(|_, number: u32| {
+                Some(
+                    (match number {
+                        0 => EnvironmentType::EnvDevelopment,
+                        1 => EnvironmentType::EnvStage,
+                        2 => EnvironmentType::EnvUat,
+                        3 => EnvironmentType::EnvProd,
+                        _ => panic!(),
+                    } as i32)
+                        .to_value(),
+                )
+            })
+            .bidirectional()
+            .sync_create()
+            .build();
 
         this.set_child(Some(&dropdown));
         this

@@ -2340,8 +2340,8 @@ dependencies = [
  "libsqlite3-sys",
  "serde",
  "serde_derive",
- "strum 0.20.0",
- "strum_macros 0.20.1",
+ "strum 0.25.0",
+ "strum_macros 0.25.3",
 ]
 
 [[package]]

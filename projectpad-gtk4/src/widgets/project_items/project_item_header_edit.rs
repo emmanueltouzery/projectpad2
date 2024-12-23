@@ -2,6 +2,7 @@ use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
+use projectpadsql::models::EnvironmentType;
 
 use crate::widgets::{
     environment_list_picker::EnvironmentListPicker, environment_picker::EnvironmentPicker,
@@ -42,8 +43,15 @@ mod imp {
 
         #[property(get, set)]
         title: Rc<RefCell<String>>,
-        // #[property(get, set)]
-        // environments: Rc<RefCell<Vec<String>>>,
+
+        #[property(get, set)]
+        env_dev: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        env_stg: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        env_uat: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        env_prd: Rc<RefCell<bool>>,
     }
 
     #[glib::object_subclass]
@@ -114,10 +122,91 @@ impl ProjectItemHeaderEdit {
         let environment_picker = match env {
             EnvOrEnvs::Env(e) => {
                 let ep = EnvironmentPicker::new();
+                let t = this.clone();
                 ep.set_property("environment", (e as i32).to_value());
+                ep.connect_environment_notify(move |ep| {
+                    let env = EnvironmentType::from_repr(
+                        ep.property::<i32>("environment").try_into().unwrap(),
+                    );
+                    dbg!(env);
+                    match env {
+                        Some(EnvironmentType::EnvDevelopment) => {
+                            t.set_property("env_dev", true);
+                            t.set_property("env_stg", false);
+                            t.set_property("env_uat", false);
+                            t.set_property("env_prd", false);
+                        }
+                        Some(EnvironmentType::EnvStage) => {
+                            t.set_property("env_dev", false);
+                            t.set_property("env_stg", true);
+                            t.set_property("env_uat", false);
+                            t.set_property("env_prd", false);
+                        }
+                        Some(EnvironmentType::EnvUat) => {
+                            t.set_property("env_dev", false);
+                            t.set_property("env_stg", false);
+                            t.set_property("env_uat", true);
+                            t.set_property("env_prd", false);
+                        }
+                        Some(EnvironmentType::EnvProd) => {
+                            t.set_property("env_dev", false);
+                            t.set_property("env_stg", false);
+                            t.set_property("env_uat", false);
+                            t.set_property("env_prd", true);
+                        }
+                        _ => panic!(),
+                    }
+                });
+                let _ep = ep.clone();
+                this.connect_env_dev_notify(move |t| {
+                    let dev = EnvironmentType::EnvDevelopment as u8 as i32;
+                    if t.property("env_dev") && _ep.property::<i32>("environment") != dev {
+                        _ep.set_property("environment", dev);
+                    }
+                });
+                let _ep = ep.clone();
+                this.connect_env_stg_notify(move |t| {
+                    let stg = EnvironmentType::EnvStage as u8 as i32;
+                    if t.property("env_stg") && _ep.property::<i32>("environment") != stg {
+                        _ep.set_property("environment", stg);
+                    }
+                });
+                let _ep = ep.clone();
+                this.connect_env_uat_notify(move |t| {
+                    let uat = EnvironmentType::EnvUat as u8 as i32;
+                    if t.property("env_uat") && _ep.property::<i32>("environment") != uat {
+                        _ep.set_property("environment", uat);
+                    }
+                });
+                let _ep = ep.clone();
+                this.connect_env_prd_notify(move |t| {
+                    let prd = EnvironmentType::EnvProd as u8 as i32;
+                    if t.property("env_prd") && _ep.property::<i32>("environment") != prd {
+                        _ep.set_property("environment", prd);
+                    }
+                });
                 Some(ep.upcast::<gtk::Widget>())
             }
-            EnvOrEnvs::Envs(es) => Some(EnvironmentListPicker::new(es).upcast::<gtk::Widget>()),
+            EnvOrEnvs::Envs(_) => {
+                let elp = EnvironmentListPicker::new();
+                this.bind_property("env_dev", &elp, "env_dev")
+                    .bidirectional()
+                    .sync_create()
+                    .build();
+                this.bind_property("env_stg", &elp, "env_stg")
+                    .bidirectional()
+                    .sync_create()
+                    .build();
+                this.bind_property("env_uat", &elp, "env_uat")
+                    .bidirectional()
+                    .sync_create()
+                    .build();
+                this.bind_property("env_prd", &elp, "env_prd")
+                    .bidirectional()
+                    .sync_create()
+                    .build();
+                Some(elp.upcast::<gtk::Widget>())
+            }
             EnvOrEnvs::None => None,
         };
         if let Some(ep) = environment_picker {

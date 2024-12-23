@@ -18,6 +18,7 @@ use super::{
     project_item_list_model::ProjectItemListModel,
     project_item_model::{ProjectItemModel, ProjectItemType},
     project_items::{
+        common::EnvOrEnvs,
         note::{Note, NoteInfo},
         project_poi::project_poi_contents,
         server::server_contents,
@@ -602,6 +603,7 @@ impl ProjectItemList {
             let note = Note::new();
             let note_info = {
                 let mut n = NoteInfo::default();
+                n.env = EnvOrEnvs::Envs(HashSet::new());
                 n.display_header = true;
                 n
             };

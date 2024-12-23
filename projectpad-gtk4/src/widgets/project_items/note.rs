@@ -374,6 +374,10 @@ impl Note {
         let (sender, receiver) = async_channel::bounded(1);
         let db_sender = app.get_sql_channel();
         let title = header_edit.title();
+        let has_dev = header_edit.property::<bool>("env_dev");
+        let has_stg = header_edit.property::<bool>("env_stg");
+        let has_uat = header_edit.property::<bool>("env_uat");
+        let has_prd = header_edit.property::<bool>("env_prd");
         let win = app.imp().window.get().unwrap().upgrade().unwrap();
         let project_id = glib::VariantDict::new(win.action_state("select-project-item").as_ref())
             .lookup::<i32>("project_id")
@@ -390,10 +394,10 @@ impl Note {
                     //     .map(|s| s.as_str())
                     //     .filter(|s| !s.is_empty())),
                     prj_note::contents.eq(new_contents.as_str()),
-                    // prj_note::has_dev.eq(new_has_dev),
-                    // prj_note::has_stage.eq(new_has_stg),
-                    // prj_note::has_uat.eq(new_has_uat),
-                    // prj_note::has_prod.eq(new_has_prod),
+                    prj_note::has_dev.eq(has_dev),
+                    prj_note::has_stage.eq(has_stg),
+                    prj_note::has_uat.eq(has_uat),
+                    prj_note::has_prod.eq(has_prd),
                     prj_note::project_id.eq(project_id),
                 );
                 let project_note_after_result = perform_insert_or_update!(

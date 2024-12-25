@@ -1,5 +1,6 @@
 use crate::{
-    notes,
+    app::ProjectpadApplication,
+    notes, perform_insert_or_update,
     sql_thread::SqlFunc,
     widgets::{
         project_item::{ProjectItem, WidgetMode},
@@ -9,6 +10,8 @@ use crate::{
 };
 use adw::prelude::*;
 use diesel::prelude::*;
+use glib::GString;
+use gtk::subclass::prelude::*;
 use itertools::Itertools;
 use projectpadsql::models::{
     InterestType, RunOn, Server, ServerAccessType, ServerDatabase, ServerExtraUserAccount,
@@ -22,10 +25,10 @@ use std::{
 
 use super::{
     common::{self, DetailsRow, SuffixAction},
-    note,
     project_item_header_edit::ProjectItemHeaderEdit,
     project_item_header_view::ProjectItemHeaderView,
 };
+use crate::widgets::project_items::note::Note;
 
 #[derive(Clone, Debug)]
 pub enum ServerItem {
@@ -693,7 +696,7 @@ fn truncate(s: &str, max_chars: usize) -> &str {
 }
 
 fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_id: Option<i32>) {
-    let server_item1 = server_note_contents(note, WidgetMode::Show, focused_server_item_id, vbox);
+    let server_item1 = server_note_contents_show(note, focused_server_item_id, vbox);
     // let (note_view, note_view_scrolled_window) =
     //     note::get_note_contents_widget(&note.contents, widget_mode);
 
@@ -703,18 +706,73 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            server_note_contents(&n, WidgetMode::Edit, None, &item_box);
+            let (header_edit, note) = server_note_contents_edit(&n, &item_box);
             item_box.set_margin_start(30);
             item_box.set_margin_end(30);
 
-            display_item_edit_dialog(&v, "Edit Note", item_box, 6000, 6000, DialogClamp::No);
+            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Note", item_box, 6000, 6000, DialogClamp::No);
+            save_btn.connect_clicked(move |_| {
+                let text_edit_b = note.imp().text_edit.borrow();
+                let text_edit = text_edit_b.as_ref().unwrap();
+
+                let buf = text_edit.buffer();
+                let start_iter = buf.start_iter();
+                let end_iter = buf.end_iter();
+                let new_contents = text_edit.buffer().text(&start_iter, &end_iter, false);
+
+                let receiver = save_server_note(n.server_id, Some(n.id),
+                    header_edit.title(), new_contents);
+                let dlg = dlg.clone();
+                glib::spawn_future_local(async move {
+                    let project_note_after_result = receiver.recv().await.unwrap();
+                    dlg.close();
+                });
+            });
         }),
     );
 }
 
-fn server_note_contents(
+fn save_server_note(
+    server_id: i32,
+    server_note_id: Option<i32>,
+    new_title: String,
+    new_contents: GString,
+) -> async_channel::Receiver<Result<ServerNote, (String, Option<String>)>> {
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    let (sender, receiver) = async_channel::bounded(1);
+    let db_sender = app.get_sql_channel();
+
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::server_note::dsl as srv_note;
+            let changeset = (
+                srv_note::title.eq(&new_title),
+                // never store Some("") for group, we want None then.
+                // srv_note::group_name.eq(new_group
+                //     .as_ref()
+                //     .map(|s| s.as_str())
+                //     .filter(|s| !s.is_empty())),
+                srv_note::contents.eq(new_contents.as_str()),
+                srv_note::server_id.eq(server_id),
+            );
+            let server_note_after_result = perform_insert_or_update!(
+                sql_conn,
+                server_note_id,
+                srv_note::server_note,
+                srv_note::id,
+                changeset,
+                ServerNote,
+            );
+            sender.send_blocking(server_note_after_result).unwrap();
+        }))
+        .unwrap();
+    receiver
+}
+
+fn server_note_contents_show(
     note: &ServerNote,
-    widget_mode: WidgetMode,
     focused_server_item_id: Option<i32>,
     vbox: &gtk::Box,
 ) -> adw::PreferencesGroup {
@@ -724,35 +782,57 @@ fn server_note_contents(
         .collect_vec()
         .join("⏎");
 
-    let note_view = note::Note::new();
+    let note_view = Note::new();
     // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
     // it feels even worse (would like not to rebuild the widget every time...)
     note_view.set_server_note_id(note.id);
-    note_view.set_edit_mode(widget_mode.get_edit_mode());
+    note_view.set_edit_mode(false);
+
+    note_view.set_height_request(500);
 
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Note")
         .title(&note.title)
         .build();
-    note_view.set_height_request(500);
     vbox.append(&server_item1);
 
-    if widget_mode == WidgetMode::Show {
-        let row = adw::ExpanderRow::builder()
-            .title(truncate(&contents_head, 120))
-            // .css_classes(["property"])
-            .build();
+    let row = adw::ExpanderRow::builder()
+        .title(truncate(&contents_head, 120))
+        // .css_classes(["property"])
+        .build();
 
-        row.add_row(&note_view);
+    row.add_row(&note_view);
 
-        if Some(note.id) == focused_server_item_id {
-            row.set_expanded(true);
-        }
-
-        server_item1.add(&row);
-    } else {
-        vbox.append(&note_view);
+    if Some(note.id) == focused_server_item_id {
+        row.set_expanded(true);
     }
 
+    server_item1.add(&row);
+
     server_item1
+}
+
+fn server_note_contents_edit(note: &ServerNote, vbox: &gtk::Box) -> (ProjectItemHeaderEdit, Note) {
+    // TODO this is not a PROJECT note. rename ProjectItemHeaderEdit, and make it take an icon
+    // instead of a ProjectItemType. Although I'm not sure yet what i'll do about groups
+    let project_item_header = ProjectItemHeaderEdit::new(
+        ProjectItemType::ProjectNote,
+        None,
+        &[],
+        common::EnvOrEnvs::None,
+    );
+    project_item_header.set_title(note.title.clone());
+    vbox.append(&project_item_header);
+
+    let note_view = Note::new();
+    // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
+    // it feels even worse (would like not to rebuild the widget every time...)
+    note_view.set_server_note_id(note.id);
+    note_view.set_edit_mode(true);
+
+    note_view.set_height_request(500);
+
+    vbox.append(&note_view);
+
+    (project_item_header, note_view)
 }

@@ -720,11 +720,22 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
                 let end_iter = buf.end_iter();
                 let new_contents = text_edit.buffer().text(&start_iter, &end_iter, false);
 
-                let receiver = save_server_note(n.server_id, Some(n.id),
+                let app = gio::Application::default()
+                    .and_downcast::<ProjectpadApplication>()
+                    .unwrap();
+                let db_sender = app.get_sql_channel();
+
+                let receiver = save_server_note(db_sender.clone(), n.server_id, Some(n.id),
                     header_edit.title(), new_contents);
                 let dlg = dlg.clone();
                 glib::spawn_future_local(async move {
                     let project_note_after_result = receiver.recv().await.unwrap();
+                    let window = app.imp().window.get().unwrap();
+                    let win_binding = window.upgrade();
+                    let win_binding_ref = win_binding.as_ref().unwrap();
+                    let pi = &win_binding_ref.imp().project_item;
+                    let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
+                    load_and_display_server(pi_bin, db_sender, n.server_id, Some(n.id), pi);
                     dlg.close();
                 });
             });
@@ -733,17 +744,13 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
 }
 
 fn save_server_note(
+    db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
     server_note_id: Option<i32>,
     new_title: String,
     new_contents: GString,
 ) -> async_channel::Receiver<Result<ServerNote, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
     let (sender, receiver) = async_channel::bounded(1);
-    let db_sender = app.get_sql_channel();
-
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             use projectpadsql::schema::server_note::dsl as srv_note;

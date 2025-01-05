@@ -7,6 +7,8 @@ use projectpadsql::{models::EnvironmentType, schema};
 
 use crate::{app::ProjectpadApplication, widgets::project_item::WidgetMode};
 
+use super::password_action_row::PasswordActionRow;
+
 #[derive(Clone)]
 pub enum EnvOrEnvs {
     Env(EnvironmentType),
@@ -361,5 +363,90 @@ impl DetailsRow<'_> {
                 group.add(&e);
             }
         }
+    }
+}
+
+pub fn text_row(
+    widget_mode: WidgetMode,
+    title: &str,
+    main_action: Option<SuffixAction>,
+    suffix_actions: &[SuffixAction],
+) -> (adw::PreferencesRow, &'static str) {
+    let (par, prop_name) = if widget_mode == WidgetMode::Show {
+        let action_row = adw::ActionRow::builder()
+            // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
+            // When used together with the .property style class, AdwActionRow and
+            // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
+            .css_classes(["property"])
+            .build();
+
+        add_actions(&action_row, main_action, suffix_actions);
+        (action_row.upcast::<adw::PreferencesRow>(), "subtitle")
+    } else {
+        (
+            adw::EntryRow::builder()
+                .build()
+                .upcast::<adw::PreferencesRow>(),
+            "text",
+        )
+    };
+    par.set_title(title);
+    (par, prop_name)
+}
+
+pub fn password_row(
+    widget_mode: WidgetMode,
+    title: &str,
+    main_action: Option<SuffixAction>,
+    suffix_actions: &[SuffixAction],
+) -> (adw::PreferencesRow, &'static str) {
+    let (par, prop_name) = if widget_mode == WidgetMode::Show {
+        let action_row = PasswordActionRow::new();
+        add_actions(
+            action_row.upcast_ref::<adw::ActionRow>(),
+            main_action,
+            suffix_actions,
+        );
+        (action_row.upcast::<adw::PreferencesRow>(), "text")
+    } else {
+        (
+            adw::PasswordEntryRow::builder()
+                .build()
+                .upcast::<adw::PreferencesRow>(),
+            "text",
+        )
+    };
+    par.set_title(title);
+    (par, prop_name)
+}
+
+fn add_actions(
+    action_row: &adw::ActionRow,
+    main_action: Option<SuffixAction>,
+    suffix_actions: &[SuffixAction],
+) {
+    for suffix in suffix_actions.iter() {
+        let widget = gtk::Button::builder()
+            .css_classes(["flat"])
+            .icon_name(suffix.icon)
+            .build();
+        let a = suffix.action.clone();
+        widget.connect_closure(
+            "clicked",
+            false,
+            glib::closure_local!(|_b: gtk::Button| {
+                a();
+            }),
+        );
+        action_row.add_suffix(&widget);
+    }
+
+    if let Some(SuffixAction { icon, action }) = main_action.as_ref() {
+        action_row.add_suffix(&gtk::Image::builder().icon_name(*icon).build());
+        action_row.set_activatable(true);
+        let c_a = action.clone();
+        action_row.connect_activated(move |_ar| {
+            c_a();
+        });
     }
 }

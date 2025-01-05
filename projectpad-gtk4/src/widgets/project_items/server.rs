@@ -27,6 +27,7 @@ use super::{
     common::{self, DetailsRow, SuffixAction},
     project_item_header_edit::ProjectItemHeaderEdit,
     project_item_header_view::ProjectItemHeaderView,
+    server_view_edit::ServerViewEdit,
 };
 use crate::widgets::project_items::note::Note;
 
@@ -266,6 +267,7 @@ fn display_server(
     parent.set_child(Some(&vbox));
 }
 
+// TODO kill DetailsRow use in this file, move everything to ServerViewEdit ####
 pub fn server_contents(
     server: &Server,
     project_group_names: &[String],
@@ -287,33 +289,6 @@ pub fn server_contents(
     // server.add(&server_ar);
     let server_item0 = adw::PreferencesGroup::builder().build();
 
-    let address_suffix_www = [SuffixAction::link(&server.ip)];
-    DetailsRow::new(
-        "Address",
-        &server.ip,
-        SuffixAction::copy(&server.ip),
-        if server.access_type == ServerAccessType::SrvAccessWww {
-            &address_suffix_www
-        } else {
-            &[]
-        },
-    )
-    .add(widget_mode, &server_item0);
-
-    DetailsRow::new(
-        "Username",
-        &server.username,
-        SuffixAction::copy(&server.username),
-        &[],
-    )
-    .add(widget_mode, &server_item0);
-
-    DetailsRow::new_password(
-        "Password",
-        &server.password,
-        SuffixAction::copy(&server.password),
-    )
-    .add(widget_mode, &server_item0);
     DetailsRow::new("Text", &server.text, SuffixAction::copy(&server.text), &[])
         .add(widget_mode, &server_item0);
 
@@ -371,6 +346,14 @@ pub fn server_contents(
         vbox.append(&project_item_header);
         project_item_header.header_box()
     };
+
+    let server_view_edit = ServerViewEdit::new();
+    server_view_edit.set_ip(server.ip.clone());
+    server_view_edit.set_username(server.username.clone());
+    server_view_edit.set_access_type(server.access_type.to_string());
+    server_view_edit.set_password(server.password.clone());
+    server_view_edit.prepare(widget_mode);
+    vbox.append(&server_view_edit);
 
     vbox.append(&server_item0);
 

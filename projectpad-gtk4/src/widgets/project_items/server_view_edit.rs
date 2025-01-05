@@ -38,6 +38,9 @@ mod imp {
 
         #[property(get, set)]
         password: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        text: Rc<RefCell<String>>,
     }
 
     #[glib::object_subclass]
@@ -81,9 +84,12 @@ impl ServerViewEdit {
             ServerAccessType::from_str(&self.property::<String>("access_type")).unwrap();
         let username = self.property::<String>("username");
         let password = self.property::<String>("password");
+        let text = self.property::<String>("text");
 
         let address_suffix_www = [SuffixAction::link(&ip)];
-        let (address, address_val_prop) = common::text_row(
+        let address = common::text_row(
+            self.upcast_ref::<glib::Object>(),
+            "ip",
             widget_mode,
             "Address",
             SuffixAction::copy(&ip),
@@ -93,27 +99,37 @@ impl ServerViewEdit {
                 &[]
             },
         );
-        self.bind_property("ip", &address, address_val_prop)
-            .bidirectional()
-            .sync_create()
-            .build();
         server_item0.add(&address);
 
-        let (username, username_val_prop) =
-            common::text_row(widget_mode, "Username", SuffixAction::copy(&username), &[]);
-        self.bind_property("username", &username, username_val_prop)
-            .bidirectional()
-            .sync_create()
-            .build();
+        let username = common::text_row(
+            self.upcast_ref::<glib::Object>(),
+            "username",
+            widget_mode,
+            "Username",
+            SuffixAction::copy(&username),
+            &[],
+        );
         server_item0.add(&username);
 
-        let (password, password_val_prop) =
-            common::password_row(widget_mode, "Password", SuffixAction::copy(&password), &[]);
-        self.bind_property("password", &password, password_val_prop)
-            .bidirectional()
-            .sync_create()
-            .build();
+        let password = common::password_row(
+            self.upcast_ref::<glib::Object>(),
+            "password",
+            widget_mode,
+            "Password",
+            SuffixAction::copy(&password),
+            &[],
+        );
         server_item0.add(&password);
+
+        let text = common::text_row(
+            self.upcast_ref::<glib::Object>(),
+            "text",
+            widget_mode,
+            "Text",
+            SuffixAction::copy(&text),
+            &[],
+        );
+        server_item0.add(&text);
 
         vbox.append(&server_item0);
 

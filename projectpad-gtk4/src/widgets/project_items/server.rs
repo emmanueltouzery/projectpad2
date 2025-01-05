@@ -289,9 +289,6 @@ pub fn server_contents(
     // server.add(&server_ar);
     let server_item0 = adw::PreferencesGroup::builder().build();
 
-    DetailsRow::new("Text", &server.text, SuffixAction::copy(&server.text), &[])
-        .add(widget_mode, &server_item0);
-
     if widget_mode == WidgetMode::Edit {
         // server type
         let server_type_combo = adw::ComboRow::new();
@@ -352,6 +349,7 @@ pub fn server_contents(
     server_view_edit.set_username(server.username.clone());
     server_view_edit.set_access_type(server.access_type.to_string());
     server_view_edit.set_password(server.password.clone());
+    server_view_edit.set_text(server.text.clone());
     server_view_edit.prepare(widget_mode);
     vbox.append(&server_view_edit);
 

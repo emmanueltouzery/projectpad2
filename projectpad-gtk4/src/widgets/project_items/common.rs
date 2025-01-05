@@ -367,11 +367,13 @@ impl DetailsRow<'_> {
 }
 
 pub fn text_row(
+    bind_object: &glib::Object,
+    bind_key: &str,
     widget_mode: WidgetMode,
     title: &str,
     main_action: Option<SuffixAction>,
     suffix_actions: &[SuffixAction],
-) -> (adw::PreferencesRow, &'static str) {
+) -> adw::PreferencesRow {
     let (par, prop_name) = if widget_mode == WidgetMode::Show {
         let action_row = adw::ActionRow::builder()
             // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
@@ -381,6 +383,19 @@ pub fn text_row(
             .build();
 
         add_actions(&action_row, main_action, suffix_actions);
+
+        bind_object
+            .bind_property(bind_key, &action_row, "visible")
+            .transform_to(|_, str: &str| {
+                if str.is_empty() {
+                    Some(false.to_value())
+                } else {
+                    Some(true.to_value())
+                }
+            })
+            .sync_create()
+            .build();
+
         (action_row.upcast::<adw::PreferencesRow>(), "subtitle")
     } else {
         (
@@ -391,15 +406,24 @@ pub fn text_row(
         )
     };
     par.set_title(title);
-    (par, prop_name)
+
+    bind_object
+        .bind_property(bind_key, &par, prop_name)
+        .bidirectional()
+        .sync_create()
+        .build();
+
+    par
 }
 
 pub fn password_row(
+    bind_object: &glib::Object,
+    bind_key: &str,
     widget_mode: WidgetMode,
     title: &str,
     main_action: Option<SuffixAction>,
     suffix_actions: &[SuffixAction],
-) -> (adw::PreferencesRow, &'static str) {
+) -> adw::PreferencesRow {
     let (par, prop_name) = if widget_mode == WidgetMode::Show {
         let action_row = PasswordActionRow::new();
         add_actions(
@@ -407,6 +431,19 @@ pub fn password_row(
             main_action,
             suffix_actions,
         );
+
+        bind_object
+            .bind_property(bind_key, &action_row, "visible")
+            .transform_to(|_, str: &str| {
+                if str.is_empty() {
+                    Some(false.to_value())
+                } else {
+                    Some(true.to_value())
+                }
+            })
+            .sync_create()
+            .build();
+
         (action_row.upcast::<adw::PreferencesRow>(), "text")
     } else {
         (
@@ -417,7 +454,14 @@ pub fn password_row(
         )
     };
     par.set_title(title);
-    (par, prop_name)
+
+    bind_object
+        .bind_property(bind_key, &par, prop_name)
+        .bidirectional()
+        .sync_create()
+        .build();
+
+    par
 }
 
 fn add_actions(

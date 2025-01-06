@@ -560,6 +560,9 @@ impl ProjectItemList {
 
         let s = stack.clone();
         let dlg = dialog.clone();
+        let (_, server_contents_child, server_view_edit) =
+            server_contents(&Server::default(), &[], WidgetMode::Edit);
+        let hb = header_bar.clone();
         server_btn.connect_clicked(move |_| {
             dlg.set_title("Add Server");
             dlg.set_content_width(600);
@@ -567,11 +570,33 @@ impl ProjectItemList {
             s.add_named(
                 &adw::Clamp::builder()
                     .margin_top(10)
-                    .child(&server_contents(&Server::default(), &[], WidgetMode::Edit).1)
+                    .child(&server_contents_child)
                     .build(),
                 Some("second"),
             );
             s.set_visible_child_name("second");
+
+            let save_btn = gtk::Button::builder()
+                .label("Save")
+                .css_classes(["suggested-action"])
+                .build();
+            let d = dlg.clone();
+            let server_view_edit = server_view_edit.clone();
+            save_btn.connect_clicked(move |_| {
+                dbg!(server_view_edit.property::<String>("ip"));
+                // let receiver = Note::save_project_note(
+                //     note.imp().text_edit.borrow().as_ref().unwrap(),
+                //     note_header.as_ref().unwrap(),
+                //     None,
+                // );
+                // let d = d.clone();
+                // glib::spawn_future_local(async move {
+                //     let project_note_after_result = receiver.recv().await.unwrap();
+                //     dbg!(project_note_after_result);
+                //     d.close();
+                // });
+            });
+            hb.pack_end(&save_btn);
         });
 
         let s = stack.clone();

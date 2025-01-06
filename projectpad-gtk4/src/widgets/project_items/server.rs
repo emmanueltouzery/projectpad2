@@ -226,7 +226,7 @@ fn display_server(
     server_item_id: Option<i32>,
     project_item: &ProjectItem,
 ) {
-    let (header_box, vbox) = server_contents(
+    let (header_box, vbox, _) = server_contents(
         &channel_data.server,
         &channel_data.project_group_names,
         WidgetMode::Show,
@@ -256,7 +256,7 @@ fn display_server(
     let pgn = channel_data.project_group_names.clone();
     edit_btn.connect_closure("clicked", false,
             glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                let (_, vbox) = server_contents(&s, &pgn_, WidgetMode::Edit);
+                let (_, vbox, _) = server_contents(&s, &pgn_, WidgetMode::Edit);
 
                 display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
             }),
@@ -271,7 +271,7 @@ pub fn server_contents(
     server: &Server,
     project_group_names: &[String],
     widget_mode: WidgetMode,
-) -> (gtk::Box, gtk::Box) {
+) -> (gtk::Box, gtk::Box, ServerViewEdit) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
@@ -317,7 +317,7 @@ pub fn server_contents(
 
     vbox.append(&server_item0);
 
-    (header_box, vbox)
+    (header_box, vbox, server_view_edit)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

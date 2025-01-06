@@ -267,7 +267,6 @@ fn display_server(
     parent.set_child(Some(&vbox));
 }
 
-// TODO kill DetailsRow use in this file, move everything to ServerViewEdit ####
 pub fn server_contents(
     server: &Server,
     project_group_names: &[String],
@@ -288,44 +287,6 @@ pub fn server_contents(
     // );
     // server.add(&server_ar);
     let server_item0 = adw::PreferencesGroup::builder().build();
-
-    if widget_mode == WidgetMode::Edit {
-        // server type
-        let server_type_combo = adw::ComboRow::new();
-        server_type_combo.set_title("Server Type");
-        let server_type_model = gtk::StringList::new(&[
-            "Application",
-            "Database",
-            "HTTP server or proxy",
-            "Monitoring",
-            "Reporting",
-        ]);
-        server_type_combo.set_model(Some(&server_type_model));
-        server_type_combo.set_selected(match server.server_type {
-            ServerType::SrvApplication => 0,
-            ServerType::SrvDatabase => 1,
-            ServerType::SrvHttpOrProxy => 2,
-            ServerType::SrvMonitoring => 3,
-            ServerType::SrvReporting => 4,
-        });
-
-        server_item0.add(&server_type_combo);
-
-        // access type
-        let access_type_combo = adw::ComboRow::new();
-        access_type_combo.set_title("Access Type");
-        let access_type_model =
-            gtk::StringList::new(&["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"]);
-        access_type_combo.set_model(Some(&access_type_model));
-        access_type_combo.set_selected(match server.access_type {
-            ServerAccessType::SrvAccessRdp => 0,
-            ServerAccessType::SrvAccessSsh => 1,
-            ServerAccessType::SrvAccessSshTunnel => 2,
-            ServerAccessType::SrvAccessWww => 3,
-        });
-
-        server_item0.add(&access_type_combo);
-    }
 
     let header_box = if widget_mode == WidgetMode::Edit {
         let project_item_header = ProjectItemHeaderEdit::new(
@@ -348,6 +309,7 @@ pub fn server_contents(
     server_view_edit.set_ip(server.ip.clone());
     server_view_edit.set_username(server.username.clone());
     server_view_edit.set_access_type(server.access_type.to_string());
+    server_view_edit.set_server_type(server.server_type.to_string());
     server_view_edit.set_password(server.password.clone());
     server_view_edit.set_text(server.text.clone());
     server_view_edit.prepare(widget_mode);

@@ -2,7 +2,7 @@ use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
-use projectpadsql::models::{EnvironmentType, ServerAccessType};
+use projectpadsql::models::{EnvironmentType, ServerAccessType, ServerType};
 use std::str::FromStr;
 
 use crate::widgets::project_item::WidgetMode;
@@ -29,6 +29,9 @@ mod imp {
     pub struct ServerViewEdit {
         #[property(get, set)]
         ip: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        server_type: Rc<RefCell<String>>,
 
         #[property(get, set)]
         access_type: Rc<RefCell<String>>,
@@ -80,6 +83,7 @@ impl ServerViewEdit {
         let server_item0 = adw::PreferencesGroup::builder().build();
 
         let ip = self.property::<String>("ip");
+        let server_type = ServerType::from_str(&self.property::<String>("server_type")).unwrap();
         let access_type =
             ServerAccessType::from_str(&self.property::<String>("access_type")).unwrap();
         let username = self.property::<String>("username");
@@ -130,6 +134,57 @@ impl ServerViewEdit {
             &[],
         );
         server_item0.add(&text);
+
+        if widget_mode == WidgetMode::Edit {
+            // server type
+            let server_type_combo = adw::ComboRow::new();
+            server_type_combo.set_title("Server Type");
+            let server_type_model = gtk::StringList::new(&[
+                "Application",
+                "Database",
+                "HTTP server or proxy",
+                "Monitoring",
+                "Reporting",
+            ]);
+            server_type_combo.set_model(Some(&server_type_model));
+            server_type_combo.set_selected(server_type as u32);
+            server_type_combo
+                .bind_property("selected", self, "server_type")
+                .transform_to(|_, number: u32| {
+                    Some(
+                        ServerType::from_repr(number.try_into().unwrap())
+                            .unwrap()
+                            .to_string()
+                            .to_value(),
+                    )
+                })
+                .sync_create()
+                .build();
+
+            server_item0.add(&server_type_combo);
+
+            // access type
+            let access_type_combo = adw::ComboRow::new();
+            access_type_combo.set_title("Access Type");
+            let access_type_model =
+                gtk::StringList::new(&["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"]);
+            access_type_combo.set_model(Some(&access_type_model));
+            access_type_combo.set_selected(access_type as u32);
+            access_type_combo
+                .bind_property("selected", self, "access_type")
+                .transform_to(|_, number: u32| {
+                    Some(
+                        ServerAccessType::from_repr(number.try_into().unwrap())
+                            .unwrap()
+                            .to_string()
+                            .to_value(),
+                    )
+                })
+                .sync_create()
+                .build();
+
+            server_item0.add(&access_type_combo);
+        }
 
         vbox.append(&server_item0);
 

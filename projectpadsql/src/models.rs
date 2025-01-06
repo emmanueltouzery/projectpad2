@@ -30,6 +30,7 @@ pub struct Project {
     EnumString,
     AsExpression,
     FromSqlRow,
+    FromRepr,
     Display,
     EnumIter,
     PartialOrd,
@@ -38,12 +39,13 @@ pub struct Project {
     Deserialize,
 )]
 #[diesel(sql_type = Varchar)]
+#[repr(u8)]
 pub enum ServerType {
-    SrvDatabase,
-    SrvApplication,
-    SrvHttpOrProxy,
-    SrvMonitoring,
-    SrvReporting,
+    SrvDatabase = 1,
+    SrvApplication = 0,
+    SrvHttpOrProxy = 2,
+    SrvMonitoring = 3,
+    SrvReporting = 4,
 }
 
 impl Default for ServerType {
@@ -61,6 +63,7 @@ impl Default for ServerType {
     EnumString,
     AsExpression,
     FromSqlRow,
+    FromRepr,
     Display,
     EnumIter,
     PartialOrd,
@@ -69,11 +72,12 @@ impl Default for ServerType {
     Deserialize,
 )]
 #[diesel(sql_type = Varchar)]
+#[repr(u8)]
 pub enum ServerAccessType {
-    SrvAccessSsh,
-    SrvAccessRdp,
-    SrvAccessWww,
-    SrvAccessSshTunnel,
+    SrvAccessSsh = 1,
+    SrvAccessRdp = 0,
+    SrvAccessWww = 3,
+    SrvAccessSshTunnel = 2,
 }
 
 impl Default for ServerAccessType {

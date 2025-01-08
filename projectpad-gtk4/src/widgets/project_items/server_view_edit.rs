@@ -151,6 +151,21 @@ impl ServerViewEdit {
             if let Some(k) = auth_key_filename {
                 auth_key_entry.set_filename(k);
             }
+            auth_key_entry
+                .bind_property("filename", self, "auth_key_filename")
+                .sync_create()
+                .build();
+
+            if widget_mode == WidgetMode::Show {
+                auth_key_entry.connect_closure(
+                    "file-picked",
+                    false,
+                    glib::closure_local!(move |_: FilePickerActionRow, p: String| {
+                        dbg!(p);
+                    }),
+                );
+            }
+
             server_item0.add(&auth_key_entry);
         }
 

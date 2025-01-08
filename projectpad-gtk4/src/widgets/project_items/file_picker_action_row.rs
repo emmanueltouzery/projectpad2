@@ -2,16 +2,17 @@ use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 
-use crate::widgets::project_item::WidgetMode;
+use crate::{app::ProjectpadApplication, widgets::project_item::WidgetMode};
 
 mod imp {
-    use std::{cell::RefCell, rc::Rc};
+    use std::{cell::RefCell, rc::Rc, sync::OnceLock};
 
     use super::*;
     use gtk::subclass::{
         prelude::{ObjectImpl, ObjectSubclass},
         widget::WidgetImpl,
     };
+    use subclass::Signal;
 
     #[derive(Properties, Debug, Default)]
     #[properties(wrapper_type = super::FilePickerActionRow)]
@@ -34,6 +35,15 @@ mod imp {
     impl ObjectImpl for FilePickerActionRow {
         fn constructed(&self) {
             self.parent_constructed();
+        }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("file-picked")
+                    .param_types([String::static_type()])
+                    .build()]
+            })
         }
     }
 
@@ -75,9 +85,34 @@ impl FilePickerActionRow {
         widget.connect_closure(
             "clicked",
             false,
-            glib::closure_local!(move |b: gtk::Button| {
+            glib::closure_local!(@strong this as s => move |b: gtk::Button| {
+                let app = gio::Application::default()
+                    .expect("Failed to retrieve application singleton")
+                    .downcast::<ProjectpadApplication>()
+                    .unwrap();
+                let window = app.imp().window.get().unwrap();
+                let win_binding = window.upgrade();
+                let win_binding_ref = win_binding.as_ref().unwrap();
+                let file_dialog = gtk::FileDialog::builder().build();
                 if b.icon_name() == Some("document-open-symbolic".into()) {
+                    let _s = s.clone();
+                    file_dialog.open(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
+                        if let Ok(f) = r {
+                            if let Some(p) = f.path() {
+                                _s.set_property("filename", p);
+                            }
+                        }
+                    });
                 } else {
+                    let _s = s.clone();
+                    file_dialog.save(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
+                        if let Ok(f) = r {
+                            if let Some(p) = f.path() {
+                                dbg!(&p);
+                                _s.emit_by_name::<()>("file-picked", &[&p.display().to_string()]);
+                            }
+                        }
+                    });
                 }
             }),
         );

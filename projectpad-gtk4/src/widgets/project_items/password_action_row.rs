@@ -1,26 +1,14 @@
 use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
-use gtk::subclass::widget::CompositeTemplate;
-use projectpadsql::models::EnvironmentType;
-
-use crate::widgets::{
-    environment_list_picker::EnvironmentListPicker, environment_picker::EnvironmentPicker,
-    project_item::WidgetMode, project_item_model::ProjectItemType,
-};
-
-use super::common::{ask_user, EnvOrEnvs, PasswordMode, SuffixAction};
 
 mod imp {
     use std::{cell::RefCell, rc::Rc};
 
     use super::*;
-    use gtk::{
-        subclass::{
-            prelude::{ObjectImpl, ObjectSubclass},
-            widget::{CompositeTemplateInitializingExt, WidgetImpl},
-        },
-        CompositeTemplate, TemplateChild,
+    use gtk::subclass::{
+        prelude::{ObjectImpl, ObjectSubclass},
+        widget::WidgetImpl,
     };
 
     #[derive(Properties, Debug, Default)]

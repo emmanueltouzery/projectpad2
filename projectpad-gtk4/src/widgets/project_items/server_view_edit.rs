@@ -9,6 +9,7 @@ use crate::widgets::project_item::WidgetMode;
 
 use super::{
     common::{self, DetailsRow, PasswordMode, SuffixAction},
+    file_picker_action_row::FilePickerActionRow,
     password_action_row::PasswordActionRow,
 };
 
@@ -31,6 +32,9 @@ mod imp {
         ip: Rc<RefCell<String>>,
 
         #[property(get, set)]
+        is_retired: Rc<RefCell<bool>>,
+
+        #[property(get, set)]
         server_type: Rc<RefCell<String>>,
 
         #[property(get, set)]
@@ -44,6 +48,9 @@ mod imp {
 
         #[property(get, set)]
         text: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        auth_key_filename: Rc<RefCell<String>>,
     }
 
     #[glib::object_subclass]
@@ -83,12 +90,16 @@ impl ServerViewEdit {
         let server_item0 = adw::PreferencesGroup::builder().build();
 
         let ip = self.property::<String>("ip");
+        let is_retired = self.property::<bool>("is_retired");
         let server_type = ServerType::from_str(&self.property::<String>("server_type")).unwrap();
         let access_type =
             ServerAccessType::from_str(&self.property::<String>("access_type")).unwrap();
         let username = self.property::<String>("username");
         let password = self.property::<String>("password");
         let text = self.property::<String>("text");
+        let auth_key_filename = self
+            .property::<Option<String>>("auth_key_filename")
+            .filter(|s| !s.is_empty());
 
         let address_suffix_www = [SuffixAction::link(&ip)];
         let address = common::text_row(
@@ -104,6 +115,14 @@ impl ServerViewEdit {
             },
         );
         server_item0.add(&address);
+
+        if widget_mode == WidgetMode::Edit || is_retired {
+            let retired_switch = adw::SwitchRow::builder()
+                .title("Retired")
+                .active(is_retired)
+                .build();
+            server_item0.add(&retired_switch);
+        }
 
         let username = common::text_row(
             self.upcast_ref::<glib::Object>(),
@@ -124,6 +143,16 @@ impl ServerViewEdit {
             &[],
         );
         server_item0.add(&password);
+
+        dbg!(&auth_key_filename);
+        if widget_mode == WidgetMode::Edit || auth_key_filename.is_some() {
+            let auth_key_entry = FilePickerActionRow::new(widget_mode);
+            auth_key_entry.set_title("Authentication key");
+            if let Some(k) = auth_key_filename {
+                auth_key_entry.set_filename(k);
+            }
+            server_item0.add(&auth_key_entry);
+        }
 
         let text = common::text_row(
             self.upcast_ref::<glib::Object>(),

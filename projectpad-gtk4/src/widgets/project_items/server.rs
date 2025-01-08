@@ -14,8 +14,8 @@ use glib::GString;
 use gtk::subclass::prelude::*;
 use itertools::Itertools;
 use projectpadsql::models::{
-    InterestType, RunOn, Server, ServerAccessType, ServerDatabase, ServerExtraUserAccount,
-    ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
+    EnvironmentType, InterestType, RunOn, Server, ServerAccessType, ServerDatabase,
+    ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
 };
 use std::{
     collections::{BTreeSet, HashMap},
@@ -307,11 +307,18 @@ pub fn server_contents(
 
     let server_view_edit = ServerViewEdit::new();
     server_view_edit.set_ip(server.ip.clone());
+    server_view_edit.set_is_retired(server.is_retired);
     server_view_edit.set_username(server.username.clone());
     server_view_edit.set_access_type(server.access_type.to_string());
     server_view_edit.set_server_type(server.server_type.to_string());
     server_view_edit.set_password(server.password.clone());
     server_view_edit.set_text(server.text.clone());
+    server_view_edit.set_auth_key_filename(
+        server
+            .auth_key_filename
+            .clone()
+            .unwrap_or_else(|| "".to_string()),
+    );
     server_view_edit.prepare(widget_mode);
     vbox.append(&server_view_edit);
 
@@ -685,6 +692,57 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
         }),
     );
 }
+
+// fn save_server(
+//     db_sender: mpsc::Sender<SqlFunc>,
+//     project_id: i32,
+//     server_id: Option<i32>,
+//     new_env_type: EnvironmentType,
+//     new_is_retired: bool,
+//     new_desc: String,
+//     new_address: String,
+//     new_username: String,
+//     new_password: String,
+//     new_text: String,
+//     new_server_type: ServerType,
+//     new_server_access_type: ServerAccessType,
+// ) {
+//     let (sender, receiver) = async_channel::bounded(1);
+//     db_sender
+//         .send(SqlFunc::new(move |sql_conn| {
+//             use projectpadsql::schema::server::dsl as srv;
+//             let changeset = (
+//                 srv::desc.eq(new_desc.as_str()),
+//                 srv::is_retired.eq(new_is_retired),
+//                 srv::ip.eq(new_address.as_str()),
+//                 srv::text.eq(new_text.as_str()),
+//                 // never store Some("") for group, we want None then.
+//                 srv::group_name.eq(new_group
+//                     .as_ref()
+//                     .map(|s| s.as_str())
+//                     .filter(|s| !s.is_empty())),
+//                 srv::username.eq(new_username.as_str()),
+//                 srv::password.eq(new_password.as_str()),
+//                 srv::auth_key.eq(new_authkey.as_ref()),
+//                 srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
+//                 srv::server_type.eq(new_server_type),
+//                 srv::access_type.eq(new_server_access_type),
+//                 srv::environment.eq(new_env_type),
+//                 srv::project_id.eq(project_id),
+//             );
+//             let server_after_result = perform_insert_or_update!(
+//                 sql_conn,
+//                 server_id,
+//                 srv::server,
+//                 srv::id,
+//                 changeset,
+//                 Server,
+//             );
+//             sender.send_blocking(server_after_result).unwrap();
+//         }))
+//         .unwrap();
+//     receiver
+// }
 
 fn save_server_note(
     db_sender: mpsc::Sender<SqlFunc>,

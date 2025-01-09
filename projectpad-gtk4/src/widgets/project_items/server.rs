@@ -17,6 +17,7 @@ use projectpadsql::models::{
     EnvironmentType, InterestType, RunOn, Server, ServerAccessType, ServerDatabase,
     ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
 };
+use std::str::FromStr;
 use std::{
     collections::{BTreeSet, HashMap},
     sync::mpsc,
@@ -256,9 +257,42 @@ fn display_server(
     let pgn = channel_data.project_group_names.clone();
     edit_btn.connect_closure("clicked", false,
             glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                let (_, header_edit, vbox, _) = server_contents(&s, &pgn_, WidgetMode::Edit);
+                let (_, header_edit, vbox, server_view_edit) = server_contents(&s, &pgn_, WidgetMode::Edit);
 
-                display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
+                let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
+                let he = header_edit.unwrap().clone();
+                save_btn.connect_clicked(move|_| {
+                    let receiver = save_server(
+                        Some(s.id),
+                        he.single_env(),
+                        server_view_edit.property("is_retired"),
+                        he.property("title"),
+                        server_view_edit.property("ip"),
+                        server_view_edit.property("username"),
+                        server_view_edit.property("password"),
+                        server_view_edit.property("text"),
+                        ServerType::from_str(&server_view_edit.property::<String>("server_type"))
+                        .unwrap(),
+                        ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
+                        .unwrap(),
+                    );
+
+                    let app = gio::Application::default()
+                        .and_downcast::<ProjectpadApplication>()
+                        .unwrap();
+                    let db_sender = app.get_sql_channel();
+                    let dlg = dlg.clone();
+                    glib::spawn_future_local(async move {
+                        let server_after_result = receiver.recv().await.unwrap();
+                        let window = app.imp().window.get().unwrap();
+                        let win_binding = window.upgrade();
+                        let win_binding_ref = win_binding.as_ref().unwrap();
+                        let pi = &win_binding_ref.imp().project_item;
+                        let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
+                        load_and_display_server(pi_bin, db_sender, s.id, None, pi);
+                        dlg.close();
+                    });
+                });
             }),
         );
 

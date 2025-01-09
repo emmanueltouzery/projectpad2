@@ -496,6 +496,7 @@ impl ProjectItemList {
         btn_hbox
     }
 
+    // TODO for the love of god, split that function
     fn display_add_project_item_dialog() {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -610,8 +611,11 @@ impl ProjectItemList {
                 let d = d.clone();
                 glib::spawn_future_local(async move {
                     let server_after_result = receiver.recv().await.unwrap();
-                    dbg!(server_after_result);
                     d.close();
+
+                    if let Ok(server) = server_after_result {
+                        Self::display_project_item(server.id, ProjectItemType::Server);
+                    }
                 });
             });
             hb.pack_end(&save_btn);
@@ -674,8 +678,11 @@ impl ProjectItemList {
                 let d = d.clone();
                 glib::spawn_future_local(async move {
                     let project_note_after_result = receiver.recv().await.unwrap();
-                    dbg!(project_note_after_result);
                     d.close();
+
+                    if let Ok(note) = project_note_after_result {
+                        Self::display_project_item(note.id, ProjectItemType::ProjectNote);
+                    }
                 });
             });
             header_bar.pack_end(&save_btn);
@@ -692,5 +699,20 @@ impl ProjectItemList {
             .and_downcast::<ProjectpadApplication>()
             .unwrap();
         dialog.present(&app.active_window().unwrap());
+    }
+
+    fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {
+        let app = gio::Application::default()
+            .expect("Failed to retrieve application singleton")
+            .downcast::<ProjectpadApplication>()
+            .unwrap();
+
+        let w = app.imp().window.get().unwrap().upgrade().unwrap();
+        let select_project_variant = glib::VariantDict::new(None);
+        select_project_variant.insert("project_id", app.project_id().unwrap());
+        select_project_variant.insert("item_id", Some(project_item_id));
+        select_project_variant.insert("item_type", Some(project_item_type as u8));
+        select_project_variant.insert("search_item_type", None::<u8>);
+        w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
     }
 }

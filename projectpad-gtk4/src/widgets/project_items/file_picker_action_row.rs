@@ -118,6 +118,8 @@ impl FilePickerActionRow {
         );
         this.add_suffix(&widget);
 
+        this.set_activatable_widget(Some(&widget));
+
         this.bind_property(
             "filename",
             this.upcast_ref::<adw::PreferencesRow>(),

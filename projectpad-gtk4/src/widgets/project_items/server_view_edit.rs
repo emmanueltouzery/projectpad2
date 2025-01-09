@@ -1,28 +1,23 @@
 use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
-use gtk::subclass::widget::CompositeTemplate;
-use projectpadsql::models::{EnvironmentType, ServerAccessType, ServerType};
+use projectpadsql::models::{ServerAccessType, ServerType};
 use std::str::FromStr;
 
 use crate::widgets::project_item::WidgetMode;
 
 use super::{
-    common::{self, DetailsRow, PasswordMode, SuffixAction},
+    common::{self, SuffixAction},
     file_picker_action_row::FilePickerActionRow,
-    password_action_row::PasswordActionRow,
 };
 
 mod imp {
     use std::{cell::RefCell, rc::Rc};
 
     use super::*;
-    use gtk::{
-        subclass::{
-            prelude::{ObjectImpl, ObjectSubclass},
-            widget::{CompositeTemplateInitializingExt, WidgetImpl},
-        },
-        CompositeTemplate, TemplateChild,
+    use gtk::subclass::{
+        prelude::{ObjectImpl, ObjectSubclass},
+        widget::WidgetImpl,
     };
 
     #[derive(Properties, Debug, Default)]

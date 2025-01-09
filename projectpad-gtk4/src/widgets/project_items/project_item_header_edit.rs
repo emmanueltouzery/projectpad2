@@ -261,4 +261,17 @@ impl ProjectItemHeaderEdit {
     pub fn header_box(&self) -> gtk::Box {
         self.imp().header_box.clone()
     }
+
+    pub fn single_env(&self) -> EnvironmentType {
+        if self.property("env_dev") {
+            return EnvironmentType::EnvDevelopment;
+        }
+        if self.property("env_stg") {
+            return EnvironmentType::EnvStage;
+        }
+        if self.property("env_uat") {
+            return EnvironmentType::EnvUat;
+        }
+        return EnvironmentType::EnvProd;
+    }
 }

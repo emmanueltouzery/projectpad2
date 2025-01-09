@@ -225,6 +225,21 @@ impl ProjectpadApplication {
         }
     }
 
+    pub fn project_id(&self) -> Option<i32> {
+        let project_state = glib::VariantDict::new(
+            self.imp()
+                .window
+                .get()
+                .unwrap()
+                .upgrade()
+                .unwrap()
+                .action_state("select-project-item")
+                .as_ref(),
+        );
+        // i32::try_from(project_state.lookup::<i64>("project_id").unwrap().unwrap()).unwrap();
+        project_state.lookup::<i32>("project_id").unwrap()
+    }
+
     fn fetch_projects_and_populate_menu(
         &self,
         run_mode: RunMode,
@@ -242,19 +257,7 @@ impl ProjectpadApplication {
 
         // get the current project now, but then we'll recompute the menu if/when
         // the current project change (or indeed if the project list changes)
-        let project_state = glib::VariantDict::new(
-            self.imp()
-                .window
-                .get()
-                .unwrap()
-                .upgrade()
-                .unwrap()
-                .action_state("select-project-item")
-                .as_ref(),
-        );
-        let project_id_maybe =
-            // i32::try_from(project_state.lookup::<i64>("project_id").unwrap().unwrap()).unwrap();
-            project_state.lookup::<i32>("project_id").unwrap();
+        let project_id_maybe = self.project_id();
 
         let app_clone = self.clone();
         glib::spawn_future_local(async move {

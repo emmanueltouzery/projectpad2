@@ -226,7 +226,7 @@ fn display_server(
     server_item_id: Option<i32>,
     project_item: &ProjectItem,
 ) {
-    let (header_box, vbox, _) = server_contents(
+    let (header_box, header_edit, vbox, _) = server_contents(
         &channel_data.server,
         &channel_data.project_group_names,
         WidgetMode::Show,
@@ -256,7 +256,7 @@ fn display_server(
     let pgn = channel_data.project_group_names.clone();
     edit_btn.connect_closure("clicked", false,
             glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                let (_, vbox, _) = server_contents(&s, &pgn_, WidgetMode::Edit);
+                let (_, header_edit, vbox, _) = server_contents(&s, &pgn_, WidgetMode::Edit);
 
                 display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
             }),
@@ -271,7 +271,12 @@ pub fn server_contents(
     server: &Server,
     project_group_names: &[String],
     widget_mode: WidgetMode,
-) -> (gtk::Box, gtk::Box, ServerViewEdit) {
+) -> (
+    gtk::Box,
+    Option<ProjectItemHeaderEdit>,
+    gtk::Box,
+    ServerViewEdit,
+) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
@@ -288,7 +293,7 @@ pub fn server_contents(
     // server.add(&server_ar);
     let server_item0 = adw::PreferencesGroup::builder().build();
 
-    let header_box = if widget_mode == WidgetMode::Edit {
+    let (project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
         let project_item_header = ProjectItemHeaderEdit::new(
             ProjectItemType::Server,
             server.group_name.as_deref(),
@@ -297,12 +302,15 @@ pub fn server_contents(
         );
         project_item_header.set_title(server.desc.clone());
         vbox.append(&project_item_header);
-        project_item_header.header_box()
+        (
+            Some(project_item_header.clone()),
+            project_item_header.header_box(),
+        )
     } else {
         let project_item_header = ProjectItemHeaderView::new(ProjectItemType::Server);
         project_item_header.set_title(server.desc.clone());
         vbox.append(&project_item_header);
-        project_item_header.header_box()
+        (None, project_item_header.header_box())
     };
 
     let server_view_edit = ServerViewEdit::new();
@@ -324,7 +332,7 @@ pub fn server_contents(
 
     vbox.append(&server_item0);
 
-    (header_box, vbox, server_view_edit)
+    (header_box, project_item_header_edit, vbox, server_view_edit)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -693,56 +701,61 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
     );
 }
 
-// fn save_server(
-//     db_sender: mpsc::Sender<SqlFunc>,
-//     project_id: i32,
-//     server_id: Option<i32>,
-//     new_env_type: EnvironmentType,
-//     new_is_retired: bool,
-//     new_desc: String,
-//     new_address: String,
-//     new_username: String,
-//     new_password: String,
-//     new_text: String,
-//     new_server_type: ServerType,
-//     new_server_access_type: ServerAccessType,
-// ) {
-//     let (sender, receiver) = async_channel::bounded(1);
-//     db_sender
-//         .send(SqlFunc::new(move |sql_conn| {
-//             use projectpadsql::schema::server::dsl as srv;
-//             let changeset = (
-//                 srv::desc.eq(new_desc.as_str()),
-//                 srv::is_retired.eq(new_is_retired),
-//                 srv::ip.eq(new_address.as_str()),
-//                 srv::text.eq(new_text.as_str()),
-//                 // never store Some("") for group, we want None then.
-//                 srv::group_name.eq(new_group
-//                     .as_ref()
-//                     .map(|s| s.as_str())
-//                     .filter(|s| !s.is_empty())),
-//                 srv::username.eq(new_username.as_str()),
-//                 srv::password.eq(new_password.as_str()),
-//                 srv::auth_key.eq(new_authkey.as_ref()),
-//                 srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
-//                 srv::server_type.eq(new_server_type),
-//                 srv::access_type.eq(new_server_access_type),
-//                 srv::environment.eq(new_env_type),
-//                 srv::project_id.eq(project_id),
-//             );
-//             let server_after_result = perform_insert_or_update!(
-//                 sql_conn,
-//                 server_id,
-//                 srv::server,
-//                 srv::id,
-//                 changeset,
-//                 Server,
-//             );
-//             sender.send_blocking(server_after_result).unwrap();
-//         }))
-//         .unwrap();
-//     receiver
-// }
+pub fn save_server(
+    server_id: Option<i32>,
+    new_env_type: EnvironmentType,
+    new_is_retired: bool,
+    new_desc: String,
+    new_address: String,
+    new_username: String,
+    new_password: String,
+    new_text: String,
+    new_server_type: ServerType,
+    new_server_access_type: ServerAccessType,
+) -> async_channel::Receiver<Result<Server, (String, Option<String>)>> {
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    let db_sender = app.get_sql_channel();
+    let (sender, receiver) = async_channel::bounded(1);
+    let project_id = app.project_id().unwrap();
+
+    // TODO commented fields (group and so on)
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::server::dsl as srv;
+            let changeset = (
+                srv::desc.eq(new_desc.as_str()),
+                srv::is_retired.eq(new_is_retired),
+                srv::ip.eq(new_address.as_str()),
+                srv::text.eq(new_text.as_str()),
+                // never store Some("") for group, we want None then.
+                // srv::group_name.eq(new_group
+                //     .as_ref()
+                //     .map(|s| s.as_str())
+                //     .filter(|s| !s.is_empty())),
+                srv::username.eq(new_username.as_str()),
+                srv::password.eq(new_password.as_str()),
+                // srv::auth_key.eq(new_authkey.as_ref()),
+                // srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
+                srv::server_type.eq(new_server_type),
+                srv::access_type.eq(new_server_access_type),
+                srv::environment.eq(new_env_type),
+                srv::project_id.eq(project_id),
+            );
+            let server_after_result = perform_insert_or_update!(
+                sql_conn,
+                server_id,
+                srv::server,
+                srv::id,
+                changeset,
+                Server,
+            );
+            sender.send_blocking(server_after_result).unwrap();
+        }))
+        .unwrap();
+    receiver
+}
 
 fn save_server_note(
     db_sender: mpsc::Sender<SqlFunc>,

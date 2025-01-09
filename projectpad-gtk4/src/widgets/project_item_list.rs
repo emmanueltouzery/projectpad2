@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
     sync::mpsc,
@@ -9,9 +10,15 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
-use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server, ServerLink};
+use projectpadsql::models::{
+    Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerLink, ServerType,
+};
 
-use crate::{app::ProjectpadApplication, sql_thread::SqlFunc};
+use crate::{
+    app::ProjectpadApplication,
+    sql_thread::SqlFunc,
+    widgets::project_items::{self, server},
+};
 
 use super::{
     project_item::WidgetMode,
@@ -560,9 +567,10 @@ impl ProjectItemList {
 
         let s = stack.clone();
         let dlg = dialog.clone();
-        let (_, server_contents_child, server_view_edit) =
+        let (_, header_edit, server_contents_child, server_view_edit) =
             server_contents(&Server::default(), &[], WidgetMode::Edit);
         let hb = header_bar.clone();
+        let he = header_edit.unwrap().clone();
         server_btn.connect_clicked(move |_| {
             dlg.set_title("Add Server");
             dlg.set_content_width(600);
@@ -582,19 +590,29 @@ impl ProjectItemList {
                 .build();
             let d = dlg.clone();
             let server_view_edit = server_view_edit.clone();
+            let he = he.clone();
             save_btn.connect_clicked(move |_| {
                 dbg!(server_view_edit.property::<String>("ip"));
-                // let receiver = Note::save_project_note(
-                //     note.imp().text_edit.borrow().as_ref().unwrap(),
-                //     note_header.as_ref().unwrap(),
-                //     None,
-                // );
-                // let d = d.clone();
-                // glib::spawn_future_local(async move {
-                //     let project_note_after_result = receiver.recv().await.unwrap();
-                //     dbg!(project_note_after_result);
-                //     d.close();
-                // });
+                let receiver = server::save_server(
+                    None,
+                    he.single_env(),
+                    server_view_edit.property("is_retired"),
+                    he.property("title"),
+                    server_view_edit.property("ip"),
+                    server_view_edit.property("username"),
+                    server_view_edit.property("password"),
+                    server_view_edit.property("text"),
+                    ServerType::from_str(&server_view_edit.property::<String>("server_type"))
+                        .unwrap(),
+                    ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
+                        .unwrap(),
+                );
+                let d = d.clone();
+                glib::spawn_future_local(async move {
+                    let server_after_result = receiver.recv().await.unwrap();
+                    dbg!(server_after_result);
+                    d.close();
+                });
             });
             hb.pack_end(&save_btn);
         });

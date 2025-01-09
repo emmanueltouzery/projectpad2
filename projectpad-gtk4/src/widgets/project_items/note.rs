@@ -528,6 +528,7 @@ impl Note {
             buf.set_text(contents);
             let view = sourceview5::View::with_buffer(&buf);
             view.set_vexpand(true);
+            view.set_wrap_mode(gtk::WrapMode::Word);
             self.imp().text_edit.set(Some(view.clone()));
             view.upcast::<gtk::Widget>() // TODO buffer_iters?
         };

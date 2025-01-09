@@ -464,6 +464,48 @@ pub fn password_row(
     par
 }
 
+pub fn combo_row<
+    FF: Fn(glib::Value) -> u32 + Send + 'static + Copy + Sync,
+    FT: Fn(u32) -> glib::Value + Send + 'static + Copy + Sync,
+>(
+    bind_object: &glib::Object,
+    bind_key: &str,
+    widget_mode: WidgetMode,
+    title: &str,
+    combo_vals: &[&str],
+    bind_from: FF,
+    bind_to: FT,
+) -> adw::PreferencesRow {
+    if widget_mode == WidgetMode::Edit {
+        // server type
+        let combo_row = adw::ComboRow::new();
+        combo_row.set_title(title);
+        let vals_model = gtk::StringList::new(combo_vals);
+        combo_row.set_model(Some(&vals_model));
+        // the binding is from the bind object so that its value is initially
+        // used for the sync
+        bind_object
+            .bind_property(bind_key, &combo_row, "selected")
+            .transform_to(move |_, val| Some(bind_from(val)))
+            .transform_from(move |_, number: u32| Some(bind_to(number)))
+            .bidirectional()
+            .sync_create()
+            .build();
+        combo_row.upcast::<adw::PreferencesRow>()
+    } else {
+        let val_index = bind_from(bind_object.property(bind_key));
+        adw::ActionRow::builder()
+            // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html#property-rows
+            // When used together with the .property style class, AdwActionRow and
+            // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
+            .css_classes(["property"])
+            .title(title)
+            .subtitle(combo_vals[TryInto::<usize>::try_into(val_index).unwrap()])
+            .build()
+            .upcast::<adw::PreferencesRow>()
+    }
+}
+
 fn add_actions(
     action_row: &adw::ActionRow,
     main_action: Option<SuffixAction>,

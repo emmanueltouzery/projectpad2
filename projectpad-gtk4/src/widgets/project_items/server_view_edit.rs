@@ -174,56 +174,43 @@ impl ServerViewEdit {
         );
         server_item0.add(&text);
 
-        if widget_mode == WidgetMode::Edit {
-            // server type
-            let server_type_combo = adw::ComboRow::new();
-            server_type_combo.set_title("Server Type");
-            let server_type_model = gtk::StringList::new(&[
+        let server_type_row = common::combo_row(
+            self.upcast_ref::<glib::Object>(),
+            "server_type",
+            widget_mode,
+            "Server Type",
+            &[
                 "Application",
                 "Database",
                 "HTTP server or proxy",
                 "Monitoring",
                 "Reporting",
-            ]);
-            server_type_combo.set_model(Some(&server_type_model));
-            server_type_combo.set_selected(server_type as u32);
-            server_type_combo
-                .bind_property("selected", self, "server_type")
-                .transform_to(|_, number: u32| {
-                    Some(
-                        ServerType::from_repr(number.try_into().unwrap())
-                            .unwrap()
-                            .to_string()
-                            .to_value(),
-                    )
-                })
-                .sync_create()
-                .build();
+            ],
+            |v| ServerType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
+            |i| {
+                ServerType::from_repr(TryInto::<u8>::try_into(i).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .to_value()
+            },
+        );
+        server_item0.add(&server_type_row);
 
-            server_item0.add(&server_type_combo);
-
-            // access type
-            let access_type_combo = adw::ComboRow::new();
-            access_type_combo.set_title("Access Type");
-            let access_type_model =
-                gtk::StringList::new(&["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"]);
-            access_type_combo.set_model(Some(&access_type_model));
-            access_type_combo.set_selected(access_type as u32);
-            access_type_combo
-                .bind_property("selected", self, "access_type")
-                .transform_to(|_, number: u32| {
-                    Some(
-                        ServerAccessType::from_repr(number.try_into().unwrap())
-                            .unwrap()
-                            .to_string()
-                            .to_value(),
-                    )
-                })
-                .sync_create()
-                .build();
-
-            server_item0.add(&access_type_combo);
-        }
+        let access_type_row = common::combo_row(
+            self.upcast_ref::<glib::Object>(),
+            "access_type",
+            widget_mode,
+            "Access Type",
+            &["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"],
+            |v| ServerAccessType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
+            |i| {
+                ServerAccessType::from_repr(TryInto::<u8>::try_into(i).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .to_value()
+            },
+        );
+        server_item0.add(&access_type_row);
 
         vbox.append(&server_item0);
 

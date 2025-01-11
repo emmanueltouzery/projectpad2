@@ -11,7 +11,8 @@ use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
 use projectpadsql::models::{
-    Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType, ServerLink, ServerType,
+    InterestType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType,
+    ServerLink, ServerType,
 };
 
 use crate::{
@@ -21,6 +22,7 @@ use crate::{
 };
 
 use super::project_items::project_item_header_edit::ProjectItemHeaderEdit;
+use super::project_items::project_poi;
 use super::project_items::server_view_edit::ServerViewEdit;
 use super::{
     project_item::WidgetMode,
@@ -587,7 +589,8 @@ impl ProjectItemList {
 
         let s = stack.clone();
         let dlg = dialog.clone();
-        poi_btn.connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &s));
+        let hb = header_bar.clone();
+        poi_btn.connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &hb, &s));
 
         let s = stack.clone();
         let dlg = dialog.clone();
@@ -701,14 +704,14 @@ impl ProjectItemList {
         hb.pack_end(&save_btn);
     }
 
-    fn prepare_add_project_poi_dlg(dlg: &adw::Dialog, s: &gtk::Stack) {
+    fn prepare_add_project_poi_dlg(dlg: &adw::Dialog, hb: &adw::HeaderBar, s: &gtk::Stack) {
         dlg.set_title("Add Project POI");
         dlg.set_content_width(600);
         dlg.set_content_height(600);
 
         let vbox = gtk::Box::builder().build();
 
-        let (_, poi_box) =
+        let (maybe_header_edit, project_poi_view_edit, _, poi_box) =
             project_poi_contents(&ProjectPointOfInterest::default(), &[], WidgetMode::Edit);
 
         vbox.append(&poi_box);
@@ -718,6 +721,37 @@ impl ProjectItemList {
             Some("second"),
         );
         s.set_visible_child_name("second");
+
+        let save_btn = gtk::Button::builder()
+            .label("Save")
+            .css_classes(["suggested-action"])
+            .build();
+        let d = dlg.clone();
+        let project_poi_view_edit = project_poi_view_edit.clone();
+        let he = maybe_header_edit.unwrap().clone();
+        save_btn.connect_clicked(move |_| {
+            let receiver = project_poi::save_project_poi(
+                None,
+                he.property("title"),
+                project_poi_view_edit.property("path"),
+                project_poi_view_edit.property("text"),
+                InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type"))
+                    .unwrap(),
+            );
+            let d = d.clone();
+            glib::spawn_future_local(async move {
+                let project_poi_after_result = receiver.recv().await.unwrap();
+                d.close();
+
+                if let Ok(project_poi) = project_poi_after_result {
+                    Self::display_project_item(
+                        project_poi.id,
+                        ProjectItemType::ProjectPointOfInterest,
+                    );
+                }
+            });
+        });
+        hb.pack_end(&save_btn);
     }
 
     fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {

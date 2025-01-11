@@ -14,9 +14,10 @@ use crate::{
 };
 
 use super::{
-    common::{self, DetailsRow, SuffixAction},
+    common::{self},
     project_item_header_edit::ProjectItemHeaderEdit,
     project_item_header_view::ProjectItemHeaderView,
+    project_poi_view_edit::ProjectPoiViewEdit,
 };
 
 pub fn load_and_display_project_poi(
@@ -44,13 +45,6 @@ pub fn load_and_display_project_poi(
         let (poi, project_group_names) = receiver.recv().await.unwrap();
         display_project_oi(&p, poi, &project_group_names);
     });
-}
-
-fn poi_get_text_label(interest_type: InterestType) -> &'static str {
-    match interest_type {
-        InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
-        _ => "Text",
-    }
 }
 
 fn display_project_oi(
@@ -113,46 +107,12 @@ pub fn project_poi_contents(
         project_item_header.header_box()
     };
 
-    let (desc, idx) = match poi.interest_type {
-        InterestType::PoiApplication => ("Application", 0),
-        InterestType::PoiBackupArchive => ("Backup/Archive", 1),
-        InterestType::PoiCommandToRun => ("Command to run", 2),
-        InterestType::PoiCommandTerminal => ("Command to run", 3),
-        InterestType::PoiConfigFile => ("Config file", 4),
-        InterestType::PoiLogFile => ("Log file", 5),
-    };
-
-    let prefs_group = adw::PreferencesGroup::builder().title(desc).build();
-
-    DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path), &[])
-        .add(widget_mode, &prefs_group);
-
-    DetailsRow::new(
-        poi_get_text_label(poi.interest_type),
-        &poi.text,
-        SuffixAction::copy(&poi.text),
-        &[],
-    )
-    .add(widget_mode, &prefs_group);
-
-    if widget_mode == WidgetMode::Edit {
-        let interest_type_combo = adw::ComboRow::new();
-        interest_type_combo.set_title("Interest Type");
-        let interest_type_model = gtk::StringList::new(&[
-            "Application",
-            "Backup/archive",
-            "Command to run",
-            "Command to run (terminal)",
-            "Config file",
-            "Log file",
-        ]);
-        interest_type_combo.set_model(Some(&interest_type_model));
-        interest_type_combo.set_selected(idx);
-
-        prefs_group.add(&interest_type_combo);
-    }
-
-    vbox.append(&prefs_group);
+    let project_poi_view_edit = ProjectPoiViewEdit::new();
+    project_poi_view_edit.set_interest_type(poi.interest_type.to_string());
+    project_poi_view_edit.set_path(poi.path.clone());
+    project_poi_view_edit.set_text(poi.text.clone());
+    project_poi_view_edit.prepare(widget_mode);
+    vbox.append(&project_poi_view_edit);
 
     (header_box, vbox)
 }

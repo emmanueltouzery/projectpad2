@@ -127,6 +127,7 @@ impl Default for EnvironmentType {
     EnumString,
     AsExpression,
     FromSqlRow,
+    FromRepr,
     Display,
     EnumIter,
     PartialOrd,
@@ -135,13 +136,14 @@ impl Default for EnvironmentType {
     Deserialize,
 )]
 #[diesel(sql_type = Varchar)]
+#[repr(u8)]
 pub enum InterestType {
-    PoiApplication,
-    PoiLogFile,
-    PoiConfigFile,
-    PoiCommandToRun,
-    PoiCommandTerminal,
-    PoiBackupArchive,
+    PoiApplication = 0,
+    PoiLogFile = 5,
+    PoiConfigFile = 4,
+    PoiCommandToRun = 2,
+    PoiCommandTerminal = 3,
+    PoiBackupArchive = 1,
 }
 
 impl Default for InterestType {

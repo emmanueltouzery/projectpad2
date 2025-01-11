@@ -21,13 +21,6 @@ pub enum Msg {
 // String for details, because I can't pass Error across threads
 type SaveResult = Result<ServerPointOfInterest, (String, Option<String>)>;
 
-pub fn poi_get_text_label(interest_type: InterestType) -> &'static str {
-    match interest_type {
-        InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
-        _ => "Text",
-    }
-}
-
 pub fn interest_type_desc(interest_type: InterestType) -> &'static str {
     match interest_type {
         InterestType::PoiLogFile => "Log file",

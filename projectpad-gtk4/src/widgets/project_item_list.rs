@@ -20,6 +20,8 @@ use crate::{
     widgets::project_items::{self, server},
 };
 
+use super::project_items::project_item_header_edit::ProjectItemHeaderEdit;
+use super::project_items::server_view_edit::ServerViewEdit;
 use super::{
     project_item::WidgetMode,
     project_item_list_model::ProjectItemListModel,
@@ -573,76 +575,19 @@ impl ProjectItemList {
         let hb = header_bar.clone();
         let he = header_edit.unwrap().clone();
         server_btn.connect_clicked(move |_| {
-            dlg.set_title("Add Server");
-            dlg.set_content_width(600);
-            dlg.set_content_height(600);
-            s.add_named(
-                &adw::Clamp::builder()
-                    .margin_top(10)
-                    .child(&server_contents_child)
-                    .build(),
-                Some("second"),
+            Self::prepare_add_server_dlg(
+                &dlg,
+                &s,
+                &hb,
+                &he,
+                &server_view_edit,
+                &server_contents_child,
             );
-            s.set_visible_child_name("second");
-
-            let save_btn = gtk::Button::builder()
-                .label("Save")
-                .css_classes(["suggested-action"])
-                .build();
-            let d = dlg.clone();
-            let server_view_edit = server_view_edit.clone();
-            let he = he.clone();
-            save_btn.connect_clicked(move |_| {
-                dbg!(server_view_edit.property::<String>("ip"));
-                let receiver = server::save_server(
-                    None,
-                    he.single_env(),
-                    server_view_edit.property("is_retired"),
-                    he.property("title"),
-                    server_view_edit.property("ip"),
-                    server_view_edit.property("username"),
-                    server_view_edit.property("password"),
-                    server_view_edit.property("text"),
-                    ServerType::from_str(&server_view_edit.property::<String>("server_type"))
-                        .unwrap(),
-                    ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
-                        .unwrap(),
-                );
-                let d = d.clone();
-                glib::spawn_future_local(async move {
-                    let server_after_result = receiver.recv().await.unwrap();
-                    d.close();
-
-                    if let Ok(server) = server_after_result {
-                        Self::display_project_item(server.id, ProjectItemType::Server);
-                    }
-                });
-            });
-            hb.pack_end(&save_btn);
         });
 
         let s = stack.clone();
         let dlg = dialog.clone();
-        poi_btn.connect_clicked(move |_| {
-            dlg.set_title("Add Project POI");
-            dlg.set_content_width(600);
-            dlg.set_content_height(600);
-            s.add_named(
-                &adw::Clamp::builder()
-                    .margin_top(10)
-                    .child(
-                        &project_poi_contents(
-                            &ProjectPointOfInterest::default(),
-                            &[],
-                            WidgetMode::Edit,
-                        )
-                        .1,
-                    )
-                    .build(),
-                Some("second"),
-            );
-            s.set_visible_child_name("second");
-        });
+        poi_btn.connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &s));
 
         let s = stack.clone();
         let dlg = dialog.clone();
@@ -699,6 +644,80 @@ impl ProjectItemList {
             .and_downcast::<ProjectpadApplication>()
             .unwrap();
         dialog.present(&app.active_window().unwrap());
+    }
+
+    fn prepare_add_server_dlg(
+        dlg: &adw::Dialog,
+        s: &gtk::Stack,
+        hb: &adw::HeaderBar,
+        he: &ProjectItemHeaderEdit,
+        server_view_edit: &ServerViewEdit,
+        server_contents_child: &gtk::Box,
+    ) {
+        dlg.set_title("Add Server");
+        dlg.set_content_width(600);
+        dlg.set_content_height(600);
+        s.add_named(
+            &adw::Clamp::builder()
+                .margin_top(10)
+                .child(server_contents_child)
+                .build(),
+            Some("second"),
+        );
+        s.set_visible_child_name("second");
+
+        let save_btn = gtk::Button::builder()
+            .label("Save")
+            .css_classes(["suggested-action"])
+            .build();
+        let d = dlg.clone();
+        let server_view_edit = server_view_edit.clone();
+        let he = he.clone();
+        save_btn.connect_clicked(move |_| {
+            dbg!(server_view_edit.property::<String>("ip"));
+            let receiver = server::save_server(
+                None,
+                he.single_env(),
+                server_view_edit.property("is_retired"),
+                he.property("title"),
+                server_view_edit.property("ip"),
+                server_view_edit.property("username"),
+                server_view_edit.property("password"),
+                server_view_edit.property("text"),
+                ServerType::from_str(&server_view_edit.property::<String>("server_type")).unwrap(),
+                ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
+                    .unwrap(),
+            );
+            let d = d.clone();
+            glib::spawn_future_local(async move {
+                let server_after_result = receiver.recv().await.unwrap();
+                d.close();
+
+                if let Ok(server) = server_after_result {
+                    Self::display_project_item(server.id, ProjectItemType::Server);
+                }
+            });
+        });
+        hb.pack_end(&save_btn);
+    }
+
+    fn prepare_add_project_poi_dlg(dlg: &adw::Dialog, s: &gtk::Stack) {
+        dlg.set_title("Add Project POI");
+        dlg.set_content_width(600);
+        dlg.set_content_height(600);
+
+        let vbox = gtk::Box::builder().build();
+
+        let (_, poi_box) =
+            project_poi_contents(&ProjectPointOfInterest::default(), &[], WidgetMode::Edit);
+
+        vbox.append(&poi_box);
+
+        s.add_named(
+            &adw::Clamp::builder().margin_top(10).child(&vbox).build(),
+            Some("second"),
+        );
+        s.set_visible_child_name("second");
     }
 
     fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {

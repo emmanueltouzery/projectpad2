@@ -15,11 +15,7 @@ use projectpadsql::models::{
     ServerLink, ServerType,
 };
 
-use crate::{
-    app::ProjectpadApplication,
-    sql_thread::SqlFunc,
-    widgets::project_items::{self, server},
-};
+use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_items::server};
 
 use super::project_items::project_item_header_edit::ProjectItemHeaderEdit;
 use super::project_items::project_poi;

@@ -1,5 +1,6 @@
 use adw::prelude::*;
 use diesel::prelude::*;
+use std::str::FromStr;
 use std::sync::mpsc;
 
 use projectpadsql::models::{InterestType, ProjectPointOfInterest};
@@ -14,6 +15,7 @@ use crate::{
         project_items::common::{display_item_edit_dialog, get_project_group_names, DialogClamp},
     },
 };
+use gtk::subclass::prelude::*;
 
 use super::{
     common::{self},
@@ -77,7 +79,32 @@ fn display_project_poi(
             glib::closure_local!(@strong poi as p, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
                 let (maybe_header_edit, project_poi_view_edit, _, vbox) = project_poi_contents(&p, &pgn_, WidgetMode::Edit);
 
-                display_item_edit_dialog(&v, "Edit project POI", vbox, 600, 600, DialogClamp::Yes);
+                let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit project POI", vbox, 600, 600, DialogClamp::Yes);
+                let he = maybe_header_edit.unwrap().clone();
+                save_btn.connect_clicked(move|_| {
+                    let receiver = save_project_poi(
+                        Some(poi.id),
+                        he.property("title"),
+                        project_poi_view_edit.property("path"),
+                        project_poi_view_edit.property("text"),
+                        InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type")).unwrap(),
+                    );
+
+                    let app = gio::Application::default()
+                        .and_downcast::<ProjectpadApplication>()
+                        .unwrap();
+                    let db_sender = app.get_sql_channel();
+                    let dlg = dlg.clone();
+                    glib::spawn_future_local(async move {
+                        let project_poi_after_result = receiver.recv().await.unwrap();
+                        let window = app.imp().window.get().unwrap();
+                        let win_binding = window.upgrade();
+                        let win_binding_ref = win_binding.as_ref().unwrap();
+                        let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
+                        load_and_display_project_poi(pi_bin, db_sender, poi.id);
+                        dlg.close();
+                    });
+                });
             }),
         );
 

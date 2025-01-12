@@ -26,8 +26,8 @@ use std::{
 
 use super::{
     common::{self, DetailsRow, SuffixAction},
-    project_item_header_edit::ProjectItemHeaderEdit,
-    project_item_header_view::ProjectItemHeaderView,
+    item_header_edit::ItemHeaderEdit,
+    item_header_view::ItemHeaderView,
     server_view_edit::ServerViewEdit,
 };
 use crate::widgets::project_items::note::Note;
@@ -307,7 +307,7 @@ pub fn server_contents(
     widget_mode: WidgetMode,
 ) -> (
     gtk::Box,
-    Option<ProjectItemHeaderEdit>,
+    Option<ItemHeaderEdit>,
     gtk::Box,
     ServerViewEdit,
 ) {
@@ -328,7 +328,7 @@ pub fn server_contents(
     let server_item0 = adw::PreferencesGroup::builder().build();
 
     let (project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
-        let project_item_header = ProjectItemHeaderEdit::new(
+        let project_item_header = ItemHeaderEdit::new(
             ProjectItemType::Server,
             server.group_name.as_deref(),
             project_group_names,
@@ -341,7 +341,7 @@ pub fn server_contents(
             project_item_header.header_box(),
         )
     } else {
-        let project_item_header = ProjectItemHeaderView::new(ProjectItemType::Server);
+        let project_item_header = ItemHeaderView::new(ProjectItemType::Server);
         project_item_header.set_title(server.desc.clone());
         vbox.append(&project_item_header);
         (None, project_item_header.header_box())
@@ -867,10 +867,8 @@ fn server_note_contents_show(
     server_item1
 }
 
-fn server_note_contents_edit(note: &ServerNote, vbox: &gtk::Box) -> (ProjectItemHeaderEdit, Note) {
-    // TODO this is not a PROJECT note. rename ProjectItemHeaderEdit, and make it take an icon
-    // instead of a ProjectItemType. Although I'm not sure yet what i'll do about groups
-    let project_item_header = ProjectItemHeaderEdit::new(
+fn server_note_contents_edit(note: &ServerNote, vbox: &gtk::Box) -> (ItemHeaderEdit, Note) {
+    let project_item_header = ItemHeaderEdit::new(
         ProjectItemType::ProjectNote,
         None,
         &[],

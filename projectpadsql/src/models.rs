@@ -161,15 +161,17 @@ impl Default for InterestType {
     EnumString,
     EnumIter,
     AsExpression,
+    FromRepr,
     FromSqlRow,
     Display,
     Serialize,
     Deserialize,
 )]
 #[diesel(sql_type = Varchar)]
+#[repr(u8)]
 pub enum RunOn {
-    RunOnServer,
-    RunOnClient,
+    RunOnServer = 1,
+    RunOnClient = 0,
 }
 
 macro_rules! simple_enum {

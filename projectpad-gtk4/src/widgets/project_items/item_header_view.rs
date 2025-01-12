@@ -1,3 +1,5 @@
+/// This can be a PROJECT item or a SERVER item
+/// So we just say Item...
 use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
@@ -18,11 +20,11 @@ mod imp {
     };
 
     #[derive(Properties, Debug, Default, CompositeTemplate)]
-    #[properties(wrapper_type = super::ProjectItemHeaderView)]
+    #[properties(wrapper_type = super::ItemHeaderView)]
     #[template(
-        resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_items/project_item_header_view.ui"
+        resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_items/item_header_view.ui"
     )]
-    pub struct ProjectItemHeaderView {
+    pub struct ItemHeaderView {
         #[template_child]
         pub header_icon: TemplateChild<gtk::Image>,
 
@@ -37,10 +39,10 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ProjectItemHeaderView {
-        const NAME: &'static str = "ProjectItemHeaderView";
+    impl ObjectSubclass for ItemHeaderView {
+        const NAME: &'static str = "ItemHeaderView";
         type ParentType = adw::Bin;
-        type Type = super::ProjectItemHeaderView;
+        type Type = super::ItemHeaderView;
 
         fn class_init(klass: &mut Self::Class) {
             Self::bind_template(klass);
@@ -52,26 +54,26 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for ProjectItemHeaderView {
+    impl ObjectImpl for ItemHeaderView {
         fn constructed(&self) {
             // assuming all the properties are set at once if modified
             // let _ = self
             //     .obj()
-            //     .connect_title_notify(|header: &super::ProjectItemHeaderView| {});
+            //     .connect_title_notify(|header: &super::ItemHeaderView| {});
         }
     }
 
-    impl WidgetImpl for ProjectItemHeaderView {}
+    impl WidgetImpl for ItemHeaderView {}
 
-    impl adw::subclass::prelude::BinImpl for ProjectItemHeaderView {}
+    impl adw::subclass::prelude::BinImpl for ItemHeaderView {}
 }
 
 glib::wrapper! {
-    pub struct ProjectItemHeaderView(ObjectSubclass<imp::ProjectItemHeaderView>)
+    pub struct ItemHeaderView(ObjectSubclass<imp::ItemHeaderView>)
         @extends gtk::Widget, adw::Bin;
 }
 
-impl ProjectItemHeaderView {
+impl ItemHeaderView {
     pub fn new(project_item_type: ProjectItemType) -> Self {
         let this = glib::Object::new::<Self>();
 

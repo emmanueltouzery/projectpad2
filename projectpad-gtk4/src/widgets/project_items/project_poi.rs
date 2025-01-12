@@ -19,8 +19,8 @@ use gtk::subclass::prelude::*;
 
 use super::{
     common::{self},
-    project_item_header_edit::ProjectItemHeaderEdit,
-    project_item_header_view::ProjectItemHeaderView,
+    item_header_edit::ItemHeaderEdit,
+    item_header_view::ItemHeaderView,
     project_poi_view_edit::ProjectPoiViewEdit,
 };
 
@@ -116,7 +116,7 @@ pub fn project_poi_contents(
     project_group_names: &[String],
     widget_mode: WidgetMode,
 ) -> (
-    Option<ProjectItemHeaderEdit>,
+    Option<ItemHeaderEdit>,
     ProjectPoiViewEdit,
     gtk::Box,
     gtk::Box,
@@ -125,7 +125,7 @@ pub fn project_poi_contents(
         .orientation(gtk::Orientation::Vertical)
         .build();
     let (maybe_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
-        let project_item_header = ProjectItemHeaderEdit::new(
+        let project_item_header = ItemHeaderEdit::new(
             ProjectItemType::ProjectPointOfInterest,
             poi.group_name.as_deref(),
             project_group_names,
@@ -139,7 +139,7 @@ pub fn project_poi_contents(
         )
     } else {
         let project_item_header =
-            ProjectItemHeaderView::new(ProjectItemType::ProjectPointOfInterest);
+            ItemHeaderView::new(ProjectItemType::ProjectPointOfInterest);
         project_item_header.set_title(poi.desc.clone());
         vbox.append(&project_item_header);
         (None, project_item_header.header_box())

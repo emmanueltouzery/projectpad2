@@ -26,8 +26,8 @@ use crate::{
 };
 
 use super::{
-    common::EnvOrEnvs, project_item_header_edit::ProjectItemHeaderEdit,
-    project_item_header_view::ProjectItemHeaderView,
+    common::EnvOrEnvs, item_header_edit::ItemHeaderEdit,
+    item_header_view::ItemHeaderView,
 };
 
 #[derive(Clone, Default)]
@@ -361,7 +361,7 @@ impl Note {
 
     pub fn save_project_note(
         v: &sourceview5::View,
-        header_edit: &ProjectItemHeaderEdit,
+        header_edit: &ItemHeaderEdit,
         project_note_id: Option<i32>,
     ) -> async_channel::Receiver<Result<ProjectNote, (String, Option<String>)>> {
         let buf = v.buffer();
@@ -418,7 +418,7 @@ impl Note {
         &self,
         note: NoteInfo,
         widget_mode: WidgetMode,
-    ) -> (gtk::Box, gtk::Box, Option<ProjectItemHeaderEdit>) {
+    ) -> (gtk::Box, gtk::Box, Option<ItemHeaderEdit>) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
@@ -446,7 +446,7 @@ impl Note {
         }
 
         let (maybe_project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
-            let project_item_header = ProjectItemHeaderEdit::new(
+            let project_item_header = ItemHeaderEdit::new(
                 ProjectItemType::ProjectNote,
                 note.group_name,
                 note.all_group_names,
@@ -459,7 +459,7 @@ impl Note {
             let hbox = project_item_header.header_box();
             (Some(project_item_header), hbox)
         } else {
-            let project_item_header = ProjectItemHeaderView::new(ProjectItemType::ProjectNote);
+            let project_item_header = ItemHeaderView::new(ProjectItemType::ProjectNote);
             project_item_header.set_title(note.title);
             if note.display_header {
                 vbox.append(&project_item_header);

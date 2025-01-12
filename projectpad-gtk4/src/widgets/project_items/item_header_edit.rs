@@ -1,3 +1,5 @@
+/// This can be a PROJECT item or a SERVER item
+/// So we just say Item...
 use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
@@ -24,11 +26,11 @@ mod imp {
     };
 
     #[derive(Properties, Debug, Default, CompositeTemplate)]
-    #[properties(wrapper_type = super::ProjectItemHeaderEdit)]
+    #[properties(wrapper_type = super::ItemHeaderEdit)]
     #[template(
-        resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_items/project_item_header_edit.ui"
+        resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/project_items/item_header_edit.ui"
     )]
-    pub struct ProjectItemHeaderEdit {
+    pub struct ItemHeaderEdit {
         #[template_child]
         pub header_icon: TemplateChild<gtk::Image>,
 
@@ -55,10 +57,10 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ProjectItemHeaderEdit {
-        const NAME: &'static str = "ProjectItemHeaderEdit";
+    impl ObjectSubclass for ItemHeaderEdit {
+        const NAME: &'static str = "ItemHeaderEdit";
         type ParentType = adw::Bin;
-        type Type = super::ProjectItemHeaderEdit;
+        type Type = super::ItemHeaderEdit;
 
         fn class_init(klass: &mut Self::Class) {
             Self::bind_template(klass);
@@ -70,22 +72,22 @@ mod imp {
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for ProjectItemHeaderEdit {
+    impl ObjectImpl for ItemHeaderEdit {
         fn constructed(&self) {
             // assuming all the properties are set at once if modified
             // let _ = self
             //     .obj()
-            //     .connect_title_notify(|header: &super::ProjectItemHeaderEdit| {});
+            //     .connect_title_notify(|header: &super::ItemHeaderEdit| {});
         }
     }
 
-    impl WidgetImpl for ProjectItemHeaderEdit {}
+    impl WidgetImpl for ItemHeaderEdit {}
 
-    impl adw::subclass::prelude::BinImpl for ProjectItemHeaderEdit {}
+    impl adw::subclass::prelude::BinImpl for ItemHeaderEdit {}
 }
 
 glib::wrapper! {
-    pub struct ProjectItemHeaderEdit(ObjectSubclass<imp::ProjectItemHeaderEdit>)
+    pub struct ItemHeaderEdit(ObjectSubclass<imp::ItemHeaderEdit>)
         @extends gtk::Widget, adw::Bin;
 }
 
@@ -93,7 +95,7 @@ glib::wrapper! {
 /// but the problem are notes, for which we share the code
 /// between project notes and server notes (and these are
 /// different groups...)
-impl ProjectItemHeaderEdit {
+impl ItemHeaderEdit {
     pub fn new(
         project_item_type: ProjectItemType,
         group_name: Option<&str>,

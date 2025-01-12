@@ -17,7 +17,7 @@ use projectpadsql::models::{
 
 use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_items::server};
 
-use super::project_items::project_item_header_edit::ProjectItemHeaderEdit;
+use super::project_items::item_header_edit::ItemHeaderEdit;
 use super::project_items::project_poi;
 use super::project_items::server_view_edit::ServerViewEdit;
 use super::{
@@ -649,7 +649,7 @@ impl ProjectItemList {
         dlg: &adw::Dialog,
         s: &gtk::Stack,
         hb: &adw::HeaderBar,
-        he: &ProjectItemHeaderEdit,
+        he: &ItemHeaderEdit,
         server_view_edit: &ServerViewEdit,
         server_contents_child: &gtk::Box,
     ) {

@@ -97,16 +97,14 @@ glib::wrapper! {
 /// different groups...)
 impl ItemHeaderEdit {
     pub fn new(
-        project_item_type: ProjectItemType,
+        icon: &str,
         group_name: Option<&str>,
         all_group_names: &[String],
         env: EnvOrEnvs,
     ) -> Self {
         let this = glib::Object::new::<Self>();
 
-        this.imp()
-            .header_icon
-            .set_icon_name(Some(&project_item_type.get_icon()));
+        this.imp().header_icon.set_icon_name(Some(icon));
 
         // TODO add this through the UI file not the code
         let title_entry = gtk::Entry::builder()

@@ -5,7 +5,7 @@ use crate::{
     widgets::{
         project_item::{ProjectItem, WidgetMode},
         project_item_model::ProjectItemType,
-        project_items::common::{display_item_edit_dialog, get_project_group_names, DialogClamp},
+        project_items::common::{display_item_edit_dialog, DialogClamp},
     },
 };
 use adw::prelude::*;
@@ -13,9 +13,12 @@ use diesel::prelude::*;
 use glib::GString;
 use gtk::subclass::prelude::*;
 use itertools::Itertools;
-use projectpadsql::models::{
-    EnvironmentType, InterestType, RunOn, Server, ServerAccessType, ServerDatabase,
-    ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
+use projectpadsql::{
+    get_project_group_names, get_server_group_names,
+    models::{
+        EnvironmentType, InterestType, RunOn, Server, ServerAccessType, ServerDatabase,
+        ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
+    },
 };
 use std::str::FromStr;
 use std::{
@@ -28,6 +31,7 @@ use super::{
     common::{self, DetailsRow, SuffixAction},
     item_header_edit::ItemHeaderEdit,
     item_header_view::ItemHeaderView,
+    server_items::{interest_type_get_icon, server_poi_view_edit::ServerPoiViewEdit},
     server_view_edit::ServerViewEdit,
 };
 use crate::widgets::project_items::note::Note;
@@ -305,12 +309,7 @@ pub fn server_contents(
     server: &Server,
     project_group_names: &[String],
     widget_mode: WidgetMode,
-) -> (
-    gtk::Box,
-    Option<ItemHeaderEdit>,
-    gtk::Box,
-    ServerViewEdit,
-) {
+) -> (gtk::Box, Option<ItemHeaderEdit>, gtk::Box, ServerViewEdit) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
@@ -329,7 +328,7 @@ pub fn server_contents(
 
     let (project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
         let project_item_header = ItemHeaderEdit::new(
-            ProjectItemType::Server,
+            ProjectItemType::Server.get_icon(),
             server.group_name.as_deref(),
             project_group_names,
             common::EnvOrEnvs::Env(server.environment),
@@ -572,6 +571,17 @@ fn server_poi_contents(
     widget_mode: WidgetMode,
     vbox: &gtk::Box,
 ) -> adw::PreferencesGroup {
+    if widget_mode == WidgetMode::Edit {
+        let server_item_header = ItemHeaderEdit::new(
+            interest_type_get_icon(poi.interest_type),
+            poi.group_name.as_deref(),
+            &[], // TODO list of groups get_server_group_names(),
+            common::EnvOrEnvs::None,
+        );
+        server_item_header.set_title(poi.desc.clone());
+        vbox.append(&server_item_header);
+    }
+
     let desc = match poi.interest_type {
         InterestType::PoiLogFile => "Log file",
         InterestType::PoiConfigFile => "Config file",
@@ -580,56 +590,21 @@ fn server_poi_contents(
         InterestType::PoiBackupArchive => "Backup/Archive",
         InterestType::PoiCommandTerminal => "Command to run",
     };
-    let server_item1 = adw::PreferencesGroup::builder()
-        .description(desc)
-        .title(&poi.desc)
-        .build();
-    DetailsRow::new("Description", &poi.desc, None, &[]).add(widget_mode, &server_item1);
-    DetailsRow::new("Path", &poi.path, SuffixAction::copy(&poi.path), &[])
-        .add(widget_mode, &server_item1);
-    let field_name = match poi.interest_type {
-        InterestType::PoiCommandToRun | InterestType::PoiCommandTerminal => "Command",
-        _ => "Text",
-    };
-    DetailsRow::new(field_name, &poi.text, SuffixAction::copy(&poi.text), &[])
-        .add(widget_mode, &server_item1);
-
+    let server_item1 = adw::PreferencesGroup::builder().build();
     vbox.append(&server_item1);
 
-    if widget_mode == WidgetMode::Edit {
-        // run on
-        let run_on_combo = adw::ComboRow::new();
-        run_on_combo.set_title("Run on");
-        let run_on_model = gtk::StringList::new(&["Client", "Server"]);
-        run_on_combo.set_model(Some(&run_on_model));
-        run_on_combo.set_selected(match poi.run_on {
-            RunOn::RunOnClient => 0,
-            RunOn::RunOnServer => 1,
-        });
-
-        server_item1.add(&run_on_combo);
-
-        let interest_type_combo = adw::ComboRow::new();
-        interest_type_combo.set_title("Interest Type");
-        let interest_type_model = gtk::StringList::new(&[
-            "Application",
-            "Backup/archive",
-            "Command to run",
-            "Command to run (terminal)",
-            "Config file",
-            "Log file",
-        ]);
-        interest_type_combo.set_model(Some(&interest_type_model));
-        interest_type_combo.set_selected(match poi.interest_type {
-            InterestType::PoiApplication => 0,
-            InterestType::PoiBackupArchive => 1,
-            InterestType::PoiCommandToRun => 2,
-            InterestType::PoiCommandTerminal => 3,
-            InterestType::PoiConfigFile => 4,
-            InterestType::PoiLogFile => 5,
-        });
-        server_item1.add(&interest_type_combo);
+    if widget_mode == WidgetMode::Show {
+        server_item1.set_description(Some(desc));
+        server_item1.set_title(&poi.desc);
     }
+
+    let server_poi_view_edit = ServerPoiViewEdit::new();
+    server_poi_view_edit.set_interest_type(poi.interest_type.to_string());
+    server_poi_view_edit.set_path(poi.path.to_string());
+    server_poi_view_edit.set_text(poi.text.to_string());
+    server_poi_view_edit.set_run_on(poi.run_on.to_string());
+    server_poi_view_edit.prepare(widget_mode);
+    server_item1.add(&server_poi_view_edit);
 
     server_item1
 }
@@ -869,9 +844,9 @@ fn server_note_contents_show(
 
 fn server_note_contents_edit(note: &ServerNote, vbox: &gtk::Box) -> (ItemHeaderEdit, Note) {
     let project_item_header = ItemHeaderEdit::new(
-        ProjectItemType::ProjectNote,
-        None,
-        &[],
+        ProjectItemType::ProjectNote.get_icon(),
+        note.group_name.as_deref(),
+        &[], // TODO list of groups
         common::EnvOrEnvs::None,
     );
     project_item_header.set_title(note.title.clone());

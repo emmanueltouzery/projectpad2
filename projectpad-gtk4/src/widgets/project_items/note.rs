@@ -10,7 +10,10 @@ use adw::prelude::*;
 use glib::property::PropertySet;
 use glib::*;
 use gtk::{gdk, subclass::prelude::*};
-use projectpadsql::models::{EnvironmentType, ProjectNote, ServerNote};
+use projectpadsql::{
+    get_project_group_names,
+    models::{EnvironmentType, ProjectNote, ServerNote},
+};
 
 use crate::{
     app::ProjectpadApplication,
@@ -18,16 +21,13 @@ use crate::{
     sql_thread::SqlFunc,
     widgets::{
         project_item::WidgetMode,
-        project_items::common::{
-            copy_to_clipboard, display_item_edit_dialog, get_project_group_names, DialogClamp,
-        },
+        project_items::common::{copy_to_clipboard, display_item_edit_dialog, DialogClamp},
         search_bar::SearchBar,
     },
 };
 
 use super::{
-    common::EnvOrEnvs, item_header_edit::ItemHeaderEdit,
-    item_header_view::ItemHeaderView,
+    common::EnvOrEnvs, item_header_edit::ItemHeaderEdit, item_header_view::ItemHeaderView,
 };
 
 #[derive(Clone, Default)]
@@ -447,7 +447,7 @@ impl Note {
 
         let (maybe_project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
             let project_item_header = ItemHeaderEdit::new(
-                ProjectItemType::ProjectNote,
+                ProjectItemType::ProjectNote.get_icon(),
                 note.group_name,
                 note.all_group_names,
                 note.env,

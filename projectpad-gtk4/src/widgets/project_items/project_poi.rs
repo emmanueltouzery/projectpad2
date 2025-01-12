@@ -3,7 +3,10 @@ use diesel::prelude::*;
 use std::str::FromStr;
 use std::sync::mpsc;
 
-use projectpadsql::models::{InterestType, ProjectPointOfInterest};
+use projectpadsql::{
+    get_project_group_names,
+    models::{InterestType, ProjectPointOfInterest},
+};
 
 use crate::{
     app::ProjectpadApplication,
@@ -12,7 +15,7 @@ use crate::{
     widgets::{
         project_item::WidgetMode,
         project_item_model::ProjectItemType,
-        project_items::common::{display_item_edit_dialog, get_project_group_names, DialogClamp},
+        project_items::common::{display_item_edit_dialog, DialogClamp},
     },
 };
 use gtk::subclass::prelude::*;
@@ -126,7 +129,7 @@ pub fn project_poi_contents(
         .build();
     let (maybe_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
         let project_item_header = ItemHeaderEdit::new(
-            ProjectItemType::ProjectPointOfInterest,
+            ProjectItemType::ProjectPointOfInterest.get_icon(),
             poi.group_name.as_deref(),
             project_group_names,
             common::EnvOrEnvs::None,
@@ -138,8 +141,7 @@ pub fn project_poi_contents(
             project_item_header.header_box(),
         )
     } else {
-        let project_item_header =
-            ItemHeaderView::new(ProjectItemType::ProjectPointOfInterest);
+        let project_item_header = ItemHeaderView::new(ProjectItemType::ProjectPointOfInterest);
         project_item_header.set_title(poi.desc.clone());
         vbox.append(&project_item_header);
         (None, project_item_header.header_box())

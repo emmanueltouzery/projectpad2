@@ -7,5 +7,5 @@ pub mod password_action_row;
 pub mod project_poi;
 pub mod project_poi_view_edit;
 pub mod server;
-mod server_items;
+pub mod server_items;
 pub mod server_view_edit;

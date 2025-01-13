@@ -78,38 +78,34 @@ impl ServerPoiViewEdit {
         let interest_type =
             InterestType::from_str(&self.property::<String>("interest_type")).unwrap();
 
-        if widget_mode == WidgetMode::Edit || !path.is_empty() {
-            let path = common::text_row(
-                self.upcast_ref::<glib::Object>(),
-                "path",
-                widget_mode,
-                "Path",
-                SuffixAction::copy(&path),
-                &[],
-            );
-            server_item0.add(&path);
-        }
+        let path = common::text_row(
+            self.upcast_ref::<glib::Object>(),
+            "path",
+            widget_mode,
+            "Path",
+            SuffixAction::copy(&path),
+            &[],
+        );
+        server_item0.add(&path);
 
-        if widget_mode == WidgetMode::Edit || !text.is_empty() {
-            let text = common::text_row(
-                self.upcast_ref::<glib::Object>(),
-                "text",
-                widget_mode,
-                ProjectPoiViewEdit::poi_get_text_label(interest_type),
-                SuffixAction::copy(&text),
-                &[],
-            );
-            server_item0.add(&text);
-            self.bind_property("interest_type", &text, "title")
-                .transform_to(|_, it| {
-                    Some(
-                        ProjectPoiViewEdit::poi_get_text_label(InterestType::from_str(it).unwrap())
-                            .to_value(),
-                    )
-                })
-                .sync_create()
-                .build();
-        }
+        let text = common::text_row(
+            self.upcast_ref::<glib::Object>(),
+            "text",
+            widget_mode,
+            ProjectPoiViewEdit::poi_get_text_label(interest_type),
+            SuffixAction::copy(&text),
+            &[],
+        );
+        server_item0.add(&text);
+        self.bind_property("interest_type", &text, "title")
+            .transform_to(|_, it| {
+                Some(
+                    ProjectPoiViewEdit::poi_get_text_label(InterestType::from_str(it).unwrap())
+                        .to_value(),
+                )
+            })
+            .sync_create()
+            .build();
 
         let interest_type_row = common::combo_row(
             self.upcast_ref::<glib::Object>(),

@@ -31,7 +31,10 @@ use super::{
     common::{self, DetailsRow, SuffixAction},
     item_header_edit::ItemHeaderEdit,
     item_header_view::ItemHeaderView,
-    server_items::{interest_type_get_icon, server_poi_view_edit::ServerPoiViewEdit},
+    server_items::{
+        interest_type_get_icon, server_poi_view_edit::ServerPoiViewEdit,
+        server_website_view_edit::ServerWebsiteViewEdit,
+    },
     server_view_edit::ServerViewEdit,
 };
 use crate::widgets::project_items::note::Note;
@@ -518,34 +521,35 @@ fn display_server_website(w: &ServerWebsite, vbox: &gtk::Box) {
 }
 
 fn server_website_contents(
-    w: &ServerWebsite,
+    website: &ServerWebsite,
     widget_mode: WidgetMode,
     vbox: &gtk::Box,
 ) -> adw::PreferencesGroup {
-    let server_item1 = adw::PreferencesGroup::builder().build();
-    if widget_mode == WidgetMode::Show {
-        server_item1.set_title(&w.desc);
-        server_item1.set_description(Some("Website"));
-    } else {
-        server_item1.set_title("Website");
-        DetailsRow::new("Description", &w.desc, None, &[]).add(widget_mode, &server_item1);
+    if widget_mode == WidgetMode::Edit {
+        let website_item_header = ItemHeaderEdit::new(
+            "globe",
+            website.group_name.as_deref(),
+            &[], // TODO list of groups get_server_group_names(),
+            common::EnvOrEnvs::None,
+        );
+        website_item_header.set_title(website.desc.clone());
+        vbox.append(&website_item_header);
     }
-    DetailsRow::new("Address", &w.url, Some(SuffixAction::link(&w.url)), &[])
-        .add(widget_mode, &server_item1);
 
-    DetailsRow::new(
-        "Username",
-        &w.username,
-        SuffixAction::copy(&w.username),
-        &[],
-    )
-    .add(widget_mode, &server_item1);
-    DetailsRow::new_password("Password", &w.password, SuffixAction::copy(&w.password))
-        .add(widget_mode, &server_item1);
-    DetailsRow::new("Text", &w.text, SuffixAction::copy(&w.text), &[])
-        .add(widget_mode, &server_item1);
-
+    let server_item1 = adw::PreferencesGroup::builder().build();
     vbox.append(&server_item1);
+
+    if widget_mode == WidgetMode::Show {
+        server_item1.set_title(&website.desc);
+    }
+
+    let server_poi_view_edit = ServerWebsiteViewEdit::new();
+    server_poi_view_edit.set_url(website.url.to_string());
+    server_poi_view_edit.set_username(website.username.to_string());
+    server_poi_view_edit.set_password(website.password.to_string());
+    server_poi_view_edit.set_text(website.text.to_string());
+    server_poi_view_edit.prepare(widget_mode);
+    server_item1.add(&server_poi_view_edit);
 
     server_item1
 }

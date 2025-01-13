@@ -1,6 +1,7 @@
 use projectpadsql::models::InterestType;
 
 pub mod server_poi_view_edit;
+pub mod server_website_view_edit;
 
 pub fn interest_type_get_icon(interest_type: InterestType) -> &'static str {
     match interest_type {

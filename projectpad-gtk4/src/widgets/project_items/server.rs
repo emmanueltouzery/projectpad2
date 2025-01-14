@@ -32,8 +32,9 @@ use super::{
     item_header_edit::ItemHeaderEdit,
     item_header_view::ItemHeaderView,
     server_items::{
-        interest_type_get_icon, server_poi_view_edit::ServerPoiViewEdit,
-        server_website_view_edit::ServerWebsiteViewEdit,
+        interest_type_get_icon,
+        server_extra_user_account_view_edit::ServerExtraUserAccountViewEdit,
+        server_poi_view_edit::ServerPoiViewEdit, server_website_view_edit::ServerWebsiteViewEdit,
     },
     server_view_edit::ServerViewEdit,
 };
@@ -543,13 +544,13 @@ fn server_website_contents(
         server_item1.set_title(&website.desc);
     }
 
-    let server_poi_view_edit = ServerWebsiteViewEdit::new();
-    server_poi_view_edit.set_url(website.url.to_string());
-    server_poi_view_edit.set_username(website.username.to_string());
-    server_poi_view_edit.set_password(website.password.to_string());
-    server_poi_view_edit.set_text(website.text.to_string());
-    server_poi_view_edit.prepare(widget_mode);
-    server_item1.add(&server_poi_view_edit);
+    let server_website_view_edit = ServerWebsiteViewEdit::new();
+    server_website_view_edit.set_url(website.url.to_string());
+    server_website_view_edit.set_username(website.username.to_string());
+    server_website_view_edit.set_password(website.password.to_string());
+    server_website_view_edit.set_text(website.text.to_string());
+    server_website_view_edit.prepare(widget_mode);
+    server_item1.add(&server_website_view_edit);
 
     server_item1
 }
@@ -635,26 +636,29 @@ fn server_extra_user_account_contents(
     widget_mode: WidgetMode,
     vbox: &gtk::Box,
 ) -> adw::PreferencesGroup {
-    let server_item1 = adw::PreferencesGroup::builder()
-        .description("Extra user")
-        // .title(&poi.desc)
-        .build();
-    DetailsRow::new("Description", &user.desc, None, &[]).add(widget_mode, &server_item1);
-    DetailsRow::new(
-        "Username",
-        &user.username,
-        SuffixAction::copy(&user.username),
-        &[],
-    )
-    .add(widget_mode, &server_item1);
-    DetailsRow::new_password(
-        "Password",
-        &user.password,
-        SuffixAction::copy(&user.password),
-    )
-    .add(widget_mode, &server_item1);
+    if widget_mode == WidgetMode::Edit {
+        let user_item_header = ItemHeaderEdit::new(
+            "user",
+            user.group_name.as_deref(),
+            &[], // TODO list of groups get_server_group_names(),
+            common::EnvOrEnvs::None,
+        );
+        user_item_header.set_title(user.desc.clone());
+        vbox.append(&user_item_header);
+    }
 
+    let server_item1 = adw::PreferencesGroup::builder().build();
     vbox.append(&server_item1);
+
+    if widget_mode == WidgetMode::Show {
+        server_item1.set_title(&user.desc);
+    }
+
+    let server_user_view_edit = ServerExtraUserAccountViewEdit::new();
+    server_user_view_edit.set_username(user.username.to_string());
+    server_user_view_edit.set_password(user.password.to_string());
+    server_user_view_edit.prepare(widget_mode);
+    server_item1.add(&server_user_view_edit);
 
     server_item1
 }

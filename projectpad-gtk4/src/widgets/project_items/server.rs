@@ -28,11 +28,11 @@ use std::{
 };
 
 use super::{
-    common::{self, DetailsRow, SuffixAction},
+    common::{self},
     item_header_edit::ItemHeaderEdit,
     item_header_view::ItemHeaderView,
     server_items::{
-        interest_type_get_icon,
+        interest_type_get_icon, server_database_view_edit::ServerDatabaseViewEdit,
         server_extra_user_account_view_edit::ServerExtraUserAccountViewEdit,
         server_poi_view_edit::ServerPoiViewEdit, server_website_view_edit::ServerWebsiteViewEdit,
     },
@@ -168,6 +168,9 @@ pub fn load_and_display_server(
                     .order(srv_db::desc.asc())
                     .load::<ServerDatabase>(sql_conn)
                     .unwrap();
+                let mut dbs_as_server_items =
+                    databases.clone().into_iter().map(ServerItem::Database);
+                servers.extend(&mut dbs_as_server_items);
 
                 let mut websites_for_databases = HashMap::new();
                 for (key, group) in &srv_www::server_website
@@ -425,8 +428,7 @@ fn add_server_items(
             ServerItem::PointOfInterest(poi) => display_server_poi(poi, &cur_parent),
             ServerItem::Note(n) => display_server_note(n, &cur_parent, focused_server_item_id),
             ServerItem::ExtraUserAccount(u) => display_server_extra_user_account(u, &cur_parent),
-            // TODO remove fallback
-            _ => {}
+            ServerItem::Database(u) => display_server_database(u, &cur_parent),
         }
         if Some(server_item.get_id()) == focused_server_item_id {
             let me = cur_parent.last_child().unwrap().clone();
@@ -551,6 +553,57 @@ fn server_website_contents(
     server_website_view_edit.set_text(website.text.to_string());
     server_website_view_edit.prepare(widget_mode);
     server_item1.add(&server_website_view_edit);
+
+    // TODO databases linked to website?
+
+    server_item1
+}
+
+fn display_server_database(w: &ServerDatabase, vbox: &gtk::Box) {
+    let server_item1 = server_database_contents(w, WidgetMode::Show, vbox);
+    add_group_edit_suffix(
+        &server_item1,
+        glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
+            let item_box = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+            server_database_contents(&w1, WidgetMode::Edit, &item_box);
+
+            display_item_edit_dialog(&v, "Edit Database", item_box, 600, 600, DialogClamp::Yes);
+        }),
+    );
+}
+
+fn server_database_contents(
+    database: &ServerDatabase,
+    widget_mode: WidgetMode,
+    vbox: &gtk::Box,
+) -> adw::PreferencesGroup {
+    if widget_mode == WidgetMode::Edit {
+        let database_item_header = ItemHeaderEdit::new(
+            "globe",
+            database.group_name.as_deref(),
+            &[], // TODO list of groups get_server_group_names(),
+            common::EnvOrEnvs::None,
+        );
+        database_item_header.set_title(database.desc.clone());
+        vbox.append(&database_item_header);
+    }
+
+    let server_item1 = adw::PreferencesGroup::builder().build();
+    vbox.append(&server_item1);
+
+    if widget_mode == WidgetMode::Show {
+        server_item1.set_title(&database.desc);
+    }
+
+    let server_database_view_edit = ServerDatabaseViewEdit::new();
+    server_database_view_edit.set_name(database.name.to_string());
+    server_database_view_edit.set_username(database.username.to_string());
+    server_database_view_edit.set_password(database.password.to_string());
+    server_database_view_edit.set_text(database.text.to_string());
+    server_database_view_edit.prepare(widget_mode);
+    server_item1.add(&server_database_view_edit);
 
     server_item1
 }

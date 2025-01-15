@@ -4,6 +4,7 @@ use crate::{
     sql_thread::SqlFunc,
     widgets::{
         project_item::{ProjectItem, WidgetMode},
+        project_item_list::ProjectItemList,
         project_item_model::ProjectItemType,
         project_items::common::{display_item_edit_dialog, DialogClamp},
     },
@@ -184,9 +185,6 @@ pub fn load_and_display_server(
                     websites_for_databases.insert(key, group.collect());
                 }
 
-                let mut dbs = databases.into_iter().map(ServerItem::Database);
-                servers.extend(&mut dbs);
-
                 (
                     server,
                     servers,
@@ -243,12 +241,12 @@ fn display_server(
         &channel_data.project_group_names,
         WidgetMode::Show,
     );
-    let add_btn = gtk::MenuButton::builder()
+    let add_btn = gtk::Button::builder()
         .icon_name("list-add-symbolic")
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
-        .popover(&add_server_item_popover(IncludeAddGroup::Yes))
         .build();
+    add_btn.connect_clicked(move |_| display_add_project_item_dialog());
     header_box.append(&add_btn);
 
     let edit_btn = gtk::Button::builder()
@@ -381,24 +379,6 @@ enum IncludeAddGroup {
     No,
 }
 
-fn add_server_item_popover(include_add_group: IncludeAddGroup) -> gtk::PopoverMenu {
-    let add_poi_menu = gio::Menu::new();
-    add_poi_menu.append(Some("Application"), None);
-    add_poi_menu.append(Some("Backup/Archive"), None);
-    add_poi_menu.append(Some("Command to run"), None);
-    add_poi_menu.append(Some("Config file"), None);
-    add_poi_menu.append(Some("Log file"), None);
-
-    let add_menu = gio::Menu::new();
-    add_menu.append(Some("Website"), None);
-    add_menu.append_submenu(Some("Point of interest"), &add_poi_menu);
-    add_menu.append(Some("Note"), None);
-    if include_add_group == IncludeAddGroup::Yes {
-        add_menu.append(Some("Group"), None);
-    }
-    gtk::PopoverMenu::builder().menu_model(&add_menu).build()
-}
-
 fn add_server_items(
     channel_data: &ChannelData,
     focused_server_item_id: Option<i32>,
@@ -468,27 +448,110 @@ fn group_frame(group_name: &str) -> (gtk::Frame, gtk::Box) {
             .build(),
     );
 
-    let edit_btn = gtk::Button::builder()
-        .icon_name("document-edit-symbolic")
-        .css_classes(["flat"])
-        .valign(gtk::Align::Center)
-        .halign(gtk::Align::End)
-        .build();
-    frame_header.append(&edit_btn);
+    // let edit_btn = gtk::Button::builder()
+    //     .icon_name("document-edit-symbolic")
+    //     .css_classes(["flat"])
+    //     .valign(gtk::Align::Center)
+    //     .halign(gtk::Align::End)
+    //     .build();
+    // frame_header.append(&edit_btn);
 
-    let add_btn = gtk::MenuButton::builder()
-        .icon_name("list-add-symbolic")
-        .css_classes(["flat"])
-        .valign(gtk::Align::Center)
-        .halign(gtk::Align::End)
-        .popover(&add_server_item_popover(IncludeAddGroup::Yes))
-        .build();
-    frame_header.append(&add_btn);
+    // let add_btn = gtk::Button::builder()
+    //     .icon_name("list-add-symbolic")
+    //     .css_classes(["flat"])
+    //     .valign(gtk::Align::Center)
+    //     .halign(gtk::Align::End)
+    //     .build();
+    // add_btn.connect_clicked(move |_| display_add_project_item_dialog());
+    // frame_header.append(&add_btn);
 
     frame_box.append(&frame_header);
     frame_box.append(&gtk::Separator::builder().build());
     frame.set_child(Some(&frame_box));
     (frame, frame_box)
+}
+
+fn display_add_project_item_dialog() {
+    let vbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+
+    let header_bar = adw::HeaderBar::builder()
+        .show_end_title_buttons(false)
+        .show_start_title_buttons(false)
+        .build();
+
+    let cancel_btn = gtk::Button::builder().label("Cancel").build();
+    header_bar.pack_start(&cancel_btn);
+    vbox.append(&header_bar);
+
+    let cbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .margin_top(15)
+        .margin_start(15)
+        .margin_end(15)
+        .margin_bottom(15)
+        .spacing(10)
+        .build();
+
+    let poi_btn = gtk::Button::builder()
+        .child(&ProjectItemList::create_project_item_box(
+            "cog",
+            "Add point of interest",
+            "a command to run or a relevant file or folder located on that server.",
+        ))
+        .build();
+    cbox.append(&poi_btn);
+
+    let website_btn = gtk::Button::builder()
+        .child(&ProjectItemList::create_project_item_box(
+            "globe",
+            "Add website",
+            "a service (website or not) that's reachable over the network that lives on that server.",
+        ))
+        .build();
+    cbox.append(&website_btn);
+
+    let db_btn = gtk::Button::builder()
+        .child(&ProjectItemList::create_project_item_box(
+            "database",
+            "Add database",
+            "a database that lives on that server.",
+        ))
+        .build();
+    cbox.append(&db_btn);
+
+    let user_btn = gtk::Button::builder()
+        .child(&ProjectItemList::create_project_item_box(
+            "user",
+            "Add extra user",
+            "username and password or authentication key, somehow tied to this server.",
+        ))
+        .build();
+    cbox.append(&user_btn);
+
+    let note_btn = gtk::Button::builder()
+        .child(&ProjectItemList::create_project_item_box(
+            "clipboard",
+            "Add note",
+            "markdown-formatted note containing free-form text.",
+        ))
+        .build();
+    cbox.append(&note_btn);
+
+    let stack = gtk::Stack::builder().build();
+    stack.add_child(&cbox);
+    vbox.append(&stack);
+
+    let dialog = adw::Dialog::builder()
+        .title("Add server item")
+        .child(&vbox)
+        .build();
+
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    dialog.present(&app.active_window().unwrap());
 }
 
 fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: glib::RustClosure) {

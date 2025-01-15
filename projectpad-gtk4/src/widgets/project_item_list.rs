@@ -462,7 +462,7 @@ impl ProjectItemList {
         }
     }
 
-    fn create_project_item_box(
+    pub fn create_project_item_box(
         icon_name: &'static str,
         title: &'static str,
         subtitle: &'static str,

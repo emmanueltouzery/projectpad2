@@ -246,7 +246,8 @@ fn display_server(
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
         .build();
-    add_btn.connect_clicked(move |_| display_add_project_item_dialog());
+    let server_id = channel_data.server.id;
+    add_btn.connect_clicked(move |_| display_add_project_item_dialog(server_id));
     header_box.append(&add_btn);
 
     let edit_btn = gtk::Button::builder()
@@ -471,7 +472,7 @@ fn group_frame(group_name: &str) -> (gtk::Frame, gtk::Box) {
     (frame, frame_box)
 }
 
-fn display_add_project_item_dialog() {
+fn display_add_project_item_dialog(server_id: i32) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -548,10 +549,129 @@ fn display_add_project_item_dialog() {
         .child(&vbox)
         .build();
 
+    let s = stack.clone();
+    let dlg = dialog.clone();
+    let (header_edit, server_contents_child, server_view_edit) =
+        server_poi_contents(&ServerPointOfInterest::default(), WidgetMode::Edit);
+    let hb = header_bar.clone();
+    let he = header_edit.unwrap().clone();
+    poi_btn.connect_clicked(move |_| {
+        prepare_add_server_poi_dlg(
+            server_id,
+            &dlg,
+            &s,
+            &hb,
+            &he,
+            &server_view_edit,
+            &server_contents_child,
+        );
+    });
+
     let app = gio::Application::default()
         .and_downcast::<ProjectpadApplication>()
         .unwrap();
     dialog.present(&app.active_window().unwrap());
+}
+
+fn prepare_add_server_poi_dlg(
+    server_id: i32,
+    dlg: &adw::Dialog,
+    s: &gtk::Stack,
+    hb: &adw::HeaderBar,
+    he: &ItemHeaderEdit,
+    server_poi_view_edit: &ServerPoiViewEdit,
+    server_contents_child: &adw::PreferencesGroup,
+) {
+    dlg.set_title("Add Server Point of Interest");
+    dlg.set_content_width(600);
+    dlg.set_content_height(600);
+    s.add_named(
+        &adw::Clamp::builder()
+            .margin_top(10)
+            .child(server_contents_child)
+            .build(),
+        Some("second"),
+    );
+    s.set_visible_child_name("second");
+
+    let save_btn = gtk::Button::builder()
+        .label("Save")
+        .css_classes(["suggested-action"])
+        .build();
+    let d = dlg.clone();
+    let server_poi_view_edit = server_poi_view_edit.clone();
+    let he = he.clone();
+    save_btn.connect_clicked(move |_| {
+        let receiver = save_server_poi(
+            server_id,
+            None,
+            he.property("title"),
+            server_poi_view_edit.property("path"),
+            server_poi_view_edit.property("text"),
+            InterestType::from_str(&server_poi_view_edit.property::<String>("interest_type"))
+                .unwrap(),
+            RunOn::from_str(&server_poi_view_edit.property::<String>("run_on")).unwrap(),
+        );
+        let d = d.clone();
+        glib::spawn_future_local(async move {
+            let server_poi_after_result = receiver.recv().await.unwrap();
+            d.close();
+
+            if let Ok(server_poi) = server_poi_after_result {
+                ProjectItemList::display_project_item(
+                    server_poi.server_id,
+                    ProjectItemType::Server,
+                );
+            }
+        });
+    });
+    hb.pack_end(&save_btn);
+}
+
+pub fn save_server_poi(
+    server_id: i32,
+    server_poi_id: Option<i32>,
+    new_desc: String,
+    new_path: String,
+    new_text: String,
+    new_interest_type: InterestType,
+    new_run_on: RunOn,
+) -> async_channel::Receiver<Result<ServerPointOfInterest, (String, Option<String>)>> {
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    let db_sender = app.get_sql_channel();
+    let (sender, receiver) = async_channel::bounded(1);
+
+    // TODO commented fields (group and so on)
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+            let changeset = (
+                srv_poi::desc.eq(new_desc.as_str()),
+                srv_poi::path.eq(new_path.as_str()),
+                srv_poi::text.eq(new_text.as_str()),
+                // never store Some("") for group, we want None then.
+                // prj_poi::group_name.eq(new_group
+                //     .as_ref()
+                //     .map(|s| s.as_str())
+                //     .filter(|s| !s.is_empty())),
+                srv_poi::interest_type.eq(new_interest_type),
+                srv_poi::run_on.eq(new_run_on),
+                srv_poi::server_id.eq(server_id),
+            );
+            let project_poi_after_result = perform_insert_or_update!(
+                sql_conn,
+                server_poi_id,
+                srv_poi::server_point_of_interest,
+                srv_poi::id,
+                changeset,
+                ServerPointOfInterest,
+            );
+            sender.send_blocking(project_poi_after_result).unwrap();
+        }))
+        .unwrap();
+    receiver
 }
 
 fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: glib::RustClosure) {
@@ -672,7 +792,8 @@ fn server_database_contents(
 }
 
 fn display_server_poi(poi: &ServerPointOfInterest, vbox: &gtk::Box) {
-    let server_item1 = server_poi_contents(poi, WidgetMode::Show, vbox);
+    let (_, server_item1, _) = server_poi_contents(poi, WidgetMode::Show);
+    vbox.append(&server_item1);
 
     add_group_edit_suffix(
         &server_item1,
@@ -680,7 +801,9 @@ fn display_server_poi(poi: &ServerPointOfInterest, vbox: &gtk::Box) {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            server_poi_contents(&p, WidgetMode::Edit, &item_box);
+            let (header, server_item, _) = server_poi_contents(&p, WidgetMode::Edit);
+            item_box.append(&header.unwrap());
+            item_box.append(&server_item);
 
             display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
         }),
@@ -690,9 +813,12 @@ fn display_server_poi(poi: &ServerPointOfInterest, vbox: &gtk::Box) {
 fn server_poi_contents(
     poi: &ServerPointOfInterest,
     widget_mode: WidgetMode,
-    vbox: &gtk::Box,
-) -> adw::PreferencesGroup {
-    if widget_mode == WidgetMode::Edit {
+) -> (
+    Option<ItemHeaderEdit>,
+    adw::PreferencesGroup,
+    ServerPoiViewEdit,
+) {
+    let item_header_edit = if widget_mode == WidgetMode::Edit {
         let server_item_header = ItemHeaderEdit::new(
             interest_type_get_icon(poi.interest_type),
             poi.group_name.as_deref(),
@@ -700,8 +826,10 @@ fn server_poi_contents(
             common::EnvOrEnvs::None,
         );
         server_item_header.set_title(poi.desc.clone());
-        vbox.append(&server_item_header);
-    }
+        Some(server_item_header)
+    } else {
+        None
+    };
 
     let desc = match poi.interest_type {
         InterestType::PoiLogFile => "Log file",
@@ -712,7 +840,6 @@ fn server_poi_contents(
         InterestType::PoiCommandTerminal => "Command to run",
     };
     let server_item1 = adw::PreferencesGroup::builder().build();
-    vbox.append(&server_item1);
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_description(Some(desc));
@@ -727,7 +854,7 @@ fn server_poi_contents(
     server_poi_view_edit.prepare(widget_mode);
     server_item1.add(&server_poi_view_edit);
 
-    server_item1
+    (item_header_edit, server_item1, server_poi_view_edit)
 }
 
 fn display_server_extra_user_account(user: &ServerExtraUserAccount, vbox: &gtk::Box) {

@@ -750,7 +750,7 @@ impl ProjectItemList {
         hb.pack_end(&save_btn);
     }
 
-    fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {
+    pub fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {
         let app = gio::Application::default()
             .expect("Failed to retrieve application singleton")
             .downcast::<ProjectpadApplication>()

@@ -174,6 +174,12 @@ pub enum RunOn {
     RunOnClient = 0,
 }
 
+impl Default for RunOn {
+    fn default() -> Self {
+        RunOn::RunOnServer
+    }
+}
+
 macro_rules! simple_enum {
     ($x:ty) => {
         impl<DB> FromSql<Varchar, DB> for $x
@@ -274,7 +280,7 @@ pub struct ServerWebsite {
     pub server_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ServerPointOfInterest {
     #[serde(skip)]
     pub id: i32,

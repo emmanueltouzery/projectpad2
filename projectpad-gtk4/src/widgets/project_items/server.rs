@@ -567,6 +567,24 @@ fn display_add_project_item_dialog(server_id: i32) {
         );
     });
 
+    let s = stack.clone();
+    let dlg = dialog.clone();
+    let (header_edit, server_contents_child, server_view_edit) =
+        server_website_contents(&ServerWebsite::default(), WidgetMode::Edit);
+    let hb = header_bar.clone();
+    let he = header_edit.unwrap().clone();
+    website_btn.connect_clicked(move |_| {
+        prepare_add_server_website_dlg(
+            server_id,
+            &dlg,
+            &s,
+            &hb,
+            &he,
+            &server_view_edit,
+            &server_contents_child,
+        );
+    });
+
     let app = gio::Application::default()
         .and_downcast::<ProjectpadApplication>()
         .unwrap();
@@ -674,6 +692,106 @@ pub fn save_server_poi(
     receiver
 }
 
+fn prepare_add_server_website_dlg(
+    server_id: i32,
+    dlg: &adw::Dialog,
+    s: &gtk::Stack,
+    hb: &adw::HeaderBar,
+    he: &ItemHeaderEdit,
+    server_website_view_edit: &ServerWebsiteViewEdit,
+    server_contents_child: &adw::PreferencesGroup,
+) {
+    dlg.set_title("Add Server website");
+    dlg.set_content_width(600);
+    dlg.set_content_height(600);
+    s.add_named(
+        &adw::Clamp::builder()
+            .margin_top(10)
+            .child(server_contents_child)
+            .build(),
+        Some("second"),
+    );
+    s.set_visible_child_name("second");
+
+    let save_btn = gtk::Button::builder()
+        .label("Save")
+        .css_classes(["suggested-action"])
+        .build();
+    let d = dlg.clone();
+    let server_poi_view_edit = server_website_view_edit.clone();
+    let he = he.clone();
+    save_btn.connect_clicked(move |_| {
+        let receiver = save_server_website(
+            server_id,
+            None,
+            he.property("title"),
+            server_poi_view_edit.property("url"),
+            server_poi_view_edit.property("text"),
+            server_poi_view_edit.property("username"),
+            server_poi_view_edit.property("password"),
+        );
+        let d = d.clone();
+        glib::spawn_future_local(async move {
+            let server_poi_after_result = receiver.recv().await.unwrap();
+            d.close();
+
+            if let Ok(server_poi) = server_poi_after_result {
+                ProjectItemList::display_project_item(
+                    server_poi.server_id,
+                    ProjectItemType::Server,
+                );
+            }
+        });
+    });
+    hb.pack_end(&save_btn);
+}
+
+pub fn save_server_website(
+    server_id: i32,
+    server_poi_id: Option<i32>,
+    new_desc: String,
+    new_url: String,
+    new_text: String,
+    new_username: String,
+    new_password: String,
+) -> async_channel::Receiver<Result<ServerWebsite, (String, Option<String>)>> {
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    let db_sender = app.get_sql_channel();
+    let (sender, receiver) = async_channel::bounded(1);
+
+    // TODO commented fields (group and so on)
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::server_website::dsl as srv_www;
+            let changeset = (
+                srv_www::desc.eq(new_desc.as_str()),
+                srv_www::url.eq(new_url.as_str()),
+                srv_www::text.eq(new_text.as_str()),
+                // never store Some("") for group, we want None then.
+                // prj_poi::group_name.eq(new_group
+                //     .as_ref()
+                //     .map(|s| s.as_str())
+                //     .filter(|s| !s.is_empty())),
+                srv_www::username.eq(new_username.as_str()),
+                srv_www::password.eq(new_password.as_str()),
+                srv_www::server_id.eq(server_id),
+            );
+            let project_poi_after_result = perform_insert_or_update!(
+                sql_conn,
+                server_poi_id,
+                srv_www::server_website,
+                srv_www::id,
+                changeset,
+                ServerWebsite,
+            );
+            sender.send_blocking(project_poi_after_result).unwrap();
+        }))
+        .unwrap();
+    receiver
+}
+
 fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: glib::RustClosure) {
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
@@ -692,14 +810,18 @@ fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: gli
 }
 
 fn display_server_website(w: &ServerWebsite, vbox: &gtk::Box) {
-    let server_item1 = server_website_contents(w, WidgetMode::Show, vbox);
+    let (_, server_item1, _) = server_website_contents(w, WidgetMode::Show);
+    vbox.append(&server_item1);
+
     add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            server_website_contents(&w1, WidgetMode::Edit, &item_box);
+            let (header, server_item, _) = server_website_contents(&w1, WidgetMode::Edit);
+            item_box.append(&header.unwrap());
+            item_box.append(&server_item);
 
             display_item_edit_dialog(&v, "Edit Website", item_box, 600, 600, DialogClamp::Yes);
         }),
@@ -709,9 +831,12 @@ fn display_server_website(w: &ServerWebsite, vbox: &gtk::Box) {
 fn server_website_contents(
     website: &ServerWebsite,
     widget_mode: WidgetMode,
-    vbox: &gtk::Box,
-) -> adw::PreferencesGroup {
-    if widget_mode == WidgetMode::Edit {
+) -> (
+    Option<ItemHeaderEdit>,
+    adw::PreferencesGroup,
+    ServerWebsiteViewEdit,
+) {
+    let item_header_edit = if widget_mode == WidgetMode::Edit {
         let website_item_header = ItemHeaderEdit::new(
             "globe",
             website.group_name.as_deref(),
@@ -719,11 +844,12 @@ fn server_website_contents(
             common::EnvOrEnvs::None,
         );
         website_item_header.set_title(website.desc.clone());
-        vbox.append(&website_item_header);
-    }
+        Some(website_item_header)
+    } else {
+        None
+    };
 
     let server_item1 = adw::PreferencesGroup::builder().build();
-    vbox.append(&server_item1);
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_title(&website.desc);
@@ -739,7 +865,7 @@ fn server_website_contents(
 
     // TODO databases linked to website?
 
-    server_item1
+    (item_header_edit, server_item1, server_website_view_edit)
 }
 
 fn display_server_database(w: &ServerDatabase, vbox: &gtk::Box) {

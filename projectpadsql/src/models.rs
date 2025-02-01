@@ -267,7 +267,7 @@ pub struct ServerLink {
     pub project_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ServerWebsite {
     pub id: i32,
     pub desc: String,

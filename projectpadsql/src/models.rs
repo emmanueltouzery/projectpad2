@@ -324,7 +324,7 @@ pub struct ServerExtraUserAccount {
     pub server_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Deserialize, Default)]
 pub struct ServerDatabase {
     #[serde(default)]
     pub id: i32,

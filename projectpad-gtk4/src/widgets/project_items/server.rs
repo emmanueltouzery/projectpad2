@@ -603,6 +603,24 @@ fn display_add_project_item_dialog(server_id: i32) {
         );
     });
 
+    let s = stack.clone();
+    let dlg = dialog.clone();
+    let (header_edit, server_contents_child, server_view_edit) =
+        server_extra_user_account_contents(&ServerExtraUserAccount::default(), WidgetMode::Edit);
+    let hb = header_bar.clone();
+    let he = header_edit.unwrap().clone();
+    user_btn.connect_clicked(move |_| {
+        prepare_add_server_extra_user_account_dlg(
+            server_id,
+            &dlg,
+            &s,
+            &hb,
+            &he,
+            &server_view_edit,
+            &server_contents_child,
+        );
+    });
+
     let app = gio::Application::default()
         .and_downcast::<ProjectpadApplication>()
         .unwrap();
@@ -621,10 +639,16 @@ fn prepare_add_server_poi_dlg(
     dlg.set_title("Add Server Point of Interest");
     dlg.set_content_width(600);
     dlg.set_content_height(600);
+
+    let contents = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    contents.append(he);
+    contents.append(server_contents_child);
     s.add_named(
         &adw::Clamp::builder()
             .margin_top(10)
-            .child(server_contents_child)
+            .child(&contents)
             .build(),
         Some("second"),
     );
@@ -722,10 +746,15 @@ fn prepare_add_server_website_dlg(
     dlg.set_title("Add Server website");
     dlg.set_content_width(600);
     dlg.set_content_height(600);
+    let contents = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    contents.append(he);
+    contents.append(server_contents_child);
     s.add_named(
         &adw::Clamp::builder()
             .margin_top(10)
-            .child(server_contents_child)
+            .child(&contents)
             .build(),
         Some("second"),
     );
@@ -822,10 +851,15 @@ fn prepare_add_server_database_dlg(
     dlg.set_title("Add Server database");
     dlg.set_content_width(600);
     dlg.set_content_height(600);
+    let contents = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    contents.append(he);
+    contents.append(server_contents_child);
     s.add_named(
         &adw::Clamp::builder()
             .margin_top(10)
-            .child(server_contents_child)
+            .child(&contents)
             .build(),
         Some("second"),
     );
@@ -903,6 +937,113 @@ pub fn save_server_database(
                 srv_db::id,
                 changeset,
                 ServerDatabase,
+            );
+            sender.send_blocking(server_db_after_result).unwrap();
+        }))
+        .unwrap();
+    receiver
+}
+
+fn prepare_add_server_extra_user_account_dlg(
+    server_id: i32,
+    dlg: &adw::Dialog,
+    s: &gtk::Stack,
+    hb: &adw::HeaderBar,
+    he: &ItemHeaderEdit,
+    server_user_view_edit: &ServerExtraUserAccountViewEdit,
+    server_contents_child: &adw::PreferencesGroup,
+) {
+    dlg.set_title("Add Server extra user");
+    dlg.set_content_width(600);
+    dlg.set_content_height(600);
+    let contents = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    contents.append(he);
+    contents.append(server_contents_child);
+    s.add_named(
+        &adw::Clamp::builder()
+            .margin_top(10)
+            .child(&contents)
+            .build(),
+        Some("second"),
+    );
+    s.set_visible_child_name("second");
+
+    let save_btn = gtk::Button::builder()
+        .label("Save")
+        .css_classes(["suggested-action"])
+        .build();
+    let d = dlg.clone();
+    let server_db_view_edit = server_user_view_edit.clone();
+    let he = he.clone();
+    save_btn.connect_clicked(move |_| {
+        let receiver = save_server_extra_user_account(
+            server_id,
+            None,
+            he.property("title"),
+            // server_db_view_edit.property("auth_key"),
+            // server_db_view_edit.property("auth_key_filename"),
+            server_db_view_edit.property("username"),
+            server_db_view_edit.property("password"),
+        );
+        let d = d.clone();
+        glib::spawn_future_local(async move {
+            let server_poi_after_result = receiver.recv().await.unwrap();
+            d.close();
+
+            if let Ok(server_poi) = server_poi_after_result {
+                ProjectItemList::display_project_item(
+                    server_poi.server_id,
+                    ProjectItemType::Server,
+                );
+            }
+        });
+    });
+    hb.pack_end(&save_btn);
+}
+
+pub fn save_server_extra_user_account(
+    server_id: i32,
+    server_user_id: Option<i32>,
+    new_desc: String,
+    // new_auth_key: Option<Vec<u8>>,
+    // new_auth_key_filename: Option<String>,
+    new_username: String,
+    new_password: String,
+) -> async_channel::Receiver<Result<ServerExtraUserAccount, (String, Option<String>)>> {
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    let db_sender = app.get_sql_channel();
+    let (sender, receiver) = async_channel::bounded(1);
+
+    // TODO commented fields (group and so on)
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::server_extra_user_account::dsl as srv_user;
+            let changeset = (
+                srv_user::desc.eq(new_desc.as_str()),
+                // TODO auth key
+                // srv_user::auth_key.eq(new_auth_key.as_str()),
+
+                // srv_user::auth_key_filename.eq(new_auth_key_filename.as_str()),
+                // never store Some("") for group, we want None then.
+                // prj_poi::group_name.eq(new_group
+                //     .as_ref()
+                //     .map(|s| s.as_str())
+                //     .filter(|s| !s.is_empty())),
+                srv_user::username.eq(new_username.as_str()),
+                srv_user::password.eq(new_password.as_str()),
+                srv_user::server_id.eq(server_id),
+            );
+            let server_db_after_result = perform_insert_or_update!(
+                sql_conn,
+                server_user_id,
+                srv_user::server_extra_user_account,
+                srv_user::id,
+                changeset,
+                ServerExtraUserAccount,
             );
             sender.send_blocking(server_db_after_result).unwrap();
         }))
@@ -1110,7 +1251,8 @@ fn server_poi_contents(
 }
 
 fn display_server_extra_user_account(user: &ServerExtraUserAccount, vbox: &gtk::Box) {
-    let server_item1 = server_extra_user_account_contents(user, WidgetMode::Show, vbox);
+    let (_, server_item1, _) = server_extra_user_account_contents(user, WidgetMode::Show);
+    vbox.append(&server_item1);
 
     add_group_edit_suffix(
         &server_item1,
@@ -1118,7 +1260,9 @@ fn display_server_extra_user_account(user: &ServerExtraUserAccount, vbox: &gtk::
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            server_extra_user_account_contents(&u, WidgetMode::Edit, &item_box);
+            let (header, server_item, _) = server_extra_user_account_contents(&u, WidgetMode::Edit);
+            item_box.append(&header.unwrap());
+            item_box.append(&server_item);
 
             display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
         }),
@@ -1129,9 +1273,12 @@ fn display_server_extra_user_account(user: &ServerExtraUserAccount, vbox: &gtk::
 fn server_extra_user_account_contents(
     user: &ServerExtraUserAccount,
     widget_mode: WidgetMode,
-    vbox: &gtk::Box,
-) -> adw::PreferencesGroup {
-    if widget_mode == WidgetMode::Edit {
+) -> (
+    Option<ItemHeaderEdit>,
+    adw::PreferencesGroup,
+    ServerExtraUserAccountViewEdit,
+) {
+    let item_header_edit = if widget_mode == WidgetMode::Edit {
         let user_item_header = ItemHeaderEdit::new(
             "user",
             user.group_name.as_deref(),
@@ -1139,11 +1286,12 @@ fn server_extra_user_account_contents(
             common::EnvOrEnvs::None,
         );
         user_item_header.set_title(user.desc.clone());
-        vbox.append(&user_item_header);
-    }
+        Some(user_item_header)
+    } else {
+        None
+    };
 
     let server_item1 = adw::PreferencesGroup::builder().build();
-    vbox.append(&server_item1);
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_title(&user.desc);
@@ -1155,7 +1303,7 @@ fn server_extra_user_account_contents(
     server_user_view_edit.prepare(widget_mode);
     server_item1.add(&server_user_view_edit);
 
-    server_item1
+    (item_header_edit, server_item1, server_user_view_edit)
 }
 
 fn truncate(s: &str, max_chars: usize) -> &str {

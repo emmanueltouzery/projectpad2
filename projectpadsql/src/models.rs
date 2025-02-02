@@ -312,7 +312,7 @@ pub struct ServerNote {
     pub server_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ServerExtraUserAccount {
     pub id: i32,
     pub username: String,

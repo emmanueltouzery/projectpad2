@@ -99,19 +99,34 @@ mod imp {
                 let server_note_id = note.imp().server_note_id.get();
                 if server_note_id != 0 {
                     note.load_and_display_server_note(note.imp().server_note_id.get());
-                } else {
+                } else if dbg!(note.imp().project_note_id.get()) != 0 {
                     note.load_and_display_project_note(note.imp().project_note_id.get());
+                } else {
+                    // note that both IDs will be 0 when creating a new note
+                    note.display_note_contents(NoteInfo {
+                        id: 0,
+                        title: "",
+                        env: EnvOrEnvs::None,
+                        contents: "",
+                        display_header: false,
+                        group_name: None,
+                        all_group_names: &[],
+                    });
                 }
             });
             let _ = self
                 .obj()
                 .connect_server_note_id_notify(|note: &super::Note| {
-                    note.load_and_display_server_note(note.imp().server_note_id.get());
+                    if note.imp().server_note_id.get() != 0 {
+                        note.load_and_display_server_note(note.imp().server_note_id.get());
+                    }
                 });
             let _ = self
                 .obj()
                 .connect_project_note_id_notify(|note: &super::Note| {
-                    note.load_and_display_project_note(note.imp().project_note_id.get());
+                    if note.imp().project_note_id.get() != 0 {
+                        note.load_and_display_project_note(note.imp().project_note_id.get());
+                    }
                 });
         }
     }
@@ -470,6 +485,16 @@ impl Note {
         vbox.append(&note_view);
 
         (header_box, vbox, maybe_project_item_header_edit)
+    }
+
+    pub fn get_contents_text(&self) -> GString {
+        let text_edit_b = self.imp().text_edit.borrow();
+        let text_edit = text_edit_b.as_ref().unwrap();
+
+        let buf = text_edit.buffer();
+        let start_iter = buf.start_iter();
+        let end_iter = buf.end_iter();
+        text_edit.buffer().text(&start_iter, &end_iter, false)
     }
 
     pub fn get_note_contents_widget(

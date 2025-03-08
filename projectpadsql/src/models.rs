@@ -298,7 +298,7 @@ pub struct ServerPointOfInterest {
     pub server_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ServerNote {
     #[serde(skip)]
     pub id: i32,

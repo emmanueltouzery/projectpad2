@@ -621,6 +621,26 @@ fn display_add_project_item_dialog(server_id: i32) {
         );
     });
 
+    let s = stack.clone();
+    let dlg = dialog.clone();
+    let vbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    let (header_edit, server_view_edit) = server_note_contents_edit(&ServerNote::default(), &vbox);
+    let hb = header_bar.clone();
+    let he = header_edit.clone();
+    note_btn.connect_clicked(move |_| {
+        prepare_add_server_note_dlg(
+            server_id,
+            &dlg,
+            &s,
+            &hb,
+            &he,
+            &server_view_edit,
+            // &server_contents_child,
+        );
+    });
+
     let app = gio::Application::default()
         .and_downcast::<ProjectpadApplication>()
         .unwrap();
@@ -1003,6 +1023,64 @@ fn prepare_add_server_extra_user_account_dlg(
     hb.pack_end(&save_btn);
 }
 
+fn prepare_add_server_note_dlg(
+    server_id: i32,
+    dlg: &adw::Dialog,
+    s: &gtk::Stack,
+    hb: &adw::HeaderBar,
+    he: &ItemHeaderEdit,
+    server_note: &Note,
+    // server_contents_child: &adw::PreferencesGroup,
+) {
+    dlg.set_title("Add Server note");
+    dlg.set_content_width(6000);
+    dlg.set_content_height(6000);
+    let contents = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .margin_start(30)
+        .margin_end(30)
+        .build();
+    contents.append(he);
+    contents.append(server_note);
+    // contents.append(server_contents_child);
+    s.add_named(&contents, Some("second"));
+    s.set_visible_child_name("second");
+
+    let save_btn = gtk::Button::builder()
+        .label("Save")
+        .css_classes(["suggested-action"])
+        .build();
+    let d = dlg.clone();
+    let server_note = server_note.clone();
+    let he = he.clone();
+    save_btn.connect_clicked(move |_| {
+        let app = gio::Application::default()
+            .and_downcast::<ProjectpadApplication>()
+            .unwrap();
+        let db_sender = app.get_sql_channel();
+        let receiver = save_server_note(
+            db_sender,
+            server_id,
+            None,
+            he.property("title"),
+            server_note.get_contents_text(),
+        );
+        let d = d.clone();
+        glib::spawn_future_local(async move {
+            let server_poi_after_result = receiver.recv().await.unwrap();
+            d.close();
+
+            if let Ok(server_poi) = server_poi_after_result {
+                ProjectItemList::display_project_item(
+                    server_poi.server_id,
+                    ProjectItemType::Server,
+                );
+            }
+        });
+    });
+    hb.pack_end(&save_btn);
+}
+
 pub fn save_server_extra_user_account(
     server_id: i32,
     server_user_id: Option<i32>,
@@ -1330,13 +1408,7 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
 
             let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Note", item_box, 6000, 6000, DialogClamp::No);
             save_btn.connect_clicked(move |_| {
-                let text_edit_b = note.imp().text_edit.borrow();
-                let text_edit = text_edit_b.as_ref().unwrap();
-
-                let buf = text_edit.buffer();
-                let start_iter = buf.start_iter();
-                let end_iter = buf.end_iter();
-                let new_contents = text_edit.buffer().text(&start_iter, &end_iter, false);
+                let new_contents = note.get_contents_text();
 
                 let app = gio::Application::default()
                     .and_downcast::<ProjectpadApplication>()

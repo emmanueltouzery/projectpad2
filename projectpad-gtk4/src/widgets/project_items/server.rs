@@ -1258,7 +1258,7 @@ fn server_website_contents(
     let server_item1 = adw::PreferencesGroup::builder().build();
 
     if widget_mode == WidgetMode::Show {
-        server_item1.set_title(&website.desc);
+        server_item1.set_title(&glib::markup_escape_text(&website.desc));
     }
 
     let server_website_view_edit = ServerWebsiteViewEdit::new();
@@ -1319,7 +1319,7 @@ fn server_database_contents(
     let server_item1 = adw::PreferencesGroup::builder().build();
 
     if widget_mode == WidgetMode::Show {
-        server_item1.set_title(&database.desc);
+        server_item1.set_title(&glib::markup_escape_text(&database.desc));
     }
 
     let server_database_view_edit = ServerDatabaseViewEdit::new();
@@ -1387,7 +1387,7 @@ fn server_poi_contents(
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_description(Some(desc));
-        server_item1.set_title(&poi.desc);
+        server_item1.set_title(&glib::markup_escape_text(&poi.desc));
     }
 
     let server_poi_view_edit = ServerPoiViewEdit::new();
@@ -1451,7 +1451,7 @@ fn server_extra_user_account_contents(
     let server_item1 = adw::PreferencesGroup::builder().build();
 
     if widget_mode == WidgetMode::Show {
-        server_item1.set_title(&user.desc);
+        server_item1.set_title(&glib::markup_escape_text(&user.desc));
     }
 
     let server_user_view_edit = ServerExtraUserAccountViewEdit::new();

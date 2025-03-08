@@ -408,7 +408,9 @@ fn add_server_items(
             ServerItem::Website(w) => {
                 display_server_website(channel_data.server.id, w, &cur_parent)
             }
-            ServerItem::PointOfInterest(poi) => display_server_poi(poi, &cur_parent),
+            ServerItem::PointOfInterest(poi) => {
+                display_server_poi(channel_data.server.id, poi, &cur_parent)
+            }
             ServerItem::Note(n) => display_server_note(n, &cur_parent, focused_server_item_id),
             ServerItem::ExtraUserAccount(u) => display_server_extra_user_account(u, &cur_parent),
             ServerItem::Database(u) => display_server_database(u, &cur_parent),
@@ -680,13 +682,25 @@ fn prepare_add_server_poi_dlg(
         .label("Save")
         .css_classes(["suggested-action"])
         .build();
+    server_poi_connect_save(&save_btn, dlg, he, server_poi_view_edit, server_id, None);
+    hb.pack_end(&save_btn);
+}
+
+fn server_poi_connect_save(
+    save_btn: &gtk::Button,
+    dlg: &adw::Dialog,
+    he: &ItemHeaderEdit,
+    server_poi_view_edit: &ServerPoiViewEdit,
+    server_id: i32,
+    server_poi_id: Option<i32>,
+) {
     let d = dlg.clone();
     let server_poi_view_edit = server_poi_view_edit.clone();
     let he = he.clone();
     save_btn.connect_clicked(move |_| {
         let receiver = save_server_poi(
             server_id,
-            None,
+            server_poi_id,
             he.property("title"),
             server_poi_view_edit.property("path"),
             server_poi_view_edit.property("text"),
@@ -707,7 +721,6 @@ fn prepare_add_server_poi_dlg(
             }
         });
     });
-    hb.pack_end(&save_btn);
 }
 
 pub fn save_server_poi(
@@ -1284,21 +1297,23 @@ fn server_database_contents(
     (item_header_edit, server_item1, server_database_view_edit)
 }
 
-fn display_server_poi(poi: &ServerPointOfInterest, vbox: &gtk::Box) {
+fn display_server_poi(server_id: i32, poi: &ServerPointOfInterest, vbox: &gtk::Box) {
     let (_, server_item1, _) = server_poi_contents(poi, WidgetMode::Show);
     vbox.append(&server_item1);
 
+    let poi_id = poi.id;
     add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, _) = server_poi_contents(&p, WidgetMode::Edit);
-            item_box.append(&header.unwrap());
+            let (header, server_item, server_poi_view_edit) = server_poi_contents(&p, WidgetMode::Edit);
+            item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
-            display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
+            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
+            server_poi_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_poi_view_edit, server_id, Some(poi_id));
         }),
     );
 }

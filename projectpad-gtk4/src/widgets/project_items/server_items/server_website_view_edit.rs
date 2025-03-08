@@ -75,7 +75,7 @@ impl ServerWebsiteViewEdit {
             widget_mode,
             "url",
             SuffixAction::copy(&url),
-            &[],
+            &[SuffixAction::link(&url)],
         );
         server_item0.add(&url_row);
 

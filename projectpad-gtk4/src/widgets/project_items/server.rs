@@ -374,12 +374,6 @@ pub fn server_contents(
     (header_box, project_item_header_edit, vbox, server_view_edit)
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum IncludeAddGroup {
-    Yes,
-    No,
-}
-
 fn add_server_items(
     channel_data: &ChannelData,
     focused_server_item_id: Option<i32>,
@@ -412,7 +406,10 @@ fn add_server_items(
                 display_server_poi(channel_data.server.id, poi, &cur_parent)
             }
             ServerItem::Note(n) => display_server_note(n, &cur_parent, focused_server_item_id),
-            ServerItem::ExtraUserAccount(u) => display_server_extra_user_account(u, &cur_parent),
+            ServerItem::ExtraUserAccount(u) => {
+                display_server_extra_user_account(channel_data.server.id, u, &cur_parent)
+            }
+            // do the following one
             ServerItem::Database(u) => display_server_database(u, &cur_parent),
         }
         if Some(server_item.get_id()) == focused_server_item_id {
@@ -1027,13 +1024,32 @@ fn prepare_add_server_extra_user_account_dlg(
         .label("Save")
         .css_classes(["suggested-action"])
         .build();
+    server_extra_user_account_connect_save(
+        &save_btn,
+        dlg,
+        he,
+        server_user_view_edit,
+        server_id,
+        None,
+    );
+    hb.pack_end(&save_btn);
+}
+
+fn server_extra_user_account_connect_save(
+    save_btn: &gtk::Button,
+    dlg: &adw::Dialog,
+    he: &ItemHeaderEdit,
+    server_user_view_edit: &ServerExtraUserAccountViewEdit,
+    server_id: i32,
+    server_user_id: Option<i32>,
+) {
     let d = dlg.clone();
     let server_db_view_edit = server_user_view_edit.clone();
     let he = he.clone();
     save_btn.connect_clicked(move |_| {
         let receiver = save_server_extra_user_account(
             server_id,
-            None,
+            server_user_id,
             he.property("title"),
             // server_db_view_edit.property("auth_key"),
             // server_db_view_edit.property("auth_key_filename"),
@@ -1053,7 +1069,6 @@ fn prepare_add_server_extra_user_account_dlg(
             }
         });
     });
-    hb.pack_end(&save_btn);
 }
 
 fn prepare_add_server_note_dlg(
@@ -1365,21 +1380,27 @@ fn server_poi_contents(
     (item_header_edit, server_item1, server_poi_view_edit)
 }
 
-fn display_server_extra_user_account(user: &ServerExtraUserAccount, vbox: &gtk::Box) {
+fn display_server_extra_user_account(
+    server_id: i32,
+    user: &ServerExtraUserAccount,
+    vbox: &gtk::Box,
+) {
     let (_, server_item1, _) = server_extra_user_account_contents(user, WidgetMode::Show);
     vbox.append(&server_item1);
 
+    let user_id = user.id;
     add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong user as u, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, _) = server_extra_user_account_contents(&u, WidgetMode::Edit);
-            item_box.append(&header.unwrap());
+            let (header, server_item, server_extra_user_view_edit) = server_extra_user_account_contents(&u, WidgetMode::Edit);
+            item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
-            display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
+            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
+            server_extra_user_account_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_extra_user_view_edit, server_id, Some(user_id));
         }),
     );
     // TODO auth key

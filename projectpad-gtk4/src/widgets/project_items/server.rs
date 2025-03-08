@@ -409,8 +409,9 @@ fn add_server_items(
             ServerItem::ExtraUserAccount(u) => {
                 display_server_extra_user_account(channel_data.server.id, u, &cur_parent)
             }
-            // do the following one
-            ServerItem::Database(u) => display_server_database(u, &cur_parent),
+            ServerItem::Database(u) => {
+                display_server_database(channel_data.server.id, u, &cur_parent)
+            }
         }
         if Some(server_item.get_id()) == focused_server_item_id {
             let me = cur_parent.last_child().unwrap().clone();
@@ -919,13 +920,32 @@ fn prepare_add_server_database_dlg(
         .label("Save")
         .css_classes(["suggested-action"])
         .build();
+    server_database_connect_save(
+        &save_btn,
+        dlg,
+        he,
+        server_database_view_edit,
+        server_id,
+        None,
+    );
+    hb.pack_end(&save_btn);
+}
+
+fn server_database_connect_save(
+    save_btn: &gtk::Button,
+    dlg: &adw::Dialog,
+    he: &ItemHeaderEdit,
+    server_database_view_edit: &ServerDatabaseViewEdit,
+    server_id: i32,
+    server_db_id: Option<i32>,
+) {
     let d = dlg.clone();
     let server_db_view_edit = server_database_view_edit.clone();
     let he = he.clone();
     save_btn.connect_clicked(move |_| {
         let receiver = save_server_database(
             server_id,
-            None,
+            server_db_id,
             he.property("title"),
             server_db_view_edit.property("name"),
             server_db_view_edit.property("text"),
@@ -945,7 +965,6 @@ fn prepare_add_server_database_dlg(
             }
         });
     });
-    hb.pack_end(&save_btn);
 }
 
 pub fn save_server_database(
@@ -1255,21 +1274,23 @@ fn server_website_contents(
     (item_header_edit, server_item1, server_website_view_edit)
 }
 
-fn display_server_database(w: &ServerDatabase, vbox: &gtk::Box) {
-    let (_, server_item1, _) = server_database_contents(w, WidgetMode::Show);
+fn display_server_database(server_id: i32, db: &ServerDatabase, vbox: &gtk::Box) {
+    let (_, server_item1, _) = server_database_contents(db, WidgetMode::Show);
     vbox.append(&server_item1);
 
+    let db_id = db.id;
     add_group_edit_suffix(
         &server_item1,
-        glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
+        glib::closure_local!(@strong db as w1, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, _) = server_database_contents(&w1, WidgetMode::Edit);
-            item_box.append(&header.unwrap());
+            let (header, server_item, server_database_view_edit) = server_database_contents(&w1, WidgetMode::Edit);
+            item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
-            display_item_edit_dialog(&v, "Edit Database", item_box, 600, 600, DialogClamp::Yes);
+            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Database", item_box, 600, 600, DialogClamp::Yes);
+            server_database_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_database_view_edit, server_id, Some(db_id));
         }),
     );
 }

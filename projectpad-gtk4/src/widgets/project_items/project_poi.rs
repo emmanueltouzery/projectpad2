@@ -14,6 +14,7 @@ use crate::{
     sql_thread::SqlFunc,
     widgets::{
         project_item::WidgetMode,
+        project_item_list::ProjectItemList,
         project_item_model::ProjectItemType,
         project_items::common::{display_item_edit_dialog, DialogClamp},
     },
@@ -87,6 +88,7 @@ fn display_project_poi(
                 save_btn.connect_clicked(move|_| {
                     let receiver = save_project_poi(
                         Some(poi.id),
+                        he.property("group_name"),
                         he.property("title"),
                         project_poi_view_edit.property("path"),
                         project_poi_view_edit.property("text"),
@@ -104,7 +106,8 @@ fn display_project_poi(
                         let win_binding = window.upgrade();
                         let win_binding_ref = win_binding.as_ref().unwrap();
                         let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                        load_and_display_project_poi(pi_bin, db_sender, poi.id);
+                        // load_and_display_project_poi(pi_bin, db_sender, poi.id);
+                        ProjectItemList::display_project_item(poi.id, ProjectItemType::ProjectPointOfInterest);
                         dlg.close();
                     });
                 });
@@ -159,6 +162,7 @@ pub fn project_poi_contents(
 
 pub fn save_project_poi(
     project_poi_id: Option<i32>,
+    new_group_name: String,
     new_desc: String,
     new_path: String,
     new_text: String,
@@ -171,7 +175,6 @@ pub fn save_project_poi(
     let (sender, receiver) = async_channel::bounded(1);
     let project_id = app.project_id().unwrap();
 
-    // TODO commented fields (group and so on)
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
@@ -180,10 +183,7 @@ pub fn save_project_poi(
                 prj_poi::path.eq(new_path.as_str()),
                 prj_poi::text.eq(new_text.as_str()),
                 // never store Some("") for group, we want None then.
-                // prj_poi::group_name.eq(new_group
-                //     .as_ref()
-                //     .map(|s| s.as_str())
-                //     .filter(|s| !s.is_empty())),
+                prj_poi::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
                 prj_poi::interest_type.eq(new_interest_type),
                 prj_poi::project_id.eq(project_id),
             );

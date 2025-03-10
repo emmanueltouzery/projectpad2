@@ -613,7 +613,6 @@ impl ProjectItemList {
                 .build();
             let d = dlg.clone();
             save_btn.connect_clicked(move |_| {
-                dbg!(note_header.as_ref().unwrap().title());
                 let receiver = Note::save_project_note(
                     note.imp().text_edit.borrow().as_ref().unwrap(),
                     note_header.as_ref().unwrap(),
@@ -676,6 +675,7 @@ impl ProjectItemList {
             dbg!(server_view_edit.property::<String>("ip"));
             let receiver = server::save_server(
                 None,
+                he.group_name(),
                 he.single_env(),
                 server_view_edit.property("is_retired"),
                 he.property("title"),
@@ -728,6 +728,7 @@ impl ProjectItemList {
         save_btn.connect_clicked(move |_| {
             let receiver = project_poi::save_project_poi(
                 None,
+                he.property("group_name"),
                 he.property("title"),
                 project_poi_view_edit.property("path"),
                 project_poi_view_edit.property("text"),

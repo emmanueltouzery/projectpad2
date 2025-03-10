@@ -1,7 +1,7 @@
 use crate::{
     notes::{text_tag_search_match, TAG_SEARCH_HIGHLIGHT},
     perform_insert_or_update,
-    widgets::project_item_model::ProjectItemType,
+    widgets::{project_item_list::ProjectItemList, project_item_model::ProjectItemType},
 };
 use diesel::prelude::*;
 use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::mpsc};
@@ -358,7 +358,8 @@ impl Note {
                                     glib::spawn_future_local(async move {
                                         let project_note_after_result = receiver.recv().await.unwrap();
                                         d.close();
-                                        s1.clone().load_and_display_project_note(project_note_id);
+                                        // s1.clone().load_and_display_project_note(project_note_id);
+                                        ProjectItemList::display_project_item(project_note_id, ProjectItemType::ProjectNote);
                                     });
                                 },
                                 _ => panic!()
@@ -389,6 +390,7 @@ impl Note {
         let (sender, receiver) = async_channel::bounded(1);
         let db_sender = app.get_sql_channel();
         let title = header_edit.title();
+        let group_name = header_edit.group_name();
         let has_dev = header_edit.property::<bool>("env_dev");
         let has_stg = header_edit.property::<bool>("env_stg");
         let has_uat = header_edit.property::<bool>("env_uat");
@@ -404,10 +406,7 @@ impl Note {
                 let changeset = (
                     prj_note::title.eq(title.as_str()),
                     // // never store Some("") for group, we want None then.
-                    // prj_note::group_name.eq(new_group
-                    //     .as_ref()
-                    //     .map(|s| s.as_str())
-                    //     .filter(|s| !s.is_empty())),
+                    prj_note::group_name.eq(Some(&group_name).filter(|s| !s.is_empty())),
                     prj_note::contents.eq(new_contents.as_str()),
                     prj_note::has_dev.eq(has_dev),
                     prj_note::has_stage.eq(has_stg),

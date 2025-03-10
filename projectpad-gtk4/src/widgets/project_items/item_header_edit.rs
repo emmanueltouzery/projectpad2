@@ -8,7 +8,6 @@ use projectpadsql::models::EnvironmentType;
 
 use crate::widgets::{
     environment_list_picker::EnvironmentListPicker, environment_picker::EnvironmentPicker,
-    project_item_model::ProjectItemType,
 };
 
 use super::common::{ask_user, EnvOrEnvs};
@@ -45,6 +44,9 @@ mod imp {
 
         #[property(get, set)]
         title: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        group_name: Rc<RefCell<String>>,
 
         #[property(get, set)]
         env_dev: Rc<RefCell<bool>>,
@@ -215,20 +217,22 @@ impl ItemHeaderEdit {
             this.imp().header_box.append(&ep);
         }
 
-        let mut group_name_items = vec!["New group..."];
+        let mut group_name_items = vec!["No group", "New group..."];
         group_name_items.extend(all_group_names.iter().map(String::as_str));
         let dropdown_entries_store = gtk::StringList::new(&group_name_items);
         this.imp()
             .group_dropdown
             .set_model(Some(&dropdown_entries_store));
         let store = dropdown_entries_store.clone();
+        let t = this.clone();
         this.imp()
             .group_dropdown
             .connect_selected_item_notify(move |dropdown: &gtk::DropDown| {
-                if dropdown.selected() == 0 {
+                if dropdown.selected() == 1 {
                     // new group
                     let dds = store.clone();
                     let d = dropdown.clone();
+                    let t = t.clone();
                     // new group, ask the user for the name
                     // check the other modals i created
                     ask_user(
@@ -236,17 +240,30 @@ impl ItemHeaderEdit {
                         "Group Name",
                         &(*dropdown).clone().upcast::<gtk::Widget>(),
                         Box::new(move |name| {
+                            t.set_group_name(name.clone());
                             dds.append(&name);
                             d.set_selected(dds.n_items() - 1);
                         }),
                     );
+                } else if dropdown.selected() == 0 {
+                    // no group
+                    t.set_group_name("");
+                } else {
+                    if let Some(sel) = dropdown.selected_item() {
+                        t.set_group_name(
+                            sel.downcast_ref::<gtk::StringObject>()
+                                .unwrap()
+                                .string()
+                                .as_str(),
+                        );
+                    }
                 }
             });
 
         if let Some(gn) = group_name {
             if let Some(pos) = all_group_names.iter().position(|x| x == gn) {
                 this.imp().group_dropdown.set_selected(
-                    (pos + 1/* 1 due to the default entries no group+new group */) as u32,
+                    (pos + 2/* 2 due to the default entries no group+new group */) as u32,
                 );
             }
         } else {

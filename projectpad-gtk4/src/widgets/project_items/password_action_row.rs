@@ -35,7 +35,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            dbg!(self.obj().upcast_ref::<adw::ActionRow>());
+            self.obj().upcast_ref::<adw::ActionRow>();
 
             // self.obj()
             //     .bind_property(
@@ -106,11 +106,11 @@ impl PasswordActionRow {
 
         this.bind_property("text", this.upcast_ref::<adw::PreferencesRow>(), "subtitle")
             .transform_to(|w, str| {
-                dbg!(if w.source().unwrap().property("show_password") {
+                if w.source().unwrap().property("show_password") {
                     Some(glib::markup_escape_text(str).to_value())
                 } else {
                     Some("●●●●".to_value())
-                })
+                }
             })
             .sync_create()
             .build();

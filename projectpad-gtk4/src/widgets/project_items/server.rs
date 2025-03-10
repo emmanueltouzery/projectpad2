@@ -274,6 +274,7 @@ fn display_server(
                 save_btn.connect_clicked(move|_| {
                     let receiver = save_server(
                         Some(s.id),
+                        he.group_name(),
                         he.single_env(),
                         server_view_edit.property("is_retired"),
                         he.property("title"),
@@ -297,9 +298,10 @@ fn display_server(
                         let window = app.imp().window.get().unwrap();
                         let win_binding = window.upgrade();
                         let win_binding_ref = win_binding.as_ref().unwrap();
-                        let pi = &win_binding_ref.imp().project_item;
-                        let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                        load_and_display_server(pi_bin, db_sender, s.id, None, pi);
+                        // let pi = &win_binding_ref.imp().project_item;
+                        // let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
+                        ProjectItemList::display_project_item(s.id, ProjectItemType::Server);
+                        // load_and_display_server(pi_bin, db_sender, s.id, None, pi);
                         dlg.close();
                     });
                 });
@@ -382,7 +384,6 @@ fn add_server_items(
 ) {
     let mut cur_parent = vbox.clone();
     let mut cur_group_name = None::<&str>;
-    dbg!(focused_server_item_id);
 
     for server_item in channel_data.server_items.iter() {
         let group_name = server_item.group_name();
@@ -1514,6 +1515,7 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
 
 pub fn save_server(
     server_id: Option<i32>,
+    new_group_name: String,
     new_env_type: EnvironmentType,
     new_is_retired: bool,
     new_desc: String,
@@ -1541,10 +1543,7 @@ pub fn save_server(
                 srv::ip.eq(new_address.as_str()),
                 srv::text.eq(new_text.as_str()),
                 // never store Some("") for group, we want None then.
-                // srv::group_name.eq(new_group
-                //     .as_ref()
-                //     .map(|s| s.as_str())
-                //     .filter(|s| !s.is_empty())),
+                srv::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
                 srv::username.eq(new_username.as_str()),
                 srv::password.eq(new_password.as_str()),
                 // srv::auth_key.eq(new_authkey.as_ref()),

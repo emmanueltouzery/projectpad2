@@ -139,7 +139,7 @@ impl ServerViewEdit {
         );
         server_item0.add(&password);
 
-        dbg!(&auth_key_filename);
+        // dbg!(&auth_key_filename);
         if widget_mode == WidgetMode::Edit || auth_key_filename.is_some() {
             let auth_key_entry = FilePickerActionRow::new(widget_mode);
             auth_key_entry.set_title("Authentication key");

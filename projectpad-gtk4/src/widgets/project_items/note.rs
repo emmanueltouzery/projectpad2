@@ -289,14 +289,18 @@ impl Note {
             // project note, we handle the editing
             let (header_box, vbox, _) = self.note_contents(note.clone(), WidgetMode::Show);
 
+            let toc_menu = Self::note_toc_menu(&note);
             let toc_btn = gtk::MenuButton::builder()
                 .icon_name("list-ol")
                 .valign(gtk::Align::Center)
                 .halign(gtk::Align::End)
-                .popover(&Self::note_toc_menu(&note))
+                .popover(&toc_menu)
                 .build();
             if widget_mode != WidgetMode::Edit {
                 toc_btn.set_hexpand(true);
+            }
+            if toc_menu.menu_model().unwrap().n_items() == 0 {
+                toc_btn.set_sensitive(false);
             }
             header_box.append(&toc_btn);
 

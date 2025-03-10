@@ -90,6 +90,7 @@ pub struct ChannelData {
     databases_for_websites: HashMap<i32, ServerDatabase>,
     websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
     project_group_names: Vec<String>,
+    server_group_names: Vec<String>,
 }
 
 pub fn load_and_display_server(
@@ -208,6 +209,7 @@ pub fn load_and_display_server(
             }
 
             let project_group_names = get_project_group_names(sql_conn, server.project_id);
+            let server_group_names = get_server_group_names(sql_conn, server.id);
 
             sender
                 .send_blocking(ChannelData {
@@ -217,6 +219,7 @@ pub fn load_and_display_server(
                     databases_for_websites,
                     websites_for_databases,
                     project_group_names,
+                    server_group_names,
                 })
                 .unwrap();
         }))
@@ -247,7 +250,10 @@ fn display_server(
         .halign(gtk::Align::End)
         .build();
     let server_id = channel_data.server.id;
-    add_btn.connect_clicked(move |_| display_add_project_item_dialog(server_id));
+    let server_group_names = channel_data.server_group_names.clone();
+    add_btn.connect_clicked(move |_| {
+        display_add_project_item_dialog(server_id, server_group_names.clone())
+    });
     header_box.append(&add_btn);
 
     let edit_btn = gtk::Button::builder()
@@ -291,7 +297,6 @@ fn display_server(
                     let app = gio::Application::default()
                         .and_downcast::<ProjectpadApplication>()
                         .unwrap();
-                    let db_sender = app.get_sql_channel();
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
                         let server_after_result = receiver.recv().await.unwrap();
@@ -400,19 +405,36 @@ fn add_server_items(
             cur_parent = vbox.clone();
         }
         match server_item {
-            ServerItem::Website(w) => {
-                display_server_website(channel_data.server.id, w, &cur_parent)
-            }
-            ServerItem::PointOfInterest(poi) => {
-                display_server_poi(channel_data.server.id, poi, &cur_parent)
-            }
-            ServerItem::Note(n) => display_server_note(n, &cur_parent, focused_server_item_id),
-            ServerItem::ExtraUserAccount(u) => {
-                display_server_extra_user_account(channel_data.server.id, u, &cur_parent)
-            }
-            ServerItem::Database(u) => {
-                display_server_database(channel_data.server.id, u, &cur_parent)
-            }
+            ServerItem::Website(w) => display_server_website(
+                channel_data.server.id,
+                channel_data.server_group_names.clone(),
+                w,
+                &cur_parent,
+            ),
+            ServerItem::PointOfInterest(poi) => display_server_poi(
+                channel_data.server.id,
+                channel_data.server_group_names.clone(),
+                poi,
+                &cur_parent,
+            ),
+            ServerItem::Note(n) => display_server_note(
+                n,
+                channel_data.server_group_names.clone(),
+                &cur_parent,
+                focused_server_item_id,
+            ),
+            ServerItem::ExtraUserAccount(u) => display_server_extra_user_account(
+                channel_data.server.id,
+                channel_data.server_group_names.clone(),
+                u,
+                &cur_parent,
+            ),
+            ServerItem::Database(u) => display_server_database(
+                channel_data.server.id,
+                channel_data.server_group_names.clone(),
+                u,
+                &cur_parent,
+            ),
         }
         if Some(server_item.get_id()) == focused_server_item_id {
             let me = cur_parent.last_child().unwrap().clone();
@@ -475,7 +497,7 @@ fn group_frame(group_name: &str) -> (gtk::Frame, gtk::Box) {
     (frame, frame_box)
 }
 
-fn display_add_project_item_dialog(server_id: i32) {
+fn display_add_project_item_dialog(server_id: i32, server_group_names: Vec<String>) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -554,8 +576,11 @@ fn display_add_project_item_dialog(server_id: i32) {
 
     let s = stack.clone();
     let dlg = dialog.clone();
-    let (header_edit, server_contents_child, server_view_edit) =
-        server_poi_contents(&ServerPointOfInterest::default(), WidgetMode::Edit);
+    let (header_edit, server_contents_child, server_view_edit) = server_poi_contents(
+        &server_group_names,
+        &ServerPointOfInterest::default(),
+        WidgetMode::Edit,
+    );
     let hb = header_bar.clone();
     let he = header_edit.unwrap().clone();
     poi_btn.connect_clicked(move |_| {
@@ -572,8 +597,11 @@ fn display_add_project_item_dialog(server_id: i32) {
 
     let s = stack.clone();
     let dlg = dialog.clone();
-    let (header_edit, server_contents_child, server_view_edit) =
-        server_website_contents(&ServerWebsite::default(), WidgetMode::Edit);
+    let (header_edit, server_contents_child, server_view_edit) = server_website_contents(
+        &server_group_names,
+        &ServerWebsite::default(),
+        WidgetMode::Edit,
+    );
     let hb = header_bar.clone();
     let he = header_edit.unwrap().clone();
     website_btn.connect_clicked(move |_| {
@@ -590,8 +618,11 @@ fn display_add_project_item_dialog(server_id: i32) {
 
     let s = stack.clone();
     let dlg = dialog.clone();
-    let (header_edit, server_contents_child, server_view_edit) =
-        server_database_contents(&ServerDatabase::default(), WidgetMode::Edit);
+    let (header_edit, server_contents_child, server_view_edit) = server_database_contents(
+        &server_group_names,
+        &ServerDatabase::default(),
+        WidgetMode::Edit,
+    );
     let hb = header_bar.clone();
     let he = header_edit.unwrap().clone();
     db_btn.connect_clicked(move |_| {
@@ -608,8 +639,11 @@ fn display_add_project_item_dialog(server_id: i32) {
 
     let s = stack.clone();
     let dlg = dialog.clone();
-    let (header_edit, server_contents_child, server_view_edit) =
-        server_extra_user_account_contents(&ServerExtraUserAccount::default(), WidgetMode::Edit);
+    let (header_edit, server_contents_child, server_view_edit) = server_extra_user_account_contents(
+        &server_group_names,
+        &ServerExtraUserAccount::default(),
+        WidgetMode::Edit,
+    );
     let hb = header_bar.clone();
     let he = header_edit.unwrap().clone();
     user_btn.connect_clicked(move |_| {
@@ -629,7 +663,8 @@ fn display_add_project_item_dialog(server_id: i32) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
-    let (header_edit, server_view_edit) = server_note_contents_edit(&ServerNote::default(), &vbox);
+    let (header_edit, server_view_edit) =
+        server_note_contents_edit(&ServerNote::default(), &server_group_names, &vbox);
     let hb = header_bar.clone();
     let he = header_edit.clone();
     note_btn.connect_clicked(move |_| {
@@ -700,9 +735,10 @@ fn server_poi_connect_save(
         let receiver = save_server_poi(
             server_id,
             server_poi_id,
-            he.property("title"),
-            server_poi_view_edit.property("path"),
-            server_poi_view_edit.property("text"),
+            he.group_name(),
+            he.title(),
+            server_poi_view_edit.path(),
+            server_poi_view_edit.text(),
             InterestType::from_str(&server_poi_view_edit.property::<String>("interest_type"))
                 .unwrap(),
             RunOn::from_str(&server_poi_view_edit.property::<String>("run_on")).unwrap(),
@@ -725,6 +761,7 @@ fn server_poi_connect_save(
 pub fn save_server_poi(
     server_id: i32,
     server_poi_id: Option<i32>,
+    new_group_name: String,
     new_desc: String,
     new_path: String,
     new_text: String,
@@ -737,7 +774,6 @@ pub fn save_server_poi(
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
-    // TODO commented fields (group and so on)
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
@@ -746,10 +782,7 @@ pub fn save_server_poi(
                 srv_poi::path.eq(new_path.as_str()),
                 srv_poi::text.eq(new_text.as_str()),
                 // never store Some("") for group, we want None then.
-                // prj_poi::group_name.eq(new_group
-                //     .as_ref()
-                //     .map(|s| s.as_str())
-                //     .filter(|s| !s.is_empty())),
+                srv_poi::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
                 srv_poi::interest_type.eq(new_interest_type),
                 srv_poi::run_on.eq(new_run_on),
                 srv_poi::server_id.eq(server_id),
@@ -824,11 +857,12 @@ fn server_website_connect_save(
         let receiver = save_server_website(
             server_id,
             server_www_id,
-            he.property("title"),
-            server_poi_view_edit.property("url"),
-            server_poi_view_edit.property("text"),
-            server_poi_view_edit.property("username"),
-            server_poi_view_edit.property("password"),
+            he.group_name(),
+            he.title(),
+            server_poi_view_edit.url(),
+            server_poi_view_edit.text(),
+            server_poi_view_edit.username(),
+            server_poi_view_edit.password(),
         );
         let d = d.clone();
         glib::spawn_future_local(async move {
@@ -848,6 +882,7 @@ fn server_website_connect_save(
 pub fn save_server_website(
     server_id: i32,
     server_www_id: Option<i32>,
+    new_group_name: String,
     new_desc: String,
     new_url: String,
     new_text: String,
@@ -860,7 +895,6 @@ pub fn save_server_website(
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
-    // TODO commented fields (group and so on)
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             use projectpadsql::schema::server_website::dsl as srv_www;
@@ -869,10 +903,7 @@ pub fn save_server_website(
                 srv_www::url.eq(new_url.as_str()),
                 srv_www::text.eq(new_text.as_str()),
                 // never store Some("") for group, we want None then.
-                // prj_poi::group_name.eq(new_group
-                //     .as_ref()
-                //     .map(|s| s.as_str())
-                //     .filter(|s| !s.is_empty())),
+                srv_www::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
                 srv_www::username.eq(new_username.as_str()),
                 srv_www::password.eq(new_password.as_str()),
                 srv_www::server_id.eq(server_id),
@@ -947,11 +978,12 @@ fn server_database_connect_save(
         let receiver = save_server_database(
             server_id,
             server_db_id,
-            he.property("title"),
-            server_db_view_edit.property("name"),
-            server_db_view_edit.property("text"),
-            server_db_view_edit.property("username"),
-            server_db_view_edit.property("password"),
+            he.group_name(),
+            he.title(),
+            server_db_view_edit.name(),
+            server_db_view_edit.text(),
+            server_db_view_edit.username(),
+            server_db_view_edit.password(),
         );
         let d = d.clone();
         glib::spawn_future_local(async move {
@@ -971,6 +1003,7 @@ fn server_database_connect_save(
 pub fn save_server_database(
     server_id: i32,
     server_db_id: Option<i32>,
+    new_group_name: String,
     new_desc: String,
     new_name: String,
     new_text: String,
@@ -983,7 +1016,6 @@ pub fn save_server_database(
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
-    // TODO commented fields (group and so on)
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             use projectpadsql::schema::server_database::dsl as srv_db;
@@ -992,10 +1024,7 @@ pub fn save_server_database(
                 srv_db::name.eq(new_name.as_str()),
                 srv_db::text.eq(new_text.as_str()),
                 // never store Some("") for group, we want None then.
-                // prj_poi::group_name.eq(new_group
-                //     .as_ref()
-                //     .map(|s| s.as_str())
-                //     .filter(|s| !s.is_empty())),
+                srv_db::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
                 srv_db::username.eq(new_username.as_str()),
                 srv_db::password.eq(new_password.as_str()),
                 srv_db::server_id.eq(server_id),
@@ -1070,11 +1099,12 @@ fn server_extra_user_account_connect_save(
         let receiver = save_server_extra_user_account(
             server_id,
             server_user_id,
-            he.property("title"),
+            he.group_name(),
+            he.title(),
             // server_db_view_edit.property("auth_key"),
             // server_db_view_edit.property("auth_key_filename"),
-            server_db_view_edit.property("username"),
-            server_db_view_edit.property("password"),
+            server_db_view_edit.username(),
+            server_db_view_edit.password(),
         );
         let d = d.clone();
         glib::spawn_future_local(async move {
@@ -1129,8 +1159,9 @@ fn prepare_add_server_note_dlg(
         let receiver = save_server_note(
             db_sender,
             server_id,
+            he.group_name(),
             None,
-            he.property("title"),
+            he.title(),
             server_note.get_contents_text(),
         );
         let d = d.clone();
@@ -1152,6 +1183,7 @@ fn prepare_add_server_note_dlg(
 pub fn save_server_extra_user_account(
     server_id: i32,
     server_user_id: Option<i32>,
+    new_group_name: String,
     new_desc: String,
     // new_auth_key: Option<Vec<u8>>,
     // new_auth_key_filename: Option<String>,
@@ -1164,7 +1196,7 @@ pub fn save_server_extra_user_account(
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
-    // TODO commented fields (group and so on)
+    // TODO commented fields
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             use projectpadsql::schema::server_extra_user_account::dsl as srv_user;
@@ -1175,10 +1207,7 @@ pub fn save_server_extra_user_account(
 
                 // srv_user::auth_key_filename.eq(new_auth_key_filename.as_str()),
                 // never store Some("") for group, we want None then.
-                // prj_poi::group_name.eq(new_group
-                //     .as_ref()
-                //     .map(|s| s.as_str())
-                //     .filter(|s| !s.is_empty())),
+                srv_user::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
                 srv_user::username.eq(new_username.as_str()),
                 srv_user::password.eq(new_password.as_str()),
                 srv_user::server_id.eq(server_id),
@@ -1214,8 +1243,13 @@ fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: gli
     server_item1.set_header_suffix(Some(&suffix_box));
 }
 
-fn display_server_website(server_id: i32, w: &ServerWebsite, vbox: &gtk::Box) {
-    let (_, server_item1, _) = server_website_contents(w, WidgetMode::Show);
+fn display_server_website(
+    server_id: i32,
+    server_group_names: Vec<String>,
+    w: &ServerWebsite,
+    vbox: &gtk::Box,
+) {
+    let (_, server_item1, _) = server_website_contents(&server_group_names, w, WidgetMode::Show);
     vbox.append(&server_item1);
 
     let www_id = w.id;
@@ -1225,7 +1259,7 @@ fn display_server_website(server_id: i32, w: &ServerWebsite, vbox: &gtk::Box) {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, server_website_view_edit) = server_website_contents(&w1, WidgetMode::Edit);
+            let (header, server_item, server_website_view_edit) = server_website_contents(&server_group_names, &w1, WidgetMode::Edit);
             item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
@@ -1236,6 +1270,7 @@ fn display_server_website(server_id: i32, w: &ServerWebsite, vbox: &gtk::Box) {
 }
 
 fn server_website_contents(
+    server_group_names: &[String],
     website: &ServerWebsite,
     widget_mode: WidgetMode,
 ) -> (
@@ -1247,7 +1282,7 @@ fn server_website_contents(
         let website_item_header = ItemHeaderEdit::new(
             "globe",
             website.group_name.as_deref(),
-            &[], // TODO list of groups get_server_group_names(),
+            server_group_names,
             common::EnvOrEnvs::None,
         );
         website_item_header.set_title(website.desc.clone());
@@ -1275,8 +1310,13 @@ fn server_website_contents(
     (item_header_edit, server_item1, server_website_view_edit)
 }
 
-fn display_server_database(server_id: i32, db: &ServerDatabase, vbox: &gtk::Box) {
-    let (_, server_item1, _) = server_database_contents(db, WidgetMode::Show);
+fn display_server_database(
+    server_id: i32,
+    server_group_names: Vec<String>,
+    db: &ServerDatabase,
+    vbox: &gtk::Box,
+) {
+    let (_, server_item1, _) = server_database_contents(&server_group_names, db, WidgetMode::Show);
     vbox.append(&server_item1);
 
     let db_id = db.id;
@@ -1286,7 +1326,7 @@ fn display_server_database(server_id: i32, db: &ServerDatabase, vbox: &gtk::Box)
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, server_database_view_edit) = server_database_contents(&w1, WidgetMode::Edit);
+            let (header, server_item, server_database_view_edit) = server_database_contents(&server_group_names, &w1, WidgetMode::Edit);
             item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
@@ -1297,6 +1337,7 @@ fn display_server_database(server_id: i32, db: &ServerDatabase, vbox: &gtk::Box)
 }
 
 fn server_database_contents(
+    server_group_names: &[String],
     database: &ServerDatabase,
     widget_mode: WidgetMode,
 ) -> (
@@ -1308,7 +1349,7 @@ fn server_database_contents(
         let database_item_header = ItemHeaderEdit::new(
             "globe",
             database.group_name.as_deref(),
-            &[], // TODO list of groups get_server_group_names(),
+            server_group_names,
             common::EnvOrEnvs::None,
         );
         database_item_header.set_title(database.desc.clone());
@@ -1334,8 +1375,13 @@ fn server_database_contents(
     (item_header_edit, server_item1, server_database_view_edit)
 }
 
-fn display_server_poi(server_id: i32, poi: &ServerPointOfInterest, vbox: &gtk::Box) {
-    let (_, server_item1, _) = server_poi_contents(poi, WidgetMode::Show);
+fn display_server_poi(
+    server_id: i32,
+    server_group_names: Vec<String>,
+    poi: &ServerPointOfInterest,
+    vbox: &gtk::Box,
+) {
+    let (_, server_item1, _) = server_poi_contents(&server_group_names, poi, WidgetMode::Show);
     vbox.append(&server_item1);
 
     let poi_id = poi.id;
@@ -1345,7 +1391,7 @@ fn display_server_poi(server_id: i32, poi: &ServerPointOfInterest, vbox: &gtk::B
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, server_poi_view_edit) = server_poi_contents(&p, WidgetMode::Edit);
+            let (header, server_item, server_poi_view_edit) = server_poi_contents(&server_group_names, &p, WidgetMode::Edit);
             item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
@@ -1356,6 +1402,7 @@ fn display_server_poi(server_id: i32, poi: &ServerPointOfInterest, vbox: &gtk::B
 }
 
 fn server_poi_contents(
+    server_group_names: &[String],
     poi: &ServerPointOfInterest,
     widget_mode: WidgetMode,
 ) -> (
@@ -1367,7 +1414,7 @@ fn server_poi_contents(
         let server_item_header = ItemHeaderEdit::new(
             interest_type_get_icon(poi.interest_type),
             poi.group_name.as_deref(),
-            &[], // TODO list of groups get_server_group_names(),
+            server_group_names,
             common::EnvOrEnvs::None,
         );
         server_item_header.set_title(poi.desc.clone());
@@ -1404,10 +1451,12 @@ fn server_poi_contents(
 
 fn display_server_extra_user_account(
     server_id: i32,
+    server_group_names: Vec<String>,
     user: &ServerExtraUserAccount,
     vbox: &gtk::Box,
 ) {
-    let (_, server_item1, _) = server_extra_user_account_contents(user, WidgetMode::Show);
+    let (_, server_item1, _) =
+        server_extra_user_account_contents(&server_group_names, user, WidgetMode::Show);
     vbox.append(&server_item1);
 
     let user_id = user.id;
@@ -1417,7 +1466,7 @@ fn display_server_extra_user_account(
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, server_extra_user_view_edit) = server_extra_user_account_contents(&u, WidgetMode::Edit);
+            let (header, server_item, server_extra_user_view_edit) = server_extra_user_account_contents(&server_group_names, &u, WidgetMode::Edit);
             item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
@@ -1429,6 +1478,7 @@ fn display_server_extra_user_account(
 }
 
 fn server_extra_user_account_contents(
+    server_group_names: &[String],
     user: &ServerExtraUserAccount,
     widget_mode: WidgetMode,
 ) -> (
@@ -1440,7 +1490,7 @@ fn server_extra_user_account_contents(
         let user_item_header = ItemHeaderEdit::new(
             "user",
             user.group_name.as_deref(),
-            &[], // TODO list of groups get_server_group_names(),
+            server_group_names,
             common::EnvOrEnvs::None,
         );
         user_item_header.set_title(user.desc.clone());
@@ -1471,7 +1521,12 @@ fn truncate(s: &str, max_chars: usize) -> &str {
     }
 }
 
-fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_id: Option<i32>) {
+fn display_server_note(
+    note: &ServerNote,
+    server_group_names: Vec<String>,
+    vbox: &gtk::Box,
+    focused_server_item_id: Option<i32>,
+) {
     let server_item1 = server_note_contents_show(note, focused_server_item_id, vbox);
     // let (note_view, note_view_scrolled_window) =
     //     note::get_note_contents_widget(&note.contents, widget_mode);
@@ -1482,7 +1537,7 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header_edit, note) = server_note_contents_edit(&n, &item_box);
+            let (header_edit, note) = server_note_contents_edit(&n, &server_group_names, &item_box);
             item_box.set_margin_start(30);
             item_box.set_margin_end(30);
 
@@ -1495,7 +1550,7 @@ fn display_server_note(note: &ServerNote, vbox: &gtk::Box, focused_server_item_i
                     .unwrap();
                 let db_sender = app.get_sql_channel();
 
-                let receiver = save_server_note(db_sender.clone(), n.server_id, Some(n.id),
+                let receiver = save_server_note(db_sender.clone(), n.server_id, header_edit.group_name(), Some(n.id),
                     header_edit.title(), new_contents);
                 let dlg = dlg.clone();
                 glib::spawn_future_local(async move {
@@ -1570,6 +1625,7 @@ pub fn save_server(
 fn save_server_note(
     db_sender: mpsc::Sender<SqlFunc>,
     server_id: i32,
+    new_group_name: String,
     server_note_id: Option<i32>,
     new_title: String,
     new_contents: GString,
@@ -1581,10 +1637,7 @@ fn save_server_note(
             let changeset = (
                 srv_note::title.eq(&new_title),
                 // never store Some("") for group, we want None then.
-                // srv_note::group_name.eq(new_group
-                //     .as_ref()
-                //     .map(|s| s.as_str())
-                //     .filter(|s| !s.is_empty())),
+                srv_note::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
                 srv_note::contents.eq(new_contents.as_str()),
                 srv_note::server_id.eq(server_id),
             );
@@ -1643,11 +1696,15 @@ fn server_note_contents_show(
     server_item1
 }
 
-fn server_note_contents_edit(note: &ServerNote, vbox: &gtk::Box) -> (ItemHeaderEdit, Note) {
+fn server_note_contents_edit(
+    note: &ServerNote,
+    server_group_names: &[String],
+    vbox: &gtk::Box,
+) -> (ItemHeaderEdit, Note) {
     let project_item_header = ItemHeaderEdit::new(
         ProjectItemType::ProjectNote.get_icon(),
         note.group_name.as_deref(),
-        &[], // TODO list of groups
+        server_group_names,
         common::EnvOrEnvs::None,
     );
     project_item_header.set_title(note.title.clone());

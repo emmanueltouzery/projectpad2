@@ -1,7 +1,11 @@
 use crate::{
     notes::{text_tag_search_match, TAG_SEARCH_HIGHLIGHT},
-    perform_insert_or_update,
-    widgets::{project_item_list::ProjectItemList, project_item_model::ProjectItemType},
+    perform_insert_or_update, sql_util,
+    widgets::{
+        project_item_list::ProjectItemList,
+        project_item_model::ProjectItemType,
+        project_items::common::{confirm_delete, run_sqlfunc_and_then},
+    },
 };
 use diesel::prelude::*;
 use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::mpsc};
@@ -188,7 +192,7 @@ impl Note {
         let p = self.clone();
         glib::spawn_future_local(async move {
             let (channel_data, project_group_names) = receiver.recv().await.unwrap();
-            p.display_note_contents(NoteInfo {
+            let delete_btn = p.display_note_contents(NoteInfo {
                 id: channel_data.id,
                 title: &channel_data.title,
                 env: EnvOrEnvs::Envs(Self::get_envs(&channel_data)),
@@ -197,6 +201,29 @@ impl Note {
                 group_name: channel_data.group_name.as_deref(),
                 all_group_names: &project_group_names,
             });
+
+            let note_name = channel_data.title;
+            let note_id = channel_data.id;
+            let project_id = channel_data.project_id;
+            delete_btn.unwrap().connect_closure(
+                "clicked",
+                false,
+                glib::closure_local!(@strong note_name as note_n, @strong note_id as n_id, @strong project_id as pid => move |_b: gtk::Button| {
+                    confirm_delete("Delete Project Note", &format!("Do you want to delete '{}'? This action cannot be undone.", note_n),
+                    Box::new(move || {
+                        run_sqlfunc_and_then(
+                            Box::new(move |sql_conn| {
+                                use projectpadsql::schema::project_note::dsl as prj_note;
+                                sql_util::delete_row(sql_conn, prj_note::project_note, n_id)
+                                    .unwrap();
+                                }),
+                                Box::new(move || {
+                                    ProjectItemList::display_project(pid);
+                                }),
+                        );
+                    }))
+                })
+            );
         });
     }
 
@@ -279,12 +306,13 @@ impl Note {
             .build()
     }
 
-    fn display_note_contents(&self, note: NoteInfo) {
+    fn display_note_contents(&self, note: NoteInfo) -> Option<gtk::Button> {
         let widget_mode = if self.edit_mode() {
             WidgetMode::Edit
         } else {
             WidgetMode::Show
         };
+        let mut maybe_delete_btn = None;
         if note.display_header {
             // project note, we handle the editing
             let (header_box, vbox, _) = self.note_contents(note.clone(), WidgetMode::Show);
@@ -316,6 +344,7 @@ impl Note {
                 .valign(gtk::Align::Center)
                 .halign(gtk::Align::End)
                 .build();
+            maybe_delete_btn = Some(delete_btn.clone());
             header_box.append(&delete_btn);
 
             let t = note.title.to_owned();
@@ -377,6 +406,7 @@ impl Note {
             let vbox = self.note_contents(note, widget_mode).1;
             self.set_child(Some(&vbox));
         }
+        maybe_delete_btn
     }
 
     pub fn save_project_note(

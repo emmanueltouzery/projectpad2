@@ -12,6 +12,7 @@ use crate::{
     app::ProjectpadApplication,
     perform_insert_or_update,
     sql_thread::SqlFunc,
+    sql_util,
     widgets::{
         project_item::WidgetMode,
         project_item_list::ProjectItemList,
@@ -75,6 +76,45 @@ fn display_project_poi(
         .halign(gtk::Align::End)
         .build();
     header_box.append(&delete_btn);
+    let poi_name = &poi.desc;
+    let poi_id = poi.id;
+    let project_id = poi.project_id;
+    delete_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(@strong poi_name as poi_n, @strong poi_id as p_id, @strong project_id as pid => move |_b: gtk::Button| {
+            let dialog = adw::AlertDialog::new(Some("Delete POI"), Some(&format!("Do you want to delete '{}'? This action cannot be undone.", poi_n)));
+            dialog.add_responses(&[("cancel", "_Cancel"), ("delete", "_Delete")]);
+            dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+            dialog.set_default_response(Some("cancel"));
+            let app = gio::Application::default()
+                .and_downcast::<ProjectpadApplication>()
+                .unwrap();
+            dialog.connect_response(None, move |_dlg, resp| {
+                if resp == "delete" {
+                    let (sender, receiver) = async_channel::bounded(1);
+                    let app = gio::Application::default()
+                        .and_downcast::<ProjectpadApplication>()
+                        .unwrap();
+                    let db_sender = app.get_sql_channel();
+                    db_sender.send(SqlFunc::new(move |sql_conn| {
+                        use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
+                        sql_util::delete_row(
+                            sql_conn,
+                            prj_poi::project_point_of_interest,
+                            p_id,
+                        ).unwrap();
+                        sender.send_blocking(0).unwrap();
+                    })).unwrap();
+                    glib::spawn_future_local(async move {
+                        let _ = receiver.recv().await.unwrap();
+                        ProjectItemList::display_project(pid);
+                    });
+                }
+            });
+            dialog.present(&app.active_window().unwrap());
+        })
+    );
 
     let pgn = project_group_names.to_vec();
     edit_btn.connect_closure(

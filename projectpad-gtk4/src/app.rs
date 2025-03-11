@@ -294,10 +294,6 @@ impl ProjectpadApplication {
                 select_project_variant.insert("search_item_type", None::<u8>);
                 // tie this menu to a gsimpleaction without state but with a parameter, which is
                 // the project to activate
-                dbg!(Some(&gio::Action::print_detailed_name(
-                    "win.select-project",
-                    Some(&prj.id.to_variant()),
-                )));
                 menu_model.append(
                     Some(&prj.name),
                     Some(&gio::Action::print_detailed_name(

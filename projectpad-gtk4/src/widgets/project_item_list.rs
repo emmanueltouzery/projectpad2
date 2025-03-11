@@ -751,6 +751,25 @@ impl ProjectItemList {
         hb.pack_end(&save_btn);
     }
 
+    pub fn display_project(project_id: i32) {
+        let app = gio::Application::default()
+            .expect("Failed to retrieve application singleton")
+            .downcast::<ProjectpadApplication>()
+            .unwrap();
+
+        let w = app
+            .imp()
+            .window
+            .get()
+            .unwrap()
+            .upgrade()
+            .unwrap()
+            .upcast::<gtk::Widget>();
+
+        w.activate_action("win.select-project", Some(&project_id.to_variant()))
+            .unwrap();
+    }
+
     pub fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {
         let app = gio::Application::default()
             .expect("Failed to retrieve application singleton")
@@ -763,6 +782,6 @@ impl ProjectItemList {
         select_project_variant.insert("item_id", Some(project_item_id));
         select_project_variant.insert("item_type", Some(project_item_type as u8));
         select_project_variant.insert("search_item_type", None::<u8>);
-        w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
+        w.change_action_state("select-project-item", &select_project_variant.end());
     }
 }

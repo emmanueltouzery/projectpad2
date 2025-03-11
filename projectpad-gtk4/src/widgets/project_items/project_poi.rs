@@ -85,25 +85,19 @@ fn display_project_poi(
         "clicked",
         false,
         glib::closure_local!(@strong poi_name as poi_n, @strong poi_id as p_id, @strong project_id as pid => move |_b: gtk::Button| {
-            let dialog = confirm_delete("Delete POI", &format!("Do you want to delete '{}'? This action cannot be undone.", poi_n));
-            dialog.connect_response(None, move |_dlg, resp| {
-                if resp == "delete" {
-                    run_sqlfunc_and_then(Box::new(move |sql_conn| {
+            confirm_delete("Delete POI", &format!("Do you want to delete '{}'? This action cannot be undone.", poi_n),
+            Box::new(move || {
+                run_sqlfunc_and_then(
+                    Box::new(move |sql_conn| {
                         use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
-                        sql_util::delete_row(
-                            sql_conn,
-                            prj_poi::project_point_of_interest,
-                            p_id,
-                        ).unwrap();
-                    }), Box::new(move || {
-                        ProjectItemList::display_project(pid);
-                    }));
-                }
-            });
-            let app = gio::Application::default()
-                .and_downcast::<ProjectpadApplication>()
-                .unwrap();
-            dialog.present(&app.active_window().unwrap());
+                        sql_util::delete_row(sql_conn, prj_poi::project_point_of_interest, p_id)
+                            .unwrap();
+                        }),
+                        Box::new(move || {
+                            ProjectItemList::display_project(pid);
+                        }),
+                );
+            }))
         })
     );
 

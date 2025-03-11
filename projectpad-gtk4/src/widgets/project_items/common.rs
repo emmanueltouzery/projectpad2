@@ -346,12 +346,21 @@ fn add_actions(
     }
 }
 
-pub fn confirm_delete(title: &str, msg: &str) -> adw::AlertDialog {
+pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + 'static>) {
     let dialog = adw::AlertDialog::new(Some(title), Some(msg));
     dialog.add_responses(&[("cancel", "_Cancel"), ("delete", "_Delete")]);
     dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
     dialog.set_default_response(Some("cancel"));
-    dialog
+
+    dialog.connect_response(None, move |_dlg, resp| {
+        if resp == "delete" {
+            delete_fn();
+        }
+    });
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    dialog.present(&app.active_window().unwrap());
 }
 
 pub fn run_sqlfunc_and_then(

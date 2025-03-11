@@ -169,15 +169,12 @@ impl ProjectpadApplication {
         let s = self.clone();
         let channel2 = self.imp().sql_channel.borrow().as_ref().unwrap().clone();
         select_project_item_action.connect_change_state(move |action, parameter| {
-            dbg!(&parameter);
             let cur_project_id = glib::VariantDict::new(action.state().as_ref())
                 .lookup::<i32>("project_id")
                 .unwrap();
             let new_project_id = glib::VariantDict::new(parameter)
                 .lookup::<i32>("project_id")
                 .unwrap();
-            dbg!(cur_project_id);
-            dbg!(new_project_id);
             let project_changed = cur_project_id != new_project_id;
             action.set_state(parameter.as_ref().unwrap());
             w.set_active_project_item();
@@ -186,7 +183,6 @@ impl ProjectpadApplication {
             }
         });
         window.add_action(&select_project_item_action);
-        dbg!(&window.list_actions());
     }
 
     fn unlock_db(&self) {

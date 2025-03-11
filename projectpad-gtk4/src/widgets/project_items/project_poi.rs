@@ -17,7 +17,9 @@ use crate::{
         project_item::WidgetMode,
         project_item_list::ProjectItemList,
         project_item_model::ProjectItemType,
-        project_items::common::{display_item_edit_dialog, DialogClamp},
+        project_items::common::{
+            confirm_delete, display_item_edit_dialog, run_sqlfunc_and_then, DialogClamp,
+        },
     },
 };
 use gtk::subclass::prelude::*;
@@ -83,35 +85,24 @@ fn display_project_poi(
         "clicked",
         false,
         glib::closure_local!(@strong poi_name as poi_n, @strong poi_id as p_id, @strong project_id as pid => move |_b: gtk::Button| {
-            let dialog = adw::AlertDialog::new(Some("Delete POI"), Some(&format!("Do you want to delete '{}'? This action cannot be undone.", poi_n)));
-            dialog.add_responses(&[("cancel", "_Cancel"), ("delete", "_Delete")]);
-            dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
-            dialog.set_default_response(Some("cancel"));
-            let app = gio::Application::default()
-                .and_downcast::<ProjectpadApplication>()
-                .unwrap();
+            let dialog = confirm_delete("Delete POI", &format!("Do you want to delete '{}'? This action cannot be undone.", poi_n));
             dialog.connect_response(None, move |_dlg, resp| {
                 if resp == "delete" {
-                    let (sender, receiver) = async_channel::bounded(1);
-                    let app = gio::Application::default()
-                        .and_downcast::<ProjectpadApplication>()
-                        .unwrap();
-                    let db_sender = app.get_sql_channel();
-                    db_sender.send(SqlFunc::new(move |sql_conn| {
+                    run_sqlfunc_and_then(Box::new(move |sql_conn| {
                         use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
                         sql_util::delete_row(
                             sql_conn,
                             prj_poi::project_point_of_interest,
                             p_id,
                         ).unwrap();
-                        sender.send_blocking(0).unwrap();
-                    })).unwrap();
-                    glib::spawn_future_local(async move {
-                        let _ = receiver.recv().await.unwrap();
+                    }), Box::new(move || {
                         ProjectItemList::display_project(pid);
-                    });
+                    }));
                 }
             });
+            let app = gio::Application::default()
+                .and_downcast::<ProjectpadApplication>()
+                .unwrap();
             dialog.present(&app.active_window().unwrap());
         })
     );

@@ -3,9 +3,9 @@ use std::{collections::HashSet, rc::Rc};
 use adw::prelude::*;
 use diesel::prelude::*;
 use gtk::gdk;
-use projectpadsql::{models::EnvironmentType, schema};
+use projectpadsql::models::EnvironmentType;
 
-use crate::{app::ProjectpadApplication, widgets::project_item::WidgetMode};
+use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_item::WidgetMode};
 
 use super::password_action_row::PasswordActionRow;
 
@@ -344,4 +344,33 @@ fn add_actions(
             c_a();
         });
     }
+}
+
+pub fn confirm_delete(title: &str, msg: &str) -> adw::AlertDialog {
+    let dialog = adw::AlertDialog::new(Some(title), Some(msg));
+    dialog.add_responses(&[("cancel", "_Cancel"), ("delete", "_Delete")]);
+    dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+    dialog.set_default_response(Some("cancel"));
+    dialog
+}
+
+pub fn run_sqlfunc_and_then(
+    sql_fn: Box<dyn Fn(&mut SqliteConnection) + Send + 'static>,
+    after: Box<dyn Fn() + Send + 'static>,
+) {
+    let (sender, receiver) = async_channel::bounded(1);
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    let db_sender = app.get_sql_channel();
+    db_sender
+        .send(SqlFunc::new(move |sql_conn| {
+            sql_fn(sql_conn);
+            sender.send_blocking(0).unwrap();
+        }))
+        .unwrap();
+    glib::spawn_future_local(async move {
+        let _ = receiver.recv().await.unwrap();
+        after();
+    });
 }

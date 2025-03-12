@@ -1420,7 +1420,7 @@ fn display_server_poi(
     vbox.append(&server_item1);
 
     let poi_id = poi.id;
-    add_group_edit_suffix(
+    let delete_btn = add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
@@ -1432,6 +1432,34 @@ fn display_server_poi(
 
             let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
             server_poi_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_poi_view_edit, server_id, Some(poi_id));
+        }),
+    );
+
+    let poi_name = &poi.desc;
+    let poi_id = poi.id;
+    delete_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(@strong poi_name as poi_n, @strong poi_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
+            confirm_delete(
+                "Delete Server POI",
+                &format!(
+                    "Do you want to delete '{}'? This action cannot be undone.",
+                    poi_n
+                ),
+                Box::new(move || {
+                    run_sqlfunc_and_then(
+                        Box::new(move |sql_conn| {
+                            use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+                            sql_util::delete_row(sql_conn, srv_poi::server_point_of_interest, w_id)
+                                .unwrap();
+                        }),
+                        Box::new(move || {
+                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                        }),
+                    );
+                }),
+            )
         }),
     );
 }

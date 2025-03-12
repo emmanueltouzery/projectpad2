@@ -2,11 +2,14 @@ use crate::{
     app::ProjectpadApplication,
     notes, perform_insert_or_update,
     sql_thread::SqlFunc,
+    sql_util,
     widgets::{
         project_item::{ProjectItem, WidgetMode},
         project_item_list::ProjectItemList,
         project_item_model::ProjectItemType,
-        project_items::common::{display_item_edit_dialog, DialogClamp},
+        project_items::common::{
+            confirm_delete, display_item_edit_dialog, run_sqlfunc_and_then, DialogClamp,
+        },
     },
 };
 use adw::prelude::*;
@@ -1226,7 +1229,10 @@ pub fn save_server_extra_user_account(
     receiver
 }
 
-fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: glib::RustClosure) {
+fn add_group_edit_suffix(
+    server_item1: &adw::PreferencesGroup,
+    edit_closure: glib::RustClosure,
+) -> gtk::Button {
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
         .valign(gtk::Align::Center)
@@ -1241,6 +1247,7 @@ fn add_group_edit_suffix(server_item1: &adw::PreferencesGroup, edit_closure: gli
     suffix_box.append(&edit_btn);
     suffix_box.append(&delete_btn);
     server_item1.set_header_suffix(Some(&suffix_box));
+    delete_btn
 }
 
 fn display_server_website(
@@ -1253,7 +1260,7 @@ fn display_server_website(
     vbox.append(&server_item1);
 
     let www_id = w.id;
-    add_group_edit_suffix(
+    let delete_btn = add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
@@ -1265,6 +1272,34 @@ fn display_server_website(
 
             let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Website", item_box, 600, 600, DialogClamp::Yes);
             server_website_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_website_view_edit, server_id, Some(www_id));
+        }),
+    );
+
+    let www_name = &w.desc;
+    let www_id = w.id;
+    delete_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(@strong www_name as www_n, @strong www_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
+            confirm_delete(
+                "Delete Server Website",
+                &format!(
+                    "Do you want to delete '{}'? This action cannot be undone.",
+                    www_n
+                ),
+                Box::new(move || {
+                    run_sqlfunc_and_then(
+                        Box::new(move |sql_conn| {
+                            use projectpadsql::schema::server_website::dsl as srv_www;
+                            sql_util::delete_row(sql_conn, srv_www::server_website, w_id)
+                                .unwrap();
+                        }),
+                        Box::new(move || {
+                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                        }),
+                    );
+                }),
+            )
         }),
     );
 }

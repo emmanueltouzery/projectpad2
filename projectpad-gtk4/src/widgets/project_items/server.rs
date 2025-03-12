@@ -1523,7 +1523,7 @@ fn display_server_extra_user_account(
     vbox.append(&server_item1);
 
     let user_id = user.id;
-    add_group_edit_suffix(
+    let delete_btn = add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong user as u, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
@@ -1538,6 +1538,34 @@ fn display_server_extra_user_account(
         }),
     );
     // TODO auth key
+
+    let user_name = &user.desc;
+    let user_id = user.id;
+    delete_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(@strong user_name as user_n, @strong user_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
+            confirm_delete(
+                "Delete Server Extra User Account",
+                &format!(
+                    "Do you want to delete '{}'? This action cannot be undone.",
+                    user_n
+                ),
+                Box::new(move || {
+                    run_sqlfunc_and_then(
+                        Box::new(move |sql_conn| {
+                            use projectpadsql::schema::server_extra_user_account::dsl as srv_user;
+                            sql_util::delete_row(sql_conn, srv_user::server_extra_user_account, w_id)
+                                .unwrap();
+                        }),
+                        Box::new(move || {
+                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                        }),
+                    );
+                }),
+            )
+        }),
+    );
 }
 
 fn server_extra_user_account_contents(

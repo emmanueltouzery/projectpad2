@@ -1355,7 +1355,7 @@ fn display_server_database(
     vbox.append(&server_item1);
 
     let db_id = db.id;
-    add_group_edit_suffix(
+    let delete_btn = add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong db as w1, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
@@ -1367,6 +1367,34 @@ fn display_server_database(
 
             let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Database", item_box, 600, 600, DialogClamp::Yes);
             server_database_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_database_view_edit, server_id, Some(db_id));
+        }),
+    );
+
+    let db_name = &db.desc;
+    let db_id = db.id;
+    delete_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(@strong db_name as db_n, @strong db_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
+            confirm_delete(
+                "Delete Server Database",
+                &format!(
+                    "Do you want to delete '{}'? This action cannot be undone.",
+                    db_n
+                ),
+                Box::new(move || {
+                    run_sqlfunc_and_then(
+                        Box::new(move |sql_conn| {
+                            use projectpadsql::schema::server_database::dsl as srv_db;
+                            sql_util::delete_row(sql_conn, srv_db::server_database, w_id)
+                                .unwrap();
+                        }),
+                        Box::new(move || {
+                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                        }),
+                    );
+                }),
+            )
         }),
     );
 }

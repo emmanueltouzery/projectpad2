@@ -255,7 +255,7 @@ fn display_server(
     let server_id = channel_data.server.id;
     let server_group_names = channel_data.server_group_names.clone();
     add_btn.connect_clicked(move |_| {
-        display_add_project_item_dialog(server_id, server_group_names.clone())
+        display_add_server_item_dialog(server_id, server_group_names.clone())
     });
     header_box.append(&add_btn);
 
@@ -500,7 +500,7 @@ fn group_frame(group_name: &str) -> (gtk::Frame, gtk::Box) {
     (frame, frame_box)
 }
 
-fn display_add_project_item_dialog(server_id: i32, server_group_names: Vec<String>) {
+fn display_add_server_item_dialog(server_id: i32, server_group_names: Vec<String>) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -576,6 +576,11 @@ fn display_add_project_item_dialog(server_id: i32, server_group_names: Vec<Strin
         .title("Add server item")
         .child(&vbox)
         .build();
+
+    let dlg = dialog.clone();
+    cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
+        dlg.close();
+    });
 
     let s = stack.clone();
     let dlg = dialog.clone();

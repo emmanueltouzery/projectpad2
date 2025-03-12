@@ -1594,7 +1594,7 @@ fn display_server_note(
     // let (note_view, note_view_scrolled_window) =
     //     note::get_note_contents_widget(&note.contents, widget_mode);
 
-    add_group_edit_suffix(
+    let delete_btn = add_group_edit_suffix(
         &server_item1,
         glib::closure_local!(@strong note as n, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
@@ -1627,6 +1627,35 @@ fn display_server_note(
                     dlg.close();
                 });
             });
+        }),
+    );
+
+    let note_name = &note.title;
+    let note_id = note.id;
+    let server_id = note.server_id;
+    delete_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(@strong note_name as note_n, @strong note_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
+            confirm_delete(
+                "Delete Server Note",
+                &format!(
+                    "Do you want to delete '{}'? This action cannot be undone.",
+                    note_n
+                ),
+                Box::new(move || {
+                    run_sqlfunc_and_then(
+                        Box::new(move |sql_conn| {
+                            use projectpadsql::schema::server_note::dsl as srv_note;
+                            sql_util::delete_row(sql_conn, srv_note::server_note, w_id)
+                                .unwrap();
+                        }),
+                        Box::new(move || {
+                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                        }),
+                    );
+                }),
+            )
         }),
     );
 }

@@ -363,9 +363,9 @@ pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + '
     dialog.present(&app.active_window().unwrap());
 }
 
-pub fn run_sqlfunc_and_then(
-    sql_fn: Box<dyn Fn(&mut SqliteConnection) + Send + 'static>,
-    after: Box<dyn Fn() + Send + 'static>,
+pub fn run_sqlfunc_and_then<T: Sync + Send + 'static>(
+    sql_fn: Box<dyn Fn(&mut SqliteConnection) -> T + Send + 'static>,
+    after: Box<dyn Fn(T) + Send + 'static>,
 ) {
     let (sender, receiver) = async_channel::bounded(1);
     let app = gio::Application::default()
@@ -374,12 +374,11 @@ pub fn run_sqlfunc_and_then(
     let db_sender = app.get_sql_channel();
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
-            sql_fn(sql_conn);
-            sender.send_blocking(0).unwrap();
+            sender.send_blocking(sql_fn(sql_conn)).unwrap();
         }))
         .unwrap();
     glib::spawn_future_local(async move {
-        let _ = receiver.recv().await.unwrap();
-        after();
+        let val = receiver.recv().await.unwrap();
+        after(val);
     });
 }

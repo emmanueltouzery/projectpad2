@@ -217,7 +217,7 @@ impl Note {
                                 sql_util::delete_row(sql_conn, prj_note::project_note, n_id)
                                     .unwrap();
                                 }),
-                                Box::new(move || {
+                                Box::new(move |_| {
                                     ProjectItemList::display_project(pid);
                                 }),
                         );

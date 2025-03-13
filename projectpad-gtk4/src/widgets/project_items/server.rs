@@ -21,7 +21,8 @@ use projectpadsql::{
     get_project_group_names, get_server_group_names,
     models::{
         EnvironmentType, InterestType, RunOn, Server, ServerAccessType, ServerDatabase,
-        ServerExtraUserAccount, ServerNote, ServerPointOfInterest, ServerType, ServerWebsite,
+        ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest, ServerType,
+        ServerWebsite,
     },
 };
 use std::str::FromStr;
@@ -273,6 +274,26 @@ fn display_server(
         .build();
     header_box.append(&delete_btn);
 
+    let project_id = channel_data.server.project_id;
+    let server_id = channel_data.server.id;
+    let server_name = channel_data.server.desc.clone();
+    delete_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(move |_b: gtk::Button| {
+            confirm_delete(
+                "Delete Server Website",
+                &format!(
+                    "Do you want to delete '{}'? This action cannot be undone.",
+                    server_name
+                ),
+                Box::new(move || {
+                    delete_server(project_id, server_id);
+                }),
+            )
+        }),
+    );
+
     let pgn = channel_data.project_group_names.clone();
     edit_btn.connect_closure("clicked", false,
             glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
@@ -319,6 +340,64 @@ fn display_server(
     add_server_items(&channel_data, server_item_id, &vbox, project_item);
 
     parent.set_child(Some(&vbox));
+}
+
+fn delete_server(project_id: i32, server_id: i32) {
+    run_sqlfunc_and_then(
+        Box::new(move |sql_conn| {
+            use projectpadsql::schema::server::dsl as srv;
+            use projectpadsql::schema::server_database::dsl as db;
+            use projectpadsql::schema::server_link::dsl as srv_link;
+            use projectpadsql::schema::server_website::dsl as srvw;
+
+            // we cannot delete a server if a database under it
+            // is being used elsewhere
+            let dependent_websites = srvw::server_website
+                .inner_join(db::server_database)
+                .filter(db::server_id.eq(server_id))
+                .load::<(ServerWebsite, ServerDatabase)>(sql_conn)
+                .unwrap();
+            let dependent_serverlinks = srv_link::server_link
+                .filter(srv_link::linked_server_id.eq(server_id))
+                .load::<ServerLink>(sql_conn)
+                .unwrap();
+            if !dependent_websites.is_empty() {
+                Err((
+                    "Cannot delete server",
+                    Some(format!(
+                        "databases {} on that server are used by websites {}",
+                        itertools::join(dependent_websites.iter().map(|(_, d)| &d.name), ", "),
+                        itertools::join(dependent_websites.iter().map(|(w, _)| &w.desc), ", ")
+                    )),
+                ))
+            } else if !dependent_serverlinks.is_empty() {
+                Err((
+                    "Cannot delete server",
+                    Some(format!(
+                        "server links {} are tied to this server",
+                        itertools::join(dependent_serverlinks.iter().map(|l| &l.desc), ", "),
+                    )),
+                ))
+            } else {
+                sql_util::delete_row(sql_conn, srv::server, server_id)
+                // .map(|_| ProjectItem::Server(server.clone()))
+            }
+        }),
+        Box::new(move |res| match res {
+            Ok(_) => {
+                ProjectItemList::display_project(project_id);
+            }
+            Err((msg, details)) => {
+                let dialog = adw::AlertDialog::new(Some(msg), details.as_deref());
+                dialog.add_responses(&[("close", "_Close")]);
+                dialog.set_default_response(Some("close"));
+                let app = gio::Application::default()
+                    .and_downcast::<ProjectpadApplication>()
+                    .unwrap();
+                dialog.present(&app.active_window().unwrap());
+            }
+        }),
+    );
 }
 
 pub fn server_contents(
@@ -1299,7 +1378,7 @@ fn display_server_website(
                             sql_util::delete_row(sql_conn, srv_www::server_website, w_id)
                                 .unwrap();
                         }),
-                        Box::new(move || {
+                        Box::new(move |_| {
                             ProjectItemList::display_project_item(sid, ProjectItemType::Server);
                         }),
                     );
@@ -1394,7 +1473,7 @@ fn display_server_database(
                             sql_util::delete_row(sql_conn, srv_db::server_database, w_id)
                                 .unwrap();
                         }),
-                        Box::new(move || {
+                        Box::new(move |_| {
                             ProjectItemList::display_project_item(sid, ProjectItemType::Server);
                         }),
                     );
@@ -1487,7 +1566,7 @@ fn display_server_poi(
                             sql_util::delete_row(sql_conn, srv_poi::server_point_of_interest, w_id)
                                 .unwrap();
                         }),
-                        Box::new(move || {
+                        Box::new(move |_| {
                             ProjectItemList::display_project_item(sid, ProjectItemType::Server);
                         }),
                     );
@@ -1591,7 +1670,7 @@ fn display_server_extra_user_account(
                             sql_util::delete_row(sql_conn, srv_user::server_extra_user_account, w_id)
                                 .unwrap();
                         }),
-                        Box::new(move || {
+                        Box::new(move |_| {
                             ProjectItemList::display_project_item(sid, ProjectItemType::Server);
                         }),
                     );
@@ -1711,7 +1790,7 @@ fn display_server_note(
                             sql_util::delete_row(sql_conn, srv_note::server_note, w_id)
                                 .unwrap();
                         }),
-                        Box::new(move || {
+                        Box::new(move |_| {
                             ProjectItemList::display_project_item(sid, ProjectItemType::Server);
                         }),
                     );

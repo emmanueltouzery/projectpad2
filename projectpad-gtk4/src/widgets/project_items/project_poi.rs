@@ -93,7 +93,7 @@ fn display_project_poi(
                         sql_util::delete_row(sql_conn, prj_poi::project_point_of_interest, p_id)
                             .unwrap();
                         }),
-                        Box::new(move || {
+                        Box::new(move |_| {
                             ProjectItemList::display_project(pid);
                         }),
                 );

@@ -1,6 +1,7 @@
 use std::sync::mpsc;
 
 use adw::subclass::prelude::*;
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
 use glib::Properties;
@@ -244,6 +245,8 @@ impl ProjectpadApplication {
         let (sender, receiver) = async_channel::bounded(1);
         sql_channel
             .send(SqlFunc::new(move |sql_conn| {
+                // TODO wrong place for that
+                sql_conn.batch_execute("PRAGMA foreign_keys = ON").unwrap();
                 use projectpadsql::schema::project::dsl::*;
                 let prjs = project.order(name.asc()).load::<Project>(sql_conn).unwrap();
                 sender.send_blocking(prjs).unwrap();

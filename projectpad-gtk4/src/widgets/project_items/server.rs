@@ -1494,7 +1494,7 @@ fn server_database_contents(
 ) {
     let item_header_edit = if widget_mode == WidgetMode::Edit {
         let database_item_header = ItemHeaderEdit::new(
-            "globe",
+            "database",
             database.group_name.as_deref(),
             server_group_names,
             common::EnvOrEnvs::None,

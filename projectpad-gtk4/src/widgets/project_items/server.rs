@@ -282,7 +282,7 @@ fn display_server(
         false,
         glib::closure_local!(move |_b: gtk::Button| {
             confirm_delete(
-                "Delete Server Website",
+                "Delete Server",
                 &format!(
                     "Do you want to delete '{}'? This action cannot be undone.",
                     server_name

@@ -4,17 +4,21 @@ use gtk::subclass::prelude::*;
 
 use crate::widgets::{
     project_item::WidgetMode,
-    project_items::common::{self, SuffixAction},
+    project_items::{
+        common::{self, SuffixAction},
+        file_picker_action_row::FilePickerActionRow,
+    },
 };
 
 mod imp {
-    use std::{cell::RefCell, rc::Rc};
+    use std::{cell::RefCell, rc::Rc, sync::OnceLock};
 
     use super::*;
     use gtk::subclass::{
         prelude::{ObjectImpl, ObjectSubclass},
         widget::WidgetImpl,
     };
+    use subclass::Signal;
 
     #[derive(Properties, Debug, Default)]
     #[properties(wrapper_type = super::ServerExtraUserAccountViewEdit)]
@@ -24,7 +28,9 @@ mod imp {
 
         #[property(get, set)]
         password: Rc<RefCell<String>>,
-        // TODO other fields. at least auth key
+
+        #[property(get, set)]
+        auth_key_filename: Rc<RefCell<String>>,
     }
 
     #[glib::object_subclass]
@@ -36,7 +42,14 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for ServerExtraUserAccountViewEdit {
-        fn constructed(&self) {}
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("save-auth-key-to-disk")
+                    .param_types([String::static_type()])
+                    .build()]
+            })
+        }
     }
 
     impl WidgetImpl for ServerExtraUserAccountViewEdit {}
@@ -84,6 +97,34 @@ impl ServerExtraUserAccountViewEdit {
             &[],
         );
         server_item0.add(&password_row);
+
+        let auth_key_filename = self
+            .property::<Option<String>>("auth_key_filename")
+            .filter(|s| !s.is_empty());
+
+        if widget_mode == WidgetMode::Edit || auth_key_filename.is_some() {
+            let auth_key_entry = FilePickerActionRow::new(widget_mode);
+            auth_key_entry.set_title("Authentication key");
+            if let Some(k) = auth_key_filename {
+                auth_key_entry.set_filename(k);
+            }
+            auth_key_entry
+                .bind_property("filename", self, "auth_key_filename")
+                .sync_create()
+                .build();
+
+            if widget_mode == WidgetMode::Show {
+                auth_key_entry.connect_closure(
+                    "file-picked",
+                    false,
+                    glib::closure_local!(@strong self as s => move |_: FilePickerActionRow, p: String| {
+                        s.emit_by_name::<()>("save-auth-key-to-disk", &[&p]);
+                    }),
+                );
+            }
+
+            server_item0.add(&auth_key_entry);
+        }
 
         vbox.append(&server_item0);
 

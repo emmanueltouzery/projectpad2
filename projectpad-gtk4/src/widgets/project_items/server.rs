@@ -1711,6 +1711,31 @@ fn server_extra_user_account_contents(
     let server_user_view_edit = ServerExtraUserAccountViewEdit::new();
     server_user_view_edit.set_username(user.username.to_string());
     server_user_view_edit.set_password(user.password.to_string());
+    server_user_view_edit.set_auth_key_filename(
+        user.auth_key_filename
+            .clone()
+            .unwrap_or_else(|| "".to_string()),
+    );
+
+    if let Some(auth_key) = user.auth_key.as_ref() {
+        let auth_key_owned = auth_key.to_vec();
+        server_user_view_edit.connect_closure(
+            "save-auth-key-to-disk",
+            false,
+            glib::closure_local!(@strong auth_key_owned as contents => move |_: ServerExtraUserAccountViewEdit, path: String| {
+                if let Err(e) = std::fs::write(path, &contents) {
+                    let dialog = adw::AlertDialog::new(Some("Error saving auth key"), Some(&format!("{e}")));
+                    dialog.add_responses(&[("close", "_Close")]);
+                    dialog.set_default_response(Some("close"));
+                    let app = gio::Application::default()
+                        .and_downcast::<ProjectpadApplication>()
+                        .unwrap();
+                    dialog.present(&app.active_window().unwrap());
+                }
+            }),
+        );
+    }
+
     server_user_view_edit.prepare(widget_mode);
     server_item1.add(&server_user_view_edit);
 

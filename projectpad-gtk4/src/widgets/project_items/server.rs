@@ -330,6 +330,15 @@ fn display_server(
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
                         let server_after_result = receiver.recv().await.unwrap();
+                        if let Err((title, msg)) = server_after_result {
+                            let dialog = adw::AlertDialog::new(Some(&title), msg.as_deref());
+                            dialog.add_responses(&[("close", "_Close")]);
+                            dialog.set_default_response(Some("close"));
+                            let app = gio::Application::default()
+                                .and_downcast::<ProjectpadApplication>()
+                                .unwrap();
+                            dialog.present(&app.active_window().unwrap());
+                        }
                         let window = app.imp().window.get().unwrap();
                         let win_binding = window.upgrade();
                         let win_binding_ref = win_binding.as_ref().unwrap();
@@ -1870,13 +1879,17 @@ pub fn save_server(
         .send(SqlFunc::new(move |sql_conn| {
             let (sql_auth_key_filename, sql_auth_key_contents) =
                 if new_auth_key_filename != old_auth_key_filename_owned_str {
-                    (
-                        Path::new(&new_auth_key_filename)
-                            .file_name()
-                            .and_then(|s| s.to_str())
-                            .map(|s| Cow::Owned(s.to_string())),
-                        std::fs::read(&new_auth_key_filename).map(|v| Some(v)),
-                    )
+                    if new_auth_key_filename == "" {
+                        (None, Ok(None))
+                    } else {
+                        (
+                            Path::new(&new_auth_key_filename)
+                                .file_name()
+                                .and_then(|s| s.to_str())
+                                .map(|s| Cow::Owned(s.to_string())),
+                            std::fs::read(&new_auth_key_filename).map(|v| Some(v)),
+                        )
+                    }
                 } else {
                     (
                         Some(Cow::Borrowed(&old_auth_key_filename_owned_str)),

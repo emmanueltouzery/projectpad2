@@ -99,7 +99,8 @@ impl FilePickerActionRow {
                     file_dialog.open(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
                         if let Ok(f) = r {
                             if let Some(p) = f.path() {
-                                _s.set_property("filename", p);
+                                // TODO a little crappy unwrap, could be invalid filename
+                                _s.set_filename(p.to_str().unwrap());
                             }
                         }
                     });
@@ -117,6 +118,21 @@ impl FilePickerActionRow {
             }),
         );
         this.add_suffix(&widget);
+
+        if widget_mode == WidgetMode::Edit {
+            let delete_widget = gtk::Button::builder()
+                .css_classes(["flat"])
+                .icon_name("edit-delete-symbolic")
+                .build();
+            this.add_suffix(&delete_widget);
+            delete_widget.connect_closure(
+                "clicked",
+                false,
+                glib::closure_local!(@strong this as s => move |_b: gtk::Button| {
+                    s.set_filename("");
+                }),
+            );
+        }
 
         this.set_activatable_widget(Some(&widget));
 

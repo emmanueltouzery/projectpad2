@@ -694,8 +694,19 @@ impl ProjectItemList {
                 let server_after_result = receiver.recv().await.unwrap();
                 d.close();
 
-                if let Ok(server) = server_after_result {
-                    Self::display_project_item(server.id, ProjectItemType::Server);
+                match server_after_result {
+                    Ok(server) => {
+                        Self::display_project_item(server.id, ProjectItemType::Server);
+                    }
+                    Err((title, msg)) => {
+                        let dialog = adw::AlertDialog::new(Some(&title), msg.as_deref());
+                        dialog.add_responses(&[("close", "_Close")]);
+                        dialog.set_default_response(Some("close"));
+                        let app = gio::Application::default()
+                            .and_downcast::<ProjectpadApplication>()
+                            .unwrap();
+                        dialog.present(&app.active_window().unwrap());
+                    }
                 }
             });
         });

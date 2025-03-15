@@ -1206,6 +1206,8 @@ fn prepare_add_server_extra_user_account_dlg(
         server_user_view_edit,
         server_id,
         None,
+        None,
+        None,
     );
     hb.pack_end(&save_btn);
 }
@@ -1217,6 +1219,8 @@ fn server_extra_user_account_connect_save(
     server_user_view_edit: &ServerExtraUserAccountViewEdit,
     server_id: i32,
     server_user_id: Option<i32>,
+    old_auth_key: Option<Vec<u8>>,
+    old_auth_key_filename: Option<String>,
 ) {
     let d = dlg.clone();
     let server_db_view_edit = server_user_view_edit.clone();
@@ -1227,8 +1231,9 @@ fn server_extra_user_account_connect_save(
             server_user_id,
             he.group_name(),
             he.title(),
-            // server_db_view_edit.property("auth_key"),
-            // server_db_view_edit.property("auth_key_filename"),
+            old_auth_key.as_deref(),
+            old_auth_key_filename.as_deref(),
+            server_db_view_edit.auth_key_filename(),
             server_db_view_edit.username(),
             server_db_view_edit.password(),
         );
@@ -1311,8 +1316,9 @@ pub fn save_server_extra_user_account(
     server_user_id: Option<i32>,
     new_group_name: String,
     new_desc: String,
-    // new_auth_key: Option<Vec<u8>>,
-    // new_auth_key_filename: Option<String>,
+    old_auth_key: Option<&[u8]>,
+    old_auth_key_filename: Option<&str>,
+    new_auth_key_filename: String,
     new_username: String,
     new_password: String,
 ) -> async_channel::Receiver<Result<ServerExtraUserAccount, (String, Option<String>)>> {
@@ -1322,31 +1328,47 @@ pub fn save_server_extra_user_account(
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
-    // TODO commented fields
+    let old_auth_key_filename_owned_str = old_auth_key_filename.unwrap_or("").to_owned();
+    let old_auth_key_owned = old_auth_key.map(|k| k.to_vec());
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
-            use projectpadsql::schema::server_extra_user_account::dsl as srv_user;
-            let changeset = (
-                srv_user::desc.eq(new_desc.as_str()),
-                // TODO auth key
-                // srv_user::auth_key.eq(new_auth_key.as_str()),
-
-                // srv_user::auth_key_filename.eq(new_auth_key_filename.as_str()),
-                // never store Some("") for group, we want None then.
-                srv_user::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
-                srv_user::username.eq(new_username.as_str()),
-                srv_user::password.eq(new_password.as_str()),
-                srv_user::server_id.eq(server_id),
+            let (sql_auth_key_filename, sql_auth_key_contents) = save_auth_key_get_new_vals(
+                &new_auth_key_filename,
+                &old_auth_key_filename_owned_str,
+                old_auth_key_owned.clone(),
             );
-            let server_db_after_result = perform_insert_or_update!(
-                sql_conn,
-                server_user_id,
-                srv_user::server_extra_user_account,
-                srv_user::id,
-                changeset,
-                ServerExtraUserAccount,
-            );
-            sender.send_blocking(server_db_after_result).unwrap();
+            match sql_auth_key_contents {
+                Ok(auth_key_contents) => {
+                    use projectpadsql::schema::server_extra_user_account::dsl as srv_user;
+                    let changeset = (
+                        srv_user::desc.eq(new_desc.as_str()),
+                        srv_user::auth_key.eq(auth_key_contents.as_ref()),
+                        srv_user::auth_key_filename.eq(sql_auth_key_filename.as_ref()),
+                        // never store Some("") for group, we want None then.
+                        srv_user::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
+                        srv_user::username.eq(new_username.as_str()),
+                        srv_user::password.eq(new_password.as_str()),
+                        srv_user::server_id.eq(server_id),
+                    );
+                    let server_db_after_result = perform_insert_or_update!(
+                        sql_conn,
+                        server_user_id,
+                        srv_user::server_extra_user_account,
+                        srv_user::id,
+                        changeset,
+                        ServerExtraUserAccount,
+                    );
+                    sender.send_blocking(server_db_after_result).unwrap();
+                }
+                Err(e) => {
+                    sender
+                        .send_blocking(Err((
+                            "Error reading the auth key file".to_string(),
+                            Some(e.to_string()),
+                        )))
+                        .unwrap();
+                }
+            }
         }))
         .unwrap();
     receiver
@@ -1685,10 +1707,13 @@ fn display_server_extra_user_account(
             item_box.append(&server_item);
 
             let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
-            server_extra_user_account_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_extra_user_view_edit, server_id, Some(user_id));
+            let old_auth_key = u.auth_key.clone();
+            let old_auth_key_filename = u.auth_key_filename.clone();
+            server_extra_user_account_connect_save(
+                &save_btn, &dlg, header.as_ref().unwrap(), &server_extra_user_view_edit,
+                server_id, Some(user_id), old_auth_key, old_auth_key_filename);
         }),
     );
-    // TODO auth key
 
     let user_name = &user.desc;
     let user_id = user.id;
@@ -1850,6 +1875,31 @@ fn display_server_note(
     );
 }
 
+fn save_auth_key_get_new_vals<'a>(
+    new_auth_key_filename: &str,
+    old_auth_key_filename_owned_str: &'a str,
+    old_auth_key_owned: Option<Vec<u8>>,
+) -> (Option<Cow<'a, str>>, std::io::Result<Option<Vec<u8>>>) {
+    if new_auth_key_filename != old_auth_key_filename_owned_str {
+        if new_auth_key_filename == "" {
+            (None, Ok(None))
+        } else {
+            (
+                Path::new(&new_auth_key_filename)
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .map(|s| Cow::Owned(s.to_string())),
+                std::fs::read(&new_auth_key_filename).map(|v| Some(v)),
+            )
+        }
+    } else {
+        (
+            Some(Cow::Borrowed(&old_auth_key_filename_owned_str)),
+            Ok(old_auth_key_owned.clone()),
+        )
+    }
+}
+
 pub fn save_server(
     server_id: Option<i32>,
     new_group_name: String,
@@ -1877,25 +1927,11 @@ pub fn save_server(
     let old_auth_key_owned = old_auth_key.map(|k| k.to_vec());
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
-            let (sql_auth_key_filename, sql_auth_key_contents) =
-                if new_auth_key_filename != old_auth_key_filename_owned_str {
-                    if new_auth_key_filename == "" {
-                        (None, Ok(None))
-                    } else {
-                        (
-                            Path::new(&new_auth_key_filename)
-                                .file_name()
-                                .and_then(|s| s.to_str())
-                                .map(|s| Cow::Owned(s.to_string())),
-                            std::fs::read(&new_auth_key_filename).map(|v| Some(v)),
-                        )
-                    }
-                } else {
-                    (
-                        Some(Cow::Borrowed(&old_auth_key_filename_owned_str)),
-                        Ok(old_auth_key_owned.clone()),
-                    )
-                };
+            let (sql_auth_key_filename, sql_auth_key_contents) = save_auth_key_get_new_vals(
+                &new_auth_key_filename,
+                &old_auth_key_filename_owned_str,
+                old_auth_key_owned.clone(),
+            );
             match sql_auth_key_contents {
                 Ok(auth_key_contents) => {
                     use projectpadsql::schema::server::dsl as srv;

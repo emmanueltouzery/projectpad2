@@ -18,8 +18,8 @@ use projectpadsql::models::{
 use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_items::server};
 
 use super::project_items::item_header_edit::ItemHeaderEdit;
-use super::project_items::project_poi;
 use super::project_items::server_view_edit::ServerViewEdit;
+use super::project_items::{common, project_poi};
 use super::{
     project_item::WidgetMode,
     project_item_list_model::ProjectItemListModel,
@@ -623,8 +623,11 @@ impl ProjectItemList {
                     let project_note_after_result = receiver.recv().await.unwrap();
                     d.close();
 
-                    if let Ok(note) = project_note_after_result {
-                        Self::display_project_item(note.id, ProjectItemType::ProjectNote);
+                    match project_note_after_result {
+                        Ok(note) => {
+                            Self::display_project_item(note.id, ProjectItemType::ProjectNote)
+                        }
+                        Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
                     }
                 });
             });
@@ -699,13 +702,7 @@ impl ProjectItemList {
                         Self::display_project_item(server.id, ProjectItemType::Server);
                     }
                     Err((title, msg)) => {
-                        let dialog = adw::AlertDialog::new(Some(&title), msg.as_deref());
-                        dialog.add_responses(&[("close", "_Close")]);
-                        dialog.set_default_response(Some("close"));
-                        let app = gio::Application::default()
-                            .and_downcast::<ProjectpadApplication>()
-                            .unwrap();
-                        dialog.present(&app.active_window().unwrap());
+                        common::simple_error_dlg(&title, msg.as_deref());
                     }
                 }
             });
@@ -753,11 +750,12 @@ impl ProjectItemList {
                 let project_poi_after_result = receiver.recv().await.unwrap();
                 d.close();
 
-                if let Ok(project_poi) = project_poi_after_result {
-                    Self::display_project_item(
+                match project_poi_after_result {
+                    Ok(project_poi) => Self::display_project_item(
                         project_poi.id,
                         ProjectItemType::ProjectPointOfInterest,
-                    );
+                    ),
+                    Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
                 }
             });
         });

@@ -346,6 +346,16 @@ fn add_actions(
     }
 }
 
+pub fn simple_error_dlg(title: &str, details: Option<&str>) {
+    let dialog = adw::AlertDialog::new(Some(title), details);
+    dialog.add_responses(&[("close", "_Close")]);
+    dialog.set_default_response(Some("close"));
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    dialog.present(&app.active_window().unwrap());
+}
+
 pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + 'static>) {
     let dialog = adw::AlertDialog::new(Some(title), Some(msg));
     dialog.add_responses(&[("cancel", "_Cancel"), ("delete", "_Delete")]);

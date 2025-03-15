@@ -12,13 +12,14 @@ use super::{
 };
 
 mod imp {
-    use std::{cell::RefCell, rc::Rc};
+    use std::{cell::RefCell, rc::Rc, sync::OnceLock};
 
     use super::*;
     use gtk::subclass::{
         prelude::{ObjectImpl, ObjectSubclass},
         widget::WidgetImpl,
     };
+    use subclass::Signal;
 
     #[derive(Properties, Debug, Default)]
     #[properties(wrapper_type = super::ServerViewEdit)]
@@ -57,7 +58,14 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for ServerViewEdit {
-        fn constructed(&self) {}
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("save-auth-key-to-disk")
+                    .param_types([String::static_type()])
+                    .build()]
+            })
+        }
     }
 
     impl WidgetImpl for ServerViewEdit {}
@@ -157,6 +165,16 @@ impl ServerViewEdit {
                     false,
                     glib::closure_local!(move |_: FilePickerActionRow, p: String| {
                         dbg!(p);
+                    }),
+                );
+            }
+
+            if widget_mode == WidgetMode::Show {
+                auth_key_entry.connect_closure(
+                    "file-picked",
+                    false,
+                    glib::closure_local!(@strong self as s => move |_: FilePickerActionRow, p: String| {
+                        s.emit_by_name::<()>("save-auth-key-to-disk", &[&p]);
                     }),
                 );
             }

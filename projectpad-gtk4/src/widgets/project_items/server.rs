@@ -455,12 +455,36 @@ pub fn server_contents(
             .clone()
             .unwrap_or_else(|| "".to_string()),
     );
+
+    if let Some(auth_key) = server.auth_key.as_ref() {
+        let auth_key_owned = auth_key.to_vec();
+        connect_save_auth_key(&server_view_edit, auth_key_owned);
+    }
+
     server_view_edit.prepare(widget_mode);
     vbox.append(&server_view_edit);
 
     vbox.append(&server_item0);
 
     (header_box, project_item_header_edit, vbox, server_view_edit)
+}
+
+fn connect_save_auth_key<T: ObjectExt>(obj: &T, auth_key: Vec<u8>) {
+    obj.connect_closure(
+            "save-auth-key-to-disk",
+            false,
+            glib::closure_local!(@strong auth_key as contents => move |_: T, path: String| {
+                if let Err(e) = std::fs::write(path, &contents) {
+                    let dialog = adw::AlertDialog::new(Some("Error saving auth key"), Some(&format!("{e}")));
+                    dialog.add_responses(&[("close", "_Close")]);
+                    dialog.set_default_response(Some("close"));
+                    let app = gio::Application::default()
+                        .and_downcast::<ProjectpadApplication>()
+                        .unwrap();
+                    dialog.present(&app.active_window().unwrap());
+                }
+            }),
+        );
 }
 
 fn add_server_items(
@@ -1719,21 +1743,7 @@ fn server_extra_user_account_contents(
 
     if let Some(auth_key) = user.auth_key.as_ref() {
         let auth_key_owned = auth_key.to_vec();
-        server_user_view_edit.connect_closure(
-            "save-auth-key-to-disk",
-            false,
-            glib::closure_local!(@strong auth_key_owned as contents => move |_: ServerExtraUserAccountViewEdit, path: String| {
-                if let Err(e) = std::fs::write(path, &contents) {
-                    let dialog = adw::AlertDialog::new(Some("Error saving auth key"), Some(&format!("{e}")));
-                    dialog.add_responses(&[("close", "_Close")]);
-                    dialog.set_default_response(Some("close"));
-                    let app = gio::Application::default()
-                        .and_downcast::<ProjectpadApplication>()
-                        .unwrap();
-                    dialog.present(&app.active_window().unwrap());
-                }
-            }),
-        );
+        connect_save_auth_key(&server_user_view_edit, auth_key_owned);
     }
 
     server_user_view_edit.prepare(widget_mode);

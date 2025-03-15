@@ -25,12 +25,13 @@ use projectpadsql::{
         ServerWebsite,
     },
 };
-use std::str::FromStr;
 use std::{
+    borrow::Cow,
     collections::{BTreeSet, HashMap},
     sync::mpsc,
     time::Duration,
 };
+use std::{path::Path, str::FromStr};
 
 use super::{
     common::{self},
@@ -301,21 +302,26 @@ fn display_server(
 
                 let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
                 let he = header_edit.unwrap().clone();
+                let old_auth_key = s.auth_key.clone();
+                let old_auth_key_filename = s.auth_key_filename.clone();
                 save_btn.connect_clicked(move|_| {
                     let receiver = save_server(
                         Some(s.id),
                         he.group_name(),
                         he.single_env(),
-                        server_view_edit.property("is_retired"),
-                        he.property("title"),
-                        server_view_edit.property("ip"),
-                        server_view_edit.property("username"),
-                        server_view_edit.property("password"),
-                        server_view_edit.property("text"),
+                        server_view_edit.is_retired(),
+                        he.title(),
+                        server_view_edit.ip(),
+                        server_view_edit.username(),
+                        server_view_edit.password(),
+                        server_view_edit.text(),
                         ServerType::from_str(&server_view_edit.property::<String>("server_type"))
                         .unwrap(),
                         ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
                         .unwrap(),
+                        old_auth_key.as_deref(),
+                        old_auth_key_filename.as_deref(),
+                        server_view_edit.auth_key_filename()
                     );
 
                     let app = gio::Application::default()
@@ -1847,6 +1853,9 @@ pub fn save_server(
     new_text: String,
     new_server_type: ServerType,
     new_server_access_type: ServerAccessType,
+    old_auth_key: Option<&[u8]>,
+    old_auth_key_filename: Option<&str>,
+    new_auth_key_filename: String,
 ) -> async_channel::Receiver<Result<Server, (String, Option<String>)>> {
     let app = gio::Application::default()
         .and_downcast::<ProjectpadApplication>()
@@ -1855,35 +1864,63 @@ pub fn save_server(
     let (sender, receiver) = async_channel::bounded(1);
     let project_id = app.project_id().unwrap();
 
-    // TODO commented fields (group and so on)
+    let old_auth_key_filename_owned_str = old_auth_key_filename.unwrap_or("").to_owned();
+    let old_auth_key_owned = old_auth_key.map(|k| k.to_vec());
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
-            use projectpadsql::schema::server::dsl as srv;
-            let changeset = (
-                srv::desc.eq(new_desc.as_str()),
-                srv::is_retired.eq(new_is_retired),
-                srv::ip.eq(new_address.as_str()),
-                srv::text.eq(new_text.as_str()),
-                // never store Some("") for group, we want None then.
-                srv::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
-                srv::username.eq(new_username.as_str()),
-                srv::password.eq(new_password.as_str()),
-                // srv::auth_key.eq(new_authkey.as_ref()),
-                // srv::auth_key_filename.eq(new_authkey_filename.as_ref()),
-                srv::server_type.eq(new_server_type),
-                srv::access_type.eq(new_server_access_type),
-                srv::environment.eq(new_env_type),
-                srv::project_id.eq(project_id),
-            );
-            let server_after_result = perform_insert_or_update!(
-                sql_conn,
-                server_id,
-                srv::server,
-                srv::id,
-                changeset,
-                Server,
-            );
-            sender.send_blocking(server_after_result).unwrap();
+            let (sql_auth_key_filename, sql_auth_key_contents) =
+                if new_auth_key_filename != old_auth_key_filename_owned_str {
+                    (
+                        Path::new(&new_auth_key_filename)
+                            .file_name()
+                            .and_then(|s| s.to_str())
+                            .map(|s| Cow::Owned(s.to_string())),
+                        std::fs::read(&new_auth_key_filename).map(|v| Some(v)),
+                    )
+                } else {
+                    (
+                        Some(Cow::Borrowed(&old_auth_key_filename_owned_str)),
+                        Ok(old_auth_key_owned.clone()),
+                    )
+                };
+            match sql_auth_key_contents {
+                Ok(auth_key_contents) => {
+                    use projectpadsql::schema::server::dsl as srv;
+                    let changeset = (
+                        srv::desc.eq(new_desc.as_str()),
+                        srv::is_retired.eq(new_is_retired),
+                        srv::ip.eq(new_address.as_str()),
+                        srv::text.eq(new_text.as_str()),
+                        // never store Some("") for group, we want None then.
+                        srv::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
+                        srv::username.eq(new_username.as_str()),
+                        srv::password.eq(new_password.as_str()),
+                        srv::auth_key.eq(auth_key_contents.as_ref()),
+                        srv::auth_key_filename.eq(sql_auth_key_filename.as_ref()),
+                        srv::server_type.eq(new_server_type),
+                        srv::access_type.eq(new_server_access_type),
+                        srv::environment.eq(new_env_type),
+                        srv::project_id.eq(project_id),
+                    );
+                    let server_after_result = perform_insert_or_update!(
+                        sql_conn,
+                        server_id,
+                        srv::server,
+                        srv::id,
+                        changeset,
+                        Server,
+                    );
+                    sender.send_blocking(server_after_result).unwrap();
+                }
+                Err(e) => {
+                    sender
+                        .send_blocking(Err((
+                            "Error reading the auth key file".to_string(),
+                            Some(e.to_string()),
+                        )))
+                        .unwrap();
+                }
+            }
         }))
         .unwrap();
     receiver

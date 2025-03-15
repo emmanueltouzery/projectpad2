@@ -672,20 +672,22 @@ impl ProjectItemList {
         let server_view_edit = server_view_edit.clone();
         let he = he.clone();
         save_btn.connect_clicked(move |_| {
-            dbg!(server_view_edit.property::<String>("ip"));
             let receiver = server::save_server(
                 None,
                 he.group_name(),
                 he.single_env(),
-                server_view_edit.property("is_retired"),
-                he.property("title"),
-                server_view_edit.property("ip"),
-                server_view_edit.property("username"),
-                server_view_edit.property("password"),
-                server_view_edit.property("text"),
+                server_view_edit.is_retired(),
+                he.title(),
+                server_view_edit.ip(),
+                server_view_edit.username(),
+                server_view_edit.password(),
+                server_view_edit.text(),
                 ServerType::from_str(&server_view_edit.property::<String>("server_type")).unwrap(),
                 ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
                     .unwrap(),
+                None,
+                None,
+                server_view_edit.auth_key_filename(),
             );
             let d = d.clone();
             glib::spawn_future_local(async move {

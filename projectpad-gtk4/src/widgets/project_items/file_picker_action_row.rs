@@ -2,7 +2,10 @@ use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 
-use crate::{app::ProjectpadApplication, widgets::project_item::WidgetMode};
+use crate::{
+    app::{self, ProjectpadApplication},
+    widgets::project_item::WidgetMode,
+};
 
 mod imp {
     use std::{cell::RefCell, rc::Rc, sync::OnceLock};
@@ -86,10 +89,7 @@ impl FilePickerActionRow {
             "clicked",
             false,
             glib::closure_local!(@strong this as s => move |b: gtk::Button| {
-                let app = gio::Application::default()
-                    .expect("Failed to retrieve application singleton")
-                    .downcast::<ProjectpadApplication>()
-                    .unwrap();
+                let app = app::get();
                 let window = app.imp().window.get().unwrap();
                 let win_binding = window.upgrade();
                 let win_binding_ref = win_binding.as_ref().unwrap();

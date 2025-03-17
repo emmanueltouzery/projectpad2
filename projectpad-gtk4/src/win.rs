@@ -145,7 +145,6 @@ impl ProjectpadApplicationWindow {
             false,
             glib::closure_local!(@strong win as w =>
                                  move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8, sub_item_id: i32, title: String| {
-                println!("set_properties {} {} {}", item_id, sub_item_id, project_item_type);
                 let _freeze_guard = w.imp().project_item.freeze_notify(); // https://github.com/gtk-rs/gtk-rs-core/issues/1339
                 w.imp().project_item.set_properties(
                     &[

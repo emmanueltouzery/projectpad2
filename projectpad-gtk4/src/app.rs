@@ -261,10 +261,7 @@ impl ProjectpadApplication {
         let app_clone = self.clone();
         glib::spawn_future_local(async move {
             let prjs = receiver.recv().await.unwrap();
-            let app = gio::Application::default()
-                .expect("Failed to retrieve application singleton")
-                .downcast::<ProjectpadApplication>()
-                .unwrap();
+            let app = get();
             let window = app.imp().window.get().unwrap();
             let win_binding = window.upgrade();
             let win_binding_ref = win_binding.as_ref().unwrap();
@@ -372,6 +369,13 @@ impl ProjectpadApplication {
             .unwrap()
             .get_toast_overlay()
     }
+}
+
+pub fn get() -> ProjectpadApplication {
+    gio::Application::default()
+        .expect("Failed to retrieve application singleton")
+        .downcast::<ProjectpadApplication>()
+        .unwrap()
 }
 
 impl Default for ProjectpadApplication {

@@ -10,13 +10,16 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
+use projectpadsql::get_project_group_names;
 use projectpadsql::models::{
     InterestType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType,
     ServerLink, ServerType,
 };
 
+use crate::app;
 use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_items::server};
 
+use super::project_items::common::run_sqlfunc_and_then;
 use super::project_items::item_header_edit::ItemHeaderEdit;
 use super::project_items::server_view_edit::ServerViewEdit;
 use super::project_items::{common, project_poi};
@@ -496,8 +499,19 @@ impl ProjectItemList {
         btn_hbox
     }
 
-    // TODO for the love of god, split that function
     fn display_add_project_item_dialog() {
+        if let Some(project_id) = app::get().project_id() {
+            run_sqlfunc_and_then(
+                Box::new(move |sql_conn| get_project_group_names(sql_conn, project_id)),
+                Box::new(|group_names| {
+                    Self::display_add_project_item_dialog_with_groups(group_names);
+                }),
+            );
+        }
+    }
+
+    // TODO for the love of god, split that function
+    fn display_add_project_item_dialog_with_groups(project_group_names: Vec<String>) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
@@ -569,7 +583,7 @@ impl ProjectItemList {
         let s = stack.clone();
         let dlg = dialog.clone();
         let (_, header_edit, server_contents_child, server_view_edit) =
-            server_contents(&Server::default(), &[], WidgetMode::Edit);
+            server_contents(&Server::default(), &project_group_names, WidgetMode::Edit);
         let hb = header_bar.clone();
         let he = header_edit.unwrap().clone();
         server_btn.connect_clicked(move |_| {
@@ -763,10 +777,7 @@ impl ProjectItemList {
     }
 
     pub fn display_project(project_id: i32) {
-        let app = gio::Application::default()
-            .expect("Failed to retrieve application singleton")
-            .downcast::<ProjectpadApplication>()
-            .unwrap();
+        let app = app::get();
 
         let w = app
             .imp()
@@ -782,10 +793,7 @@ impl ProjectItemList {
     }
 
     pub fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {
-        let app = gio::Application::default()
-            .expect("Failed to retrieve application singleton")
-            .downcast::<ProjectpadApplication>()
-            .unwrap();
+        let app = app::get();
 
         let w = app.imp().window.get().unwrap().upgrade().unwrap();
         let select_project_variant = glib::VariantDict::new(None);

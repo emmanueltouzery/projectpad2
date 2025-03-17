@@ -5,7 +5,11 @@ use diesel::prelude::*;
 use gtk::gdk;
 use projectpadsql::models::EnvironmentType;
 
-use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_item::WidgetMode};
+use crate::{
+    app::{self, ProjectpadApplication},
+    sql_thread::SqlFunc,
+    widgets::project_item::WidgetMode,
+};
 
 use super::password_action_row::PasswordActionRow;
 
@@ -137,11 +141,7 @@ pub fn copy_to_clipboard(text: &str) {
     if let Some(display) = gdk::Display::default() {
         display.clipboard().set_text(text);
 
-        let toast_overlay = gio::Application::default()
-            .expect("Failed to retrieve application singleton")
-            .downcast::<ProjectpadApplication>()
-            .unwrap()
-            .get_toast_overlay();
+        let toast_overlay = app::get().get_toast_overlay();
         toast_overlay.add_toast(adw::Toast::new("Copied to the clipboard"));
     }
 }

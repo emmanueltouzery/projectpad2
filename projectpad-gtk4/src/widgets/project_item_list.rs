@@ -600,7 +600,8 @@ impl ProjectItemList {
         let s = stack.clone();
         let dlg = dialog.clone();
         let hb = header_bar.clone();
-        poi_btn.connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &hb, &s));
+        let gn = project_group_names.clone();
+        poi_btn.connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &hb, &s, &gn));
 
         let s = stack.clone();
         let dlg = dialog.clone();
@@ -610,6 +611,7 @@ impl ProjectItemList {
                 let mut n = NoteInfo::default();
                 n.env = EnvOrEnvs::Envs(HashSet::new());
                 n.display_header = true;
+                n.all_group_names = &project_group_names;
                 n
             };
             dlg.set_title("Add Project Note");
@@ -724,15 +726,23 @@ impl ProjectItemList {
         hb.pack_end(&save_btn);
     }
 
-    fn prepare_add_project_poi_dlg(dlg: &adw::Dialog, hb: &adw::HeaderBar, s: &gtk::Stack) {
+    fn prepare_add_project_poi_dlg(
+        dlg: &adw::Dialog,
+        hb: &adw::HeaderBar,
+        s: &gtk::Stack,
+        project_group_names: &[String],
+    ) {
         dlg.set_title("Add Project POI");
         dlg.set_content_width(600);
         dlg.set_content_height(600);
 
         let vbox = gtk::Box::builder().build();
 
-        let (maybe_header_edit, project_poi_view_edit, _, poi_box) =
-            project_poi_contents(&ProjectPointOfInterest::default(), &[], WidgetMode::Edit);
+        let (maybe_header_edit, project_poi_view_edit, _, poi_box) = project_poi_contents(
+            &ProjectPointOfInterest::default(),
+            project_group_names,
+            WidgetMode::Edit,
+        );
 
         vbox.append(&poi_box);
 

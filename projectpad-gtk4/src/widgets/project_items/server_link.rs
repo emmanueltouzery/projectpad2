@@ -2,9 +2,7 @@ use adw::prelude::*;
 use projectpadsql::models::ServerLink;
 
 use crate::{
-    app::ProjectpadApplication,
     search_engine,
-    sql_thread::SqlFunc,
     widgets::{
         project_item::WidgetMode, project_item_model::ProjectItemType,
         search::search_item_list::SearchItemList,
@@ -50,13 +48,13 @@ pub fn server_link_contents(
 }
 
 fn populate_search_list(search_item_list: &SearchItemList) {
-    let search_spec = search_engine::search_parse("test"); // TODO
+    let search_spec = search_engine::search_parse(""); // TODO
     let f = search_spec.search_pattern;
 
     let search_results_receiver = common::run_sqlfunc(Box::new(move |sql_conn| {
         search_engine::run_search_filter(
             sql_conn,
-            search_engine::SearchItemsType::All,
+            search_engine::SearchItemsType::ServersOnly,
             &f,
             &None,
             false,

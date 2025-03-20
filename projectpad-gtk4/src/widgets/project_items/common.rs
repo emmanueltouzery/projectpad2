@@ -1,6 +1,7 @@
 use std::{collections::HashSet, rc::Rc};
 
 use adw::prelude::*;
+use async_channel::Receiver;
 use diesel::prelude::*;
 use gtk::gdk;
 use projectpadsql::models::EnvironmentType;
@@ -373,10 +374,9 @@ pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + '
     dialog.present(&app.active_window().unwrap());
 }
 
-pub fn run_sqlfunc_and_then<T: Sync + Send + 'static>(
+pub fn run_sqlfunc<T: Sync + Send + 'static>(
     sql_fn: Box<dyn Fn(&mut SqliteConnection) -> T + Send + 'static>,
-    after: Box<dyn Fn(T) + Send + 'static>,
-) {
+) -> Receiver<T> {
     let (sender, receiver) = async_channel::bounded(1);
     let app = gio::Application::default()
         .and_downcast::<ProjectpadApplication>()
@@ -387,6 +387,14 @@ pub fn run_sqlfunc_and_then<T: Sync + Send + 'static>(
             sender.send_blocking(sql_fn(sql_conn)).unwrap();
         }))
         .unwrap();
+    receiver
+}
+
+pub fn run_sqlfunc_and_then<T: Sync + Send + 'static>(
+    sql_fn: Box<dyn Fn(&mut SqliteConnection) -> T + Send + 'static>,
+    after: Box<dyn Fn(T) + Send + 'static>,
+) {
+    let receiver = run_sqlfunc(sql_fn);
     glib::spawn_future_local(async move {
         let val = receiver.recv().await.unwrap();
         after(val);

@@ -52,44 +52,19 @@ pub fn server_link_contents(
 fn populate_search_list(search_item_list: &SearchItemList) {
     let search_spec = search_engine::search_parse("test"); // TODO
     let f = search_spec.search_pattern;
+
+    let search_results_receiver = common::run_sqlfunc(Box::new(move |sql_conn| {
+        search_engine::run_search_filter(
+            sql_conn,
+            search_engine::SearchItemsType::All,
+            &f,
+            &None,
+            false,
+        )
+    }));
     let mut sil = search_item_list.clone();
-    let (sender, receiver) = async_channel::bounded(1);
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    let db_sender = app.get_sql_channel();
-    db_sender
-        .send(SqlFunc::new(move |sql_conn| {
-            sender
-                .send_blocking(search_engine::run_search_filter(
-                    sql_conn,
-                    search_engine::SearchItemsType::All,
-                    &f,
-                    &None,
-                    false,
-                ))
-                .unwrap();
-        }))
-        .unwrap();
     glib::spawn_future_local(async move {
-        let search_res = receiver.recv().await.unwrap();
+        let search_res = search_results_receiver.recv().await.unwrap();
         sil.set_search_items(search_res);
     });
-
-    // TODO would be nice to use run_sqlfunc_and_then here
-    // common::run_sqlfunc_and_then(
-    //     &mut sil,
-    //     Box::new(move |sql_conn| {
-    //         search_engine::run_search_filter(
-    //             sql_conn,
-    //             search_engine::SearchItemsType::All,
-    //             &f,
-    //             &None,
-    //             false,
-    //         )
-    //     }),
-    //     Box::new(move |search_res, sil| {
-    //         sil.set_search_items(search_res);
-    //     }),
-    // );
 }

@@ -8,4 +8,5 @@ pub mod project_poi;
 pub mod project_poi_view_edit;
 pub mod server;
 pub mod server_items;
+pub mod server_link;
 pub mod server_view_edit;

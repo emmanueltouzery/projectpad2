@@ -155,25 +155,16 @@ pub fn project_poi_contents(
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
-    let (maybe_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
-        let project_item_header = ItemHeaderEdit::new(
-            ProjectItemType::ProjectPointOfInterest.get_icon(),
-            poi.group_name.as_deref(),
-            project_group_names,
-            common::EnvOrEnvs::None,
-        );
-        project_item_header.set_title(poi.desc.clone());
-        vbox.append(&project_item_header);
-        (
-            Some(project_item_header.clone()),
-            project_item_header.header_box(),
-        )
-    } else {
-        let project_item_header = ItemHeaderView::new(ProjectItemType::ProjectPointOfInterest);
-        project_item_header.set_title(poi.desc.clone());
-        vbox.append(&project_item_header);
-        (None, project_item_header.header_box())
-    };
+    let (maybe_header_edit, header_box) = project_item_header(
+        &vbox,
+        &poi.desc,
+        poi.group_name.as_deref(),
+        ProjectItemType::ProjectPointOfInterest,
+        common::EnvOrEnvs::None,
+        project_group_names,
+        widget_mode,
+        DisplayHeaderMode::Yes,
+    );
 
     let project_poi_view_edit = ProjectPoiViewEdit::new();
     project_poi_view_edit.set_interest_type(poi.interest_type.to_string());
@@ -183,6 +174,47 @@ pub fn project_poi_contents(
     vbox.append(&project_poi_view_edit);
 
     (maybe_header_edit, project_poi_view_edit, header_box, vbox)
+}
+
+#[derive(PartialEq, Eq)]
+pub enum DisplayHeaderMode {
+    Yes,
+    No,
+}
+
+pub fn project_item_header(
+    vbox: &gtk::Box,
+    desc: &str,
+    group_name: Option<&str>,
+    project_item_type: ProjectItemType,
+    env_info: common::EnvOrEnvs,
+    project_group_names: &[String],
+    widget_mode: WidgetMode,
+    display_header_mode: DisplayHeaderMode,
+) -> (Option<ItemHeaderEdit>, gtk::Box) {
+    if widget_mode == WidgetMode::Edit {
+        let project_item_header = ItemHeaderEdit::new(
+            project_item_type.get_icon(),
+            group_name,
+            project_group_names,
+            env_info,
+        );
+        project_item_header.set_title(desc);
+        if display_header_mode == DisplayHeaderMode::Yes {
+            vbox.append(&project_item_header);
+        }
+        (
+            Some(project_item_header.clone()),
+            project_item_header.header_box(),
+        )
+    } else {
+        let project_item_header = ItemHeaderView::new(project_item_type);
+        project_item_header.set_title(desc);
+        if display_header_mode == DisplayHeaderMode::Yes {
+            vbox.append(&project_item_header);
+        }
+        (None, project_item_header.header_box())
+    }
 }
 
 pub fn save_project_poi(

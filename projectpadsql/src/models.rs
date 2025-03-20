@@ -256,7 +256,7 @@ pub struct ProjectPointOfInterest {
     pub project_id: i32,
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq, Eq)]
+#[derive(Queryable, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ServerLink {
     pub id: i32,
     pub desc: String,

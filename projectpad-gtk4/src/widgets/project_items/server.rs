@@ -36,7 +36,7 @@ use std::{path::Path, str::FromStr};
 use super::{
     common::{self},
     item_header_edit::ItemHeaderEdit,
-    item_header_view::ItemHeaderView,
+    project_poi::{project_item_header, DisplayHeaderMode},
     server_items::{
         interest_type_get_icon, server_database_view_edit::ServerDatabaseViewEdit,
         server_extra_user_account_view_edit::ServerExtraUserAccountViewEdit,
@@ -436,25 +436,16 @@ pub fn server_contents(
     // server.add(&server_ar);
     let server_item0 = adw::PreferencesGroup::builder().build();
 
-    let (project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
-        let project_item_header = ItemHeaderEdit::new(
-            ProjectItemType::Server.get_icon(),
-            server.group_name.as_deref(),
-            project_group_names,
-            common::EnvOrEnvs::Env(server.environment),
-        );
-        project_item_header.set_title(server.desc.clone());
-        vbox.append(&project_item_header);
-        (
-            Some(project_item_header.clone()),
-            project_item_header.header_box(),
-        )
-    } else {
-        let project_item_header = ItemHeaderView::new(ProjectItemType::Server);
-        project_item_header.set_title(server.desc.clone());
-        vbox.append(&project_item_header);
-        (None, project_item_header.header_box())
-    };
+    let (project_item_header_edit, header_box) = project_item_header(
+        &vbox,
+        &server.desc,
+        server.group_name.as_deref(),
+        ProjectItemType::Server,
+        common::EnvOrEnvs::Env(server.environment),
+        project_group_names,
+        widget_mode,
+        DisplayHeaderMode::Yes,
+    );
 
     let server_view_edit = ServerViewEdit::new();
     server_view_edit.set_ip(server.ip.clone());

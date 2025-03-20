@@ -31,7 +31,9 @@ use crate::{
 };
 
 use super::{
-    common::EnvOrEnvs, item_header_edit::ItemHeaderEdit, item_header_view::ItemHeaderView,
+    common::EnvOrEnvs,
+    item_header_edit::ItemHeaderEdit,
+    project_poi::{project_item_header, DisplayHeaderMode},
 };
 
 #[derive(Clone, Default)]
@@ -493,27 +495,23 @@ impl Note {
             _ => {}
         }
 
-        let (maybe_project_item_header_edit, header_box) = if widget_mode == WidgetMode::Edit {
-            let project_item_header = ItemHeaderEdit::new(
-                ProjectItemType::ProjectNote.get_icon(),
-                note.group_name,
-                note.all_group_names,
-                note.env,
-            );
-            project_item_header.set_title(note.title);
+        let vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+        let (maybe_project_item_header_edit, header_box) = project_item_header(
+            &vbox,
+            &note.title,
+            note.group_name,
+            ProjectItemType::ProjectNote,
+            note.env,
+            note.all_group_names,
+            widget_mode,
             if note.display_header {
-                vbox.append(&project_item_header);
-            }
-            let hbox = project_item_header.header_box();
-            (Some(project_item_header), hbox)
-        } else {
-            let project_item_header = ItemHeaderView::new(ProjectItemType::ProjectNote);
-            project_item_header.set_title(note.title);
-            if note.display_header {
-                vbox.append(&project_item_header);
-            }
-            (None, project_item_header.header_box())
-        };
+                DisplayHeaderMode::Yes
+            } else {
+                DisplayHeaderMode::No
+            },
+        );
 
         vbox.append(&note_view);
 

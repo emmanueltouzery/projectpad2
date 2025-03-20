@@ -19,7 +19,7 @@ impl ProjectItemType {
     pub fn get_icon(&self) -> &'static str {
         match self {
             ProjectItemType::Server => "server",
-            ProjectItemType::ServerLink => "share-square",
+            ProjectItemType::ServerLink => "link",
             ProjectItemType::ProjectNote => "clipboard",
             ProjectItemType::ProjectPointOfInterest => "cube",
         }

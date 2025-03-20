@@ -21,6 +21,7 @@ use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_it
 
 use super::project_items::common::run_sqlfunc_and_then;
 use super::project_items::item_header_edit::ItemHeaderEdit;
+use super::project_items::server_link::server_link_contents;
 use super::project_items::server_view_edit::ServerViewEdit;
 use super::project_items::{common, project_poi};
 use super::{
@@ -561,15 +562,14 @@ impl ProjectItemList {
             .build();
         cbox.append(&note_btn);
 
-        cbox.append(
-            &gtk::Button::builder()
-                .child(&Self::create_project_item_box(
-                    "link",
-                    "Add server link",
-                    "when a server is shared, we can enter it just once and 'link' to it.",
-                ))
-                .build(),
-        );
+        let server_link_btn = gtk::Button::builder()
+            .child(&Self::create_project_item_box(
+                "link",
+                "Add server link",
+                "when a server is shared, we can enter it just once and 'link' to it.",
+            ))
+            .build();
+        cbox.append(&server_link_btn);
 
         let stack = gtk::Stack::builder().build();
         stack.add_child(&cbox);
@@ -602,6 +602,13 @@ impl ProjectItemList {
         let hb = header_bar.clone();
         let gn = project_group_names.clone();
         poi_btn.connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &hb, &s, &gn));
+
+        let s = stack.clone();
+        let dlg = dialog.clone();
+        let hb = header_bar.clone();
+        let gn = project_group_names.clone();
+        server_link_btn
+            .connect_clicked(move |_| Self::prepare_add_server_link_dlg(&dlg, &hb, &s, &gn));
 
         let s = stack.clone();
         let dlg = dialog.clone();
@@ -745,6 +752,66 @@ impl ProjectItemList {
         );
 
         vbox.append(&poi_box);
+
+        s.add_named(
+            &adw::Clamp::builder().margin_top(10).child(&vbox).build(),
+            Some("second"),
+        );
+        s.set_visible_child_name("second");
+
+        let save_btn = gtk::Button::builder()
+            .label("Save")
+            .css_classes(["suggested-action"])
+            .build();
+        let d = dlg.clone();
+        let project_poi_view_edit = project_poi_view_edit.clone();
+        let he = maybe_header_edit.unwrap().clone();
+        save_btn.connect_clicked(move |_| {
+            let receiver = project_poi::save_project_poi(
+                None,
+                he.property("group_name"),
+                he.property("title"),
+                project_poi_view_edit.property("path"),
+                project_poi_view_edit.property("text"),
+                InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type"))
+                    .unwrap(),
+            );
+            let d = d.clone();
+            glib::spawn_future_local(async move {
+                let project_poi_after_result = receiver.recv().await.unwrap();
+                d.close();
+
+                match project_poi_after_result {
+                    Ok(project_poi) => Self::display_project_item(
+                        project_poi.id,
+                        ProjectItemType::ProjectPointOfInterest,
+                    ),
+                    Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
+                }
+            });
+        });
+        hb.pack_end(&save_btn);
+    }
+
+    fn prepare_add_server_link_dlg(
+        dlg: &adw::Dialog,
+        hb: &adw::HeaderBar,
+        s: &gtk::Stack,
+        project_group_names: &[String],
+    ) {
+        dlg.set_title("Add Server Link");
+        dlg.set_content_width(600);
+        dlg.set_content_height(600);
+
+        let vbox = gtk::Box::builder().build();
+
+        let (maybe_header_edit, project_poi_view_edit, _, link_box) = server_link_contents(
+            &ServerLink::default(),
+            project_group_names,
+            WidgetMode::Edit,
+        );
+
+        vbox.append(&link_box);
 
         s.add_named(
             &adw::Clamp::builder().margin_top(10).child(&vbox).build(),

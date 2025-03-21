@@ -89,12 +89,12 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.obj().connect_action_state_changed(
-                Some("select-project"),
-                |_win, _action_name, st| {
-                    println!("action state changed #{st}");
-                },
-            );
+            // self.obj().connect_action_state_changed(
+            //     Some("select-project"),
+            //     |_win, _action_name, st| {
+            //         println!("action state changed #{st}");
+            //     },
+            // );
 
             // self.project_item_list
             //     .get()

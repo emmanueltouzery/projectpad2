@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="SearchPicker" parent="GtkBox">
+    <property name="orientation">vertical</property>
+    <child>
+      <object class="GtkSearchEntry" id="search_entry">
+      </object>
+    </child>
+    <child>
+      <object class="GtkScrolledWindow" id="project_scrolled_window">
+        <property name="vexpand">True</property>
+        <property name="child">
+          <object class="SearchItemList" id="search_item_list">
+          </object>
+        </property>
+      </object>
+    </child>
+  </template>
+</interface>

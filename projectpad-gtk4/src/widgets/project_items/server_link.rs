@@ -2,10 +2,10 @@ use adw::prelude::*;
 use projectpadsql::models::ServerLink;
 
 use crate::{
-    search_engine,
+    search_engine::SearchItemsType,
     widgets::{
         project_item::WidgetMode, project_item_model::ProjectItemType,
-        search::search_item_list::SearchItemList,
+        search::search_picker::SearchPicker,
     },
 };
 
@@ -19,7 +19,7 @@ pub fn server_link_contents(
     server_link: &ServerLink,
     project_group_names: &[String],
     widget_mode: WidgetMode,
-) -> (Option<ItemHeaderEdit>, SearchItemList, gtk::Box, gtk::Box) {
+) -> (Option<ItemHeaderEdit>, SearchPicker, gtk::Box, gtk::Box) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -34,35 +34,13 @@ pub fn server_link_contents(
         DisplayHeaderMode::Yes,
     );
 
-    let search_item_list = glib::Object::builder::<SearchItemList>().build();
-    vbox.append(
-        &gtk::ScrolledWindow::builder()
-            .vexpand(true)
-            .child(&adw::Clamp::builder().child(&search_item_list).build())
-            .build(),
-    );
-
-    populate_search_list(&search_item_list);
-
-    (maybe_header_edit, search_item_list, header_box, vbox)
-}
-
-fn populate_search_list(search_item_list: &SearchItemList) {
-    let search_spec = search_engine::search_parse(""); // TODO
-    let f = search_spec.search_pattern;
-
-    let search_results_receiver = common::run_sqlfunc(Box::new(move |sql_conn| {
-        search_engine::run_search_filter(
-            sql_conn,
-            search_engine::SearchItemsType::ServersOnly,
-            &f,
-            &None,
-            false,
+    let search_picker = glib::Object::builder::<SearchPicker>()
+        .property(
+            "search-item-types",
+            SearchItemsType::ServersOnly.to_string(),
         )
-    }));
-    let mut sil = search_item_list.clone();
-    glib::spawn_future_local(async move {
-        let search_res = search_results_receiver.recv().await.unwrap();
-        sil.set_search_items(search_res);
-    });
+        .build();
+    vbox.append(&search_picker);
+
+    (maybe_header_edit, search_picker, header_box, vbox)
 }

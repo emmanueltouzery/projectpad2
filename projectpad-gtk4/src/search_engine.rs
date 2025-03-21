@@ -4,10 +4,11 @@ use projectpadsql::models::{
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 use std::collections::HashSet;
+use strum_macros::{Display, EnumString};
 
 pub const PROJECT_FILTER_PREFIX: &str = "prj:";
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, EnumString, Display)]
 pub enum SearchItemsType {
     All,
     ServerDbsOnly,

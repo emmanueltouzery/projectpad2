@@ -11,6 +11,7 @@
     <file compressed="true" preprocess="xml-stripblanks">src/widgets/search/search_item_list.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">src/widgets/search/search_item_row.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">src/widgets/search/search_item_header_row.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">src/widgets/search/search_picker.ui</file>
   </gresource>
   <gresource prefix="/icons/scalable/actions">
     <file alias="server-symbolic.svg">fontawesome-5.13.0/svgs/solid/server.svg</file>

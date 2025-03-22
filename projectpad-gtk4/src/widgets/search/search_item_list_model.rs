@@ -101,4 +101,8 @@ impl SearchItemListModel {
             None
         }
     }
+
+    pub fn n_items(&self) -> usize {
+        self.imp().items.borrow().len()
+    }
 }

@@ -207,7 +207,7 @@ impl SearchItemList {
         // for search_item in search_items {
         //     list_store.append(&Self::get_item_model(search_item));
         // }
-        let selection_model = gtk::SingleSelection::new(Some(list_store));
+        let selection_model = gtk::SingleSelection::new(Some(list_store.clone()));
 
         let s = self.clone();
         selection_model.connect_selected_notify(move |sel| {
@@ -223,6 +223,9 @@ impl SearchItemList {
         self.imp()
             .search_item_list
             .set_model(Some(&selection_model));
+        if let Some((project_id, item_id, item_type, sub_id)) = list_store.get_search_item(0) {
+            self.emit_by_name::<()>("select-item", &[&project_id, &item_id, &item_type, &sub_id]);
+        }
     }
 
     pub fn displayed_items(&self) -> gtk::SingleSelection {

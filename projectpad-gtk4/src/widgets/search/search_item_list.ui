@@ -4,7 +4,6 @@
     <property name="orientation">vertical</property>
     <child>
       <object class="GtkListView" id="search_item_list">
-        <property name="single-click-activate">true</property>
       </object>
     </child>
   </template>

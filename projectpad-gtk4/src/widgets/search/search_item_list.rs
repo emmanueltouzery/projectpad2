@@ -15,7 +15,7 @@ use super::search_item_list_model::SearchItemListModel;
 use super::search_item_model::{Env, SearchItemModel, SearchItemType};
 
 mod imp {
-    use std::sync::OnceLock;
+    use std::{cell::RefCell, rc::Rc, sync::OnceLock};
 
     use glib::subclass::Signal;
     use gtk::{
@@ -28,13 +28,17 @@ mod imp {
 
     use super::*;
 
-    #[derive(Debug, Default, CompositeTemplate)]
+    #[derive(Properties, Debug, Default, CompositeTemplate)]
+    #[properties(wrapper_type = super::SearchItemList)]
     #[template(
         resource = "/com/github/emmanueltouzery/projectpad2/src/widgets/search/search_item_list.ui"
     )]
     pub struct SearchItemList {
         #[template_child]
         pub search_item_list: TemplateChild<gtk::ListView>,
+
+        #[property(get, set)]
+        single_click_activate: Rc<RefCell<bool>>,
     }
 
     #[glib::object_subclass]
@@ -52,6 +56,7 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for SearchItemList {
         fn constructed(&self) {
             self.obj().init_list();
@@ -60,15 +65,26 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
             SIGNALS.get_or_init(|| {
-                vec![Signal::builder("activate-item")
-                    // project id + item id + search_item_type + optionally server item id
-                    .param_types([
-                        i32::static_type(),
-                        i32::static_type(),
-                        u8::static_type(),
-                        i32::static_type(),
-                    ])
-                    .build()]
+                vec![
+                    Signal::builder("select-item")
+                        // project id + item id + search_item_type + optionally server item id
+                        .param_types([
+                            i32::static_type(),
+                            i32::static_type(),
+                            u8::static_type(),
+                            i32::static_type(),
+                        ])
+                        .build(),
+                    Signal::builder("activate-item")
+                        // project id + item id + search_item_type + optionally server item id
+                        .param_types([
+                            i32::static_type(),
+                            i32::static_type(),
+                            u8::static_type(),
+                            i32::static_type(),
+                        ])
+                        .build(),
+                ]
             })
         }
     }
@@ -85,6 +101,14 @@ glib::wrapper! {
 
 impl SearchItemList {
     pub fn init_list(&self) {
+        self.bind_property(
+            "single-click-activate",
+            &self.imp().search_item_list.get(),
+            "single-click-activate",
+        )
+        .sync_create()
+        .build();
+
         self.imp()
             .search_item_list
             .set_factory(Some(&gtk::BuilderListItemFactory::from_resource(
@@ -184,6 +208,18 @@ impl SearchItemList {
         //     list_store.append(&Self::get_item_model(search_item));
         // }
         let selection_model = gtk::SingleSelection::new(Some(list_store));
+
+        let s = self.clone();
+        selection_model.connect_selected_notify(move |sel| {
+            if let Some(selected) = sel.selected_item() {
+                let search_item_list_model = selected.downcast::<SearchItemModel>().unwrap();
+                let project_id = search_item_list_model.project_id();
+                let item_id = search_item_list_model.id();
+                let item_type = search_item_list_model.search_item_type();
+                let sub_id = search_item_list_model.server_id();
+                s.emit_by_name::<()>("select-item", &[&project_id, &item_id, &item_type, &sub_id]);
+            }
+        });
         self.imp()
             .search_item_list
             .set_model(Some(&selection_model));

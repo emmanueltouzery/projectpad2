@@ -90,7 +90,7 @@ impl SearchPicker {
     fn init_widget(&self) {
         self.set_spacing(5);
         self.imp().search_item_list.connect_closure(
-            "activate-item",
+            "select-item",
             false,
             glib::closure_local!(@strong self as s => move |_search_item_list: SearchItemList,
                                    project_id: i32, item_id: i32, search_item_type: u8, server_id: i32| {

@@ -164,6 +164,7 @@
                               <object class="AdwClamp">
                                 <property name="child">
                                   <object class="SearchItemList" id="search_item_list">
+                                    <property name="single-click-activate">True</property>
                                     <property name="vexpand">True</property>
                                   </object>
                                 </property>

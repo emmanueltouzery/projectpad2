@@ -17,6 +17,7 @@ use projectpadsql::models::{
 };
 
 use crate::app;
+use crate::widgets::project_items::server_link;
 use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_items::server};
 
 use super::project_items::common::run_sqlfunc_and_then;
@@ -769,10 +770,10 @@ impl ProjectItemList {
         save_btn.connect_clicked(move |_| {
             let receiver = project_poi::save_project_poi(
                 None,
-                he.property("group_name"),
-                he.property("title"),
-                project_poi_view_edit.property("path"),
-                project_poi_view_edit.property("text"),
+                he.group_name(),
+                he.title(),
+                project_poi_view_edit.path(),
+                project_poi_view_edit.text(),
                 InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type"))
                     .unwrap(),
             );
@@ -805,11 +806,12 @@ impl ProjectItemList {
 
         let vbox = gtk::Box::builder().build();
 
-        let (maybe_header_edit, project_poi_view_edit, _, link_box) = server_link_contents(
-            &ServerLink::default(),
-            project_group_names,
-            WidgetMode::Edit,
-        );
+        let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, link_box) =
+            server_link_contents(
+                &ServerLink::default(),
+                project_group_names,
+                WidgetMode::Edit,
+            );
 
         vbox.append(&link_box);
 
@@ -824,17 +826,26 @@ impl ProjectItemList {
             .css_classes(["suggested-action"])
             .build();
         let d = dlg.clone();
-        let project_poi_view_edit = project_poi_view_edit.clone();
         let he = maybe_header_edit.unwrap().clone();
+        let server_link_view_edit = server_link_view_edit.clone();
+        let server_group_dropdown = server_group_dropdown.clone();
         save_btn.connect_clicked(move |_| {
-            let receiver = project_poi::save_project_poi(
+            dbg!(server_link_view_edit.selected_item_item_id());
+            let receiver = project_poi::save_server_link(
                 None,
                 he.property("group_name"),
                 he.property("title"),
-                project_poi_view_edit.property("path"),
-                project_poi_view_edit.property("text"),
-                InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type"))
-                    .unwrap(),
+                server_link_view_edit.selected_item_item_id(),
+                server_group_dropdown
+                    .selected_item()
+                    .map(|o| {
+                        o.downcast_ref::<gtk::StringObject>()
+                            .unwrap()
+                            .string()
+                            .to_string()
+                    })
+                    .filter(|s| s != server_link::NO_GROUP),
+                he.single_env(),
             );
             let d = d.clone();
             glib::spawn_future_local(async move {
@@ -842,10 +853,9 @@ impl ProjectItemList {
                 d.close();
 
                 match project_poi_after_result {
-                    Ok(project_poi) => Self::display_project_item(
-                        project_poi.id,
-                        ProjectItemType::ProjectPointOfInterest,
-                    ),
+                    Ok(server_link) => {
+                        Self::display_project_item(server_link.id, ProjectItemType::ServerLink)
+                    }
                     Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
                 }
             });

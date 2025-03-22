@@ -15,11 +15,19 @@ use super::{
     project_poi::{project_item_header, DisplayHeaderMode},
 };
 
+pub const NO_GROUP: &'static str = "No group";
+
 pub fn server_link_contents(
     server_link: &ServerLink,
     project_group_names: &[String],
     widget_mode: WidgetMode,
-) -> (Option<ItemHeaderEdit>, SearchPicker, gtk::Box, gtk::Box) {
+) -> (
+    Option<ItemHeaderEdit>,
+    SearchPicker,
+    gtk::DropDown,
+    gtk::Box,
+    gtk::Box,
+) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -63,7 +71,7 @@ pub fn server_link_contents(
         let dd = gn_dropdown.clone();
         glib::spawn_future_local(async move {
             let all_group_names = group_names_recv.recv().await.unwrap();
-            let mut group_names = vec!["No group"];
+            let mut group_names = vec![NO_GROUP];
             group_names.extend(all_group_names.iter().map(String::as_str));
             let dropdown_entries_store = gtk::StringList::new(&group_names);
             dd.set_model(Some(&dropdown_entries_store));
@@ -72,5 +80,11 @@ pub fn server_link_contents(
 
     vbox.append(&linked_group_name_hbox);
 
-    (maybe_header_edit, search_picker, header_box, vbox)
+    (
+        maybe_header_edit,
+        search_picker,
+        server_group_name_dropdown,
+        header_box,
+        vbox,
+    )
 }

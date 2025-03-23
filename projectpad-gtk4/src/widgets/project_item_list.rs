@@ -22,7 +22,7 @@ use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_it
 
 use super::project_items::common::run_sqlfunc_and_then;
 use super::project_items::item_header_edit::ItemHeaderEdit;
-use super::project_items::server_link::server_link_contents;
+use super::project_items::server_link::server_link_contents_edit;
 use super::project_items::server_view_edit::ServerViewEdit;
 use super::project_items::{common, project_poi};
 use super::{
@@ -807,11 +807,7 @@ impl ProjectItemList {
         let vbox = gtk::Box::builder().build();
 
         let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, link_box) =
-            server_link_contents(
-                &ServerLink::default(),
-                project_group_names,
-                WidgetMode::Edit,
-            );
+            server_link_contents_edit(&ServerLink::default(), project_group_names);
 
         vbox.append(&link_box);
 
@@ -830,8 +826,7 @@ impl ProjectItemList {
         let server_link_view_edit = server_link_view_edit.clone();
         let server_group_dropdown = server_group_dropdown.clone();
         save_btn.connect_clicked(move |_| {
-            dbg!(server_link_view_edit.selected_item_item_id());
-            let receiver = project_poi::save_server_link(
+            let receiver = server_link::save_server_link(
                 None,
                 he.property("group_name"),
                 he.property("title"),

@@ -152,10 +152,16 @@ impl ProjectItem {
                     item_id,
                 )
             }
-            _ => {
-                // TODO remove the fallback case
-                eprintln!("unhandled item type!");
+            Some(ProjectItemType::ServerLink) => {
+                self.imp().clamp.set_maximum_size(750);
+                super::project_items::server_link::load_and_display_server_link(
+                    &self.imp().project_item,
+                    db_sender,
+                    item_id,
+                    self,
+                )
             }
+            None => panic!(),
         }
     }
 }

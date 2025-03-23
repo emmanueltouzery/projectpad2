@@ -89,13 +89,129 @@ impl ServerItem {
 
 #[derive(Debug)]
 pub struct ChannelData {
-    server: Server,
-    server_items: Vec<ServerItem>,
-    group_start_indices: HashMap<i32, String>,
-    databases_for_websites: HashMap<i32, ServerDatabase>,
-    websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
-    project_group_names: Vec<String>,
-    server_group_names: Vec<String>,
+    pub server: Server,
+    pub server_items: Vec<ServerItem>,
+    pub group_start_indices: HashMap<i32, String>,
+    pub databases_for_websites: HashMap<i32, ServerDatabase>,
+    pub websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
+    pub project_group_names: Vec<String>,
+    pub server_group_names: Vec<String>,
+}
+
+pub fn run_channel_data_query(sql_conn: &mut SqliteConnection, server_id: i32) -> ChannelData {
+    use projectpadsql::schema::server::dsl as srv;
+    use projectpadsql::schema::server_database::dsl as srv_db;
+    use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
+    use projectpadsql::schema::server_note::dsl as srv_note;
+    use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+    use projectpadsql::schema::server_website::dsl as srv_www;
+    let (server, items, databases_for_websites, websites_for_databases) = {
+        let server = srv::server
+            .filter(srv::id.eq(server_id))
+            .first::<Server>(sql_conn)
+            .unwrap();
+
+        let server_websites = srv_www::server_website
+            .filter(srv_www::server_id.eq(server_id))
+            .order(srv_www::desc.asc())
+            .load::<ServerWebsite>(sql_conn)
+            .unwrap();
+
+        let databases_for_websites = srv_db::server_database
+            .filter(srv_db::id.eq_any(server_websites.iter().filter_map(|w| w.server_database_id)))
+            .load::<ServerDatabase>(sql_conn)
+            .unwrap()
+            .into_iter()
+            .map(|db| (db.id, db))
+            .collect::<HashMap<_, _>>();
+
+        let mut servers = server_websites
+            .into_iter()
+            .map(ServerItem::Website)
+            .collect::<Vec<_>>();
+
+        servers.extend(
+            srv_poi::server_point_of_interest
+                .filter(srv_poi::server_id.eq(server_id))
+                .order(srv_poi::desc.asc())
+                .load::<ServerPointOfInterest>(sql_conn)
+                .unwrap()
+                .into_iter()
+                .map(ServerItem::PointOfInterest),
+        );
+        servers.extend(
+            srv_note::server_note
+                .filter(srv_note::server_id.eq(server_id))
+                .order(srv_note::title.asc())
+                .load::<ServerNote>(sql_conn)
+                .unwrap()
+                .into_iter()
+                .map(ServerItem::Note),
+        );
+        servers.extend(
+            &mut srv_usr::server_extra_user_account
+                .filter(srv_usr::server_id.eq(server_id))
+                .order(srv_usr::desc.asc())
+                .load::<ServerExtraUserAccount>(sql_conn)
+                .unwrap()
+                .into_iter()
+                .map(ServerItem::ExtraUserAccount),
+        );
+
+        let databases = srv_db::server_database
+            .filter(srv_db::server_id.eq(server_id))
+            .order(srv_db::desc.asc())
+            .load::<ServerDatabase>(sql_conn)
+            .unwrap();
+        let mut dbs_as_server_items = databases.clone().into_iter().map(ServerItem::Database);
+        servers.extend(&mut dbs_as_server_items);
+
+        let mut websites_for_databases = HashMap::new();
+        for (key, group) in &srv_www::server_website
+            .filter(srv_www::server_database_id.eq_any(databases.iter().map(|db| db.id)))
+            .order(srv_www::server_database_id.asc())
+            .load::<ServerWebsite>(sql_conn)
+            .unwrap()
+            .into_iter()
+            .group_by(|www| www.server_database_id.unwrap())
+        {
+            websites_for_databases.insert(key, group.collect());
+        }
+
+        (
+            server,
+            servers,
+            databases_for_websites,
+            websites_for_databases,
+        )
+    };
+
+    let group_names: BTreeSet<&str> = items.iter().filter_map(|i| i.group_name()).collect();
+    let mut group_start_indices = HashMap::new();
+
+    let mut grouped_items = vec![];
+    grouped_items.extend(items.iter().filter(|i| i.group_name() == None));
+    for group_name in &group_names {
+        group_start_indices.insert(grouped_items.len() as i32, group_name.to_string());
+        grouped_items.extend(
+            items
+                .iter()
+                .filter(|i| i.group_name().as_ref() == Some(group_name)),
+        );
+    }
+
+    let project_group_names = get_project_group_names(sql_conn, server.project_id);
+    let server_group_names = get_server_group_names(sql_conn, server.id);
+
+    ChannelData {
+        server,
+        server_items: grouped_items.into_iter().cloned().collect(),
+        group_start_indices,
+        databases_for_websites,
+        websites_for_databases,
+        project_group_names,
+        server_group_names,
+    }
 }
 
 pub fn load_and_display_server(
@@ -105,136 +221,19 @@ pub fn load_and_display_server(
     server_item_id: Option<i32>,
     project_item: &ProjectItem,
 ) {
+    let p = parent.clone();
+    let pi = project_item.clone();
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
-            use projectpadsql::schema::server::dsl as srv;
-            use projectpadsql::schema::server_database::dsl as srv_db;
-            use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
-            use projectpadsql::schema::server_note::dsl as srv_note;
-            use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
-            use projectpadsql::schema::server_website::dsl as srv_www;
-            let (server, items, databases_for_websites, websites_for_databases) = {
-                let server = srv::server
-                    .filter(srv::id.eq(server_id))
-                    .first::<Server>(sql_conn)
-                    .unwrap();
-
-                let server_websites = srv_www::server_website
-                    .filter(srv_www::server_id.eq(server_id))
-                    .order(srv_www::desc.asc())
-                    .load::<ServerWebsite>(sql_conn)
-                    .unwrap();
-
-                let databases_for_websites = srv_db::server_database
-                    .filter(
-                        srv_db::id
-                            .eq_any(server_websites.iter().filter_map(|w| w.server_database_id)),
-                    )
-                    .load::<ServerDatabase>(sql_conn)
-                    .unwrap()
-                    .into_iter()
-                    .map(|db| (db.id, db))
-                    .collect::<HashMap<_, _>>();
-
-                let mut servers = server_websites
-                    .into_iter()
-                    .map(ServerItem::Website)
-                    .collect::<Vec<_>>();
-
-                servers.extend(
-                    srv_poi::server_point_of_interest
-                        .filter(srv_poi::server_id.eq(server_id))
-                        .order(srv_poi::desc.asc())
-                        .load::<ServerPointOfInterest>(sql_conn)
-                        .unwrap()
-                        .into_iter()
-                        .map(ServerItem::PointOfInterest),
-                );
-                servers.extend(
-                    srv_note::server_note
-                        .filter(srv_note::server_id.eq(server_id))
-                        .order(srv_note::title.asc())
-                        .load::<ServerNote>(sql_conn)
-                        .unwrap()
-                        .into_iter()
-                        .map(ServerItem::Note),
-                );
-                servers.extend(
-                    &mut srv_usr::server_extra_user_account
-                        .filter(srv_usr::server_id.eq(server_id))
-                        .order(srv_usr::desc.asc())
-                        .load::<ServerExtraUserAccount>(sql_conn)
-                        .unwrap()
-                        .into_iter()
-                        .map(ServerItem::ExtraUserAccount),
-                );
-
-                let databases = srv_db::server_database
-                    .filter(srv_db::server_id.eq(server_id))
-                    .order(srv_db::desc.asc())
-                    .load::<ServerDatabase>(sql_conn)
-                    .unwrap();
-                let mut dbs_as_server_items =
-                    databases.clone().into_iter().map(ServerItem::Database);
-                servers.extend(&mut dbs_as_server_items);
-
-                let mut websites_for_databases = HashMap::new();
-                for (key, group) in &srv_www::server_website
-                    .filter(srv_www::server_database_id.eq_any(databases.iter().map(|db| db.id)))
-                    .order(srv_www::server_database_id.asc())
-                    .load::<ServerWebsite>(sql_conn)
-                    .unwrap()
-                    .into_iter()
-                    .group_by(|www| www.server_database_id.unwrap())
-                {
-                    websites_for_databases.insert(key, group.collect());
-                }
-
-                (
-                    server,
-                    servers,
-                    databases_for_websites,
-                    websites_for_databases,
-                )
-            };
-
-            let group_names: BTreeSet<&str> = items.iter().filter_map(|i| i.group_name()).collect();
-            let mut group_start_indices = HashMap::new();
-
-            let mut grouped_items = vec![];
-            grouped_items.extend(items.iter().filter(|i| i.group_name() == None));
-            for group_name in &group_names {
-                group_start_indices.insert(grouped_items.len() as i32, group_name.to_string());
-                grouped_items.extend(
-                    items
-                        .iter()
-                        .filter(|i| i.group_name().as_ref() == Some(group_name)),
-                );
-            }
-
-            let project_group_names = get_project_group_names(sql_conn, server.project_id);
-            let server_group_names = get_server_group_names(sql_conn, server.id);
-
             sender
-                .send_blocking(ChannelData {
-                    server,
-                    server_items: grouped_items.into_iter().cloned().collect(),
-                    group_start_indices,
-                    databases_for_websites,
-                    websites_for_databases,
-                    project_group_names,
-                    server_group_names,
-                })
+                .send_blocking(run_channel_data_query(sql_conn, server_id))
                 .unwrap();
         }))
         .unwrap();
-
-    let p = parent.clone();
-    let mut pi = project_item.clone();
     glib::spawn_future_local(async move {
         let channel_data = receiver.recv().await.unwrap();
-        display_server(&p, channel_data, server_item_id, &mut pi);
+        display_server(&p, channel_data, server_item_id, &pi);
     });
 }
 
@@ -447,6 +446,15 @@ pub fn server_contents(
         DisplayHeaderMode::Yes,
     );
 
+    let server_view_edit = server_view_edit_contents(server, widget_mode);
+    vbox.append(&server_view_edit);
+
+    vbox.append(&server_item0);
+
+    (header_box, project_item_header_edit, vbox, server_view_edit)
+}
+
+pub fn server_view_edit_contents(server: &Server, widget_mode: WidgetMode) -> ServerViewEdit {
     let server_view_edit = ServerViewEdit::new();
     server_view_edit.set_ip(server.ip.clone());
     server_view_edit.set_is_retired(server.is_retired);
@@ -468,11 +476,7 @@ pub fn server_contents(
     }
 
     server_view_edit.prepare(widget_mode);
-    vbox.append(&server_view_edit);
-
-    vbox.append(&server_item0);
-
-    (header_box, project_item_header_edit, vbox, server_view_edit)
+    server_view_edit
 }
 
 fn connect_save_auth_key<T: ObjectExt>(obj: &T, auth_key: Vec<u8>) {
@@ -493,7 +497,7 @@ fn connect_save_auth_key<T: ObjectExt>(obj: &T, auth_key: Vec<u8>) {
         );
 }
 
-fn add_server_items(
+pub fn add_server_items(
     channel_data: &ChannelData,
     focused_server_item_id: Option<i32>,
     vbox: &gtk::Box,

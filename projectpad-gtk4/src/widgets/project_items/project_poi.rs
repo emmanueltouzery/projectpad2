@@ -5,7 +5,7 @@ use std::sync::mpsc;
 
 use projectpadsql::{
     get_project_group_names,
-    models::{EnvironmentType, InterestType, ProjectPointOfInterest, ServerLink},
+    models::{InterestType, ProjectPointOfInterest},
 };
 
 use crate::{
@@ -251,47 +251,6 @@ pub fn save_project_poi(
                 prj_poi::id,
                 changeset,
                 ProjectPointOfInterest,
-            );
-            sender.send_blocking(project_poi_after_result).unwrap();
-        }))
-        .unwrap();
-    receiver
-}
-
-pub fn save_server_link(
-    server_link_id: Option<i32>,
-    new_group_name: String,
-    new_desc: String,
-    new_server_id: i32,
-    new_server_group_name: Option<String>,
-    new_env_type: EnvironmentType,
-) -> async_channel::Receiver<Result<ServerLink, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    let db_sender = app.get_sql_channel();
-    let (sender, receiver) = async_channel::bounded(1);
-    let project_id = app.project_id().unwrap();
-
-    db_sender
-        .send(SqlFunc::new(move |sql_conn| {
-            use projectpadsql::schema::server_link::dsl as srv_link;
-            let changeset = (
-                srv_link::desc.eq(new_desc.as_str()),
-                srv_link::linked_group_name.eq(new_server_group_name.as_deref()),
-                srv_link::linked_server_id.eq(new_server_id),
-                // never store Some("") for group, we want None then.
-                srv_link::group_name.eq(Some(&new_group_name).filter(|s| !s.is_empty())),
-                srv_link::project_id.eq(project_id),
-                srv_link::environment.eq(new_env_type),
-            );
-            let project_poi_after_result = perform_insert_or_update!(
-                sql_conn,
-                server_link_id,
-                srv_link::server_link,
-                srv_link::id,
-                changeset,
-                ServerLink,
             );
             sender.send_blocking(project_poi_after_result).unwrap();
         }))

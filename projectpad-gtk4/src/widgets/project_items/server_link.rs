@@ -2,6 +2,7 @@ use diesel::prelude::*;
 use std::sync::mpsc;
 
 use adw::prelude::*;
+use adw::subclass::prelude::*;
 use projectpadsql::{
     get_project_group_names, get_server_group_names,
     models::{EnvironmentType, ServerLink},
@@ -17,7 +18,10 @@ use crate::{
         project_item::{ProjectItem, WidgetMode},
         project_item_list::ProjectItemList,
         project_item_model::ProjectItemType,
-        project_items::common::{confirm_delete, run_sqlfunc_and_then},
+        project_items::{
+            common::{confirm_delete, display_item_edit_dialog, run_sqlfunc_and_then, DialogClamp},
+            server_link,
+        },
         search::search_picker::SearchPicker,
     },
 };
@@ -141,42 +145,52 @@ fn display_server_link(
     );
 
     let pgn = project_group_names.to_vec();
-    // edit_btn.connect_closure(
-    //         "clicked",
-    //         false,
-    //         glib::closure_local!(@strong server_link as p, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-    //             let (maybe_header_edit, project_poi_view_edit, _, vbox) = project_poi_contents(&p, &pgn_, WidgetMode::Edit);
+    edit_btn.connect_closure(
+            "clicked",
+            false,
+            glib::closure_local!(@strong server_link as p, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
+                // TODO select the correct values in the edit dialog (currently opens "blank")
+                let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) = server_link_contents_edit(&p, &pgn_);
 
-    //             let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit project POI", vbox, 600, 600, DialogClamp::Yes);
-    //             let he = maybe_header_edit.unwrap().clone();
-    //             save_btn.connect_clicked(move|_| {
-    //                 let receiver = save_project_poi(
-    //                     Some(server_link.id),
-    //                     he.property("group_name"),
-    //                     he.property("title"),
-    //                     project_poi_view_edit.property("path"),
-    //                     project_poi_view_edit.property("text"),
-    //                     InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type")).unwrap(),
-    //                 );
+                let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
+                let he = maybe_header_edit.unwrap().clone();
+                let p_id = p.id;
+                save_btn.connect_clicked(move|_| {
+                    let receiver = save_server_link(
+                        Some(p_id),
+                        he.property("group_name"),
+                        he.property("title"),
+                        server_link_view_edit.selected_item_item_id(),
+                        server_group_dropdown
+                        .selected_item()
+                        .map(|o| {
+                            o.downcast_ref::<gtk::StringObject>()
+                                .unwrap()
+                                .string()
+                                .to_string()
+                        })
+                        .filter(|s| s != server_link::NO_GROUP),
+                        he.single_env(),
+                    );
 
-    //                 let app = gio::Application::default()
-    //                     .and_downcast::<ProjectpadApplication>()
-    //                     .unwrap();
-    //                 let db_sender = app.get_sql_channel();
-    //                 let dlg = dlg.clone();
-    //                 glib::spawn_future_local(async move {
-    //                     let project_poi_after_result = receiver.recv().await.unwrap();
-    //                     let window = app.imp().window.get().unwrap();
-    //                     let win_binding = window.upgrade();
-    //                     let win_binding_ref = win_binding.as_ref().unwrap();
-    //                     let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-    //                     // load_and_display_project_poi(pi_bin, db_sender, poi.id);
-    //                     ProjectItemList::display_project_item(server_link.id, ProjectItemType::ProjectPointOfInterest);
-    //                     dlg.close();
-    //                 });
-    //             });
-    //         }),
-    //     );
+                    let app = gio::Application::default()
+                        .and_downcast::<ProjectpadApplication>()
+                        .unwrap();
+                    let db_sender = app.get_sql_channel();
+                    let dlg = dlg.clone();
+                    glib::spawn_future_local(async move {
+                        let project_poi_after_result = receiver.recv().await.unwrap();
+                        let window = app.imp().window.get().unwrap();
+                        let win_binding = window.upgrade();
+                        let win_binding_ref = win_binding.as_ref().unwrap();
+                        let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
+                        // load_and_display_project_poi(pi_bin, db_sender, poi.id);
+                        ProjectItemList::display_project_item(server_link.id, ProjectItemType::ServerLink);
+                        dlg.close();
+                    });
+                });
+            }),
+        );
 
     parent.set_child(Some(&vbox));
 }

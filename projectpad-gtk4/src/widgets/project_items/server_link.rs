@@ -128,8 +128,8 @@ fn display_server_link(
             Box::new(move || {
                 run_sqlfunc_and_then(
                     Box::new(move |sql_conn| {
-                        use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
-                        sql_util::delete_row(sql_conn, prj_poi::project_point_of_interest, p_id)
+                        use projectpadsql::schema::server_link::dsl as srv_link;
+                        sql_util::delete_row(sql_conn, srv_link::server_link, p_id)
                             .unwrap();
                         }),
                         Box::new(move |_| {

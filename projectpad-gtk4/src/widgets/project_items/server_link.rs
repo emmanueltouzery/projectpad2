@@ -149,8 +149,6 @@ fn display_server_link(
             "clicked",
             false,
             glib::closure_local!(@strong server_link as p, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                // TODO select the correct values in the edit dialog (currently at least the
-                // dropdown is always set to blank)
                 let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) = server_link_contents_edit(&p, &pgn_);
 
                 let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
@@ -245,18 +243,27 @@ pub fn server_link_contents_edit(
     linked_group_name_hbox.append(&server_group_name_dropdown);
 
     let gn_dropdown = server_group_name_dropdown.clone();
+    let server_link_gn = server_link.linked_group_name.clone();
     search_picker.connect_selected_item_item_id_notify(move |picker| {
         let server_id = picker.selected_item_item_id();
         let group_names_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
             get_server_group_names(sql_conn, server_id)
         }));
         let dd = gn_dropdown.clone();
+        let server_link_gn = server_link_gn.clone();
         glib::spawn_future_local(async move {
             let all_group_names = group_names_recv.recv().await.unwrap();
             let mut group_names = vec![NO_GROUP];
             group_names.extend(all_group_names.iter().map(String::as_str));
             let dropdown_entries_store = gtk::StringList::new(&group_names);
             dd.set_model(Some(&dropdown_entries_store));
+            if let Some(gn) = server_link_gn {
+                let pos = all_group_names.iter().position(|g| *g == gn);
+                if let Some(p) = pos {
+                    // +1 due to the NO_GROUP
+                    dd.set_selected((p as u32) + 1);
+                }
+            }
         });
     });
 

@@ -158,18 +158,9 @@
                       <object class="GtkStackPage">
                         <property name="name">search</property>
                         <property name="child">
-                          <object class="GtkScrolledWindow">
-                            <property name="hscrollbar-policy">never</property>
-                            <property name="child">
-                              <object class="AdwClamp">
-                                <property name="child">
-                                  <object class="SearchItemList" id="search_item_list">
-                                    <property name="single-click-activate">True</property>
-                                    <property name="vexpand">True</property>
-                                  </object>
-                                </property>
-                              </object>
-                            </property>
+                          <object class="SearchItemList" id="search_item_list">
+                            <property name="single-click-activate">True</property>
+                            <property name="vexpand">True</property>
                           </object>
                         </property>
                       </object>

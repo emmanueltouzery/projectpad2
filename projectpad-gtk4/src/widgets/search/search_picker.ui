@@ -7,12 +7,7 @@
       </object>
     </child>
     <child>
-      <object class="GtkScrolledWindow" id="project_scrolled_window">
-        <property name="vexpand">True</property>
-        <property name="child">
-          <object class="SearchItemList" id="search_item_list">
-          </object>
-        </property>
+      <object class="SearchItemList" id="search_item_list">
       </object>
     </child>
   </template>

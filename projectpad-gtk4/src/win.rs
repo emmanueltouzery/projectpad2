@@ -369,7 +369,7 @@ impl ProjectpadApplicationWindow {
             let search_res = receiver.recv().await.unwrap();
             // probably a switcher for the main window for the search mode and a new search
             // widget
-            sil.set_search_items(search_res);
+            sil.set_search_items(search_res, None);
         });
     }
 
@@ -389,7 +389,6 @@ impl ProjectpadApplicationWindow {
             .lookup::<Option<i32>>("item_id")
             .unwrap()
             .unwrap();
-        dbg!(&item_id);
         let search_item_type = project_state
             .lookup::<Option<u8>>("item_type")
             .unwrap()

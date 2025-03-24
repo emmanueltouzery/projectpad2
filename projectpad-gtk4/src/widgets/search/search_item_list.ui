@@ -3,7 +3,17 @@
   <template class="SearchItemList" parent="GtkBox">
     <property name="orientation">vertical</property>
     <child>
-      <object class="GtkListView" id="search_item_list">
+      <object class="AdwClamp">
+        <property name="child">
+          <object class="GtkScrolledWindow">
+            <property name="vexpand">True</property>
+            <property name="hscrollbar-policy">never</property>
+            <property name="child">
+              <object class="GtkListView" id="search_item_list">
+              </object>
+            </property>
+          </object>
+        </property>
       </object>
     </child>
   </template>

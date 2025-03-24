@@ -131,7 +131,11 @@ impl SearchItemList {
         );
     }
 
-    pub fn set_search_items(&mut self, search_result: SearchResult) {
+    pub fn set_search_items(
+        &mut self,
+        search_result: SearchResult,
+        selection: Option<(SearchItemType, i32)>,
+    ) {
         let mut list_store = SearchItemListModel::new();
         for project in &search_result.projects {
             list_store.append(&Self::get_project_model(project));
@@ -209,6 +213,13 @@ impl SearchItemList {
         // }
         let selection_model = gtk::SingleSelection::new(Some(list_store.clone()));
 
+        let mut selection_idx = 0;
+        if let Some((item_type, item_id)) = selection {
+            if let Some(index) = list_store.get_index(item_type, item_id) {
+                selection_idx = index;
+            }
+        }
+
         let s = self.clone();
         selection_model.connect_selected_notify(move |sel| {
             if let Some(selected) = sel.selected_item() {
@@ -223,8 +234,23 @@ impl SearchItemList {
         self.imp()
             .search_item_list
             .set_model(Some(&selection_model));
-        if let Some((project_id, item_id, item_type, sub_id)) = list_store.get_search_item(0) {
-            self.emit_by_name::<()>("select-item", &[&project_id, &item_id, &item_type, &sub_id]);
+        if selection_idx == 0 {
+            if let Some((project_id, item_id, item_type, sub_id)) = list_store.get_search_item(0) {
+                self.emit_by_name::<()>(
+                    "select-item",
+                    &[&project_id, &item_id, &item_type, &sub_id],
+                );
+            }
+        } else {
+            let s = self.clone();
+            glib::idle_add_local(move || {
+                s.imp().search_item_list.scroll_to(
+                    selection_idx,
+                    gtk::ListScrollFlags::SELECT,
+                    None,
+                );
+                ControlFlow::Break
+            });
         }
     }
 

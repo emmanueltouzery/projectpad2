@@ -105,4 +105,14 @@ impl SearchItemListModel {
     pub fn n_items(&self) -> usize {
         self.imp().items.borrow().len()
     }
+
+    pub fn get_index(&self, item_type: SearchItemType, item_id: i32) -> Option<u32> {
+        let item_type_u8 = item_type as u8;
+        self.imp()
+            .items
+            .borrow()
+            .iter()
+            .position(|i| i.search_item_type() == item_type_u8 && i.id() == item_id)
+            .map(|us| us as u32)
+    }
 }

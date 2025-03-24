@@ -22,7 +22,7 @@ use crate::{
             common::{confirm_delete, display_item_edit_dialog, run_sqlfunc_and_then, DialogClamp},
             server_link,
         },
-        search::search_picker::SearchPicker,
+        search::{search_item_model::SearchItemType, search_picker::SearchPicker},
     },
 };
 
@@ -149,7 +149,8 @@ fn display_server_link(
             "clicked",
             false,
             glib::closure_local!(@strong server_link as p, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                // TODO select the correct values in the edit dialog (currently opens "blank")
+                // TODO select the correct values in the edit dialog (currently at least the
+                // dropdown is always set to blank)
                 let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) = server_link_contents_edit(&p, &pgn_);
 
                 let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
@@ -222,6 +223,11 @@ pub fn server_link_contents_edit(
         .property(
             "search-item-types",
             SearchItemsType::ServersOnly.to_string(),
+        )
+        .property("selected-item-item-id", server_link.linked_server_id)
+        .property(
+            "selected-item-search-item-type",
+            SearchItemType::Server as u8,
         )
         .build();
     vbox.append(&search_picker);

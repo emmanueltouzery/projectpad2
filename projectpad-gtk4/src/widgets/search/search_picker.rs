@@ -8,6 +8,8 @@ use crate::widgets::project_items::common;
 use crate::widgets::search::search_item_list::SearchItemList;
 use std::str::FromStr;
 
+use super::search_item_model::SearchItemType;
+
 mod imp {
     use std::{cell::RefCell, rc::Rc, sync::OnceLock};
 
@@ -89,6 +91,15 @@ glib::wrapper! {
 impl SearchPicker {
     fn init_widget(&self) {
         self.set_spacing(5);
+        self.connect_search_item_types_notify(|sp| {
+            sp.refresh_search(sp.get_selection());
+        });
+        let s = self.clone();
+        self.imp().search_entry.connect_changed(move |_| {
+            s.refresh_search(None);
+        });
+        self.refresh_search(self.get_selection());
+
         self.imp().search_item_list.connect_closure(
             "select-item",
             false,
@@ -103,17 +114,20 @@ impl SearchPicker {
                 ]);
             }),
             );
-        self.connect_search_item_types_notify(|sp| {
-            sp.refresh_search();
-        });
-        let s = self.clone();
-        self.imp().search_entry.connect_changed(move |_| {
-            s.refresh_search();
-        });
-        self.refresh_search();
     }
 
-    fn refresh_search(&self) {
+    fn get_selection(&self) -> Option<(SearchItemType, i32)> {
+        let item_type_u8 = self.selected_item_search_item_type();
+        let item_id = self.selected_item_item_id();
+        if item_type_u8 != 0 && item_id != 0 {
+            if let Some(search_item_type) = SearchItemType::from_repr(item_type_u8) {
+                return Some((search_item_type, item_id));
+            }
+        }
+        None
+    }
+
+    fn refresh_search(&self, selection: Option<(SearchItemType, i32)>) {
         let search_text = format!("%{}%", &self.imp().search_entry.text());
         let search_item_type =
             match search_engine::SearchItemsType::from_str(&self.search_item_types()) {
@@ -126,7 +140,7 @@ impl SearchPicker {
         let mut sil = self.imp().search_item_list.clone();
         glib::spawn_future_local(async move {
             let search_res = search_results_receiver.recv().await.unwrap();
-            sil.set_search_items(search_res);
+            sil.set_search_items(search_res, selection);
         });
     }
 }

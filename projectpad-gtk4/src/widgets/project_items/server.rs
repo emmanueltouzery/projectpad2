@@ -559,6 +559,7 @@ pub fn add_server_items(
             let pi = project_item.clone();
             glib::spawn_future_local(async move {
                 // TODO crappy but doesn't work without the wait..
+                // try glib::idle_add_local instead
                 glib::timeout_future(Duration::from_millis(50)).await;
                 pi.emit_by_name::<()>(
                     "request-scroll",

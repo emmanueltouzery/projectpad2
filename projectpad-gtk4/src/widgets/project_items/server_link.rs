@@ -302,7 +302,14 @@ pub fn server_link_contents_show(
         server::server_view_edit_contents(&channel_data.server, WidgetMode::Show);
     vbox.append(&server_view_edit);
 
-    server::add_server_items(&channel_data, None, &vbox, project_item);
+    let focused_server_item = server_link.linked_group_name.as_deref().and_then(|lgn| {
+        channel_data
+            .server_items
+            .iter()
+            .find(|si| si.group_name() == Some(lgn))
+            .map(|item| item.get_id())
+    });
+    server::add_server_items(&channel_data, focused_server_item, &vbox, project_item);
 
     (header_box, vbox)
 }

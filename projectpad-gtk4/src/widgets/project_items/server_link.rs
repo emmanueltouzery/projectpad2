@@ -337,7 +337,15 @@ pub fn server_link_contents_show(
             .find(|si| si.group_name() == Some(lgn))
             .map(|item| item.get_id())
     });
-    server::add_server_items(&channel_data, focused_server_item, &vbox, project_item);
+    server::add_server_items(
+        &channel_data,
+        // making this screen refresh when the server is edited is messy.
+        // just prevent it.
+        false,
+        focused_server_item,
+        &vbox,
+        project_item,
+    );
 
     (header_box, vbox)
 }

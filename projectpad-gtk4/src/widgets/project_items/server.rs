@@ -351,7 +351,7 @@ fn display_server(
             }),
         );
 
-    add_server_items(&channel_data, server_item_id, &vbox, project_item);
+    add_server_items(&channel_data, true, server_item_id, &vbox, project_item);
 
     parent.set_child(Some(&vbox));
 }
@@ -499,6 +499,7 @@ fn connect_save_auth_key<T: ObjectExt>(obj: &T, auth_key: Vec<u8>) {
 
 pub fn add_server_items(
     channel_data: &ChannelData,
+    read_write: bool,
     focused_server_item_id: Option<i32>,
     vbox: &gtk::Box,
     project_item: &ProjectItem,
@@ -523,30 +524,35 @@ pub fn add_server_items(
         match server_item {
             ServerItem::Website(w) => display_server_website(
                 channel_data.server.id,
+                read_write,
                 channel_data.server_group_names.clone(),
                 w,
                 &cur_parent,
             ),
             ServerItem::PointOfInterest(poi) => display_server_poi(
                 channel_data.server.id,
+                read_write,
                 channel_data.server_group_names.clone(),
                 poi,
                 &cur_parent,
             ),
             ServerItem::Note(n) => display_server_note(
                 n,
+                read_write,
                 channel_data.server_group_names.clone(),
                 &cur_parent,
                 focused_server_item_id,
             ),
             ServerItem::ExtraUserAccount(u) => display_server_extra_user_account(
                 channel_data.server.id,
+                read_write,
                 channel_data.server_group_names.clone(),
                 u,
                 &cur_parent,
             ),
             ServerItem::Database(u) => display_server_database(
                 channel_data.server.id,
+                read_write,
                 channel_data.server_group_names.clone(),
                 u,
                 &cur_parent,
@@ -1377,16 +1383,19 @@ pub fn save_server_extra_user_account(
 
 fn add_group_edit_suffix(
     server_item1: &adw::PreferencesGroup,
+    sensitive: bool,
     edit_closure: glib::RustClosure,
 ) -> gtk::Button {
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
         .valign(gtk::Align::Center)
         .halign(gtk::Align::End)
+        .sensitive(sensitive)
         .build();
     let delete_btn = gtk::Button::builder()
         .icon_name("user-trash-symbolic")
         .valign(gtk::Align::Center)
+        .sensitive(sensitive)
         .build();
     edit_btn.connect_closure("clicked", false, edit_closure);
     let suffix_box = gtk::Box::builder().css_classes(["toolbar"]).build();
@@ -1398,6 +1407,7 @@ fn add_group_edit_suffix(
 
 fn display_server_website(
     server_id: i32,
+    read_write: bool,
     server_group_names: Vec<String>,
     w: &ServerWebsite,
     vbox: &gtk::Box,
@@ -1408,6 +1418,7 @@ fn display_server_website(
     let www_id = w.id;
     let delete_btn = add_group_edit_suffix(
         &server_item1,
+        read_write,
         glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
@@ -1493,6 +1504,7 @@ fn server_website_contents(
 
 fn display_server_database(
     server_id: i32,
+    read_write: bool,
     server_group_names: Vec<String>,
     db: &ServerDatabase,
     vbox: &gtk::Box,
@@ -1503,6 +1515,7 @@ fn display_server_database(
     let db_id = db.id;
     let delete_btn = add_group_edit_suffix(
         &server_item1,
+        read_write,
         glib::closure_local!(@strong db as w1, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
@@ -1586,6 +1599,7 @@ fn server_database_contents(
 
 fn display_server_poi(
     server_id: i32,
+    read_write: bool,
     server_group_names: Vec<String>,
     poi: &ServerPointOfInterest,
     vbox: &gtk::Box,
@@ -1596,6 +1610,7 @@ fn display_server_poi(
     let poi_id = poi.id;
     let delete_btn = add_group_edit_suffix(
         &server_item1,
+        read_write,
         glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
@@ -1688,6 +1703,7 @@ fn server_poi_contents(
 
 fn display_server_extra_user_account(
     server_id: i32,
+    read_write: bool,
     server_group_names: Vec<String>,
     user: &ServerExtraUserAccount,
     vbox: &gtk::Box,
@@ -1699,6 +1715,7 @@ fn display_server_extra_user_account(
     let user_id = user.id;
     let delete_btn = add_group_edit_suffix(
         &server_item1,
+        read_write,
         glib::closure_local!(@strong user as u, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
@@ -1802,6 +1819,7 @@ fn truncate(s: &str, max_chars: usize) -> &str {
 
 fn display_server_note(
     note: &ServerNote,
+    read_write: bool,
     server_group_names: Vec<String>,
     vbox: &gtk::Box,
     focused_server_item_id: Option<i32>,
@@ -1812,6 +1830,7 @@ fn display_server_note(
 
     let delete_btn = add_group_edit_suffix(
         &server_item1,
+        read_write,
         glib::closure_local!(@strong note as n, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)

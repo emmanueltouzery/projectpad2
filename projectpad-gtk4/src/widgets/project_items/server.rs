@@ -343,7 +343,7 @@ fn display_server(
                         let win_binding_ref = win_binding.as_ref().unwrap();
                         // let pi = &win_binding_ref.imp().project_item;
                         // let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                        ProjectItemList::display_project_item(s.id, ProjectItemType::Server);
+                        ProjectItemList::display_project_item(None, s.id, ProjectItemType::Server);
                         // load_and_display_server(pi_bin, db_sender, s.id, None, pi);
                         dlg.close();
                     });
@@ -872,6 +872,7 @@ fn server_poi_connect_save(
 
             if let Ok(server_poi) = server_poi_after_result {
                 ProjectItemList::display_project_item(
+                    None,
                     server_poi.server_id,
                     ProjectItemType::Server,
                 );
@@ -993,6 +994,7 @@ fn server_website_connect_save(
 
             if let Ok(server_poi) = server_poi_after_result {
                 ProjectItemList::display_project_item(
+                    None,
                     server_poi.server_id,
                     ProjectItemType::Server,
                 );
@@ -1114,6 +1116,7 @@ fn server_database_connect_save(
 
             if let Ok(server_poi) = server_poi_after_result {
                 ProjectItemList::display_project_item(
+                    None,
                     server_poi.server_id,
                     ProjectItemType::Server,
                 );
@@ -1240,6 +1243,7 @@ fn server_extra_user_account_connect_save(
 
             if let Ok(server_poi) = server_poi_after_result {
                 ProjectItemList::display_project_item(
+                    None,
                     server_poi.server_id,
                     ProjectItemType::Server,
                 );
@@ -1298,6 +1302,7 @@ fn prepare_add_server_note_dlg(
 
             if let Ok(server_poi) = server_poi_after_result {
                 ProjectItemList::display_project_item(
+                    None,
                     server_poi.server_id,
                     ProjectItemType::Server,
                 );
@@ -1436,7 +1441,7 @@ fn display_server_website(
                                 .unwrap();
                         }),
                         Box::new(move |_| {
-                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
                         }),
                     );
                 }),
@@ -1531,7 +1536,7 @@ fn display_server_database(
                                 .unwrap();
                         }),
                         Box::new(move |_| {
-                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
                         }),
                     );
                 }),
@@ -1624,7 +1629,7 @@ fn display_server_poi(
                                 .unwrap();
                         }),
                         Box::new(move |_| {
-                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
                         }),
                     );
                 }),
@@ -1731,7 +1736,7 @@ fn display_server_extra_user_account(
                                 .unwrap();
                         }),
                         Box::new(move |_| {
-                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
                         }),
                     );
                 }),
@@ -1862,7 +1867,7 @@ fn display_server_note(
                                 .unwrap();
                         }),
                         Box::new(move |_| {
-                            ProjectItemList::display_project_item(sid, ProjectItemType::Server);
+                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
                         }),
                     );
                 }),

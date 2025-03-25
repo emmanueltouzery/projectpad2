@@ -649,7 +649,7 @@ impl ProjectItemList {
 
                     match project_note_after_result {
                         Ok(note) => {
-                            Self::display_project_item(note.id, ProjectItemType::ProjectNote)
+                            Self::display_project_item(None, note.id, ProjectItemType::ProjectNote)
                         }
                         Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
                     }
@@ -723,7 +723,7 @@ impl ProjectItemList {
 
                 match server_after_result {
                     Ok(server) => {
-                        Self::display_project_item(server.id, ProjectItemType::Server);
+                        Self::display_project_item(None, server.id, ProjectItemType::Server);
                     }
                     Err((title, msg)) => {
                         common::simple_error_dlg(&title, msg.as_deref());
@@ -784,6 +784,7 @@ impl ProjectItemList {
 
                 match project_poi_after_result {
                     Ok(project_poi) => Self::display_project_item(
+                        None,
                         project_poi.id,
                         ProjectItemType::ProjectPointOfInterest,
                     ),
@@ -848,9 +849,11 @@ impl ProjectItemList {
                 d.close();
 
                 match project_poi_after_result {
-                    Ok(server_link) => {
-                        Self::display_project_item(server_link.id, ProjectItemType::ServerLink)
-                    }
+                    Ok(server_link) => Self::display_project_item(
+                        None,
+                        server_link.id,
+                        ProjectItemType::ServerLink,
+                    ),
                     Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
                 }
             });
@@ -874,12 +877,19 @@ impl ProjectItemList {
             .unwrap();
     }
 
-    pub fn display_project_item(project_item_id: i32, project_item_type: ProjectItemType) {
+    pub fn display_project_item(
+        project_id: Option<i32>,
+        project_item_id: i32,
+        project_item_type: ProjectItemType,
+    ) {
         let app = app::get();
 
         let w = app.imp().window.get().unwrap().upgrade().unwrap();
         let select_project_variant = glib::VariantDict::new(None);
-        select_project_variant.insert("project_id", app.project_id().unwrap());
+        select_project_variant.insert(
+            "project_id",
+            project_id.unwrap_or_else(|| app.project_id().unwrap()),
+        );
         select_project_variant.insert("item_id", Some(project_item_id));
         select_project_variant.insert("item_type", Some(project_item_type as u8));
         select_project_variant.insert("search_item_type", None::<u8>);

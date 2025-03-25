@@ -394,7 +394,7 @@ impl Note {
                                         let project_note_after_result = receiver.recv().await.unwrap();
                                         d.close();
                                         // s1.clone().load_and_display_project_note(project_note_id);
-                                        ProjectItemList::display_project_item(project_note_id, ProjectItemType::ProjectNote);
+                                        ProjectItemList::display_project_item(None, project_note_id, ProjectItemType::ProjectNote);
                                     });
                                 },
                                 _ => panic!()

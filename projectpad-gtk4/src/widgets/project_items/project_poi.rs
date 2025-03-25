@@ -132,7 +132,7 @@ fn display_project_poi(
                         let win_binding_ref = win_binding.as_ref().unwrap();
                         let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
                         // load_and_display_project_poi(pi_bin, db_sender, poi.id);
-                        ProjectItemList::display_project_item(poi.id, ProjectItemType::ProjectPointOfInterest);
+                        ProjectItemList::display_project_item(None, poi.id, ProjectItemType::ProjectPointOfInterest);
                         dlg.close();
                     });
                 });

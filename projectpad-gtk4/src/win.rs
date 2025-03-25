@@ -405,8 +405,6 @@ impl ProjectpadApplicationWindow {
                     .first::<Project>(sql_conn)
                     .unwrap();
 
-                dbg!(&search_item_type);
-
                 let (project_item_id, server_item_id) = match search_item_type {
                     // TODO special handling needed for serverlink here?
                     Some(SearchItemType::ServerWebsite) => {

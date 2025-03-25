@@ -5,7 +5,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use projectpadsql::{
     get_project_group_names, get_server_group_names,
-    models::{EnvironmentType, ServerLink},
+    models::{EnvironmentType, Project, Server, ServerLink},
 };
 
 use crate::{
@@ -184,7 +184,7 @@ fn display_server_link(
                         let win_binding_ref = win_binding.as_ref().unwrap();
                         let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
                         // load_and_display_project_poi(pi_bin, db_sender, poi.id);
-                        ProjectItemList::display_project_item(server_link.id, ProjectItemType::ServerLink);
+                        ProjectItemList::display_project_item(None, server_link.id, ProjectItemType::ServerLink);
                         dlg.close();
                     });
                 });
@@ -297,6 +297,34 @@ pub fn server_link_contents_show(
         WidgetMode::Show,
         DisplayHeaderMode::Yes,
     );
+
+    let open_server_btn = gtk::Button::builder()
+        .icon_name("external-link-alt")
+        .valign(gtk::Align::Center)
+        .build();
+    let linked_server_id = server_link.linked_server_id;
+    open_server_btn.connect_clicked(move |_| {
+        let recv_prj = common::run_sqlfunc(Box::new(move |sql_conn| {
+            use projectpadsql::schema::project::dsl as prj;
+            use projectpadsql::schema::server::dsl as srv;
+            srv::server
+                .inner_join(prj::project)
+                .filter(srv::id.eq(&linked_server_id))
+                .first::<(Server, Project)>(sql_conn)
+                .unwrap()
+                .1
+        }));
+        glib::spawn_future_local(async move {
+            let project = recv_prj.recv().await.unwrap();
+            ProjectItemList::display_project_item(
+                Some(project.id),
+                linked_server_id,
+                ProjectItemType::Server,
+            );
+        });
+    });
+    header_box.append(&open_server_btn);
+
     // in show mode display the server
     let server_view_edit =
         server::server_view_edit_contents(&channel_data.server, WidgetMode::Show);

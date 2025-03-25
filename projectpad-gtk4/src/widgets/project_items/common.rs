@@ -190,6 +190,7 @@ pub fn text_row(
             // When used together with the .property style class, AdwActionRow and
             // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
             .css_classes(["property"])
+            .subtitle_lines(2)
             .build();
 
         add_actions(&action_row, main_action, suffix_actions);
@@ -215,13 +216,21 @@ pub fn text_row(
             "text",
         )
     };
-    par.set_title(title);
+    par.set_title(&glib::markup_escape_text(title));
 
-    bind_object
-        .bind_property(bind_key, &par, prop_name)
-        .bidirectional()
-        .sync_create()
-        .build();
+    if widget_mode == WidgetMode::Show {
+        bind_object
+            .bind_property(bind_key, &par, prop_name)
+            .transform_to(|_, val: &str| Some(glib::markup_escape_text(val).to_value()))
+            .sync_create()
+            .build();
+    } else {
+        bind_object
+            .bind_property(bind_key, &par, prop_name)
+            .bidirectional()
+            .sync_create()
+            .build();
+    }
 
     par
 }

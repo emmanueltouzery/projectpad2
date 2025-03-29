@@ -511,6 +511,7 @@ impl Note {
             } else {
                 DisplayHeaderMode::No
             },
+            None,
         );
 
         vbox.append(&note_view);

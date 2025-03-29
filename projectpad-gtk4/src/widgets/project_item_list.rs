@@ -583,8 +583,12 @@ impl ProjectItemList {
 
         let s = stack.clone();
         let dlg = dialog.clone();
-        let (_, header_edit, server_contents_child, server_view_edit) =
-            server_contents(&Server::default(), &project_group_names, WidgetMode::Edit);
+        let (_, header_edit, server_contents_child, server_view_edit) = server_contents(
+            &Server::default(),
+            &project_group_names,
+            WidgetMode::Edit,
+            None,
+        );
         let hb = header_bar.clone();
         let he = header_edit.unwrap().clone();
         server_btn.connect_clicked(move |_| {

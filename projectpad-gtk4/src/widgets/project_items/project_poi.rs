@@ -164,6 +164,7 @@ pub fn project_poi_contents(
         project_group_names,
         widget_mode,
         DisplayHeaderMode::Yes,
+        None,
     );
 
     let project_poi_view_edit = ProjectPoiViewEdit::new();
@@ -191,6 +192,7 @@ pub fn project_item_header(
     project_group_names: &[String],
     widget_mode: WidgetMode,
     display_header_mode: DisplayHeaderMode,
+    item_header_view_css_class: Option<&str>,
 ) -> (Option<ItemHeaderEdit>, gtk::Box) {
     if widget_mode == WidgetMode::Edit {
         let project_item_header = ItemHeaderEdit::new(
@@ -212,6 +214,9 @@ pub fn project_item_header(
         project_item_header.set_title(desc);
         if display_header_mode == DisplayHeaderMode::Yes {
             vbox.append(&project_item_header);
+        }
+        if let Some(css) = item_header_view_css_class {
+            project_item_header.set_css_classes(&[css]);
         }
         (None, project_item_header.header_box())
     }

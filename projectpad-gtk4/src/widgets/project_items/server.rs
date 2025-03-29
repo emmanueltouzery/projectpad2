@@ -247,6 +247,7 @@ fn display_server(
         &channel_data.server,
         &channel_data.project_group_names,
         WidgetMode::Show,
+        Some("project_poi_header_titlebox_retired").filter(|_| channel_data.server.is_retired),
     );
     let add_btn = gtk::Button::builder()
         .icon_name("list-add-symbolic")
@@ -297,7 +298,7 @@ fn display_server(
     let pgn = channel_data.project_group_names.clone();
     edit_btn.connect_closure("clicked", false,
             glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                let (_, header_edit, vbox, server_view_edit) = server_contents(&s, &pgn_, WidgetMode::Edit);
+                let (_, header_edit, vbox, server_view_edit) = server_contents(&s, &pgn_, WidgetMode::Edit, None);
 
                 let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
                 let he = header_edit.unwrap().clone();
@@ -418,6 +419,7 @@ pub fn server_contents(
     server: &Server,
     project_group_names: &[String],
     widget_mode: WidgetMode,
+    item_header_view_css_class: Option<&str>,
 ) -> (gtk::Box, Option<ItemHeaderEdit>, gtk::Box, ServerViewEdit) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
@@ -444,6 +446,7 @@ pub fn server_contents(
         project_group_names,
         widget_mode,
         DisplayHeaderMode::Yes,
+        item_header_view_css_class,
     );
 
     let server_view_edit = server_view_edit_contents(server, widget_mode);

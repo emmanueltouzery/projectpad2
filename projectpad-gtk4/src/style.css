@@ -31,3 +31,14 @@ button.toggle-project-item-uat label {
 dropdown.flat:not(:hover) button {
   background: transparent;
 }
+
+.project_poi_header_titlebox_retired {
+  background: repeating-linear-gradient(
+    -45deg,
+    mix(var(--headerbar-bg-color), var(--headerbar-fg-color), 0.1),
+    mix(var(--headerbar-bg-color), var(--headerbar-fg-color), 0.1) 15px,
+    var(--headerbar-bg-color) 15px,
+    var(--headerbar-bg-color) 30px
+  );
+  border-radius: 8px;
+}

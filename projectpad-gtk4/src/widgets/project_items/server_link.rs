@@ -216,6 +216,7 @@ pub fn server_link_contents_edit(
         project_group_names,
         WidgetMode::Edit,
         DisplayHeaderMode::Yes,
+        None,
     );
     let search_picker = glib::Object::builder::<SearchPicker>()
         .property(
@@ -296,6 +297,7 @@ pub fn server_link_contents_show(
         project_group_names,
         WidgetMode::Show,
         DisplayHeaderMode::Yes,
+        None,
     );
 
     let open_server_btn = gtk::Button::builder()

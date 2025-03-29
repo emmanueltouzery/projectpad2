@@ -1,7 +1,7 @@
 use adw::prelude::*;
-use diesel::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
+use std::str::FromStr;
 
 use crate::{
     app::ProjectpadApplication,
@@ -11,8 +11,6 @@ use crate::{
         search::{search_item_model::SearchItemType, search_picker::SearchPicker},
     },
 };
-
-use super::common;
 
 mod imp {
     use std::{cell::RefCell, rc::Rc, sync::OnceLock};
@@ -29,6 +27,9 @@ mod imp {
     pub struct ProjectpadItemActionRow {
         #[property(get, set)]
         text: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        search_item_types: Rc<RefCell<String>>,
 
         #[property(get, set)]
         item_id: Rc<RefCell<i32>>,
@@ -50,8 +51,8 @@ mod imp {
         fn signals() -> &'static [Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
             SIGNALS.get_or_init(|| {
-                vec![Signal::builder("file-picked")
-                    .param_types([String::static_type()])
+                vec![Signal::builder("item-picked")
+                    .param_types([i32::static_type()])
                     .build()]
             })
         }
@@ -105,7 +106,7 @@ impl ProjectpadItemActionRow {
                 // let win_binding_ref = win_binding.as_ref().unwrap();
                 // let file_dialog = gtk::FileDialog::builder().build();
                 if b.icon_name() == Some("document-open-symbolic".into()) {
-                    s.open_database_picker_dlg();
+                    s.open_item_picker_dlg();
                     // let _s = s.clone();
                     // file_dialog.open(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
                     //     if let Ok(f) = r {
@@ -154,7 +155,7 @@ impl ProjectpadItemActionRow {
         this
     }
 
-    fn open_database_picker_dlg(&self) {
+    fn open_item_picker_dlg(&self) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
@@ -176,7 +177,9 @@ impl ProjectpadItemActionRow {
         vbox.append(&header_bar);
 
         let search_picker = SearchPicker::new();
-        search_picker.set_search_item_types(SearchItemsType::ServerDbsOnly.to_string());
+        self.bind_property("search-item-types", &search_picker, "search-item-types")
+            .sync_create()
+            .build();
         search_picker.set_margin_start(10);
         search_picker.set_margin_end(10);
         search_picker.set_margin_top(10);
@@ -185,9 +188,27 @@ impl ProjectpadItemActionRow {
 
         search_picker
             .bind_property("selected-item-search-item-type", &save_btn, "sensitive")
-            .transform_to(|_, sit: u8| {
+            .transform_to(move |binding, sit: u8| {
+                let sp = binding
+                    .source()
+                    .unwrap()
+                    .downcast::<SearchPicker>()
+                    .unwrap();
                 let search_item_type = SearchItemType::from_repr(sit);
-                Some(search_item_type == Some(SearchItemType::ServerDatabase))
+                let prop_search_item_type = match SearchItemsType::from_str(&sp.search_item_types())
+                {
+                    Ok(sit) => sit,
+                    Err(_) => SearchItemsType::All,
+                };
+                Some(match prop_search_item_type {
+                    SearchItemsType::All => true,
+                    SearchItemsType::ServersOnly => {
+                        search_item_type == Some(SearchItemType::Server)
+                    }
+                    SearchItemsType::ServerDbsOnly => {
+                        search_item_type == Some(SearchItemType::ServerDatabase)
+                    }
+                })
             })
             .sync_create()
             .build();
@@ -209,23 +230,9 @@ impl ProjectpadItemActionRow {
         let sp = search_picker.clone();
         save_btn.connect_clicked(move |_btn: &gtk::Button| {
             dlg.close();
-            let db_id = sp.selected_item_item_id();
-            let db_name_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
-                use projectpadsql::schema::server_database::dsl as srv_db;
 
-                srv_db::server_database
-                    .filter(srv_db::id.eq(&db_id))
-                    .select(srv_db::desc)
-                    .first::<String>(sql_conn)
-                    .unwrap()
-            }));
-            let s = s.clone();
-            glib::spawn_future_local(async move {
-                let db_name = db_name_recv.recv().await.unwrap();
-                let _guard = s.freeze_notify();
-                s.set_item_id(db_id);
-                s.set_text(db_name);
-            });
+            let db_id = sp.selected_item_item_id();
+            s.emit_by_name::<()>("item-picked", &[&db_id]);
         });
 
         let app = gio::Application::default()

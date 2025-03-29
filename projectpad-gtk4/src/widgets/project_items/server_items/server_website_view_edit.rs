@@ -1,12 +1,16 @@
 use adw::prelude::*;
+use diesel::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 
-use crate::widgets::{
-    project_item::WidgetMode,
-    project_items::{
-        common::{self, SuffixAction},
-        projectpad_item_picker_action_row::ProjectpadItemActionRow,
+use crate::{
+    search_engine::SearchItemsType,
+    widgets::{
+        project_item::WidgetMode,
+        project_items::{
+            common::{self, SuffixAction},
+            projectpad_item_action_row::ProjectpadItemActionRow,
+        },
     },
 };
 
@@ -36,6 +40,9 @@ mod imp {
 
         #[property(get, set)]
         database_id: Rc<RefCell<i32>>,
+
+        #[property(get, set)]
+        database_desc: Rc<RefCell<String>>,
     }
 
     #[glib::object_subclass]
@@ -74,7 +81,7 @@ impl ServerWebsiteViewEdit {
             .build();
         let server_item0 = adw::PreferencesGroup::builder().build();
 
-        let url = self.property::<String>("url");
+        let url = self.url();
         let url_row = common::text_row(
             self.upcast_ref::<glib::Object>(),
             "url",
@@ -85,7 +92,7 @@ impl ServerWebsiteViewEdit {
         );
         server_item0.add(&url_row);
 
-        let username = self.property::<String>("username");
+        let username = self.username();
         let username_row = common::text_row(
             self.upcast_ref::<glib::Object>(),
             "username",
@@ -96,7 +103,7 @@ impl ServerWebsiteViewEdit {
         );
         server_item0.add(&username_row);
 
-        let password = self.property::<String>("password");
+        let password = self.password();
         let password_row = common::password_row(
             self.upcast_ref::<glib::Object>(),
             "password",
@@ -107,7 +114,7 @@ impl ServerWebsiteViewEdit {
         );
         server_item0.add(&password_row);
 
-        let text = self.property::<String>("text");
+        let text = self.text();
         let text_row = common::text_row(
             self.upcast_ref::<glib::Object>(),
             "text",
@@ -118,7 +125,34 @@ impl ServerWebsiteViewEdit {
         );
         server_item0.add(&text_row);
 
-        server_item0.add(&ProjectpadItemActionRow::new(widget_mode));
+        let projectpad_item_action_row = ProjectpadItemActionRow::new(widget_mode);
+        projectpad_item_action_row
+            .set_search_item_types(SearchItemsType::ServerDbsOnly.to_string());
+        projectpad_item_action_row.set_item_id(self.database_id());
+        projectpad_item_action_row.set_text(self.database_desc());
+        projectpad_item_action_row.connect_closure(
+            "item-picked",
+            false,
+            glib::closure_local!(@strong self as s => move |item_action_row: ProjectpadItemActionRow, item_id: i32| {
+                let db_name_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                    use projectpadsql::schema::server_database::dsl as srv_db;
+
+                    srv_db::server_database
+                        .filter(srv_db::id.eq(&item_id))
+                        .select(srv_db::desc)
+                        .first::<String>(sql_conn)
+                        .unwrap()
+                }));
+                let s = s.clone();
+                glib::spawn_future_local(async move {
+                    let db_name = db_name_recv.recv().await.unwrap();
+                    let _guard = s.freeze_notify();
+                    item_action_row.set_item_id(item_id);
+                    item_action_row.set_text(db_name);
+                });
+            }),
+        );
+        server_item0.add(&projectpad_item_action_row);
 
         vbox.append(&server_item0);
 

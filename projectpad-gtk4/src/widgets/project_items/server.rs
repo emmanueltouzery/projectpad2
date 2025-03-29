@@ -1497,6 +1497,7 @@ fn server_website_contents(
     server_website_view_edit.set_username(website.username.to_string());
     server_website_view_edit.set_password(website.password.to_string());
     server_website_view_edit.set_text(website.text.to_string());
+    server_website_view_edit.set_database_id(website.server_database_id.unwrap_or(0));
     server_website_view_edit.prepare(widget_mode);
     server_item1.add(&server_website_view_edit);
 

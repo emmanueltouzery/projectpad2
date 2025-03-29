@@ -191,7 +191,6 @@ impl EnvironmentPicker {
 
         this.bind_property("environment", &dropdown, "selected")
             .transform_to(|_, number: i32| {
-                dbg!(number);
                 Some(
                     match EnvironmentType::from_repr(number.try_into().unwrap())
                         .unwrap_or(EnvironmentType::EnvDevelopment)

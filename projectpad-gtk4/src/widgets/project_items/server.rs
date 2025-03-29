@@ -530,6 +530,8 @@ pub fn add_server_items(
                 read_write,
                 channel_data.server_group_names.clone(),
                 w,
+                w.server_database_id
+                    .and_then(|db_id| channel_data.databases_for_websites.get(&db_id)),
                 &cur_parent,
             ),
             ServerItem::PointOfInterest(poi) => display_server_poi(
@@ -731,6 +733,7 @@ fn display_add_server_item_dialog(server_id: i32, server_group_names: Vec<String
     let (header_edit, server_contents_child, server_view_edit) = server_website_contents(
         &server_group_names,
         &ServerWebsite::default(),
+        None,
         WidgetMode::Edit,
     );
     let hb = header_bar.clone();
@@ -1413,20 +1416,24 @@ fn display_server_website(
     read_write: bool,
     server_group_names: Vec<String>,
     w: &ServerWebsite,
+    db: Option<&ServerDatabase>,
     vbox: &gtk::Box,
 ) {
-    let (_, server_item1, _) = server_website_contents(&server_group_names, w, WidgetMode::Show);
+    let (_, server_item1, _) =
+        server_website_contents(&server_group_names, w, db, WidgetMode::Show);
     vbox.append(&server_item1);
 
     let www_id = w.id;
+    let db_ = db.cloned();
     let delete_btn = add_group_edit_suffix(
         &server_item1,
         read_write,
-        glib::closure_local!(@strong w as w1, @strong vbox as v => move |_b: gtk::Button| {
+        glib::closure_local!(@strong w as w1, @strong db_ as db1, @strong vbox as v => move |_b: gtk::Button| {
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, server_website_view_edit) = server_website_contents(&server_group_names, &w1, WidgetMode::Edit);
+            let (header, server_item, server_website_view_edit) = server_website_contents(
+                &server_group_names, &w1, db1.as_ref(), WidgetMode::Edit);
             item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
@@ -1467,6 +1474,7 @@ fn display_server_website(
 fn server_website_contents(
     server_group_names: &[String],
     website: &ServerWebsite,
+    db: Option<&ServerDatabase>,
     widget_mode: WidgetMode,
 ) -> (
     Option<ItemHeaderEdit>,
@@ -1498,6 +1506,9 @@ fn server_website_contents(
     server_website_view_edit.set_password(website.password.to_string());
     server_website_view_edit.set_text(website.text.to_string());
     server_website_view_edit.set_database_id(website.server_database_id.unwrap_or(0));
+    server_website_view_edit.set_database_desc(dbg!(db
+        .map(|db| db.desc.to_string())
+        .unwrap_or_else(|| "".to_owned())));
     server_website_view_edit.prepare(widget_mode);
     server_item1.add(&server_website_view_edit);
 

@@ -4,7 +4,10 @@ use gtk::subclass::prelude::*;
 
 use crate::widgets::{
     project_item::WidgetMode,
-    project_items::common::{self, SuffixAction},
+    project_items::{
+        common::{self, SuffixAction},
+        projectpad_item_picker_action_row::ProjectpadItemActionRow,
+    },
 };
 
 mod imp {
@@ -30,6 +33,9 @@ mod imp {
 
         #[property(get, set)]
         text: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        database_id: Rc<RefCell<i32>>,
     }
 
     #[glib::object_subclass]
@@ -112,7 +118,7 @@ impl ServerWebsiteViewEdit {
         );
         server_item0.add(&text_row);
 
-        // TODO server database
+        server_item0.add(&ProjectpadItemActionRow::new(widget_mode));
 
         vbox.append(&server_item0);
 

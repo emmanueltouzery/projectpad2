@@ -1500,8 +1500,6 @@ fn server_website_contents(
     server_website_view_edit.prepare(widget_mode);
     server_item1.add(&server_website_view_edit);
 
-    // TODO databases linked to website?
-
     (item_header_edit, server_item1, server_website_view_edit)
 }
 

@@ -89,6 +89,10 @@ glib::wrapper! {
 }
 
 impl SearchPicker {
+    pub fn new() -> Self {
+        glib::Object::new()
+    }
+
     fn init_widget(&self) {
         self.set_spacing(5);
         self.connect_search_item_types_notify(|sp| {

@@ -551,6 +551,11 @@ pub fn add_server_items(
                 read_write,
                 channel_data.server_group_names.clone(),
                 u,
+                channel_data
+                    .websites_for_databases
+                    .get(&u.id)
+                    .cloned()
+                    .unwrap_or_else(|| vec![]),
                 &cur_parent,
             ),
         }
@@ -745,6 +750,7 @@ fn display_add_server_item_dialog(server_id: i32, server_group_names: Vec<String
     let dlg = dialog.clone();
     let (header_edit, server_contents_child, server_view_edit) = server_database_contents(
         &server_group_names,
+        &[],
         &ServerDatabase::default(),
         WidgetMode::Edit,
     );
@@ -1512,9 +1518,11 @@ fn display_server_database(
     read_write: bool,
     server_group_names: Vec<String>,
     db: &ServerDatabase,
+    websites: Vec<ServerWebsite>,
     vbox: &gtk::Box,
 ) {
-    let (_, server_item1, _) = server_database_contents(&server_group_names, db, WidgetMode::Show);
+    let (_, server_item1, _) =
+        server_database_contents(&server_group_names, &websites, db, WidgetMode::Show);
     vbox.append(&server_item1);
 
     let db_id = db.id;
@@ -1525,7 +1533,7 @@ fn display_server_database(
             let item_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            let (header, server_item, server_database_view_edit) = server_database_contents(&server_group_names, &w1, WidgetMode::Edit);
+            let (header, server_item, server_database_view_edit) = server_database_contents(&server_group_names, &websites, &w1, WidgetMode::Edit);
             item_box.append(&header.clone().unwrap());
             item_box.append(&server_item);
 
@@ -1565,6 +1573,7 @@ fn display_server_database(
 
 fn server_database_contents(
     server_group_names: &[String],
+    websites: &[ServerWebsite],
     database: &ServerDatabase,
     widget_mode: WidgetMode,
 ) -> (
@@ -1596,6 +1605,14 @@ fn server_database_contents(
     server_database_view_edit.set_username(database.username.to_string());
     server_database_view_edit.set_password(database.password.to_string());
     server_database_view_edit.set_text(database.text.to_string());
+    server_database_view_edit
+        .set_website_names(websites.iter().map(|w| w.desc.clone()).collect::<Vec<_>>());
+    server_database_view_edit.set_website_ids(
+        websites
+            .iter()
+            .map(|w| w.id.to_string())
+            .collect::<Vec<_>>(),
+    );
     server_database_view_edit.prepare(widget_mode);
     server_item1.add(&server_database_view_edit);
 

@@ -2,9 +2,16 @@ use adw::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 
-use crate::widgets::{
-    project_item::WidgetMode,
-    project_items::common::{self, SuffixAction},
+use crate::{
+    search_engine::SearchItemsType,
+    widgets::{
+        project_item::WidgetMode,
+        project_items::{
+            common::{self, SuffixAction},
+            projectpad_item_action_row::ProjectpadItemActionRow,
+        },
+        search::search_item_model::SearchItemType,
+    },
 };
 
 mod imp {
@@ -30,6 +37,14 @@ mod imp {
 
         #[property(get, set)]
         text: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        website_names: Rc<RefCell<Vec<String>>>,
+
+        // should be Vec<i32> but not supported by gobject
+        // https://gtk-rs.org/gtk-rs-core/stable/latest/docs/glib/trait.HasParamSpec.html#foreign-impls
+        #[property(get, set)]
+        website_ids: Rc<RefCell<Vec<String>>>,
     }
 
     #[glib::object_subclass]
@@ -112,7 +127,19 @@ impl ServerDatabaseViewEdit {
         );
         server_item0.add(&text_row);
 
-        // TODO server database
+        if widget_mode == WidgetMode::Show {
+            for (www_name, www_id_str) in self.website_names().iter().zip(self.website_ids().iter())
+            {
+                let www_id = www_id_str.parse().unwrap_or(0);
+                let action_row = ProjectpadItemActionRow::new(widget_mode);
+                action_row.set_text(www_name.to_owned());
+                action_row.set_search_items_type(SearchItemsType::All.to_string()); // only used in edit mode, so
+                                                                                    // not here
+                action_row.set_search_item_type(SearchItemType::ServerWebsite as u8);
+                action_row.set_item_id(www_id);
+                server_item0.add(&action_row);
+            }
+        }
 
         vbox.append(&server_item0);
 

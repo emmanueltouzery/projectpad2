@@ -334,10 +334,7 @@ fn display_server(
                             let dialog = adw::AlertDialog::new(Some(&title), msg.as_deref());
                             dialog.add_responses(&[("close", "_Close")]);
                             dialog.set_default_response(Some("close"));
-                            let app = gio::Application::default()
-                                .and_downcast::<ProjectpadApplication>()
-                                .unwrap();
-                            dialog.present(&app.active_window().unwrap());
+                            dialog.present(&common::main_win());
                         }
                         let window = app.imp().window.get().unwrap();
                         let win_binding = window.upgrade();
@@ -406,10 +403,7 @@ fn delete_server(project_id: i32, server_id: i32) {
                 let dialog = adw::AlertDialog::new(Some(msg), details.as_deref());
                 dialog.add_responses(&[("close", "_Close")]);
                 dialog.set_default_response(Some("close"));
-                let app = gio::Application::default()
-                    .and_downcast::<ProjectpadApplication>()
-                    .unwrap();
-                dialog.present(&app.active_window().unwrap());
+                dialog.present(&common::main_win());
             }
         }),
     );
@@ -491,10 +485,7 @@ fn connect_save_auth_key<T: ObjectExt>(obj: &T, auth_key: Vec<u8>) {
                     let dialog = adw::AlertDialog::new(Some("Error saving auth key"), Some(&format!("{e}")));
                     dialog.add_responses(&[("close", "_Close")]);
                     dialog.set_default_response(Some("close"));
-                    let app = gio::Application::default()
-                        .and_downcast::<ProjectpadApplication>()
-                        .unwrap();
-                    dialog.present(&app.active_window().unwrap());
+                    dialog.present(&common::main_win());
                 }
             }),
         );
@@ -813,10 +804,7 @@ fn display_add_server_item_dialog(server_id: i32, server_group_names: Vec<String
         );
     });
 
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    dialog.present(&app.active_window().unwrap());
+    dialog.present(&common::main_win());
 }
 
 fn prepare_add_server_poi_dlg(
@@ -1506,9 +1494,10 @@ fn server_website_contents(
     server_website_view_edit.set_password(website.password.to_string());
     server_website_view_edit.set_text(website.text.to_string());
     server_website_view_edit.set_database_id(website.server_database_id.unwrap_or(0));
-    server_website_view_edit.set_database_desc(dbg!(db
-        .map(|db| db.desc.to_string())
-        .unwrap_or_else(|| "".to_owned())));
+    server_website_view_edit.set_database_desc(
+        db.map(|db| db.desc.to_string())
+            .unwrap_or_else(|| "".to_owned()),
+    );
     server_website_view_edit.prepare(widget_mode);
     server_item1.add(&server_website_view_edit);
 

@@ -35,7 +35,7 @@ mod imp {
         pub search_item_list: TemplateChild<SearchItemList>,
 
         #[property(get, set)]
-        search_item_types: Rc<RefCell<String>>,
+        search_items_type: Rc<RefCell<String>>,
 
         #[property(get, set)]
         selected_item_project_id: Rc<RefCell<i32>>,
@@ -95,7 +95,7 @@ impl SearchPicker {
 
     fn init_widget(&self) {
         self.set_spacing(5);
-        self.connect_search_item_types_notify(|sp| {
+        self.connect_search_items_type_notify(|sp| {
             sp.refresh_search(sp.get_selection());
         });
         let s = self.clone();
@@ -134,7 +134,7 @@ impl SearchPicker {
     fn refresh_search(&self, selection: Option<(SearchItemType, i32)>) {
         let search_text = format!("%{}%", &self.imp().search_entry.text());
         let search_item_type =
-            match search_engine::SearchItemsType::from_str(&self.search_item_types()) {
+            match search_engine::SearchItemsType::from_str(&self.search_items_type()) {
                 Ok(sit) => sit,
                 Err(_) => search_engine::SearchItemsType::All,
             };

@@ -319,7 +319,7 @@ impl ProjectpadApplicationWindow {
         }
     }
 
-    fn display_item_from_search(
+    pub fn display_item_from_search(
         w: ProjectpadApplicationWindow,
         project_id: i32,
         item_id: i32,
@@ -335,8 +335,7 @@ impl ProjectpadApplicationWindow {
         // select_project_param.insert("item_id", None::<i32>);
         // select_project_param.insert("item_type", None::<u8>);
         // select_project_param.insert("search_item_type", None::<u8>);
-        dbg!("it me");
-        w.change_action_state("select-project-item", &dbg!(select_project_param.end()));
+        w.change_action_state("select-project-item", &select_project_param.end());
 
         w.imp().search_toggle_btn.set_active(false);
     }
@@ -405,69 +404,13 @@ impl ProjectpadApplicationWindow {
                     .first::<Project>(sql_conn)
                     .unwrap();
 
-                let (project_item_id, server_item_id) = match search_item_type {
-                    // TODO special handling needed for serverlink here?
-                    Some(SearchItemType::ServerWebsite) => {
-                        use projectpadsql::schema::server_website::dsl as srv_www;
-                        (
-                            srv_www::server_website
-                                .filter(srv_www::id.eq(item_id.unwrap()))
-                                .select(srv_www::server_id)
-                                .first::<i32>(sql_conn)
-                                .ok(),
-                            item_id,
-                        )
-                    }
-                    Some(SearchItemType::ServerPoi) => {
-                        use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
-                        (
-                            srv_poi::server_point_of_interest
-                                .filter(srv_poi::id.eq(item_id.unwrap()))
-                                .select(srv_poi::server_id)
-                                .first::<i32>(sql_conn)
-                                .ok(),
-                            item_id,
-                        )
-                    }
-                    Some(SearchItemType::ServerNote) => {
-                        use projectpadsql::schema::server_note::dsl as srv_note;
-                        (
-                            srv_note::server_note
-                                .filter(srv_note::id.eq(item_id.unwrap()))
-                                .select(srv_note::server_id)
-                                .first::<i32>(sql_conn)
-                                .ok(),
-                            item_id,
-                        )
-                    }
-                    Some(SearchItemType::ServerDatabase) => {
-                        use projectpadsql::schema::server_database::dsl as srv_db;
-                        (
-                            srv_db::server_database
-                                .filter(srv_db::id.eq(item_id.unwrap()))
-                                .select(srv_db::server_id)
-                                .first::<i32>(sql_conn)
-                                .ok(),
-                            item_id,
-                        )
-                    }
-                    Some(SearchItemType::ServerExtraUserAccount) => {
-                        use projectpadsql::schema::server_extra_user_account::dsl as srv_db;
-                        (
-                            srv_db::server_extra_user_account
-                                .filter(srv_db::id.eq(item_id.unwrap()))
-                                .select(srv_db::server_id)
-                                .first::<i32>(sql_conn)
-                                .ok(),
-                            item_id,
-                        )
-                    }
-                    _ => (item_id, None),
-                };
+                let server_id =
+                    Self::query_search_item_get_server_id(sql_conn, search_item_type, item_id);
 
-                sender
-                    .send_blocking((project, project_item_id, server_item_id))
-                    .unwrap();
+                match server_id {
+                    None => sender.send_blocking((project, item_id, None)).unwrap(),
+                    Some(_) => sender.send_blocking((project, server_id, item_id)).unwrap(),
+                }
             }))
             .unwrap();
         let w = self.clone();
@@ -481,6 +424,58 @@ impl ProjectpadApplicationWindow {
                 server_item_id,
             );
         });
+    }
+
+    pub fn query_search_item_get_server_id(
+        sql_conn: &mut SqliteConnection,
+        search_item_type: Option<SearchItemType>,
+        item_id: Option<i32>,
+    ) -> Option<i32> {
+        match search_item_type {
+            // TODO special handling needed for serverlink here?
+            Some(SearchItemType::ServerWebsite) => {
+                use projectpadsql::schema::server_website::dsl as srv_www;
+                srv_www::server_website
+                    .filter(srv_www::id.eq(item_id.unwrap()))
+                    .select(srv_www::server_id)
+                    .first::<i32>(sql_conn)
+                    .ok()
+            }
+            Some(SearchItemType::ServerPoi) => {
+                use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+                srv_poi::server_point_of_interest
+                    .filter(srv_poi::id.eq(item_id.unwrap()))
+                    .select(srv_poi::server_id)
+                    .first::<i32>(sql_conn)
+                    .ok()
+            }
+            Some(SearchItemType::ServerNote) => {
+                use projectpadsql::schema::server_note::dsl as srv_note;
+                srv_note::server_note
+                    .filter(srv_note::id.eq(item_id.unwrap()))
+                    .select(srv_note::server_id)
+                    .first::<i32>(sql_conn)
+                    .ok()
+            }
+            Some(SearchItemType::ServerDatabase) => {
+                use projectpadsql::schema::server_database::dsl as srv_db;
+                srv_db::server_database
+                    .filter(srv_db::id.eq(item_id.unwrap()))
+                    .select(srv_db::server_id)
+                    .first::<i32>(sql_conn)
+                    .ok()
+            }
+            Some(SearchItemType::ServerExtraUserAccount) => {
+                use projectpadsql::schema::server_extra_user_account::dsl as srv_db;
+                srv_db::server_extra_user_account
+                    .filter(srv_db::id.eq(item_id.unwrap()))
+                    .select(srv_db::server_id)
+                    .first::<i32>(sql_conn)
+                    .ok()
+            }
+            // TODO correct to have that catch-all?
+            _ => None,
+        }
     }
 
     pub fn get_toast_overlay(&self) -> adw::ToastOverlay {

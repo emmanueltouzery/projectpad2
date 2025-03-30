@@ -101,18 +101,7 @@ impl SearchItemModel {
         environment: Env,
         group_name: Option<String>,
     ) -> Self {
-        let icon = match search_item_type {
-            SearchItemType::Server => "server",
-            SearchItemType::ServerLink => "share-square",
-            SearchItemType::ProjectNote => "clipboard",
-            SearchItemType::ProjectPointOfInterest => "cube",
-            SearchItemType::Project => "cubes",
-            SearchItemType::ServerWebsite => "globe",
-            SearchItemType::ServerNote => "clipboard",
-            SearchItemType::ServerDatabase => "database",
-            SearchItemType::ServerPoi => "cube",
-            SearchItemType::ServerExtraUserAccount => "user",
-        };
+        let icon = Self::get_search_item_type_icon(search_item_type);
         Object::builder()
             .property("id", id)
             .property("project-id", project_id)
@@ -124,6 +113,21 @@ impl SearchItemModel {
             .property("env-classes", env_to_css(&environment))
             .property("group-name", group_name.unwrap_or("".to_string()))
             .build()
+    }
+
+    pub fn get_search_item_type_icon(search_item_type: SearchItemType) -> &'static str {
+        match search_item_type {
+            SearchItemType::Server => "server",
+            SearchItemType::ServerLink => "share-square",
+            SearchItemType::ProjectNote => "clipboard",
+            SearchItemType::ProjectPointOfInterest => "cube",
+            SearchItemType::Project => "cubes",
+            SearchItemType::ServerWebsite => "globe",
+            SearchItemType::ServerNote => "clipboard",
+            SearchItemType::ServerDatabase => "database",
+            SearchItemType::ServerPoi => "cube",
+            SearchItemType::ServerExtraUserAccount => "user",
+        }
     }
 }
 

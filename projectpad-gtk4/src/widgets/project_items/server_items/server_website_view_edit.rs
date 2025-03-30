@@ -11,6 +11,7 @@ use crate::{
             common::{self, SuffixAction},
             projectpad_item_action_row::ProjectpadItemActionRow,
         },
+        search::search_item_model::SearchItemType,
     },
 };
 
@@ -127,7 +128,8 @@ impl ServerWebsiteViewEdit {
 
         let projectpad_item_action_row = ProjectpadItemActionRow::new(widget_mode);
         projectpad_item_action_row
-            .set_search_item_types(SearchItemsType::ServerDbsOnly.to_string());
+            .set_search_items_type(SearchItemsType::ServerDbsOnly.to_string());
+        projectpad_item_action_row.set_search_item_type(SearchItemType::ServerDatabase as u8);
         projectpad_item_action_row.set_item_id(self.database_id());
         projectpad_item_action_row.set_text(self.database_desc());
         projectpad_item_action_row.connect_closure(

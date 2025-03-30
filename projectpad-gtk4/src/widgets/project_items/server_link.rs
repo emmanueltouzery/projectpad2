@@ -220,7 +220,7 @@ pub fn server_link_contents_edit(
     );
     let search_picker = glib::Object::builder::<SearchPicker>()
         .property(
-            "search-item-types",
+            "search-items-type",
             SearchItemsType::ServersOnly.to_string(),
         )
         .property("selected-item-item-id", server_link.linked_server_id)

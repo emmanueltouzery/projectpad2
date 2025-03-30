@@ -669,10 +669,7 @@ impl ProjectItemList {
             dlg.close();
         });
 
-        let app = gio::Application::default()
-            .and_downcast::<ProjectpadApplication>()
-            .unwrap();
-        dialog.present(&app.active_window().unwrap());
+        dialog.present(&common::main_win());
     }
 
     fn prepare_add_server_dlg(

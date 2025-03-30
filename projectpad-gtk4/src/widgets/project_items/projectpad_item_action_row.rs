@@ -1,15 +1,20 @@
 use adw::prelude::*;
+use diesel::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
 use std::str::FromStr;
 
 use crate::{
-    app::ProjectpadApplication,
     search_engine::SearchItemsType,
     widgets::{
         project_item::WidgetMode,
-        search::{search_item_model::SearchItemType, search_picker::SearchPicker},
+        project_items::common,
+        search::{
+            search_item_model::{SearchItemModel, SearchItemType},
+            search_picker::SearchPicker,
+        },
     },
+    win::{self, ProjectpadApplicationWindow},
 };
 
 mod imp {
@@ -29,7 +34,10 @@ mod imp {
         text: Rc<RefCell<String>>,
 
         #[property(get, set)]
-        search_item_types: Rc<RefCell<String>>,
+        search_items_type: Rc<RefCell<String>>,
+
+        #[property(get, set)]
+        search_item_type: Rc<RefCell<u8>>,
 
         #[property(get, set)]
         item_id: Rc<RefCell<i32>>,
@@ -85,14 +93,7 @@ impl ProjectpadItemActionRow {
         // AdwExpanderRow deemphasize their title and emphasize their subtitle instead
         this.set_css_classes(&["property"]);
 
-        let widget = gtk::Button::builder()
-            .css_classes(["flat"])
-            .icon_name(if widget_mode == WidgetMode::Show {
-                "document-save-symbolic"
-            } else {
-                "document-open-symbolic"
-            })
-            .build();
+        let widget = gtk::Button::builder().css_classes(["flat"]).build();
         widget.connect_closure(
             "clicked",
             false,
@@ -105,27 +106,30 @@ impl ProjectpadItemActionRow {
                 // let win_binding = window.upgrade();
                 // let win_binding_ref = win_binding.as_ref().unwrap();
                 // let file_dialog = gtk::FileDialog::builder().build();
-                if b.icon_name() == Some("document-open-symbolic".into()) {
+                if widget_mode == WidgetMode::Edit {
                     s.open_item_picker_dlg();
-                    // let _s = s.clone();
-                    // file_dialog.open(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
-                    //     if let Ok(f) = r {
-                    //         if let Some(p) = f.path() {
-                    //             // TODO a little crappy unwrap, could be invalid filename
-                    //             _s.set_filename(p.to_str().unwrap());
-                    //         }
-                    //     }
-                    // });
                 } else {
-                    // let _s = s.clone();
-                    // file_dialog.save(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
-                    //     if let Ok(f) = r {
-                    //         if let Some(p) = f.path() {
-                    //             dbg!(&p);
-                    //             _s.emit_by_name::<()>("file-picked", &[&p.display().to_string()]);
-                    //         }
-                    //     }
-                    // });
+                    let search_item_type = SearchItemType::from_repr(s.search_item_type());
+                    let item_id = s.item_id();
+                    let project_id_server_id_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                        let server_id = ProjectpadApplicationWindow::query_search_item_get_server_id(sql_conn, search_item_type, Some(item_id));
+
+                        if let Some(sid) = server_id {
+                            use projectpadsql::schema::server::dsl as srv;
+                            (srv::server
+                                .filter(srv::id.eq(sid))
+                                .select(srv::project_id)
+                                .first::<i32>(sql_conn)
+                                .unwrap(), sid)
+                        } else {
+                            panic!("only coded for server items. for project items will have to switch on which project item type to find the project id.");
+                        }
+                    }));
+                    glib::spawn_future_local(async move {
+                        let (project_id, server_id) = project_id_server_id_recv.recv().await.unwrap();
+                        ProjectpadApplicationWindow::display_item_from_search(
+                            common::main_win(), project_id, item_id, search_item_type.unwrap() as u8, server_id);
+                    });
                 }
             }),
         );
@@ -149,6 +153,17 @@ impl ProjectpadItemActionRow {
         this.set_activatable_widget(Some(&widget));
 
         this.bind_property("text", this.upcast_ref::<adw::PreferencesRow>(), "subtitle")
+            .sync_create()
+            .build();
+
+        this.bind_property("search-item-type", &widget, "icon-name")
+            .transform_to(move |_, sit: u8| {
+                if widget_mode == WidgetMode::Show {
+                    SearchItemType::from_repr(sit).map(SearchItemModel::get_search_item_type_icon)
+                } else {
+                    Some("document-edit-symbolic")
+                }
+            })
             .sync_create()
             .build();
 
@@ -177,7 +192,7 @@ impl ProjectpadItemActionRow {
         vbox.append(&header_bar);
 
         let search_picker = SearchPicker::new();
-        self.bind_property("search-item-types", &search_picker, "search-item-types")
+        self.bind_property("search-items-type", &search_picker, "search-items-type")
             .sync_create()
             .build();
         search_picker.set_margin_start(10);
@@ -195,7 +210,7 @@ impl ProjectpadItemActionRow {
                     .downcast::<SearchPicker>()
                     .unwrap();
                 let search_item_type = SearchItemType::from_repr(sit);
-                let prop_search_item_type = match SearchItemsType::from_str(&sp.search_item_types())
+                let prop_search_item_type = match SearchItemsType::from_str(&sp.search_items_type())
                 {
                     Ok(sit) => sit,
                     Err(_) => SearchItemsType::All,
@@ -235,10 +250,6 @@ impl ProjectpadItemActionRow {
             s.emit_by_name::<()>("item-picked", &[&db_id]);
         });
 
-        let app = gio::Application::default()
-            .expect("Failed to retrieve application singleton")
-            .downcast::<ProjectpadApplication>()
-            .unwrap();
-        dialog.present(&app.active_window().unwrap());
+        dialog.present(&common::main_win());
     }
 }

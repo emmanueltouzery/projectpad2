@@ -10,6 +10,7 @@ use crate::{
     app::{self, ProjectpadApplication},
     sql_thread::SqlFunc,
     widgets::project_item::WidgetMode,
+    win::ProjectpadApplicationWindow,
 };
 
 use super::password_action_row::PasswordActionRow;
@@ -360,10 +361,7 @@ pub fn simple_error_dlg(title: &str, details: Option<&str>) {
     let dialog = adw::AlertDialog::new(Some(title), details);
     dialog.add_responses(&[("close", "_Close")]);
     dialog.set_default_response(Some("close"));
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    dialog.present(&app.active_window().unwrap());
+    dialog.present(&main_win());
 }
 
 pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + 'static>) {
@@ -377,10 +375,7 @@ pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + '
             delete_fn();
         }
     });
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    dialog.present(&app.active_window().unwrap());
+    dialog.present(&main_win());
 }
 
 pub fn run_sqlfunc<T: Sync + Send + 'static>(
@@ -408,4 +403,13 @@ pub fn run_sqlfunc_and_then<T: Sync + Send + 'static>(
         let val = receiver.recv().await.unwrap();
         after(val);
     });
+}
+
+pub fn main_win() -> ProjectpadApplicationWindow {
+    let app = gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
+        .unwrap();
+    app.active_window()
+        .and_downcast::<ProjectpadApplicationWindow>()
+        .unwrap()
 }

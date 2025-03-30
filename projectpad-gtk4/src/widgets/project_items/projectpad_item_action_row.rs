@@ -14,7 +14,7 @@ use crate::{
             search_picker::SearchPicker,
         },
     },
-    win::{self, ProjectpadApplicationWindow},
+    win::ProjectpadApplicationWindow,
 };
 
 mod imp {
@@ -97,7 +97,7 @@ impl ProjectpadItemActionRow {
         widget.connect_closure(
             "clicked",
             false,
-            glib::closure_local!(@strong this as s => move |b: gtk::Button| {
+            glib::closure_local!(@strong this as s => move |_: gtk::Button| {
                 // let app = gio::Application::default()
                 //     .expect("Failed to retrieve application singleton")
                 //     .downcast::<ProjectpadApplication>()
@@ -112,18 +112,7 @@ impl ProjectpadItemActionRow {
                     let search_item_type = SearchItemType::from_repr(s.search_item_type());
                     let item_id = s.item_id();
                     let project_id_server_id_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
-                        let server_id = ProjectpadApplicationWindow::query_search_item_get_server_id(sql_conn, search_item_type, Some(item_id));
-
-                        if let Some(sid) = server_id {
-                            use projectpadsql::schema::server::dsl as srv;
-                            (srv::server
-                                .filter(srv::id.eq(sid))
-                                .select(srv::project_id)
-                                .first::<i32>(sql_conn)
-                                .unwrap(), sid)
-                        } else {
-                            panic!("only coded for server items. for project items will have to switch on which project item type to find the project id.");
-                        }
+                        Self::query_get_item_project_id_server_id(sql_conn, search_item_type, Some(item_id).filter(|i| *i > 0))
                     }));
                     glib::spawn_future_local(async move {
                         let (project_id, server_id) = project_id_server_id_recv.recv().await.unwrap();
@@ -170,6 +159,32 @@ impl ProjectpadItemActionRow {
         this
     }
 
+    fn query_get_item_project_id_server_id(
+        sql_conn: &mut SqliteConnection,
+        search_item_type: Option<SearchItemType>,
+        item_id: Option<i32>,
+    ) -> (i32, i32) {
+        let server_id = ProjectpadApplicationWindow::query_search_item_get_server_id(
+            sql_conn,
+            search_item_type,
+            item_id,
+        );
+
+        if let Some(sid) = server_id {
+            use projectpadsql::schema::server::dsl as srv;
+            (
+                srv::server
+                    .filter(srv::id.eq(sid))
+                    .select(srv::project_id)
+                    .first::<i32>(sql_conn)
+                    .unwrap(),
+                sid,
+            )
+        } else {
+            panic!("only coded for server items. for project items will have to switch on which project item type to find the project id.");
+        }
+    }
+
     fn open_item_picker_dlg(&self) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -199,6 +214,15 @@ impl ProjectpadItemActionRow {
         search_picker.set_margin_end(10);
         search_picker.set_margin_top(10);
         search_picker.set_margin_bottom(10);
+
+        // pre-select the current item if any in the search picker
+        let item_id = Some(self.item_id()).filter(|i| *i > 0);
+        if let Some(id) = item_id {
+            if let Some(search_item_type) = SearchItemType::from_repr(self.search_item_type()) {
+                search_picker.refresh_search(Some((search_item_type, id)));
+            }
+        }
+
         vbox.append(&search_picker);
 
         search_picker

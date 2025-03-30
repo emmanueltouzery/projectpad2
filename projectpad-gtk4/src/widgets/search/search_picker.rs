@@ -131,7 +131,7 @@ impl SearchPicker {
         None
     }
 
-    fn refresh_search(&self, selection: Option<(SearchItemType, i32)>) {
+    pub fn refresh_search(&self, selection: Option<(SearchItemType, i32)>) {
         let search_text = format!("%{}%", &self.imp().search_entry.text());
         let search_item_type =
             match search_engine::SearchItemsType::from_str(&self.search_items_type()) {

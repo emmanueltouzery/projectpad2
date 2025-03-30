@@ -986,6 +986,7 @@ fn server_website_connect_save(
             server_poi_view_edit.text(),
             server_poi_view_edit.username(),
             server_poi_view_edit.password(),
+            Some(server_poi_view_edit.database_id()).filter(|i| *i > 0),
         );
         let d = d.clone();
         glib::spawn_future_local(async move {
@@ -1012,6 +1013,7 @@ pub fn save_server_website(
     new_text: String,
     new_username: String,
     new_password: String,
+    new_server_database_id: Option<i32>,
 ) -> async_channel::Receiver<Result<ServerWebsite, (String, Option<String>)>> {
     let app = gio::Application::default()
         .and_downcast::<ProjectpadApplication>()
@@ -1031,6 +1033,7 @@ pub fn save_server_website(
                 srv_www::username.eq(new_username.as_str()),
                 srv_www::password.eq(new_password.as_str()),
                 srv_www::server_id.eq(server_id),
+                srv_www::server_database_id.eq(new_server_database_id),
             );
             let server_www_after_result = perform_insert_or_update!(
                 sql_conn,

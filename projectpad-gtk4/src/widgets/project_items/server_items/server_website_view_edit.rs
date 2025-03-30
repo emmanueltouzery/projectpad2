@@ -126,17 +126,21 @@ impl ServerWebsiteViewEdit {
         );
         server_item0.add(&text_row);
 
-        let projectpad_item_action_row = ProjectpadItemActionRow::new(widget_mode);
-        projectpad_item_action_row
-            .set_search_items_type(SearchItemsType::ServerDbsOnly.to_string());
-        projectpad_item_action_row.set_search_item_type(SearchItemType::ServerDatabase as u8);
-        projectpad_item_action_row.set_item_id(self.database_id());
-        projectpad_item_action_row.set_text(self.database_desc());
-        projectpad_item_action_row.connect_closure(
+        if widget_mode == WidgetMode::Edit || self.database_id() > 0 {
+            let projectpad_item_action_row = ProjectpadItemActionRow::new(widget_mode);
+            projectpad_item_action_row
+                .set_search_items_type(SearchItemsType::ServerDbsOnly.to_string());
+            projectpad_item_action_row.set_search_item_type(SearchItemType::ServerDatabase as u8);
+            projectpad_item_action_row.set_item_id(self.database_id());
+            projectpad_item_action_row.set_text(self.database_desc());
+            projectpad_item_action_row.connect_closure(
             "item-picked",
             false,
             glib::closure_local!(@strong self as s => move |item_action_row: ProjectpadItemActionRow, item_id: i32| {
                 let db_name_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                    if item_id <= 0 {
+                        "".to_string()
+                    } else {
                     use projectpadsql::schema::server_database::dsl as srv_db;
 
                     srv_db::server_database
@@ -144,17 +148,21 @@ impl ServerWebsiteViewEdit {
                         .select(srv_db::desc)
                         .first::<String>(sql_conn)
                         .unwrap()
+                    }
                 }));
                 let s = s.clone();
                 glib::spawn_future_local(async move {
                     let db_name = db_name_recv.recv().await.unwrap();
                     let _guard = s.freeze_notify();
                     item_action_row.set_item_id(item_id);
-                    item_action_row.set_text(db_name);
+                    item_action_row.set_text(db_name.clone());
+                    s.set_database_id(item_id);
+                    s.set_database_desc(db_name);
                 });
             }),
         );
-        server_item0.add(&projectpad_item_action_row);
+            server_item0.add(&projectpad_item_action_row);
+        }
 
         vbox.append(&server_item0);
 

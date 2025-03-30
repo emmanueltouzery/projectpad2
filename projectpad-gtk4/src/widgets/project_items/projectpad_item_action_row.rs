@@ -134,7 +134,10 @@ impl ProjectpadItemActionRow {
                 "clicked",
                 false,
                 glib::closure_local!(@strong this as s => move |_b: gtk::Button| {
-                    // s.set_filename("");
+                    s.set_text("");
+                    s.set_item_id(0);
+                    let item_id = 0;
+                    s.emit_by_name::<()>("item-picked", &[&item_id]);
                 }),
             );
         }

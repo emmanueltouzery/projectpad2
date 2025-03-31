@@ -287,6 +287,7 @@ pub fn server_link_contents_show(
 ) -> (gtk::Box, gtk::Box) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
+        .spacing(20)
         .build();
     let (maybe_header_edit, header_box) = project_item_header(
         &vbox,

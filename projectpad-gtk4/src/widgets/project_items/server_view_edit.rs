@@ -92,14 +92,13 @@ impl ServerViewEdit {
             .build();
         let server_item0 = adw::PreferencesGroup::builder().build();
 
-        let ip = self.property::<String>("ip");
-        let is_retired = self.property::<bool>("is_retired");
-        let server_type = ServerType::from_str(&self.property::<String>("server_type")).unwrap();
-        let access_type =
-            ServerAccessType::from_str(&self.property::<String>("access_type")).unwrap();
-        let username = self.property::<String>("username");
-        let password = self.property::<String>("password");
-        let text = self.property::<String>("text");
+        let ip = self.ip();
+        let is_retired = self.is_retired();
+        let server_type = ServerType::from_str(&self.server_type()).unwrap();
+        let access_type = ServerAccessType::from_str(&self.access_type()).unwrap();
+        let username = self.username();
+        let password = self.password();
+        let text = self.text();
         let auth_key_filename = self
             .property::<Option<String>>("auth_key_filename")
             .filter(|s| !s.is_empty());

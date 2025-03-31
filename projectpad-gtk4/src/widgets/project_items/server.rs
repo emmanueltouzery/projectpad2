@@ -1491,7 +1491,9 @@ fn server_website_contents(
         None
     };
 
-    let server_item1 = adw::PreferencesGroup::builder().build();
+    let server_item1 = adw::PreferencesGroup::builder()
+        .description("Website")
+        .build();
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_title(&glib::markup_escape_text(&website.desc));
@@ -1594,7 +1596,9 @@ fn server_database_contents(
         None
     };
 
-    let server_item1 = adw::PreferencesGroup::builder().build();
+    let server_item1 = adw::PreferencesGroup::builder()
+        .description("Database")
+        .build();
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_title(&glib::markup_escape_text(&database.desc));
@@ -1806,7 +1810,7 @@ fn server_extra_user_account_contents(
         None
     };
 
-    let server_item1 = adw::PreferencesGroup::builder().build();
+    let server_item1 = adw::PreferencesGroup::builder().description("User").build();
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_title(&glib::markup_escape_text(&user.desc));

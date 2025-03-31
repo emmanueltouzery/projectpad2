@@ -146,6 +146,7 @@ impl ProjectItemList {
     pub fn set_project_items(
         &self,
         project: &Project,
+        project_item_type: Option<ProjectItemType>,
         project_items: &[ProjectItem],
         group_start_indices: HashMap<i32, String>,
         selected_item: Option<i32>,
@@ -156,10 +157,13 @@ impl ProjectItemList {
         let mut idx = 0;
         let mut selected_index = None;
 
+        let project_item_type_u8 = project_item_type.map(|t| t as u8);
         for project_item in project_items {
             let item_model = Self::get_item_model(project, project_item);
             list_store.append(&item_model);
-            if selected_item == Some(item_model.property("id")) {
+            if selected_item == Some(item_model.property("id"))
+                && project_item_type_u8 == Some(item_model.property("project-item-type"))
+            {
                 selected_index = Some(idx);
             }
             idx += 1;
@@ -319,6 +323,7 @@ impl ProjectItemList {
     pub fn fetch_project_items(
         &mut self,
         db_sender: &mpsc::Sender<SqlFunc>,
+        project_item_type: Option<ProjectItemType>,
         project: Project,
         selected_item: Option<i32>,
         selected_sub_item: Option<i32>,
@@ -376,6 +381,7 @@ impl ProjectItemList {
             let (items, group_start_indices) = receiver.recv().await.unwrap();
             s.set_project_items(
                 &project,
+                project_item_type,
                 &items,
                 group_start_indices,
                 selected_item,

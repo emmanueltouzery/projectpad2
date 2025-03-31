@@ -419,6 +419,7 @@ impl ProjectpadApplicationWindow {
             w.imp().project_menu_button.set_label(&project.name);
             w.imp().project_item_list.get().fetch_project_items(
                 &db_sender,
+                search_item_type.and_then(|sit| sit.to_project_item_type()),
                 project,
                 project_item_id,
                 server_item_id,

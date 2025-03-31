@@ -3,6 +3,8 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use strum_macros::FromRepr;
 
+use crate::widgets::project_item_model::ProjectItemType;
+
 #[derive(FromRepr, Debug, PartialEq, Copy, Clone)]
 #[repr(u8)]
 pub enum SearchItemType {
@@ -16,6 +18,18 @@ pub enum SearchItemType {
     ServerDatabase = 8,
     ServerPoi = 9,
     ServerExtraUserAccount = 10,
+}
+
+impl SearchItemType {
+    pub fn to_project_item_type(&self) -> Option<ProjectItemType> {
+        match self {
+            SearchItemType::Server => Some(ProjectItemType::Server),
+            SearchItemType::ServerLink => Some(ProjectItemType::ServerLink),
+            SearchItemType::ProjectNote => Some(ProjectItemType::ProjectNote),
+            SearchItemType::ProjectPointOfInterest => Some(ProjectItemType::ProjectPointOfInterest),
+            _ => None,
+        }
+    }
 }
 
 mod imp {

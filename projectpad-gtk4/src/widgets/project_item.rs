@@ -116,6 +116,9 @@ impl ProjectItem {
         // also possibly receive the ProjectItem, telling me much more than the id
         let db_sender = app.unwrap().get_sql_channel();
 
+        // reset the scroll, who knows what we were displaying before
+        self.emit_by_name::<()>("request-scroll", &[&0f32]);
+
         match item_type {
             Some(ProjectItemType::Server) => {
                 self.imp().clamp.set_maximum_size(750);

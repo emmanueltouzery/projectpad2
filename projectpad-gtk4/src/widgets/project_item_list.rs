@@ -162,7 +162,10 @@ impl ProjectItemList {
             let item_model = Self::get_item_model(project, project_item);
             list_store.append(&item_model);
             if selected_item == Some(item_model.property("id"))
-                && project_item_type_u8 == Some(item_model.property("project-item-type"))
+                // project_item_type_u8 being none means it's a server item. therefore we're
+                // searching for a project item type of server in that case
+                && project_item_type_u8.unwrap_or(ProjectItemType::Server as u8)
+                    == item_model.property("project-item-type")
             {
                 selected_index = Some(idx);
             }

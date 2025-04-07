@@ -216,7 +216,8 @@ impl ProjectpadApplication {
         header_bar.pack_end(&save_btn);
         vbox.append(&header_bar);
 
-        vbox.append(&ProjectEdit::new());
+        let project_edit = ProjectEdit::new();
+        vbox.append(&project_edit);
 
         let dialog = adw::Dialog::builder()
             .title("Add project")
@@ -226,6 +227,12 @@ impl ProjectpadApplication {
         let dlg = dialog.clone();
         cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
             dlg.close();
+        });
+
+        let dlg = dialog.clone();
+        save_btn.connect_clicked(move |_btn: &gtk::Button| {
+            dlg.close();
+            dbg!(project_edit.title());
         });
 
         dialog.present(&common::main_win());

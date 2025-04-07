@@ -24,6 +24,15 @@ mod imp {
         #[property(get, set)]
         title: Rc<RefCell<String>>,
 
+        #[property(get, set)]
+        env_dev: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        env_stg: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        env_uat: Rc<RefCell<bool>>,
+        #[property(get, set)]
+        env_prd: Rc<RefCell<bool>>,
+
         #[template_child]
         pub env_picker: TemplateChild<EnvironmentListPicker>,
     }

@@ -190,8 +190,14 @@ impl ProjectpadApplication {
 
         let new_project_action = gio::SimpleAction::new("add-project", None);
         window.add_action(&new_project_action);
-        let w = window.clone();
 
+        let s = self.clone();
+        new_project_action.connect_activate(move |_action, _parameter| {
+            s.open_add_project();
+        });
+    }
+
+    fn open_add_project(&self) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
@@ -212,13 +218,17 @@ impl ProjectpadApplication {
 
         vbox.append(&ProjectEdit::new());
 
-        new_project_action.connect_activate(move |_action, parameter| {
-            let dialog = adw::Dialog::builder()
-                .title("Add project")
-                .child(&vbox)
-                .build();
-            dialog.present(&common::main_win());
+        let dialog = adw::Dialog::builder()
+            .title("Add project")
+            .child(&vbox)
+            .build();
+
+        let dlg = dialog.clone();
+        cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
+            dlg.close();
         });
+
+        dialog.present(&common::main_win());
     }
 
     fn unlock_db(&self) {

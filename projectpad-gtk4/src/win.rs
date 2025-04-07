@@ -376,8 +376,7 @@ impl ProjectpadApplicationWindow {
         self.imp().sql_channel.borrow().clone().unwrap()
     }
 
-    // TODO rename
-    pub fn set_active_project_item(&self) {
+    pub fn display_active_project_item(&self) {
         let project_state =
             glib::VariantDict::new(self.action_state("select-project-item").as_ref());
         let project_id =

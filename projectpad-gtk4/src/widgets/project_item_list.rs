@@ -18,7 +18,7 @@ use projectpadsql::models::{
 
 use crate::app;
 use crate::widgets::project_items::server_link;
-use crate::{app::ProjectpadApplication, sql_thread::SqlFunc, widgets::project_items::server};
+use crate::{sql_thread::SqlFunc, widgets::project_items::server};
 
 use super::project_items::common::run_sqlfunc_and_then;
 use super::project_items::item_header_edit::ItemHeaderEdit;
@@ -670,8 +670,6 @@ impl ProjectItemList {
             });
             header_bar.pack_end(&save_btn);
         });
-
-        // TODO need to add server links too
 
         let dlg = dialog.clone();
         cancel_btn.connect_clicked(move |_btn: &gtk::Button| {

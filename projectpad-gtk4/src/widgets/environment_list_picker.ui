@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="EnvironmentListPicker" parent="AdwBin">
+    <child>
+      <object class="AdwBin" id="project_item">
+        <child>
+          <object class="GtkBox">
+            <property name="css-classes">linked</property>
+            <property name="homogeneous">True</property>
+            <property name="valign">center</property>
+            <child>
+              <object class="GtkToggleButton">
+                <property name="label">DEV</property>
+                <style>
+                  <class name="toggle-project-item-dev"/>
+                  <class name="caption-heading"/>
+                </style>
+                <property name="active"
+                  bind-source="EnvironmentListPicker"
+                  bind-property="env-dev"
+                  bind-flags="sync-create|bidirectional"/>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton">
+                <property name="label">STG</property>
+                <style>
+                  <class name="toggle-project-item-staging"/>
+                  <class name="caption-heading"/>
+                </style>
+                <property name="active"
+                  bind-source="EnvironmentListPicker"
+                  bind-property="env-stg"
+                  bind-flags="sync-create|bidirectional"/>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton">
+                <property name="label">UAT</property>
+                <style>
+                  <class name="toggle-project-item-uat"/>
+                  <class name="caption-heading"/>
+                </style>
+                <property name="active"
+                  bind-source="EnvironmentListPicker"
+                  bind-property="env-uat"
+                  bind-flags="sync-create|bidirectional"/>
+              </object>
+            </child>
+            <child>
+              <object class="GtkToggleButton">
+                <property name="label">PRD</property>
+                <style>
+                  <class name="toggle-project-item-prod"/>
+                  <class name="caption-heading"/>
+                </style>
+                <property name="active"
+                  bind-source="EnvironmentListPicker"
+                  bind-property="env-prd"
+                  bind-flags="sync-create|bidirectional"/>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

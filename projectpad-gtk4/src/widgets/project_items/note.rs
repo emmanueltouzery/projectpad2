@@ -101,7 +101,6 @@ mod imp {
         fn constructed(&self) {
             //     self.obj().init_list();
             let _ = self.obj().connect_edit_mode_notify(|note: &super::Note| {
-                println!("edit mode changed");
                 let server_note_id = note.imp().server_note_id.get();
                 if server_note_id != 0 {
                     note.load_and_display_server_note(note.imp().server_note_id.get());

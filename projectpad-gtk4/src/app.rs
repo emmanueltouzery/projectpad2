@@ -1,17 +1,20 @@
 use std::sync::mpsc;
 
+use adw::prelude::*;
 use adw::subclass::prelude::*;
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
 use glib::Properties;
 use gtk::subclass::prelude::DerivedObjectProperties;
+use gtk::CssProvider;
 use gtk::{gdk, gio, glib};
-use gtk::{prelude::*, CssProvider};
 use projectpadsql::models::Project;
 
 use crate::keyring_helpers;
 use crate::sql_thread::SqlFunc;
+use crate::widgets::project_edit::ProjectEdit;
+use crate::widgets::project_items::common;
 use crate::win::ProjectpadApplicationWindow;
 
 mod imp {
@@ -178,12 +181,44 @@ impl ProjectpadApplication {
                 .unwrap();
             let project_changed = cur_project_id != new_project_id;
             action.set_state(parameter.as_ref().unwrap());
-            w.set_active_project_item();
+            w.display_active_project_item();
             if project_changed {
                 s.fetch_projects_and_populate_menu(RunMode::Normal, &channel2);
             }
         });
         window.add_action(&select_project_item_action);
+
+        let new_project_action = gio::SimpleAction::new("add-project", None);
+        window.add_action(&new_project_action);
+        let w = window.clone();
+
+        let vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+
+        let header_bar = adw::HeaderBar::builder()
+            .show_end_title_buttons(false)
+            .show_start_title_buttons(false)
+            .build();
+
+        let cancel_btn = gtk::Button::builder().label("Cancel").build();
+        header_bar.pack_start(&cancel_btn);
+        let save_btn = gtk::Button::builder()
+            .label("Save")
+            .css_classes(["suggested-action"])
+            .build();
+        header_bar.pack_end(&save_btn);
+        vbox.append(&header_bar);
+
+        vbox.append(&ProjectEdit::new());
+
+        new_project_action.connect_activate(move |_action, parameter| {
+            let dialog = adw::Dialog::builder()
+                .title("Add project")
+                .child(&vbox)
+                .build();
+            dialog.present(&common::main_win());
+        });
     }
 
     fn unlock_db(&self) {
@@ -329,7 +364,7 @@ impl ProjectpadApplication {
             // the separator is possibly a section: https://gtk-rs.org/gtk-rs-core/stable/0.16/docs/gio/struct.Menu.html
             popover.set_menu_model(Some(&menu_model));
 
-            win_binding_ref.set_active_project_item();
+            win_binding_ref.display_active_project_item();
         });
     }
 

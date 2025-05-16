@@ -188,6 +188,12 @@ impl ProjectItemList {
                     ],
                 );
             }
+        } else if selected_item.is_none() && project_items.is_empty() {
+            selected_index = None;
+            self.emit_by_name::<()>(
+                "activate-item",
+                &[&(-1i32), &0u8, &(-1i32), &"".to_string()],
+            );
         }
         if let Some(s_model) = self.imp().project_item_list.model() {
             let _sel_model = s_model.downcast::<gtk::SingleSelection>().unwrap();

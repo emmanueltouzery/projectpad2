@@ -11,11 +11,11 @@ use gtk::CssProvider;
 use gtk::{gdk, gio, glib};
 use projectpadsql::models::Project;
 
-use crate::keyring_helpers;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_items::common;
 use crate::win::ProjectpadApplicationWindow;
+use crate::{keyring_helpers, perform_insert_or_update};
 
 mod imp {
     use std::cell::{OnceCell, RefCell};
@@ -231,8 +231,45 @@ impl ProjectpadApplication {
 
         let dlg = dialog.clone();
         save_btn.connect_clicked(move |_btn: &gtk::Button| {
-            dlg.close();
-            dbg!(project_edit.title());
+            let title = project_edit.title();
+            let has_dev = project_edit.env_dev();
+            let has_stg = project_edit.env_stg();
+            let has_uat = project_edit.env_uat();
+            let has_prd = project_edit.env_prd();
+
+            let (sender, receiver) = async_channel::bounded(1);
+            let app = gio::Application::default()
+                .and_downcast::<ProjectpadApplication>()
+                .unwrap();
+            app.get_sql_channel()
+                .send(SqlFunc::new(move |sql_conn| {
+                    use projectpadsql::schema::project::dsl as prj;
+                    let changeset = (
+                        prj::name.eq(title.as_str()),
+                        prj::has_dev.eq(has_dev),
+                        prj::has_stage.eq(has_stg),
+                        prj::has_uat.eq(has_uat),
+                        prj::has_prod.eq(has_prd),
+                        // TODO the icon is actually not-null in SQL...
+                        prj::icon.eq(Some(vec![])),
+                    );
+                    let project_after_result = perform_insert_or_update!(
+                        sql_conn,
+                        None,
+                        prj::project,
+                        prj::id,
+                        changeset,
+                        Project,
+                    );
+                    sender.send_blocking(project_after_result).unwrap();
+                }))
+                .unwrap();
+
+            let dlg = dlg.clone();
+            glib::spawn_future_local(async move {
+                let _insert_res = receiver.recv().await.unwrap();
+                dlg.close();
+            });
         });
 
         dialog.present(&common::main_win());

@@ -110,61 +110,68 @@ impl ProjectItem {
     pub fn refresh_item(&self) {
         let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
         let item_id = self.imp().item_id.get();
-        let sub_item_id = Some(self.imp().sub_item_id.get());
-        let item_type = ProjectItemType::from_repr(self.imp().project_item_type.get());
-        // TODO receive the item type besides the item_id and switch on item type here
-        // also possibly receive the ProjectItem, telling me much more than the id
-        let db_sender = app.unwrap().get_sql_channel();
 
-        // reset the scroll, who knows what we were displaying before
-        self.emit_by_name::<()>("request-scroll", &[&0f32]);
+        if item_id == -1 {
+            // empty project item
+            // TODO display intro text
+            self.imp().project_item.set_child(None::<&gtk::Widget>);
+        } else {
+            let sub_item_id = Some(self.imp().sub_item_id.get());
+            let item_type = ProjectItemType::from_repr(self.imp().project_item_type.get());
+            // TODO receive the item type besides the item_id and switch on item type here
+            // also possibly receive the ProjectItem, telling me much more than the id
+            let db_sender = app.unwrap().get_sql_channel();
 
-        match item_type {
-            Some(ProjectItemType::Server) => {
-                self.imp().clamp.set_maximum_size(750);
-                super::project_items::server::load_and_display_server(
-                    &self.imp().project_item,
-                    db_sender,
-                    item_id,
-                    sub_item_id,
-                    &self,
-                )
+            // reset the scroll, who knows what we were displaying before
+            self.emit_by_name::<()>("request-scroll", &[&0f32]);
+
+            match item_type {
+                Some(ProjectItemType::Server) => {
+                    self.imp().clamp.set_maximum_size(750);
+                    super::project_items::server::load_and_display_server(
+                        &self.imp().project_item,
+                        db_sender,
+                        item_id,
+                        sub_item_id,
+                        &self,
+                    )
+                }
+                Some(ProjectItemType::ProjectNote) => {
+                    self.imp().clamp.set_maximum_size(1100);
+                    let note = note::Note::new();
+                    // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
+                    // it feels even worse (would like not to rebuild the widget every time...)
+                    // move to set_properties with freeze_notify
+                    note.set_project_note_id(&item_id);
+                    note.set_edit_mode(false);
+                    self.imp().project_item.set_child(Some(
+                        // &note::Note::new().set_note_id(&glib::Value::from(item_id)),
+                        &note,
+                    ));
+                    //     db_sender,
+                    //     item_id,
+                    //     widget_mode,
+                    // )
+                }
+                Some(ProjectItemType::ProjectPointOfInterest) => {
+                    self.imp().clamp.set_maximum_size(750);
+                    super::project_items::project_poi::load_and_display_project_poi(
+                        &self.imp().project_item,
+                        db_sender,
+                        item_id,
+                    )
+                }
+                Some(ProjectItemType::ServerLink) => {
+                    self.imp().clamp.set_maximum_size(750);
+                    super::project_items::server_link::load_and_display_server_link(
+                        &self.imp().project_item,
+                        db_sender,
+                        item_id,
+                        self,
+                    )
+                }
+                None => panic!(),
             }
-            Some(ProjectItemType::ProjectNote) => {
-                self.imp().clamp.set_maximum_size(1100);
-                let note = note::Note::new();
-                // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
-                // it feels even worse (would like not to rebuild the widget every time...)
-                // move to set_properties with freeze_notify
-                note.set_project_note_id(&item_id);
-                note.set_edit_mode(false);
-                self.imp().project_item.set_child(Some(
-                    // &note::Note::new().set_note_id(&glib::Value::from(item_id)),
-                    &note,
-                ));
-                //     db_sender,
-                //     item_id,
-                //     widget_mode,
-                // )
-            }
-            Some(ProjectItemType::ProjectPointOfInterest) => {
-                self.imp().clamp.set_maximum_size(750);
-                super::project_items::project_poi::load_and_display_project_poi(
-                    &self.imp().project_item,
-                    db_sender,
-                    item_id,
-                )
-            }
-            Some(ProjectItemType::ServerLink) => {
-                self.imp().clamp.set_maximum_size(750);
-                super::project_items::server_link::load_and_display_server_link(
-                    &self.imp().project_item,
-                    db_sender,
-                    item_id,
-                    self,
-                )
-            }
-            None => panic!(),
         }
     }
 }

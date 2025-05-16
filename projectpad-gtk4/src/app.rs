@@ -13,6 +13,7 @@ use projectpadsql::models::Project;
 
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_edit::ProjectEdit;
+use crate::widgets::project_item_list::ProjectItemList;
 use crate::widgets::project_items::common;
 use crate::win::ProjectpadApplicationWindow;
 use crate::{keyring_helpers, perform_insert_or_update};
@@ -267,8 +268,11 @@ impl ProjectpadApplication {
 
             let dlg = dlg.clone();
             glib::spawn_future_local(async move {
-                let _insert_res = receiver.recv().await.unwrap();
-                dlg.close();
+                let insert_res = receiver.recv().await.unwrap();
+                if let Ok(prj) = insert_res {
+                    dlg.close();
+                    ProjectItemList::display_project(prj.id);
+                } // TODO what if it's not ok?
             });
         });
 

@@ -9,14 +9,14 @@ use glib::Properties;
 use gtk::subclass::prelude::DerivedObjectProperties;
 use gtk::CssProvider;
 use gtk::{gdk, gio, glib};
-use projectpadsql::models::Project;
+use projectpadsql::models::{Project, Server, ServerDatabase, ServerLink, ServerWebsite};
 
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_item_list::ProjectItemList;
 use crate::widgets::project_items::common;
 use crate::win::ProjectpadApplicationWindow;
-use crate::{keyring_helpers, perform_insert_or_update};
+use crate::{keyring_helpers, perform_insert_or_update, sql_util};
 
 mod imp {
     use std::cell::{OnceCell, RefCell};
@@ -195,6 +195,139 @@ impl ProjectpadApplication {
         let s = self.clone();
         new_project_action.connect_activate(move |_action, _parameter| {
             s.open_add_project();
+        });
+
+        // change type to VariantDict and put id+name in there so i don't have to query for the
+        // name
+        let delete_project_action = gio::SimpleAction::new(
+            "delete-project",
+            Some(&glib::VariantDict::static_variant_type()),
+        );
+        window.add_action(&delete_project_action);
+
+        let s = self.clone();
+        delete_project_action.connect_activate(move |_action, parameter| {
+            let variant_dict = glib::VariantDict::new(parameter);
+
+            let project_id = variant_dict.lookup::<i32>("project_id").unwrap().unwrap();
+            let project_name = variant_dict.lookup::<String>("project_name").unwrap().unwrap();
+            common::confirm_delete(
+                &format!("Delete project {project_name}"),
+                &format!("Are you sure you want to delete the project {project_name}? This action cannot be undone, and all project items will also be deleted."),
+                Box::new(move || {
+                    Self::do_delete_project(project_id);
+                }),
+            );
+        });
+    }
+
+    fn do_delete_project(prj_id: i32) {
+        let (sender, receiver) = async_channel::bounded(1);
+        let app = gio::Application::default()
+            .and_downcast::<ProjectpadApplication>()
+            .unwrap();
+        app.get_sql_channel()
+            .send(SqlFunc::new(move |sql_conn| {
+                // TODO cannot delete the last project
+                use projectpadsql::schema::project::dsl as prj;
+                use projectpadsql::schema::server::dsl as srv;
+                use projectpadsql::schema::server_database::dsl as db;
+                use projectpadsql::schema::server_link::dsl as srv_link;
+                use projectpadsql::schema::server_website::dsl as srvw;
+
+                let prjs_count = prj::project.count().get_result::<i64>(sql_conn).unwrap();
+
+                // we cannot delete a project if a server under it is
+                // linked to from another project
+                let dependent_serverlinks = srv_link::server_link
+                    .inner_join(srv::server)
+                    .filter(
+                        srv::project_id
+                            .eq(prj_id)
+                            .and(srv_link::project_id.ne(prj_id)),
+                    )
+                    .load::<(ServerLink, Server)>(sql_conn)
+                    .unwrap();
+
+                let contained_dbs: Vec<_> = db::server_database
+                    .inner_join(srv::server)
+                    .filter(srv::project_id.eq(prj_id))
+                    .load::<(ServerDatabase, Server)>(sql_conn)
+                    .unwrap()
+                    .into_iter()
+                    .map(|x| x.0)
+                    .collect();
+
+                let dependent_websites: Vec<_> = srvw::server_website
+                    .inner_join(srv::server)
+                    .filter(
+                        srv::project_id.ne(prj_id).and(
+                            srvw::server_database_id
+                                .eq_any(contained_dbs.iter().map(|d| d.id).collect::<Vec<_>>()),
+                        ),
+                    )
+                    .load::<(ServerWebsite, Server)>(sql_conn)
+                    .unwrap()
+                    .into_iter()
+                    .map(|x| x.0)
+                    .collect();
+                if !dependent_serverlinks.is_empty() {
+                    sender.send_blocking(Err((
+                        "Cannot delete project",
+                        Some(format!(
+                            "servers {} on that server are linked to by servers {}",
+                            itertools::join(
+                                dependent_serverlinks.iter().map(|(_, s)| &s.desc),
+                                ", "
+                            ),
+                            itertools::join(
+                                dependent_serverlinks.iter().map(|(l, _)| &l.desc),
+                                ", "
+                            )
+                        )),
+                    )))
+                } else if !dependent_websites.is_empty() {
+                    sender.send_blocking(Err((
+                        "Cannot delete project",
+                        Some(format!(
+                            "databases {} on that server are linked to by websites {}",
+                            itertools::join(
+                                dependent_websites.iter().map(|w| &contained_dbs
+                                    .iter()
+                                    .find(|d| Some(d.id) == w.server_database_id)
+                                    .unwrap()
+                                    .desc),
+                                ", "
+                            ),
+                            itertools::join(dependent_websites.iter().map(|w| &w.desc), ", ")
+                        )),
+                    )))
+                } else if prjs_count == 1 {
+                    sender.send_blocking(Err((
+                        "Cannot delete project",
+                        Some("Cannot delete the last project".to_owned()),
+                    )))
+                } else {
+                    sender.send_blocking(
+                        sql_util::delete_row(sql_conn, prj::project, prj_id).map(|_| prj_id),
+                    )
+                }
+                .unwrap();
+            }))
+            .unwrap();
+
+        glib::spawn_future_local(async move {
+            let insert_res = receiver.recv().await.unwrap();
+            match insert_res {
+                Ok(_p_id) => {
+                    let app = gio::Application::default()
+                        .and_downcast::<ProjectpadApplication>()
+                        .unwrap();
+                    // FirstRun will make sure another project gets selected
+                    app.fetch_projects_and_populate_menu(RunMode::FirstRun, &app.get_sql_channel());
+                }
+                Err((msg, e)) => common::simple_error_dlg(msg, e.as_deref()),
+            }
         });
     }
 
@@ -393,7 +526,13 @@ impl ProjectpadApplication {
             }
 
             let cur_project_maybe = if let Some(project_id) = project_id_maybe {
-                Some(prjs.iter().find(|p| p.id == project_id).unwrap())
+                let cur_prj = prjs.iter().find(|p| p.id == project_id);
+                if cur_prj.is_none() {
+                    // happens when we delete the current project
+                    prjs.first()
+                } else {
+                    cur_prj
+                }
             } else {
                 prjs.first()
             };
@@ -408,11 +547,14 @@ impl ProjectpadApplication {
                         Some(&cur_project.id.to_variant()),
                     )),
                 );
+                let delete_project_variant = glib::VariantDict::new(None);
+                delete_project_variant.insert("project_id", cur_project.id);
+                delete_project_variant.insert("project_name", cur_project.name.to_owned());
                 project_actions_menu_model.append(
                     Some(&format!("Delete project: {}", cur_project.name)),
                     Some(&gio::Action::print_detailed_name(
                         "win.delete-project",
-                        Some(&cur_project.id.to_variant()),
+                        Some(&delete_project_variant.end()),
                     )),
                 );
 

@@ -153,8 +153,6 @@ impl ProjectpadApplication {
         window.add_action(&select_project_action);
         let w = window.clone();
         select_project_action.connect_activate(move |_action, parameter| {
-            dbg!(&parameter);
-            dbg!(&parameter.as_ref().unwrap().get::<i64>());
             // println!("{} / {:#?}", action, parameter);
             let select_project_variant = glib::VariantDict::new(None);
             select_project_variant.insert("project_id", parameter.unwrap().get::<i32>().unwrap());
@@ -194,7 +192,7 @@ impl ProjectpadApplication {
 
         let s = self.clone();
         new_project_action.connect_activate(move |_action, _parameter| {
-            s.open_add_project();
+            s.open_add_edit_project(None);
         });
 
         // change type to VariantDict and put id+name in there so i don't have to query for the
@@ -205,7 +203,6 @@ impl ProjectpadApplication {
         );
         window.add_action(&delete_project_action);
 
-        let s = self.clone();
         delete_project_action.connect_activate(move |_action, parameter| {
             let variant_dict = glib::VariantDict::new(parameter);
 
@@ -219,6 +216,27 @@ impl ProjectpadApplication {
                 }),
             );
         });
+
+        let edit_project_action =
+            gio::SimpleAction::new("edit-project", Some(glib::VariantTy::INT32));
+        let s = self.clone();
+        edit_project_action.connect_activate(move |_action, parameter| {
+            let project_id = parameter.as_ref().unwrap().get::<i32>().unwrap();
+            let s = s.clone();
+
+            let receiver = common::run_sqlfunc(Box::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                prj::project
+                    .filter(prj::id.eq(project_id))
+                    .first::<Project>(sql_conn)
+                    .unwrap()
+            }));
+            glib::spawn_future_local(async move {
+                let prj = receiver.recv().await.unwrap();
+                s.open_add_edit_project(Some(prj));
+            });
+        });
+        window.add_action(&edit_project_action);
     }
 
     fn do_delete_project(prj_id: i32) {
@@ -228,7 +246,6 @@ impl ProjectpadApplication {
             .unwrap();
         app.get_sql_channel()
             .send(SqlFunc::new(move |sql_conn| {
-                // TODO cannot delete the last project
                 use projectpadsql::schema::project::dsl as prj;
                 use projectpadsql::schema::server::dsl as srv;
                 use projectpadsql::schema::server_database::dsl as db;
@@ -331,7 +348,7 @@ impl ProjectpadApplication {
         });
     }
 
-    fn open_add_project(&self) {
+    fn open_add_edit_project(&self, project: Option<Project>) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
@@ -350,7 +367,16 @@ impl ProjectpadApplication {
         header_bar.pack_end(&save_btn);
         vbox.append(&header_bar);
 
+        let p_id = project.as_ref().map(|p| p.id);
+
         let project_edit = ProjectEdit::new();
+        if let Some(prj) = project {
+            project_edit.set_title(prj.name);
+            project_edit.set_env_dev(prj.has_dev);
+            project_edit.set_env_stg(prj.has_stage);
+            project_edit.set_env_uat(prj.has_uat);
+            project_edit.set_env_prd(prj.has_prod);
+        }
         vbox.append(&project_edit);
 
         let dialog = adw::Dialog::builder()
@@ -389,7 +415,7 @@ impl ProjectpadApplication {
                     );
                     let project_after_result = perform_insert_or_update!(
                         sql_conn,
-                        None,
+                        p_id,
                         prj::project,
                         prj::id,
                         changeset,
@@ -404,6 +430,7 @@ impl ProjectpadApplication {
                 let insert_res = receiver.recv().await.unwrap();
                 if let Ok(prj) = insert_res {
                     dlg.close();
+                    app.fetch_projects_and_populate_menu(RunMode::Normal, &app.get_sql_channel());
                     ProjectItemList::display_project(prj.id);
                 } // TODO what if it's not ok?
             });

@@ -581,7 +581,9 @@ impl Note {
 
             menu_model.append(Some("Select all"), Some("context-menu-actions.select-all"));
 
-            if let Some((text_iter, _)) = tv.iter_at_position(x as i32, y as i32) {
+            let coords =
+                tv.window_to_buffer_coords(gtk::TextWindowType::Widget, x as i32, y as i32);
+            if let Some((text_iter, _)) = tv.iter_at_position(coords.0, coords.1) {
                 if Self::iter_matches_tags(&text_iter, &[notes::TAG_CODE]) {
                     menu_model.append(
                         Some("Copy code block"),

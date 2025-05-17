@@ -468,10 +468,6 @@ impl Note {
         note: NoteInfo,
         widget_mode: WidgetMode,
     ) -> (gtk::Box, gtk::Box, Option<ItemHeaderEdit>) {
-        let vbox = gtk::Box::builder()
-            .orientation(gtk::Orientation::Vertical)
-            .build();
-
         let (note_view, scrolled_window) =
             self.get_note_contents_widget(&note.contents, widget_mode);
 
@@ -528,6 +524,84 @@ impl Note {
         text_edit.buffer().text(&start_iter, &end_iter, false)
     }
 
+    // could have went for set_extra_menu(), but then i don't get the click
+    // position, it gets messy. The popover dismisses the standard right-click
+    // menu, but in read-only mode it only contains "copy" and "select all".
+    fn setup_context_menu(text_view: &gtk::TextView) {
+        let gesture = gtk::GestureClick::new();
+        // Right-click
+        gesture.set_button(3);
+        // get notified before the default right-click menu
+        gesture.set_propagation_phase(gtk::PropagationPhase::Capture);
+
+        let action_group = gio::SimpleActionGroup::new();
+        let tv1 = text_view.clone();
+        let tv2 = text_view.clone();
+        let tv3 = text_view.clone();
+        action_group.add_action_entries([
+            gio::ActionEntry::builder("select-all")
+                .activate(move |_, _action, _parameter| {
+                    tv1.buffer()
+                        .select_range(&tv1.buffer().start_iter(), &tv1.buffer().end_iter());
+                })
+                .build(),
+            gio::ActionEntry::builder("copy")
+                .activate(move |_, _action, _parameter| {
+                    if let Some((start_iter, end_iter)) = tv2.buffer().selection_bounds() {
+                        copy_to_clipboard(&start_iter.slice(&end_iter));
+                    }
+                })
+                .build(),
+            gio::ActionEntry::builder("copy-code-block")
+                .parameter_type(Some(&i32::static_variant_type()))
+                .activate(move |_, _action, parameter| {
+                    let offset = parameter.as_ref().unwrap().get::<i32>().unwrap();
+
+                    let tag_code = tv3.buffer().tag_table().lookup(notes::TAG_CODE).unwrap();
+                    let mut start = tv3.buffer().iter_at_offset(offset);
+                    start.backward_to_tag_toggle(Some(&tag_code));
+                    let mut end = tv3.buffer().iter_at_offset(offset);
+                    end.forward_to_tag_toggle(Some(&tag_code));
+                    copy_to_clipboard(&start.slice(&end));
+                })
+                .build(),
+        ]);
+        text_view.insert_action_group("context-menu-actions", Some(&action_group));
+
+        let tv = text_view.clone();
+        gesture.connect_pressed(move |gesture, _, x, y| {
+            // prevent the normal right-click menu from triggering
+            gesture.set_state(gtk::EventSequenceState::Claimed);
+
+            let menu_model = gio::Menu::new();
+
+            if tv.buffer().selection_bounds().is_some() {
+                menu_model.append(Some("Copy"), Some("context-menu-actions.copy"));
+            }
+
+            menu_model.append(Some("Select all"), Some("context-menu-actions.select-all"));
+
+            if let Some((text_iter, _)) = tv.iter_at_position(x as i32, y as i32) {
+                if Self::iter_matches_tags(&text_iter, &[notes::TAG_CODE]) {
+                    menu_model.append(
+                        Some("Copy code block"),
+                        Some(&gio::Action::print_detailed_name(
+                            "context-menu-actions.copy-code-block",
+                            Some(&text_iter.offset().to_variant()),
+                        )),
+                    );
+                }
+            }
+            let menu = gtk::PopoverMenu::from_model(Some(&menu_model));
+            menu.set_pointing_to(Some(&gesture.bounding_box().unwrap()));
+            menu.set_parent(&tv);
+
+            menu.popup();
+        });
+
+        text_view.add_controller(gesture);
+    }
+
     pub fn get_note_contents_widget(
         &self,
         contents: &str,
@@ -563,6 +637,8 @@ impl Note {
                     .build();
                 text_view.add_child_at_anchor(&sep, anchor);
             }
+
+            Self::setup_context_menu(&text_view);
 
             text_view.upcast::<gtk::Widget>()
         } else {

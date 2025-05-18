@@ -130,7 +130,6 @@ impl ItemHeaderEdit {
                     let env = EnvironmentType::from_repr(
                         ep.property::<i32>("environment").try_into().unwrap(),
                     );
-                    dbg!(env);
                     match env {
                         Some(EnvironmentType::EnvDevelopment) => {
                             t.set_property("env_dev", true);
@@ -189,7 +188,19 @@ impl ItemHeaderEdit {
                 });
                 Some(ep.upcast::<gtk::Widget>())
             }
-            EnvOrEnvs::Envs(_) => {
+            EnvOrEnvs::Envs(envs) => {
+                if envs.contains(&EnvironmentType::EnvDevelopment) {
+                    this.set_property("env_dev", true);
+                }
+                if envs.contains(&EnvironmentType::EnvStage) {
+                    this.set_property("env_stg", true);
+                }
+                if envs.contains(&EnvironmentType::EnvUat) {
+                    this.set_property("env_uat", true);
+                }
+                if envs.contains(&EnvironmentType::EnvProd) {
+                    this.set_property("env_prd", true);
+                }
                 let elp = EnvironmentListPicker::new();
                 this.bind_property("env_dev", &elp, "env_dev")
                     .bidirectional()

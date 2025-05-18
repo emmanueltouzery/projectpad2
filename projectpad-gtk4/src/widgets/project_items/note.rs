@@ -4,7 +4,7 @@ use crate::{
     widgets::{
         project_item_list::ProjectItemList,
         project_item_model::ProjectItemType,
-        project_items::common::{confirm_delete, run_sqlfunc_and_then},
+        project_items::common::{self, confirm_delete, run_sqlfunc_and_then},
     },
 };
 use diesel::prelude::*;
@@ -16,7 +16,7 @@ use glib::*;
 use gtk::{gdk, subclass::prelude::*};
 use projectpadsql::{
     get_project_group_names,
-    models::{EnvironmentType, ProjectNote, ServerNote},
+    models::{EnvironmentType, Project, ProjectNote, ServerNote},
 };
 
 use crate::{
@@ -462,19 +462,22 @@ impl Note {
                         let (dialog, save_btn) = display_item_edit_dialog(&v, "Edit Note", vbox, 6000, 6000, DialogClamp::No);
                         let ttv = tv.clone();
                         let project_note_id = note.id;
-                        let s = _s.clone();
                         let h_e = project_item_header_edit.clone();
                         save_btn.connect_clicked(move |_| {
                             match (&*ttv.borrow(), &h_e) {
                                 ( Some(v), Some(header_edit) ) => {
                                     let receiver = Self::save_project_note(v, header_edit, Some(project_note_id));
                                     let d = dialog.clone();
-                                    let s1 = s.clone();
                                     glib::spawn_future_local(async move {
                                         let project_note_after_result = receiver.recv().await.unwrap();
-                                        d.close();
-                                        // s1.clone().load_and_display_project_note(project_note_id);
-                                        ProjectItemList::display_project_item(None, project_note_id, ProjectItemType::ProjectNote);
+
+                                        match project_note_after_result {
+                                            Ok(_note) => {
+                                                d.close();
+                                                ProjectItemList::display_project_item(None, project_note_id, ProjectItemType::ProjectNote);
+                                            }
+                                            Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
+                                        }
                                     });
                                 },
                                 _ => panic!()
@@ -511,6 +514,7 @@ impl Note {
         let has_stg = header_edit.property::<bool>("env_stg");
         let has_uat = header_edit.property::<bool>("env_uat");
         let has_prd = header_edit.property::<bool>("env_prd");
+
         let win = app.imp().window.get().unwrap().upgrade().unwrap();
         let project_id = glib::VariantDict::new(win.action_state("select-project-item").as_ref())
             .lookup::<i32>("project_id")
@@ -519,26 +523,47 @@ impl Note {
         db_sender
             .send(SqlFunc::new(move |sql_conn| {
                 use projectpadsql::schema::project_note::dsl as prj_note;
-                let changeset = (
-                    prj_note::title.eq(title.as_str()),
-                    // // never store Some("") for group, we want None then.
-                    prj_note::group_name.eq(Some(&group_name).filter(|s| !s.is_empty())),
-                    prj_note::contents.eq(new_contents.as_str()),
-                    prj_note::has_dev.eq(has_dev),
-                    prj_note::has_stage.eq(has_stg),
-                    prj_note::has_uat.eq(has_uat),
-                    prj_note::has_prod.eq(has_prd),
-                    prj_note::project_id.eq(project_id),
-                );
-                let project_note_after_result = perform_insert_or_update!(
-                    sql_conn,
-                    project_note_id,
-                    prj_note::project_note,
-                    prj_note::id,
-                    changeset,
-                    ProjectNote,
-                );
-                sender.send_blocking(project_note_after_result).unwrap();
+                use projectpadsql::schema::project::dsl as prj;
+
+                let project = prj::project
+                    .filter(prj::id.eq(project_id))
+                    .first::<Project>(sql_conn)
+                    .unwrap();
+
+                let has_envs =
+                    (project.has_dev && has_dev)
+                    || (project.has_stage && has_stg)
+                    || (project.has_uat && has_uat)
+                    || (project.has_prod && has_prd);
+                if !has_envs {
+                    sender.send_blocking(Err(
+                        (
+                            "Error adding project note".to_owned(),
+                            Some("You must select at least one environment which is active on the parent project".to_owned())
+                        ))
+                    ).unwrap();
+                } else {
+                    let changeset = (
+                        prj_note::title.eq(title.as_str()),
+                        // // never store Some("") for group, we want None then.
+                        prj_note::group_name.eq(Some(&group_name).filter(|s| !s.is_empty())),
+                        prj_note::contents.eq(new_contents.as_str()),
+                        prj_note::has_dev.eq(has_dev),
+                        prj_note::has_stage.eq(has_stg),
+                        prj_note::has_uat.eq(has_uat),
+                        prj_note::has_prod.eq(has_prd),
+                        prj_note::project_id.eq(project_id),
+                    );
+                    let project_note_after_result = perform_insert_or_update!(
+                        sql_conn,
+                        project_note_id,
+                        prj_note::project_note,
+                        prj_note::id,
+                        changeset,
+                        ProjectNote,
+                    );
+                    sender.send_blocking(project_note_after_result).unwrap();
+                }
             }))
             .unwrap();
         receiver

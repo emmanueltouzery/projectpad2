@@ -33,6 +33,7 @@ use crate::{
 use super::{
     common::EnvOrEnvs,
     item_header_edit::ItemHeaderEdit,
+    note_actions,
     project_poi::{project_item_header, DisplayHeaderMode},
 };
 
@@ -158,19 +159,99 @@ impl Note {
         note
     }
 
-    pub fn get_note_toolbar() -> gtk::Box {
+    pub fn get_note_toolbar(&self) -> gtk::Box {
         let toolbar = gtk::Box::builder().css_classes(["toolbar"]).build();
 
-        toolbar.append(&gtk::Button::builder().icon_name("heading").build());
-        toolbar.append(&gtk::Button::builder().icon_name("list-ul").build());
-        toolbar.append(&gtk::Button::builder().icon_name("list-ol").build());
-        toolbar.append(&gtk::Button::builder().icon_name("bold").build());
-        toolbar.append(&gtk::Button::builder().icon_name("italic").build());
-        toolbar.append(&gtk::Button::builder().icon_name("strikethrough").build());
-        toolbar.append(&gtk::Button::builder().icon_name("link").build());
-        toolbar.append(&gtk::Button::builder().icon_name("lock").build());
-        toolbar.append(&gtk::Button::builder().icon_name("code").build());
-        toolbar.append(&gtk::Button::builder().icon_name("quote").build());
+        let h_btn = gtk::Button::builder().icon_name("heading").build();
+        let s = self.clone();
+        h_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_line_start(&tv.buffer(), &[" # ", " ## ", " ### ", " - "]);
+            }
+        });
+        toolbar.append(&h_btn);
+
+        let ul_btn = gtk::Button::builder().icon_name("list-ul").build();
+        let s = self.clone();
+        ul_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_line_start(&tv.buffer(), &[" * "]);
+            }
+        });
+        toolbar.append(&ul_btn);
+
+        let ol_btn = gtk::Button::builder().icon_name("list-ol").build();
+        let s = self.clone();
+        ol_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_line_start(&tv.buffer(), &["1. "]);
+            }
+        });
+        toolbar.append(&ol_btn);
+
+        let bold_btn = gtk::Button::builder().icon_name("bold").build();
+        let s = self.clone();
+        bold_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_snippet(&tv.buffer(), "**", "**");
+            }
+        });
+        toolbar.append(&bold_btn);
+
+        let i_btn = gtk::Button::builder().icon_name("italic").build();
+        let s = self.clone();
+        i_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_snippet(&tv.buffer(), "*", "*");
+            }
+        });
+        toolbar.append(&i_btn);
+
+        let s_btn = gtk::Button::builder().icon_name("strikethrough").build();
+        let s = self.clone();
+        s_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_snippet(&tv.buffer(), "~~", "~~");
+            }
+        });
+        toolbar.append(&s_btn);
+
+        let link_btn = gtk::Button::builder().icon_name("link").build();
+        let s = self.clone();
+        link_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_snippet(&tv.buffer(), "[", "](url)");
+            }
+        });
+        toolbar.append(&link_btn);
+
+        let lock_btn = gtk::Button::builder().icon_name("lock").build();
+        let s = self.clone();
+        lock_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_password(&tv.buffer());
+            }
+        });
+        toolbar.append(&lock_btn);
+
+        let code_btn = gtk::Button::builder().icon_name("code").build();
+        let s = self.clone();
+        code_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_preformat(&tv.buffer());
+            }
+        });
+        toolbar.append(&code_btn);
+
+        let quote_btn = gtk::Button::builder().icon_name("quote").build();
+        let s = self.clone();
+        quote_btn.connect_clicked(move |_| {
+            if let Some(tv) = s.imp().text_edit.borrow().as_ref() {
+                note_actions::toggle_blockquote(&tv.buffer());
+            }
+        });
+        toolbar.append(&quote_btn);
+
         return toolbar;
     }
 
@@ -765,7 +846,7 @@ impl Note {
             let vbox = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .build();
-            vbox.append(&Self::get_note_toolbar());
+            vbox.append(&self.get_note_toolbar());
             vbox.append(&toast_parent);
             vbox.upcast::<gtk::Widget>()
         };

@@ -342,10 +342,7 @@ fn display_server(
                     glib::spawn_future_local(async move {
                         let server_after_result = receiver.recv().await.unwrap();
                         if let Err((title, msg)) = server_after_result {
-                            let dialog = adw::AlertDialog::new(Some(&title), msg.as_deref());
-                            dialog.add_responses(&[("close", "_Close")]);
-                            dialog.set_default_response(Some("close"));
-                            dialog.present(&common::main_win());
+                            common::simple_error_dlg(&title, msg.as_deref());
                         } else {
                             let window = app.imp().window.get().unwrap();
                             let win_binding = window.upgrade();

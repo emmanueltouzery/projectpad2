@@ -403,6 +403,16 @@ impl ProjectpadApplication {
                 .unwrap();
             app.get_sql_channel()
                 .send(SqlFunc::new(move |sql_conn| {
+                    if !(has_dev || has_stg || has_uat || has_prd) {
+                        sender
+                            .send_blocking(Err((
+                                "Error saving project".to_owned(),
+                                Some("Must pick at least one environment".to_owned()),
+                            )))
+                            .unwrap();
+                        return;
+                    }
+
                     use projectpadsql::schema::project::dsl as prj;
                     let changeset = (
                         prj::name.eq(title.as_str()),
@@ -428,11 +438,17 @@ impl ProjectpadApplication {
             let dlg = dlg.clone();
             glib::spawn_future_local(async move {
                 let insert_res = receiver.recv().await.unwrap();
-                if let Ok(prj) = insert_res {
-                    dlg.close();
-                    app.fetch_projects_and_populate_menu(RunMode::Normal, &app.get_sql_channel());
-                    ProjectItemList::display_project(prj.id);
-                } // TODO what if it's not ok?
+                match insert_res {
+                    Ok(prj) => {
+                        dlg.close();
+                        app.fetch_projects_and_populate_menu(
+                            RunMode::Normal,
+                            &app.get_sql_channel(),
+                        );
+                        ProjectItemList::display_project(prj.id);
+                    }
+                    Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
+                }
             });
         });
 

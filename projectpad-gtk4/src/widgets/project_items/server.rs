@@ -20,7 +20,7 @@ use itertools::Itertools;
 use projectpadsql::{
     get_project_group_names, get_server_group_names,
     models::{
-        EnvironmentType, InterestType, RunOn, Server, ServerAccessType, ServerDatabase,
+        EnvironmentType, InterestType, Project, RunOn, Server, ServerAccessType, ServerDatabase,
         ServerExtraUserAccount, ServerLink, ServerNote, ServerPointOfInterest, ServerType,
         ServerWebsite,
     },
@@ -335,15 +335,16 @@ fn display_server(
                             dialog.add_responses(&[("close", "_Close")]);
                             dialog.set_default_response(Some("close"));
                             dialog.present(&common::main_win());
+                        } else {
+                            let window = app.imp().window.get().unwrap();
+                            let win_binding = window.upgrade();
+                            let win_binding_ref = win_binding.as_ref().unwrap();
+                            // let pi = &win_binding_ref.imp().project_item;
+                            // let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
+                            ProjectItemList::display_project_item(None, s.id, ProjectItemType::Server);
+                            // load_and_display_server(pi_bin, db_sender, s.id, None, pi);
+                            dlg.close();
                         }
-                        let window = app.imp().window.get().unwrap();
-                        let win_binding = window.upgrade();
-                        let win_binding_ref = win_binding.as_ref().unwrap();
-                        // let pi = &win_binding_ref.imp().project_item;
-                        // let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                        ProjectItemList::display_project_item(None, s.id, ProjectItemType::Server);
-                        // load_and_display_server(pi_bin, db_sender, s.id, None, pi);
-                        dlg.close();
                     });
                 });
             }),
@@ -1973,6 +1974,28 @@ pub fn save_server(
     let old_auth_key_owned = old_auth_key.map(|k| k.to_vec());
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::project::dsl as prj;
+
+            let project = prj::project
+                .filter(prj::id.eq(project_id))
+                .first::<Project>(sql_conn)
+                .unwrap();
+            let env_ok = match new_env_type {
+                EnvironmentType::EnvDevelopment => project.has_dev,
+                EnvironmentType::EnvStage => project.has_stage,
+                EnvironmentType::EnvUat => project.has_uat,
+                EnvironmentType::EnvProd => project.has_prod,
+            };
+            if !env_ok {
+                sender
+                    .send_blocking(Err((
+                        "Error saving server".to_owned(),
+                        Some("The project doesn't allow that environment type".to_owned()),
+                    )))
+                    .unwrap();
+                return;
+            }
+
             let (sql_auth_key_filename, sql_auth_key_contents) = save_auth_key_get_new_vals(
                 &new_auth_key_filename,
                 &old_auth_key_filename_owned_str,

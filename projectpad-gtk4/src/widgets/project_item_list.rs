@@ -733,10 +733,10 @@ impl ProjectItemList {
             let d = d.clone();
             glib::spawn_future_local(async move {
                 let server_after_result = receiver.recv().await.unwrap();
-                d.close();
 
                 match server_after_result {
                     Ok(server) => {
+                        d.close();
                         Self::display_project_item(None, server.id, ProjectItemType::Server);
                     }
                     Err((title, msg)) => {

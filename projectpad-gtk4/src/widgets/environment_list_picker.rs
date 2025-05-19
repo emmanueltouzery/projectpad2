@@ -1,5 +1,6 @@
 use adw::prelude::*;
 use gtk::subclass::prelude::*;
+use projectpadsql::models::EnvironmentType;
 
 mod imp {
     use std::{cell::RefCell, rc::Rc};
@@ -29,6 +30,15 @@ mod imp {
         env_uat: Rc<RefCell<bool>>,
         #[property(get, set)]
         env_prd: Rc<RefCell<bool>>,
+
+        #[template_child]
+        pub dev_btn: TemplateChild<gtk::ToggleButton>,
+        #[template_child]
+        pub stg_btn: TemplateChild<gtk::ToggleButton>,
+        #[template_child]
+        pub uat_btn: TemplateChild<gtk::ToggleButton>,
+        #[template_child]
+        pub prd_btn: TemplateChild<gtk::ToggleButton>,
     }
 
     #[glib::object_subclass]
@@ -60,8 +70,20 @@ glib::wrapper! {
 }
 
 impl EnvironmentListPicker {
-    pub fn new() -> Self {
+    pub fn new(allowed_envs: &[EnvironmentType]) -> Self {
         let this = glib::Object::new::<Self>();
+        if !allowed_envs.contains(&EnvironmentType::EnvDevelopment) {
+            this.imp().dev_btn.set_sensitive(false);
+        }
+        if !allowed_envs.contains(&EnvironmentType::EnvStage) {
+            this.imp().stg_btn.set_sensitive(false);
+        }
+        if !allowed_envs.contains(&EnvironmentType::EnvUat) {
+            this.imp().uat_btn.set_sensitive(false);
+        }
+        if !allowed_envs.contains(&EnvironmentType::EnvProd) {
+            this.imp().prd_btn.set_sensitive(false);
+        }
         this
     }
 }

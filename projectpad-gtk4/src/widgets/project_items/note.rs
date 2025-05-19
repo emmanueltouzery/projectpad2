@@ -46,6 +46,7 @@ pub struct NoteInfo<'a> {
     pub display_header: bool,
     pub group_name: Option<&'a str>,
     pub all_group_names: &'a [String],
+    pub allowed_envs: &'a [EnvironmentType],
 }
 
 #[derive(Debug)]
@@ -105,7 +106,7 @@ mod imp {
                 let server_note_id = note.imp().server_note_id.get();
                 if server_note_id != 0 {
                     note.load_and_display_server_note(note.imp().server_note_id.get());
-                } else if dbg!(note.imp().project_note_id.get()) != 0 {
+                } else if note.imp().project_note_id.get() != 0 {
                     note.load_and_display_project_note(note.imp().project_note_id.get());
                 } else {
                     // note that both IDs will be 0 when creating a new note
@@ -117,6 +118,7 @@ mod imp {
                         display_header: false,
                         group_name: None,
                         all_group_names: &[],
+                        allowed_envs: &[],
                     });
                 }
             });
@@ -260,6 +262,7 @@ impl Note {
         let (sender, receiver) = async_channel::bounded(1);
         db_sender
             .send(SqlFunc::new(move |sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
                 use projectpadsql::schema::project_note::dsl as prj_note;
                 let note = prj_note::project_note
                     .filter(prj_note::id.eq(note_id))
@@ -268,25 +271,33 @@ impl Note {
 
                 let project_group_names = get_project_group_names(sql_conn, note.project_id);
 
-                sender.send_blocking((note, project_group_names)).unwrap();
+                let project = prj::project
+                    .filter(prj::id.eq(note.project_id))
+                    .first::<Project>(sql_conn)
+                    .unwrap();
+
+                sender
+                    .send_blocking((note, project, project_group_names))
+                    .unwrap();
             }))
             .unwrap();
         let p = self.clone();
         glib::spawn_future_local(async move {
-            let (channel_data, project_group_names) = receiver.recv().await.unwrap();
+            let (project_note, project, project_group_names) = receiver.recv().await.unwrap();
             let delete_btn = p.display_note_contents(NoteInfo {
-                id: channel_data.id,
-                title: &channel_data.title,
-                env: EnvOrEnvs::Envs(Self::get_envs(&channel_data)),
-                contents: &channel_data.contents,
+                id: project_note.id,
+                title: &project_note.title,
+                env: EnvOrEnvs::Envs(Self::get_envs(&project_note)),
+                contents: &project_note.contents,
                 display_header: true,
-                group_name: channel_data.group_name.as_deref(),
+                group_name: project_note.group_name.as_deref(),
                 all_group_names: &project_group_names,
+                allowed_envs: &project.allowed_envs(),
             });
 
-            let note_name = channel_data.title;
-            let note_id = channel_data.id;
-            let project_id = channel_data.project_id;
+            let note_name = project_note.title;
+            let note_id = project_note.id;
+            let project_id = project_note.project_id;
             delete_btn.unwrap().connect_closure(
                 "clicked",
                 false,
@@ -350,6 +361,7 @@ impl Note {
                 display_header: false,
                 group_name: None,
                 all_group_names: &[],
+                allowed_envs: &[], // server note
             });
         });
     }
@@ -433,6 +445,7 @@ impl Note {
             let c = note.contents.to_owned();
             let g = note.group_name.map(|g| g.to_owned());
             let a = note.all_group_names.to_vec();
+            let ae = note.allowed_envs.to_owned();
             let tv_var = self.imp().text_edit.clone();
             let s = self.clone();
 
@@ -444,6 +457,7 @@ impl Note {
                                          @strong c as _c,
                                          @strong g as _g,
                                          @strong a as _a,
+                                         @strong ae as _ae,
                                          @strong tv_var as tv,
                                          @strong vbox as v => move |_b: gtk::Button| {
                         let n = NoteInfo {
@@ -453,7 +467,8 @@ impl Note {
                             contents: &_c,
                             display_header: note.display_header,
                             group_name: _g.as_deref(),
-                            all_group_names: &_a
+                            all_group_names: &_a,
+                            allowed_envs: &_ae
                         };
                         let (_, vbox, project_item_header_edit) = s.note_contents(n.clone(),  WidgetMode::Edit);
                         vbox.set_margin_start(30);
@@ -613,6 +628,7 @@ impl Note {
                 DisplayHeaderMode::No
             },
             None,
+            note.allowed_envs,
         );
 
         vbox.append(&note_view);

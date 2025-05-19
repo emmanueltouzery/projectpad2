@@ -103,6 +103,7 @@ impl ItemHeaderEdit {
         group_name: Option<&str>,
         all_group_names: &[String],
         env: EnvOrEnvs,
+        allowed_envs: &[EnvironmentType],
     ) -> Self {
         let this = glib::Object::new::<Self>();
 
@@ -123,7 +124,7 @@ impl ItemHeaderEdit {
 
         let environment_picker = match env {
             EnvOrEnvs::Env(e) => {
-                let ep = EnvironmentPicker::new();
+                let ep = EnvironmentPicker::new(allowed_envs);
                 let t = this.clone();
                 ep.set_property("environment", (e as i32).to_value());
                 ep.connect_environment_notify(move |ep| {
@@ -201,7 +202,7 @@ impl ItemHeaderEdit {
                 if envs.contains(&EnvironmentType::EnvProd) {
                     this.set_property("env_prd", true);
                 }
-                let elp = EnvironmentListPicker::new();
+                let elp = EnvironmentListPicker::new(allowed_envs);
                 this.bind_property("env_dev", &elp, "env_dev")
                     .bidirectional()
                     .sync_create()

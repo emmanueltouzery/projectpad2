@@ -12,8 +12,8 @@ use gtk::subclass::widget::CompositeTemplate;
 use itertools::Itertools;
 use projectpadsql::get_project_group_names;
 use projectpadsql::models::{
-    InterestType, Project, ProjectNote, ProjectPointOfInterest, Server, ServerAccessType,
-    ServerLink, ServerType,
+    EnvironmentType, InterestType, Project, ProjectNote, ProjectPointOfInterest, Server,
+    ServerAccessType, ServerLink, ServerType,
 };
 
 use crate::app;
@@ -519,16 +519,30 @@ impl ProjectItemList {
     fn display_add_project_item_dialog() {
         if let Some(project_id) = app::get().project_id() {
             run_sqlfunc_and_then(
-                Box::new(move |sql_conn| get_project_group_names(sql_conn, project_id)),
-                Box::new(|group_names| {
-                    Self::display_add_project_item_dialog_with_groups(group_names);
+                Box::new(move |sql_conn| {
+                    use projectpadsql::schema::project::dsl as prj;
+
+                    let project = prj::project
+                        .filter(prj::id.eq(project_id))
+                        .first::<Project>(sql_conn)
+                        .unwrap();
+                    (
+                        get_project_group_names(sql_conn, project_id),
+                        project.allowed_envs(),
+                    )
+                }),
+                Box::new(|(group_names, allowed_envs)| {
+                    Self::display_add_project_item_dialog_with_groups(group_names, &allowed_envs);
                 }),
             );
         }
     }
 
     // TODO for the love of god, split that function
-    fn display_add_project_item_dialog_with_groups(project_group_names: Vec<String>) {
+    fn display_add_project_item_dialog_with_groups(
+        project_group_names: Vec<String>,
+        allowed_envs: &[EnvironmentType],
+    ) {
         let vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .build();
@@ -603,6 +617,7 @@ impl ProjectItemList {
             &project_group_names,
             WidgetMode::Edit,
             None,
+            allowed_envs,
         );
         let hb = header_bar.clone();
         let he = header_edit.unwrap().clone();
@@ -621,17 +636,21 @@ impl ProjectItemList {
         let dlg = dialog.clone();
         let hb = header_bar.clone();
         let gn = project_group_names.clone();
-        poi_btn.connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &hb, &s, &gn));
+        let ae = allowed_envs.to_owned();
+        poi_btn
+            .connect_clicked(move |_| Self::prepare_add_project_poi_dlg(&dlg, &hb, &s, &gn, &ae));
 
         let s = stack.clone();
         let dlg = dialog.clone();
         let hb = header_bar.clone();
         let gn = project_group_names.clone();
+        let ae = allowed_envs.to_owned();
         server_link_btn
-            .connect_clicked(move |_| Self::prepare_add_server_link_dlg(&dlg, &hb, &s, &gn));
+            .connect_clicked(move |_| Self::prepare_add_server_link_dlg(&dlg, &hb, &s, &gn, &ae));
 
         let s = stack.clone();
         let dlg = dialog.clone();
+        let ae = allowed_envs.to_owned();
         note_btn.connect_clicked(move |_| {
             let note = Note::new();
             let note_info = {
@@ -639,6 +658,7 @@ impl ProjectItemList {
                 n.env = EnvOrEnvs::Envs(HashSet::new());
                 n.display_header = true;
                 n.all_group_names = &project_group_names;
+                n.allowed_envs = &ae;
                 n
             };
             dlg.set_title("Add Project Note");
@@ -753,6 +773,7 @@ impl ProjectItemList {
         hb: &adw::HeaderBar,
         s: &gtk::Stack,
         project_group_names: &[String],
+        allowed_envs: &[EnvironmentType],
     ) {
         dlg.set_title("Add Project POI");
         dlg.set_content_width(600);
@@ -764,6 +785,7 @@ impl ProjectItemList {
             &ProjectPointOfInterest::default(),
             project_group_names,
             WidgetMode::Edit,
+            allowed_envs,
         );
 
         vbox.append(&poi_box);
@@ -814,6 +836,7 @@ impl ProjectItemList {
         hb: &adw::HeaderBar,
         s: &gtk::Stack,
         project_group_names: &[String],
+        allowed_envs: &[EnvironmentType],
     ) {
         dlg.set_title("Add Server Link");
         dlg.set_content_width(600);
@@ -822,7 +845,7 @@ impl ProjectItemList {
         let vbox = gtk::Box::builder().build();
 
         let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, link_box) =
-            server_link_contents_edit(&ServerLink::default(), project_group_names);
+            server_link_contents_edit(&ServerLink::default(), project_group_names, allowed_envs);
 
         vbox.append(&link_box);
 

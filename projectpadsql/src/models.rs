@@ -21,6 +21,25 @@ pub struct Project {
     pub has_prod: bool,
 }
 
+impl Project {
+    pub fn allowed_envs(&self) -> Vec<EnvironmentType> {
+        let mut res = vec![];
+        if self.has_dev {
+            res.push(EnvironmentType::EnvDevelopment);
+        }
+        if self.has_stage {
+            res.push(EnvironmentType::EnvStage);
+        }
+        if self.has_uat {
+            res.push(EnvironmentType::EnvUat);
+        }
+        if self.has_prod {
+            res.push(EnvironmentType::EnvProd);
+        }
+        res
+    }
+}
+
 #[derive(
     Debug,
     Clone,

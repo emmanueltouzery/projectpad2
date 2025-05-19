@@ -9,7 +9,7 @@
             <property name="homogeneous">True</property>
             <property name="valign">center</property>
             <child>
-              <object class="GtkToggleButton">
+              <object class="GtkToggleButton" id="dev_btn">
                 <property name="label">DEV</property>
                 <style>
                   <class name="toggle-project-item-dev"/>
@@ -22,7 +22,7 @@
               </object>
             </child>
             <child>
-              <object class="GtkToggleButton">
+              <object class="GtkToggleButton" id="stg_btn">
                 <property name="label">STG</property>
                 <style>
                   <class name="toggle-project-item-staging"/>
@@ -35,7 +35,7 @@
               </object>
             </child>
             <child>
-              <object class="GtkToggleButton">
+              <object class="GtkToggleButton" id="uat_btn">
                 <property name="label">UAT</property>
                 <style>
                   <class name="toggle-project-item-uat"/>
@@ -48,7 +48,7 @@
               </object>
             </child>
             <child>
-              <object class="GtkToggleButton">
+              <object class="GtkToggleButton" id="prd_btn">
                 <property name="label">PRD</property>
                 <style>
                   <class name="toggle-project-item-prod"/>

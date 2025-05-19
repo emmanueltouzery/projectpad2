@@ -145,11 +145,12 @@ fn display_server_link(
     );
 
     let pgn = project_group_names.to_vec();
+    let ae = channel_data.project.allowed_envs();
     edit_btn.connect_closure(
             "clicked",
             false,
-            glib::closure_local!(@strong server_link as p, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) = server_link_contents_edit(&p, &pgn_);
+            glib::closure_local!(@strong server_link as p, @strong pgn as pgn_, @strong ae as ae_, @strong vbox as v => move |_b: gtk::Button| {
+                let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) = server_link_contents_edit(&p, &pgn_, &ae_);
 
                 let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
                 let he = maybe_header_edit.unwrap().clone();
@@ -197,6 +198,7 @@ fn display_server_link(
 pub fn server_link_contents_edit(
     server_link: &ServerLink,
     project_group_names: &[String],
+    allowed_envs: &[EnvironmentType],
 ) -> (
     Option<ItemHeaderEdit>,
     SearchPicker,
@@ -217,6 +219,7 @@ pub fn server_link_contents_edit(
         WidgetMode::Edit,
         DisplayHeaderMode::Yes,
         None,
+        allowed_envs,
     );
     let search_picker = glib::Object::builder::<SearchPicker>()
         .property(
@@ -299,6 +302,7 @@ pub fn server_link_contents_show(
         WidgetMode::Show,
         DisplayHeaderMode::Yes,
         None,
+        &channel_data.project.allowed_envs(),
     );
 
     let open_server_btn = gtk::Button::builder()

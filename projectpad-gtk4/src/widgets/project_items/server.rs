@@ -89,6 +89,7 @@ impl ServerItem {
 
 #[derive(Debug)]
 pub struct ChannelData {
+    pub project: Project,
     pub server: Server,
     pub server_items: Vec<ServerItem>,
     pub group_start_indices: HashMap<i32, String>,
@@ -99,13 +100,14 @@ pub struct ChannelData {
 }
 
 pub fn run_channel_data_query(sql_conn: &mut SqliteConnection, server_id: i32) -> ChannelData {
+    use projectpadsql::schema::project::dsl as prj;
     use projectpadsql::schema::server::dsl as srv;
     use projectpadsql::schema::server_database::dsl as srv_db;
     use projectpadsql::schema::server_extra_user_account::dsl as srv_usr;
     use projectpadsql::schema::server_note::dsl as srv_note;
     use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
     use projectpadsql::schema::server_website::dsl as srv_www;
-    let (server, items, databases_for_websites, websites_for_databases) = {
+    let (project, server, items, databases_for_websites, websites_for_databases) = {
         let server = srv::server
             .filter(srv::id.eq(server_id))
             .first::<Server>(sql_conn)
@@ -178,7 +180,13 @@ pub fn run_channel_data_query(sql_conn: &mut SqliteConnection, server_id: i32) -
             websites_for_databases.insert(key, group.collect());
         }
 
+        let project = prj::project
+            .filter(prj::id.eq(server.project_id))
+            .first::<Project>(sql_conn)
+            .unwrap();
+
         (
+            project,
             server,
             servers,
             databases_for_websites,
@@ -204,6 +212,7 @@ pub fn run_channel_data_query(sql_conn: &mut SqliteConnection, server_id: i32) -
     let server_group_names = get_server_group_names(sql_conn, server.id);
 
     ChannelData {
+        project,
         server,
         server_items: grouped_items.into_iter().cloned().collect(),
         group_start_indices,
@@ -248,6 +257,7 @@ fn display_server(
         &channel_data.project_group_names,
         WidgetMode::Show,
         Some("project_poi_header_titlebox_retired").filter(|_| channel_data.server.is_retired),
+        &channel_data.project.allowed_envs(),
     );
     let add_btn = gtk::Button::builder()
         .icon_name("list-add-symbolic")
@@ -296,9 +306,10 @@ fn display_server(
     );
 
     let pgn = channel_data.project_group_names.clone();
+    let ae = channel_data.project.allowed_envs();
     edit_btn.connect_closure("clicked", false,
-            glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                let (_, header_edit, vbox, server_view_edit) = server_contents(&s, &pgn_, WidgetMode::Edit, None);
+            glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong ae as ae_, @strong vbox as v => move |_b: gtk::Button| {
+                let (_, header_edit, vbox, server_view_edit) = server_contents(&s, &pgn_, WidgetMode::Edit, None, &ae_);
 
                 let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
                 let he = header_edit.unwrap().clone();
@@ -415,6 +426,7 @@ pub fn server_contents(
     project_group_names: &[String],
     widget_mode: WidgetMode,
     item_header_view_css_class: Option<&str>,
+    allowed_envs: &[EnvironmentType],
 ) -> (gtk::Box, Option<ItemHeaderEdit>, gtk::Box, ServerViewEdit) {
     let vbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
@@ -442,6 +454,7 @@ pub fn server_contents(
         widget_mode,
         DisplayHeaderMode::Yes,
         item_header_view_css_class,
+        allowed_envs,
     );
 
     let server_view_edit = server_view_edit_contents(server, widget_mode);
@@ -1485,6 +1498,7 @@ fn server_website_contents(
             website.group_name.as_deref(),
             server_group_names,
             common::EnvOrEnvs::None,
+            &[],
         );
         website_item_header.set_title(website.desc.clone());
         Some(website_item_header)
@@ -1590,6 +1604,7 @@ fn server_database_contents(
             database.group_name.as_deref(),
             server_group_names,
             common::EnvOrEnvs::None,
+            &[],
         );
         database_item_header.set_title(database.desc.clone());
         Some(database_item_header)
@@ -1695,6 +1710,7 @@ fn server_poi_contents(
             poi.group_name.as_deref(),
             server_group_names,
             common::EnvOrEnvs::None,
+            &[],
         );
         server_item_header.set_title(poi.desc.clone());
         Some(server_item_header)
@@ -1804,6 +1820,7 @@ fn server_extra_user_account_contents(
             user.group_name.as_deref(),
             server_group_names,
             common::EnvOrEnvs::None,
+            &[],
         );
         user_item_header.set_title(user.desc.clone());
         Some(user_item_header)
@@ -2128,6 +2145,7 @@ fn server_note_contents_edit(
         note.group_name.as_deref(),
         server_group_names,
         common::EnvOrEnvs::None,
+        &[],
     );
     project_item_header.set_title(note.title.clone());
     vbox.append(&project_item_header);

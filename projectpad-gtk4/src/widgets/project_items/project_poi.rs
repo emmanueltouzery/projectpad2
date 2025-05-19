@@ -5,7 +5,7 @@ use std::sync::mpsc;
 
 use projectpadsql::{
     get_project_group_names,
-    models::{InterestType, ProjectPointOfInterest},
+    models::{EnvironmentType, InterestType, Project, ProjectPointOfInterest},
 };
 
 use crate::{
@@ -39,6 +39,7 @@ pub fn load_and_display_project_poi(
     let (sender, receiver) = async_channel::bounded(1);
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
+            use projectpadsql::schema::project::dsl as prj;
             use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
             let poi = prj_poi::project_point_of_interest
                 .filter(prj_poi::id.eq(project_poi_id))
@@ -47,14 +48,21 @@ pub fn load_and_display_project_poi(
 
             let project_group_names = get_project_group_names(sql_conn, poi.project_id);
 
-            sender.send_blocking((poi, project_group_names)).unwrap();
+            let project = prj::project
+                .filter(prj::id.eq(poi.project_id))
+                .first::<Project>(sql_conn)
+                .unwrap();
+
+            sender
+                .send_blocking((project, poi, project_group_names))
+                .unwrap();
         }))
         .unwrap();
 
     let p = parent.clone();
     glib::spawn_future_local(async move {
-        let (poi, project_group_names) = receiver.recv().await.unwrap();
-        display_project_poi(&p, poi, &project_group_names);
+        let (project, poi, project_group_names) = receiver.recv().await.unwrap();
+        display_project_poi(&p, poi, &project_group_names, &project.allowed_envs());
     });
 }
 
@@ -62,9 +70,10 @@ fn display_project_poi(
     parent: &adw::Bin,
     poi: ProjectPointOfInterest,
     project_group_names: &[String],
+    allowed_envs: &[EnvironmentType],
 ) {
     let (maybe_header_edit, project_poi_view_edit, header_box, vbox) =
-        project_poi_contents(&poi, project_group_names, WidgetMode::Show);
+        project_poi_contents(&poi, project_group_names, WidgetMode::Show, allowed_envs);
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
         .valign(gtk::Align::Center)
@@ -102,11 +111,12 @@ fn display_project_poi(
     );
 
     let pgn = project_group_names.to_vec();
+    let ae = allowed_envs.to_owned();
     edit_btn.connect_closure(
             "clicked",
             false,
-            glib::closure_local!(@strong poi as p, @strong pgn as pgn_, @strong vbox as v => move |_b: gtk::Button| {
-                let (maybe_header_edit, project_poi_view_edit, _, vbox) = project_poi_contents(&p, &pgn_, WidgetMode::Edit);
+            glib::closure_local!(@strong poi as p, @strong pgn as pgn_, @strong vbox as v, @strong ae as ae_ => move |_b: gtk::Button| {
+                let (maybe_header_edit, project_poi_view_edit, _, vbox) = project_poi_contents(&p, &pgn_, WidgetMode::Edit, &ae_);
 
                 let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit project POI", vbox, 600, 600, DialogClamp::Yes);
                 let he = maybe_header_edit.unwrap().clone();
@@ -146,6 +156,7 @@ pub fn project_poi_contents(
     poi: &ProjectPointOfInterest,
     project_group_names: &[String],
     widget_mode: WidgetMode,
+    allowed_envs: &[EnvironmentType],
 ) -> (
     Option<ItemHeaderEdit>,
     ProjectPoiViewEdit,
@@ -165,6 +176,7 @@ pub fn project_poi_contents(
         widget_mode,
         DisplayHeaderMode::Yes,
         None,
+        allowed_envs,
     );
 
     let project_poi_view_edit = ProjectPoiViewEdit::new();
@@ -193,6 +205,7 @@ pub fn project_item_header(
     widget_mode: WidgetMode,
     display_header_mode: DisplayHeaderMode,
     item_header_view_css_class: Option<&str>,
+    allowed_envs: &[EnvironmentType],
 ) -> (Option<ItemHeaderEdit>, gtk::Box) {
     if widget_mode == WidgetMode::Edit {
         let project_item_header = ItemHeaderEdit::new(
@@ -200,6 +213,7 @@ pub fn project_item_header(
             group_name,
             project_group_names,
             env_info,
+            allowed_envs,
         );
         project_item_header.set_title(desc);
         if display_header_mode == DisplayHeaderMode::Yes {

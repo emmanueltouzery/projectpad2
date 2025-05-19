@@ -177,10 +177,29 @@ fn dropdown_get_factory(
 }
 
 impl EnvironmentPicker {
-    pub fn new() -> Self {
+    pub fn new(allowed_envs: &[EnvironmentType]) -> Self {
         let this = glib::Object::new::<Self>();
 
-        let dropdown = gtk::DropDown::from_strings(&["DEV", "STG", "UAT", "PRD"]);
+        let mut env_strings = vec![];
+        let mut sorted_envs = vec![];
+        if allowed_envs.contains(&EnvironmentType::EnvDevelopment) {
+            env_strings.push("DEV");
+            sorted_envs.push(EnvironmentType::EnvDevelopment);
+        }
+        if allowed_envs.contains(&EnvironmentType::EnvStage) {
+            env_strings.push("STG");
+            sorted_envs.push(EnvironmentType::EnvStage);
+        }
+        if allowed_envs.contains(&EnvironmentType::EnvUat) {
+            env_strings.push("UAT");
+            sorted_envs.push(EnvironmentType::EnvUat);
+        }
+        if allowed_envs.contains(&EnvironmentType::EnvProd) {
+            env_strings.push("PRD");
+            sorted_envs.push(EnvironmentType::EnvProd);
+        }
+
+        let dropdown = gtk::DropDown::from_strings(&env_strings);
         dropdown.set_css_classes(&["flat"]);
 
         let list_item_factory = dropdown_get_factory(&dropdown, DropDownFactoryMode::ListItem);
@@ -189,31 +208,16 @@ impl EnvironmentPicker {
         dropdown.set_list_factory(Some(&list_item_factory));
         dropdown.set_factory(Some(&item_factory));
 
+        let ses = sorted_envs.clone();
+        let ses2 = sorted_envs.clone();
         this.bind_property("environment", &dropdown, "selected")
-            .transform_to(|_, number: i32| {
-                Some(
-                    match EnvironmentType::from_repr(number.try_into().unwrap())
-                        .unwrap_or(EnvironmentType::EnvDevelopment)
-                    {
-                        EnvironmentType::EnvDevelopment => 0_u32,
-                        EnvironmentType::EnvStage => 1_u32,
-                        EnvironmentType::EnvUat => 2_u32,
-                        EnvironmentType::EnvProd => 3_u32,
-                    }
-                    .to_value(),
-                )
+            .transform_to(move |_, number: i32| {
+                let env = EnvironmentType::from_repr(number.try_into().unwrap())
+                    .unwrap_or(EnvironmentType::EnvDevelopment);
+                ses.iter().position(|e| *e == env).map(|p| p as u32)
             })
-            .transform_from(|_, number: u32| {
-                Some(
-                    (match number {
-                        0 => EnvironmentType::EnvDevelopment,
-                        1 => EnvironmentType::EnvStage,
-                        2 => EnvironmentType::EnvUat,
-                        3 => EnvironmentType::EnvProd,
-                        _ => panic!(),
-                    } as i32)
-                        .to_value(),
-                )
+            .transform_from(move |_, number: u32| {
+                ses2.get(number as usize).map(|v| (*v as i32).to_value())
             })
             .bidirectional()
             .sync_create()

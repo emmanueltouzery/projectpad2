@@ -68,7 +68,7 @@
                       <object class="GtkMenuButton">
                         <property name="icon-name">open-menu-symbolic</property>
                         <property name="popover">
-                          <object class="GtkPopoverMenu">
+                          <object class="GtkPopoverMenu" id="app_popover_menu">
                             <!-- <property name="menu-model">app_menu</property> -->
                             <!-- <child type="zoom-out">
                               <object class="GtkButton">

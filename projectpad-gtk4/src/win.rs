@@ -45,6 +45,8 @@ mod imp {
         #[template_child]
         pub project_popover_menu: TemplateChild<gtk::PopoverMenu>,
         #[template_child]
+        pub app_popover_menu: TemplateChild<gtk::PopoverMenu>,
+        #[template_child]
         pub search_toggle_btn: TemplateChild<gtk::ToggleButton>,
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
@@ -153,6 +155,9 @@ impl ProjectpadApplicationWindow {
                     ("project-item-type", &project_item_type),
                     ]);
                 w.imp().project_item_header_label.set_label(&title);
+
+                let popover = &w.imp().app_popover_menu;
+                popover.set_menu_model(Some(&Self::get_app_popover_menu(&title)));
             }),
             );
         win.imp().project_item.connect_closure(
@@ -304,6 +309,15 @@ impl ProjectpadApplicationWindow {
             .add_controller(motion_controller);
 
         win
+    }
+
+    fn get_app_popover_menu(project_item_title: &str) -> gio::Menu {
+        let menu_model = gio::Menu::new();
+        menu_model.append(
+            Some(&format!("Move '{project_item_title}'...")),
+            Some("move-project-item"),
+        );
+        menu_model
     }
 
     fn search_toggled(w: &ProjectpadApplicationWindow) {

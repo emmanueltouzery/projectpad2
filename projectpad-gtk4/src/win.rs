@@ -315,7 +315,7 @@ impl ProjectpadApplicationWindow {
         let menu_model = gio::Menu::new();
         menu_model.append(
             Some(&format!("Move '{project_item_title}'...")),
-            Some("move-project-item"),
+            Some("win.move-project-item"),
         );
         menu_model
     }

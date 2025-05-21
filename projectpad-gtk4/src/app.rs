@@ -12,6 +12,7 @@ use gtk::{gdk, gio, glib};
 use projectpadsql::models::{Project, Server, ServerDatabase, ServerLink, ServerWebsite};
 
 use crate::sql_thread::SqlFunc;
+use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_item_list::ProjectItemList;
 use crate::widgets::project_items::common;
@@ -237,6 +238,17 @@ impl ProjectpadApplication {
             });
         });
         window.add_action(&edit_project_action);
+
+        let select_project_action = gio::SimpleAction::new("move-project-item", None);
+        select_project_action.connect_activate(move |_action, _parameter| {
+            let dialog = adw::Dialog::builder()
+                .title("Move project item")
+                .child(&MoveProjectItem::new())
+                .build();
+
+            dialog.present(&common::main_win());
+        });
+        window.add_action(&select_project_action);
     }
 
     fn do_delete_project(prj_id: i32) {

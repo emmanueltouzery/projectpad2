@@ -243,6 +243,8 @@ impl ProjectpadApplication {
         select_project_action.connect_activate(move |_action, _parameter| {
             let dialog = adw::Dialog::builder()
                 .title("Move project item")
+                .content_width(450)
+                // TODO select the current project/env by default
                 .child(&MoveProjectItem::new())
                 .build();
 

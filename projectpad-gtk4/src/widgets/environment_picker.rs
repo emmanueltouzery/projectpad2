@@ -48,13 +48,29 @@ struct DropdownListItemInfo {
 }
 
 #[derive(PartialEq, Eq)]
-enum DropDownFactoryMode {
+pub enum DropDownFactoryMode {
     Item,
     ListItem,
 }
 
-fn dropdown_get_factory(
-    dropdown: &gtk::DropDown,
+pub trait DropDownLike: glib::object::ObjectExt {
+    fn selected_item(&self) -> Option<glib::Object>;
+}
+
+impl DropDownLike for gtk::DropDown {
+    fn selected_item(&self) -> Option<glib::Object> {
+        self.selected_item()
+    }
+}
+
+impl DropDownLike for adw::ComboRow {
+    fn selected_item(&self) -> Option<glib::Object> {
+        adw::prelude::ComboRowExt::selected_item(self)
+    }
+}
+
+pub fn dropdown_get_factory<D: DropDownLike>(
+    dropdown: &D,
     mode: DropDownFactoryMode,
 ) -> gtk::SignalListItemFactory {
     let item_to_info = Rc::new(RefCell::new(
@@ -180,25 +196,7 @@ impl EnvironmentPicker {
     pub fn new(allowed_envs: &[EnvironmentType]) -> Self {
         let this = glib::Object::new::<Self>();
 
-        let mut env_strings = vec![];
-        let mut sorted_envs = vec![];
-        if allowed_envs.contains(&EnvironmentType::EnvDevelopment) {
-            env_strings.push("DEV");
-            sorted_envs.push(EnvironmentType::EnvDevelopment);
-        }
-        if allowed_envs.contains(&EnvironmentType::EnvStage) {
-            env_strings.push("STG");
-            sorted_envs.push(EnvironmentType::EnvStage);
-        }
-        if allowed_envs.contains(&EnvironmentType::EnvUat) {
-            env_strings.push("UAT");
-            sorted_envs.push(EnvironmentType::EnvUat);
-        }
-        if allowed_envs.contains(&EnvironmentType::EnvProd) {
-            env_strings.push("PRD");
-            sorted_envs.push(EnvironmentType::EnvProd);
-        }
-
+        let (env_strings, sorted_envs) = Self::dropdown_labels_and_vals(allowed_envs);
         let dropdown = gtk::DropDown::from_strings(&env_strings);
         dropdown.set_css_classes(&["flat"]);
 
@@ -225,5 +223,30 @@ impl EnvironmentPicker {
 
         this.set_child(Some(&dropdown));
         this
+    }
+
+    pub fn dropdown_labels_and_vals(
+        allowed_envs: &[EnvironmentType],
+    ) -> (Vec<&'static str>, Vec<EnvironmentType>) {
+        let mut env_strings = vec![];
+        let mut sorted_envs = vec![];
+        if allowed_envs.contains(&EnvironmentType::EnvDevelopment) {
+            env_strings.push("DEV");
+            sorted_envs.push(EnvironmentType::EnvDevelopment);
+        }
+        if allowed_envs.contains(&EnvironmentType::EnvStage) {
+            env_strings.push("STG");
+            sorted_envs.push(EnvironmentType::EnvStage);
+        }
+        if allowed_envs.contains(&EnvironmentType::EnvUat) {
+            env_strings.push("UAT");
+            sorted_envs.push(EnvironmentType::EnvUat);
+        }
+        if allowed_envs.contains(&EnvironmentType::EnvProd) {
+            env_strings.push("PRD");
+            sorted_envs.push(EnvironmentType::EnvProd);
+        }
+
+        (env_strings, sorted_envs)
     }
 }

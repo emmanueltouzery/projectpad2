@@ -4,7 +4,10 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project};
 
-use super::{environment_picker::EnvironmentPicker, project_items::common};
+use super::{
+    environment_picker::{self, EnvironmentPicker},
+    project_items::common,
+};
 
 mod imp {
     use std::{cell::RefCell, rc::Rc};
@@ -76,36 +79,46 @@ impl MoveProjectItem {
             prj::project.load::<Project>(sql_conn)
         }));
 
-        let project_name_dropdown = gtk::DropDown::builder().build();
+        contents_vbox.append(
+            &gtk::Label::builder()
+                .label("Select where to move the project item to:")
+                .halign(gtk::Align::Start)
+                .build(),
+        );
 
-        let pnd = project_name_dropdown.clone();
+        let prefs_group = adw::PreferencesGroup::builder().build();
+        let project_combo = adw::ComboRow::builder().title("Project").build();
+        prefs_group.add(&project_combo);
+
         glib::spawn_future_local(async move {
             let projects = projects_recv.recv().await.unwrap().unwrap();
             let project_names = projects.iter().map(|p| p.name.as_str()).collect::<Vec<_>>();
             let dropdown_entries_store = gtk::StringList::new(&project_names);
-            pnd.set_model(Some(&dropdown_entries_store));
+            project_combo.set_model(Some(&dropdown_entries_store));
         });
 
-        let project_name_hbox = gtk::Box::builder()
-            .margin_start(10)
-            .margin_end(10)
-            .spacing(10)
-            .build();
-        project_name_hbox.append(&gtk::Label::builder().label("Project name").build());
-        project_name_hbox.append(&project_name_dropdown);
+        let env_combo = adw::ComboRow::builder().title("Environment").build();
 
-        contents_vbox.append(&project_name_hbox);
+        let list_item_factory = environment_picker::dropdown_get_factory(
+            &env_combo,
+            environment_picker::DropDownFactoryMode::ListItem,
+        );
+        let item_factory = environment_picker::dropdown_get_factory(
+            &env_combo,
+            environment_picker::DropDownFactoryMode::Item,
+        );
 
-        let env_hbox = gtk::Box::builder()
-            .margin_start(10)
-            .margin_end(10)
-            .spacing(10)
-            .build();
-        env_hbox.append(&gtk::Label::builder().label("Environment").build());
+        env_combo.set_list_factory(Some(&list_item_factory));
+        env_combo.set_factory(Some(&item_factory));
+
         // TODO correct env types list depending on the project
-        env_hbox.append(&EnvironmentPicker::new(&[EnvironmentType::EnvProd]));
+        let allowed_envs = &[EnvironmentType::EnvDevelopment, EnvironmentType::EnvProd];
+        let (env_strings, sorted_envs) = EnvironmentPicker::dropdown_labels_and_vals(allowed_envs);
+        env_combo.set_model(Some(&gtk::StringList::new(&env_strings)));
 
-        contents_vbox.append(&env_hbox);
+        prefs_group.add(&env_combo);
+
+        contents_vbox.append(&prefs_group);
 
         vbox.append(&contents_vbox);
 

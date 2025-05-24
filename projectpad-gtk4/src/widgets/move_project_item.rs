@@ -186,15 +186,35 @@ impl MoveProjectItem {
             project_combo
                 .set_selected(projects.iter().position(|p| p.id == project_id).unwrap() as u32);
 
-            let allowed_envs = projects
-                .iter()
-                .find(|p| p.id == project_id)
-                .unwrap()
-                .allowed_envs();
-            let (env_strings, sorted_envs) =
-                EnvironmentPicker::dropdown_labels_and_vals(&allowed_envs);
-            env_combo.set_model(Some(&gtk::StringList::new(&env_strings)));
-            env_combo.set_selected(sorted_envs.iter().position(|e| *e == item_env).unwrap() as u32);
+            fn set_envs(
+                projects: &[Project],
+                project_id: i32,
+                env_combo: &adw::ComboRow,
+                select_env: Option<EnvironmentType>,
+            ) {
+                let allowed_envs = projects
+                    .iter()
+                    .find(|p| p.id == project_id)
+                    .unwrap()
+                    .allowed_envs();
+                let (env_strings, sorted_envs) =
+                    EnvironmentPicker::dropdown_labels_and_vals(&allowed_envs);
+                env_combo.set_model(Some(&gtk::StringList::new(&env_strings)));
+                if let Some(env) = select_env {
+                    env_combo
+                        .set_selected(sorted_envs.iter().position(|e| *e == env).unwrap() as u32);
+                }
+            }
+
+            let ec = env_combo.clone();
+            let p = projects.clone();
+            project_combo.connect_selected_notify(move |e| {
+                let project = p.get(e.selected() as usize).unwrap();
+                // don't select since which is the current project item
+                // is now irrelevant since we work on another project
+                set_envs(&p, project.id, &ec, None);
+            });
+            set_envs(&projects, project_id, &env_combo, Some(item_env));
         });
 
         contents_vbox.append(&prefs_group);

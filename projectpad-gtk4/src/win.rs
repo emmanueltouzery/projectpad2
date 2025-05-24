@@ -182,7 +182,12 @@ impl ProjectpadApplicationWindow {
                 // end update the select project item info
 
                 let popover = &w.imp().app_popover_menu;
-                popover.set_menu_model(Some(&Self::get_app_popover_menu(&title)));
+                // if: possible the project is empty, no project items at all
+                if item_id > 0 {
+                    popover.set_menu_model(Some(&Self::get_app_popover_menu(&title)));
+                } else {
+                    popover.set_menu_model(None::<&gio::Menu>);
+                }
             }),
             );
         win.imp().project_item.connect_closure(

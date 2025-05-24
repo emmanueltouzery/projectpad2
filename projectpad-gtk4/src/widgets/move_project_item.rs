@@ -203,6 +203,7 @@ impl MoveProjectItem {
             .sync_create()
             .build();
 
+        let t = this.clone();
         glib::spawn_future_local(async move {
             let (projects, item_env) = projects_recv.recv().await.unwrap();
             let project_names = projects.iter().map(|p| p.name.as_str()).collect::<Vec<_>>();
@@ -210,6 +211,15 @@ impl MoveProjectItem {
             project_combo.set_model(Some(&dropdown_entries_store));
             project_combo
                 .set_selected(projects.iter().position(|p| p.id == project_id).unwrap() as u32);
+
+            let ps = projects.clone();
+            project_combo
+                .bind_property("selected", &t, "project_id")
+                .transform_to(move |_, number: u32| {
+                    Some(ps.get(number as usize).unwrap().id.to_value())
+                })
+                .sync_create()
+                .build();
 
             fn set_envs(
                 projects: &[Project],

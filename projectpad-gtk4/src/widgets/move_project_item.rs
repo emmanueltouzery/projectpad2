@@ -4,6 +4,8 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use projectpadsql::models::{EnvironmentType, Project, ProjectNote, Server, ServerLink};
 
+use crate::string_sidecar_object::StringSidecarObject;
+
 use super::{
     environment_picker::{self, EnvironmentPicker},
     project_item_model::ProjectItemType,
@@ -178,6 +180,29 @@ impl MoveProjectItem {
 
         prefs_group.add(&env_combo);
 
+        env_combo
+            .bind_property("selected", &this, "environment")
+            .transform_to(move |binding, number: u32| {
+                let combo = binding
+                    .source()
+                    .unwrap()
+                    .downcast::<adw::ComboRow>()
+                    .unwrap();
+                if let Some(model) = combo.model() {
+                    let env = model
+                        .item(number)
+                        .unwrap()
+                        .downcast::<StringSidecarObject>()
+                        .unwrap()
+                        .sidecar();
+                    Some(env.to_value())
+                } else {
+                    None
+                }
+            })
+            .sync_create()
+            .build();
+
         glib::spawn_future_local(async move {
             let (projects, item_env) = projects_recv.recv().await.unwrap();
             let project_names = projects.iter().map(|p| p.name.as_str()).collect::<Vec<_>>();
@@ -199,7 +224,16 @@ impl MoveProjectItem {
                     .allowed_envs();
                 let (env_strings, sorted_envs) =
                     EnvironmentPicker::dropdown_labels_and_vals(&allowed_envs);
-                env_combo.set_model(Some(&gtk::StringList::new(&env_strings)));
+
+                let model = gio::ListStore::new::<StringSidecarObject>();
+
+                for (env_string, env) in env_strings.iter().zip(sorted_envs.iter()) {
+                    model.append(&StringSidecarObject::new(
+                        (*env_string).to_owned(),
+                        *env as i32,
+                    ));
+                }
+                env_combo.set_model(Some(&model));
                 if let Some(env) = select_env {
                     env_combo
                         .set_selected(sorted_envs.iter().position(|e| *e == env).unwrap() as u32);

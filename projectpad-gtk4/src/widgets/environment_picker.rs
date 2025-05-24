@@ -4,6 +4,8 @@ use adw::prelude::*;
 use gtk::subclass::prelude::*;
 use projectpadsql::models::EnvironmentType;
 
+use crate::string_sidecar_object::StringSidecarObject;
+
 mod imp {
     use std::{cell::RefCell, rc::Rc};
 
@@ -138,11 +140,23 @@ pub fn dropdown_get_factory<D: DropDownLike>(
             let item_info = item_info_b.get(list_item).unwrap();
             let check_mark = item_info.check_mark.clone();
 
-            let str_val = str_obj.clone()
-                .unwrap()
-                .downcast_ref::<gtk::StringObject>()
-                .unwrap()
-                .string();
+            let str_val = if str_obj.as_ref().unwrap().is::<gtk::StringObject>() { 
+                str_obj
+                    .as_ref()
+                    .unwrap()
+                    .downcast_ref::<gtk::StringObject>()
+                    .unwrap()
+                    .string().as_str().to_owned()
+            } else {
+                str_obj
+                    .as_ref()
+                    .unwrap()
+                    .downcast_ref::<StringSidecarObject>()
+                    .unwrap()
+                    .string()
+                    .as_str()
+                    .to_owned()
+            };
             let desc = match str_val.as_str() {
                 "PRD" => "Production environment",
                 "UAT" => "User Acceptance Testing environment",

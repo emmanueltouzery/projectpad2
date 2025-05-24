@@ -169,7 +169,7 @@ pub fn dropdown_get_factory<D: DropDownLike>(
             let signal_id = dropdown_clone.connect_closure(
                 "notify::selected-item",
                 false,
-                glib::closure_local!(@strong check_mark as cm, @strong str_obj as o => move |dd: gtk::DropDown, _item: glib::ParamSpec| {
+                glib::closure_local!(@strong check_mark as cm, @strong str_obj as o => move |dd: D, _item: glib::ParamSpec| {
                     cm.set_opacity(if dd.selected_item() == o {
                         1.0
                     } else {

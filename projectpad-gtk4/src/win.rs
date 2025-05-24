@@ -3,9 +3,11 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::app::ProjectpadApplication;
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_item::ProjectItem;
+use crate::widgets::project_items::common;
 use crate::widgets::search::search_item_list::SearchItemList;
 use crate::widgets::search::search_item_model::SearchItemType;
 
@@ -155,6 +157,29 @@ impl ProjectpadApplicationWindow {
                     ("project-item-type", &project_item_type),
                     ]);
                 w.imp().project_item_header_label.set_label(&title);
+
+                // update the select project item info
+                let win = common::main_win();
+                let select_project_item_state =
+                    glib::VariantDict::new(win.action_state("select-project-item").as_ref());
+
+                let project_id = select_project_item_state
+                    .lookup::<i32>("project_id")
+                    .unwrap()
+                    .unwrap();
+
+                let select_project_param = glib::VariantDict::new(None);
+                select_project_param.insert("project_id", project_id);
+                select_project_param.insert("item_id", Some(item_id));
+                select_project_param.insert("item_type", Some(project_item_type));
+
+                // w.change_action_state("select-project-item", &select_project_param.end());
+
+                let app = gio::Application::default()
+                    .and_downcast::<ProjectpadApplication>()
+                    .unwrap();
+                app.change_select_project_item_no_signal(select_project_param.end());
+                // end update the select project item info
 
                 let popover = &w.imp().app_popover_menu;
                 popover.set_menu_model(Some(&Self::get_app_popover_menu(&title)));

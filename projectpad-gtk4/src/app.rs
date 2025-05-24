@@ -141,6 +141,23 @@ impl ProjectpadApplication {
         self.imp().sql_channel.borrow().clone().unwrap()
     }
 
+    // set_state vs change_state... this doesn't trigger the change_action_state handler
+    // useful to avoid loops of changing state->handler redisplays->changing state->...
+    pub fn change_select_project_item_no_signal(&self, select_project_item: glib::Variant) {
+        let action = self
+            .imp()
+            .window
+            .get()
+            .unwrap()
+            .upgrade()
+            .unwrap()
+            .lookup_action("select-project-item")
+            .unwrap()
+            .downcast::<gio::SimpleAction>()
+            .unwrap();
+        action.set_state(&select_project_item);
+    }
+
     fn setup_actions(&self, window: &ProjectpadApplicationWindow, cur_project: Option<&Project>) {
         let select_project_variant = glib::VariantDict::new(None);
         select_project_variant.insert("project_id", cur_project.unwrap().id); // TODO first startup
@@ -241,14 +258,15 @@ impl ProjectpadApplication {
 
         let select_project_action = gio::SimpleAction::new("move-project-item", None);
         select_project_action.connect_activate(move |_action, _parameter| {
-            let dialog = adw::Dialog::builder()
-                .title("Move project item")
-                .content_width(450)
-                // TODO select the current project/env by default
-                .child(&MoveProjectItem::new())
-                .build();
+            if let Some(mpi) = MoveProjectItem::try_new() {
+                let dialog = adw::Dialog::builder()
+                    .title("Move project item")
+                    .content_width(450)
+                    .child(&mpi)
+                    .build();
 
-            dialog.present(&common::main_win());
+                dialog.present(&common::main_win());
+            }
         });
         window.add_action(&select_project_action);
     }

@@ -52,23 +52,8 @@ glib::wrapper! {
 }
 
 impl MoveProjectItem {
-    /// will return None if there's no currently selected project item (the current
-    /// project has no project items at all, empty project)
-    pub fn try_new() -> Option<Self> {
+    pub fn new(project_id: i32, project_item_id: i32, project_item_type: ProjectItemType) -> Self {
         let this = glib::Object::new::<Self>();
-
-        let vbox = gtk::Box::builder()
-            .orientation(gtk::Orientation::Vertical)
-            .build();
-
-        let header_bar = adw::HeaderBar::builder()
-            .show_end_title_buttons(false)
-            .show_start_title_buttons(false)
-            .build();
-
-        let cancel_btn = gtk::Button::builder().label("Cancel").build();
-        header_bar.pack_start(&cancel_btn);
-        vbox.append(&header_bar);
 
         let contents_vbox = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -79,36 +64,11 @@ impl MoveProjectItem {
             .spacing(10)
             .build();
 
-        let win = common::main_win();
-        let select_project_item_state =
-            glib::VariantDict::new(win.action_state("select-project-item").as_ref());
-
-        let project_id = select_project_item_state
-            .lookup::<i32>("project_id")
-            .unwrap()
-            .unwrap();
-
-        let project_item_type = select_project_item_state
-            .lookup::<Option<u8>>("item_type")
-            .unwrap()
-            .and_then(std::convert::identity)
-            .and_then(ProjectItemType::from_repr);
-
-        let m_project_item_id = select_project_item_state
-            .lookup::<Option<i32>>("item_id")
-            .unwrap()
-            .unwrap();
-        if m_project_item_id.is_none() {
-            // the current project has no project item at all
-            return None;
-        }
-        let project_item_id = m_project_item_id.unwrap();
-
         let projects_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
             use projectpadsql::schema::project::dsl as prj;
             let prj = prj::project.load::<Project>(sql_conn).unwrap();
 
-            let prj_item_env = match project_item_type.unwrap() {
+            let prj_item_env = match project_item_type {
                 ProjectItemType::Server => {
                     use projectpadsql::schema::server::dsl as srv;
                     srv::server
@@ -263,10 +223,8 @@ impl MoveProjectItem {
 
         contents_vbox.append(&prefs_group);
 
-        vbox.append(&contents_vbox);
+        this.set_child(Some(&contents_vbox));
 
-        this.set_child(Some(&vbox));
-
-        Some(this)
+        this
     }
 }

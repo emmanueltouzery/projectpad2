@@ -9,12 +9,15 @@ use glib::Properties;
 use gtk::subclass::prelude::DerivedObjectProperties;
 use gtk::CssProvider;
 use gtk::{gdk, gio, glib};
-use projectpadsql::models::{Project, Server, ServerDatabase, ServerLink, ServerWebsite};
+use projectpadsql::models::{
+    EnvironmentType, Project, Server, ServerDatabase, ServerLink, ServerWebsite,
+};
 
 use crate::sql_thread::SqlFunc;
 use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_item_list::ProjectItemList;
+use crate::widgets::project_item_model::ProjectItemType;
 use crate::widgets::project_items::common;
 use crate::win::ProjectpadApplicationWindow;
 use crate::{keyring_helpers, perform_insert_or_update, sql_util};
@@ -258,17 +261,88 @@ impl ProjectpadApplication {
 
         let select_project_action = gio::SimpleAction::new("move-project-item", None);
         select_project_action.connect_activate(move |_action, _parameter| {
-            if let Some(mpi) = MoveProjectItem::try_new() {
-                let dialog = adw::Dialog::builder()
-                    .title("Move project item")
-                    .content_width(450)
-                    .child(&mpi)
-                    .build();
+            let win = common::main_win();
+            let select_project_item_state =
+                glib::VariantDict::new(win.action_state("select-project-item").as_ref());
 
-                dialog.present(&common::main_win());
+            let project_id = select_project_item_state
+                .lookup::<i32>("project_id")
+                .unwrap()
+                .unwrap();
+
+            let m_project_item_type = select_project_item_state
+                .lookup::<Option<u8>>("item_type")
+                .unwrap()
+                .and_then(std::convert::identity)
+                .and_then(ProjectItemType::from_repr);
+
+            let m_project_item_id = select_project_item_state
+                .lookup::<Option<i32>>("item_id")
+                .unwrap()
+                .unwrap();
+            if m_project_item_id.is_none() {
+                // the current project has no project item at all
+                return;
             }
+            let project_item_id = m_project_item_id.unwrap();
+            let project_item_type = m_project_item_type.unwrap();
+
+            let mpi = MoveProjectItem::new(project_id, project_item_id, project_item_type);
+            let vbox = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+
+            let header_bar = adw::HeaderBar::builder()
+                .show_end_title_buttons(false)
+                .show_start_title_buttons(false)
+                .build();
+
+            let cancel_btn = gtk::Button::builder().label("Cancel").build();
+            header_bar.pack_start(&cancel_btn);
+
+            let move_btn = gtk::Button::builder()
+                .label("Move")
+                .css_classes(["suggested-action"])
+                .build();
+            header_bar.pack_end(&move_btn);
+
+            vbox.append(&header_bar);
+
+            vbox.append(&mpi);
+
+            let dialog = adw::Dialog::builder()
+                .title("Move project item")
+                .content_width(450)
+                .child(&vbox)
+                .build();
+
+            dialog.present(&common::main_win());
+
+            let dlg = dialog.clone();
+            cancel_btn.connect_clicked(move |_| {
+                dlg.close();
+            });
+
+            let dlg = dialog.clone();
+            move_btn.connect_clicked(move |_| {
+                Self::do_move_project_item(
+                    project_item_id,
+                    project_item_type,
+                    mpi.project_id(),
+                    EnvironmentType::from_repr(mpi.environment() as u8).unwrap(),
+                );
+                dlg.close(); // TODO close only after success
+            });
         });
         window.add_action(&select_project_action);
+    }
+
+    fn do_move_project_item(
+        project_item_id: i32,
+        project_item_type: ProjectItemType,
+        to_project_id: i32,
+        to_environment: EnvironmentType,
+    ) {
     }
 
     fn do_delete_project(prj_id: i32) {

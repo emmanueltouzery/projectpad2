@@ -2,6 +2,7 @@ use std::sync::mpsc;
 
 use adw::prelude::*;
 use adw::subclass::prelude::*;
+use async_channel::Receiver;
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
@@ -16,7 +17,7 @@ use projectpadsql::models::{
 use crate::sql_thread::SqlFunc;
 use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
-use crate::widgets::project_item_list::ProjectItemList;
+use crate::widgets::project_item_list::{self, ProjectItemList};
 use crate::widgets::project_item_model::ProjectItemType;
 use crate::widgets::project_items::common;
 use crate::win::ProjectpadApplicationWindow;
@@ -325,13 +326,30 @@ impl ProjectpadApplication {
 
             let dlg = dialog.clone();
             move_btn.connect_clicked(move |_| {
-                Self::do_move_project_item(
+                let to_project_id = mpi.project_id();
+                let move_receiver = Self::do_move_project_item(
                     project_item_id,
                     project_item_type,
                     mpi.project_id(),
                     EnvironmentType::from_repr(mpi.environment() as u8).unwrap(),
                 );
-                dlg.close(); // TODO close only after success
+                let dlg = dlg.clone();
+                glib::spawn_future_local(async move {
+                    let move_res = move_receiver.recv().await.unwrap();
+                    match move_res {
+                        Ok(_) => {
+                            dlg.close();
+                            ProjectItemList::display_project_item(
+                                Some(to_project_id),
+                                project_item_id,
+                                project_item_type,
+                            );
+                        }
+                        Err(e) => {
+                            common::simple_error_dlg("Error moving the item", Some(&e.to_string()));
+                        }
+                    }
+                });
             });
         });
         window.add_action(&select_project_action);
@@ -342,7 +360,60 @@ impl ProjectpadApplication {
         project_item_type: ProjectItemType,
         to_project_id: i32,
         to_environment: EnvironmentType,
-    ) {
+    ) -> Receiver<Result<usize, diesel::result::Error>> {
+        use projectpadsql::schema::project_note::dsl as prj_note;
+        use projectpadsql::schema::project_point_of_interest::dsl as prj_poi;
+        use projectpadsql::schema::server::dsl as srv;
+        use projectpadsql::schema::server_link::dsl as srvl;
+        common::run_sqlfunc(Box::new(move |sql_conn| match project_item_type {
+            ProjectItemType::Server => {
+                let changeset = (
+                    srv::project_id.eq(to_project_id),
+                    srv::environment.eq(to_environment),
+                );
+                diesel::update(srv::server.filter(srv::id.eq(project_item_id)))
+                    .set(changeset)
+                    .execute(sql_conn)
+            }
+            ProjectItemType::ServerLink => {
+                let changeset = (
+                    srvl::project_id.eq(to_project_id),
+                    srvl::environment.eq(to_environment),
+                );
+                diesel::update(srvl::server_link.filter(srvl::id.eq(project_item_id)))
+                    .set(changeset)
+                    .execute(sql_conn)
+            }
+            ProjectItemType::ProjectNote => {
+                let update_note_env =
+                    diesel::update(prj_note::project_note.filter(prj_note::id.eq(project_item_id)));
+                match to_environment {
+                    EnvironmentType::EnvDevelopment => update_note_env
+                        .set(prj_note::has_dev.eq(true))
+                        .execute(sql_conn),
+                    EnvironmentType::EnvStage => update_note_env
+                        .set(prj_note::has_stage.eq(true))
+                        .execute(sql_conn),
+                    EnvironmentType::EnvUat => update_note_env
+                        .set(prj_note::has_uat.eq(true))
+                        .execute(sql_conn),
+                    EnvironmentType::EnvProd => update_note_env
+                        .set(prj_note::has_prod.eq(true))
+                        .execute(sql_conn),
+                }?;
+                diesel::update(prj_note::project_note.filter(prj_note::id.eq(project_item_id)))
+                    .set(prj_note::project_id.eq(to_project_id))
+                    .execute(sql_conn)
+            }
+            ProjectItemType::ProjectPointOfInterest => {
+                let changeset = (prj_poi::project_id.eq(to_project_id),);
+                diesel::update(
+                    prj_poi::project_point_of_interest.filter(prj_poi::id.eq(project_item_id)),
+                )
+                .set(changeset)
+                .execute(sql_conn)
+            }
+        }))
     }
 
     fn do_delete_project(prj_id: i32) {

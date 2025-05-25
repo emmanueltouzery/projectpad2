@@ -546,6 +546,8 @@ impl ProjectpadApplication {
 
         let p_id = project.as_ref().map(|p| p.id);
 
+        let is_edit = project.is_some();
+
         let project_edit = ProjectEdit::new();
         if let Some(prj) = project {
             project_edit.set_title(prj.name);
@@ -557,7 +559,11 @@ impl ProjectpadApplication {
         vbox.append(&project_edit);
 
         let dialog = adw::Dialog::builder()
-            .title("Add project")
+            .title(if is_edit {
+                "Edit project"
+            } else {
+                "Add project"
+            })
             .child(&vbox)
             .build();
 

@@ -684,10 +684,10 @@ impl ProjectItemList {
                 let d = d.clone();
                 glib::spawn_future_local(async move {
                     let project_note_after_result = receiver.recv().await.unwrap();
-                    d.close();
 
                     match project_note_after_result {
                         Ok(note) => {
+                            d.close();
                             Self::display_project_item(None, note.id, ProjectItemType::ProjectNote)
                         }
                         Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),

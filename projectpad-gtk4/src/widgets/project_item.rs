@@ -113,8 +113,37 @@ impl ProjectItem {
 
         if item_id == -1 {
             // empty project item
-            // TODO display intro text
-            self.imp().project_item.set_child(None::<&gtk::Widget>);
+            let label = gtk::Label::builder().label(
+                              "A project may contain:\n\n\
+                              • <u>Server</u> - These are machines or virtual machines, with their own \
+                              IP. Projectpad knows several types of servers like Application servers, \
+                              Database, Reporting, Proxy... And a server may contain more elements, \
+                              such as point of interests (like folders on the filesystem), websites, \
+                              databases and so on - you'll be able to add these with the gear icon \
+                              that'll appear next to the server name on the right of the screen;\n\n\
+                              • <u>Point of interest</u> - These are commands to run or relevant files \
+                              or folders. Project point of interests have to be located on your computer. If you're \
+                              interested in point of interests on another machine then create a <tt>server</tt> for \
+                              that machine and add a Server point of interest on that server;\n\n\
+                              • <u>Project note</u> - Notes are markdown-formatted text containing \
+                              free-form text. Project notes are tied to the whole project, you can \
+                              also create server notes if they're tied to a specific server;\n\n\
+                              • <u>Server link</u> - Sometimes a specific server is shared between \
+                              different projects. Since we don't want to enter that server multiple \
+                              times in projectpad, we can enter it just once and 'link' to it from \
+                              the various projects making use of it. It's also possible to link to \
+                              a specific group on that server."
+                ).wrap(true).use_markup(true).build();
+            let status_page = adw::StatusPage::builder()
+                .icon_name("cube")
+                .title("Empty project")
+                .description(
+                    "To add items to this project, use the '+' icon at the \
+                              bottom of the sidebar.",
+                )
+                .child(&label)
+                .build();
+            self.imp().project_item.set_child(Some(&status_page));
         } else {
             let sub_item_id = Some(self.imp().sub_item_id.get());
             let item_type = ProjectItemType::from_repr(self.imp().project_item_type.get());

@@ -182,12 +182,19 @@ impl ProjectpadApplicationWindow {
                 // end update the select project item info
 
                 let popover = &w.imp().app_popover_menu;
+                let menu_model = gio::Menu::new();
                 // if: possible the project is empty, no project items at all
                 if item_id > 0 {
-                    popover.set_menu_model(Some(&Self::get_app_popover_menu(&title)));
-                } else {
-                    popover.set_menu_model(None::<&gio::Menu>);
+                    menu_model.append(
+                        Some(&format!("Move '{title}'...")),
+                        Some("win.move-project-item"),
+                    );
                 }
+                menu_model.append(
+                    Some("Help"),
+                    Some("win.open-help"),
+                );
+                popover.set_menu_model(Some(&menu_model));
             }),
             );
         win.imp().project_item.connect_closure(
@@ -339,15 +346,6 @@ impl ProjectpadApplicationWindow {
             .add_controller(motion_controller);
 
         win
-    }
-
-    fn get_app_popover_menu(project_item_title: &str) -> gio::Menu {
-        let menu_model = gio::Menu::new();
-        menu_model.append(
-            Some(&format!("Move '{project_item_title}'...")),
-            Some("win.move-project-item"),
-        );
-        menu_model
     }
 
     fn search_toggled(w: &ProjectpadApplicationWindow) {

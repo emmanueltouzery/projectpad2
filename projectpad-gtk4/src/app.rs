@@ -353,6 +353,17 @@ impl ProjectpadApplication {
             });
         });
         window.add_action(&select_project_action);
+
+        let open_help_action = gio::SimpleAction::new("open-help", None);
+        open_help_action.connect_activate(move |_action, _parameter| {
+            if let Err(err) = gio::AppInfo::launch_default_for_uri(
+                "https://github.com/emmanueltouzery/projectpad2/wiki/Help",
+                None::<&gio::AppLaunchContext>,
+            ) {
+                eprintln!("Failed to open help: {}", err);
+            }
+        });
+        window.add_action(&open_help_action);
     }
 
     fn do_move_project_item(

@@ -646,6 +646,14 @@ impl Note {
         text_edit.buffer().text(&start_iter, &end_iter, false)
     }
 
+    fn copy_tag_at_offset(tv: &gtk::TextView, offset: i32, tag: &gtk::TextTag) {
+        let mut start = tv.buffer().iter_at_offset(offset);
+        start.backward_to_tag_toggle(Some(tag));
+        let mut end = tv.buffer().iter_at_offset(offset);
+        end.forward_to_tag_toggle(Some(tag));
+        copy_to_clipboard(&start.slice(&end));
+    }
+
     // could have went for set_extra_menu(), but then i don't get the click
     // position, it gets messy. The popover dismisses the standard right-click
     // menu, but in read-only mode it only contains "copy" and "select all".
@@ -660,6 +668,7 @@ impl Note {
         let tv1 = text_view.clone();
         let tv2 = text_view.clone();
         let tv3 = text_view.clone();
+        let tv4 = text_view.clone();
         action_group.add_action_entries([
             gio::ActionEntry::builder("select-all")
                 .activate(move |_, _action, _parameter| {
@@ -678,13 +687,16 @@ impl Note {
                 .parameter_type(Some(&i32::static_variant_type()))
                 .activate(move |_, _action, parameter| {
                     let offset = parameter.as_ref().unwrap().get::<i32>().unwrap();
-
-                    let tag_code = tv3.buffer().tag_table().lookup(notes::TAG_CODE).unwrap();
-                    let mut start = tv3.buffer().iter_at_offset(offset);
-                    start.backward_to_tag_toggle(Some(&tag_code));
-                    let mut end = tv3.buffer().iter_at_offset(offset);
-                    end.forward_to_tag_toggle(Some(&tag_code));
-                    copy_to_clipboard(&start.slice(&end));
+                    let tag = tv3.buffer().tag_table().lookup(notes::TAG_CODE).unwrap();
+                    Self::copy_tag_at_offset(&tv3, offset, &tag);
+                })
+                .build(),
+            gio::ActionEntry::builder("copy-link")
+                .parameter_type(Some(&i32::static_variant_type()))
+                .activate(move |_, _action, parameter| {
+                    let offset = parameter.as_ref().unwrap().get::<i32>().unwrap();
+                    let tag = tv4.buffer().tag_table().lookup(notes::TAG_LINK).unwrap();
+                    Self::copy_tag_at_offset(&tv4, offset, &tag);
                 })
                 .build(),
         ]);
@@ -711,6 +723,14 @@ impl Note {
                         Some("Copy code block"),
                         Some(&gio::Action::print_detailed_name(
                             "context-menu-actions.copy-code-block",
+                            Some(&text_iter.offset().to_variant()),
+                        )),
+                    );
+                } else if Self::iter_matches_tags(&text_iter, &[notes::TAG_LINK]) {
+                    menu_model.append(
+                        Some("Copy link"),
+                        Some(&gio::Action::print_detailed_name(
+                            "context-menu-actions.copy-link",
                             Some(&text_iter.offset().to_variant()),
                         )),
                     );

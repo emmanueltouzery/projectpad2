@@ -1,4 +1,6 @@
 use adw::prelude::*;
+use diesel::prelude::*;
+use projectpadsql::models::Project;
 
 use crate::widgets::project_items::common;
 
@@ -96,8 +98,26 @@ fn switch_export_tab(stack: &gtk::Stack, next: &gtk::Button) {
     let projects_group = adw::PreferencesGroup::builder()
         .title("Projects to export")
         .build();
-    projects_group.add(&adw::SwitchRow::builder().title("project1").build());
-    import_tab_box.append(&projects_group);
+
+    let projects_scroll = gtk::ScrolledWindow::builder()
+        .child(&projects_group)
+        .height_request(300)
+        .build();
+
+    import_tab_box.append(&projects_scroll);
+
+    let projects_recv = common::run_sqlfunc(Box::new(|sql_conn| {
+        use projectpadsql::schema::project::dsl as prj;
+        prj::project
+            .order(prj::name.asc())
+            .load::<Project>(sql_conn)
+    }));
+    glib::spawn_future_local(async move {
+        let projects = projects_recv.recv().await.unwrap().unwrap();
+        for project in projects.iter() {
+            projects_group.add(&adw::SwitchRow::builder().title(&project.name).build());
+        }
+    });
 
     let password_group = adw::PreferencesGroup::builder().title("Password").build();
     password_group.add(&adw::PasswordEntryRow::builder().title("Password").build());

@@ -17,7 +17,7 @@ use projectpadsql::models::{
 use crate::sql_thread::SqlFunc;
 use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
-use crate::widgets::project_item_list::{self, ProjectItemList};
+use crate::widgets::project_item_list::ProjectItemList;
 use crate::widgets::project_item_model::ProjectItemType;
 use crate::widgets::project_items::common;
 use crate::win::ProjectpadApplicationWindow;
@@ -262,97 +262,15 @@ impl ProjectpadApplication {
 
         let select_project_action = gio::SimpleAction::new("move-project-item", None);
         select_project_action.connect_activate(move |_action, _parameter| {
-            let win = common::main_win();
-            let select_project_item_state =
-                glib::VariantDict::new(win.action_state("select-project-item").as_ref());
-
-            let project_id = select_project_item_state
-                .lookup::<i32>("project_id")
-                .unwrap()
-                .unwrap();
-
-            let m_project_item_type = select_project_item_state
-                .lookup::<Option<u8>>("item_type")
-                .unwrap()
-                .and_then(std::convert::identity)
-                .and_then(ProjectItemType::from_repr);
-
-            let m_project_item_id = select_project_item_state
-                .lookup::<Option<i32>>("item_id")
-                .unwrap()
-                .unwrap();
-            if m_project_item_id.is_none() {
-                // the current project has no project item at all
-                return;
-            }
-            let project_item_id = m_project_item_id.unwrap();
-            let project_item_type = m_project_item_type.unwrap();
-
-            let mpi = MoveProjectItem::new(project_id, project_item_id, project_item_type);
-            let vbox = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-
-            let header_bar = adw::HeaderBar::builder()
-                .show_end_title_buttons(false)
-                .show_start_title_buttons(false)
-                .build();
-
-            let cancel_btn = gtk::Button::builder().label("Cancel").build();
-            header_bar.pack_start(&cancel_btn);
-
-            let move_btn = gtk::Button::builder()
-                .label("Move")
-                .css_classes(["suggested-action"])
-                .build();
-            header_bar.pack_end(&move_btn);
-
-            vbox.append(&header_bar);
-
-            vbox.append(&mpi);
-
-            let dialog = adw::Dialog::builder()
-                .title("Move project item")
-                .content_width(450)
-                .child(&vbox)
-                .build();
-
-            dialog.present(&common::main_win());
-
-            let dlg = dialog.clone();
-            cancel_btn.connect_clicked(move |_| {
-                dlg.close();
-            });
-
-            let dlg = dialog.clone();
-            move_btn.connect_clicked(move |_| {
-                let to_project_id = mpi.project_id();
-                let move_receiver = Self::do_move_project_item(
-                    project_item_id,
-                    project_item_type,
-                    mpi.project_id(),
-                    EnvironmentType::from_repr(mpi.environment() as u8).unwrap(),
-                );
-                let dlg = dlg.clone();
-                glib::spawn_future_local(async move {
-                    let move_res = move_receiver.recv().await.unwrap();
-                    match move_res {
-                        Ok(_) => {
-                            dlg.close();
-                            ProjectItemList::display_project_item(
-                                Some(to_project_id),
-                                project_item_id,
-                                project_item_type,
-                            );
-                        }
-                        Err(e) => {
-                            common::simple_error_dlg("Error moving the item", Some(&e.to_string()));
-                        }
-                    }
-                });
-            });
+            Self::open_move_project_item_dlg();
         });
         window.add_action(&select_project_action);
+
+        let import_export_action = gio::SimpleAction::new("import-export", None);
+        import_export_action.connect_activate(move |_action, _parameter| {
+            Self::open_import_export_dlg();
+        });
+        window.add_action(&import_export_action);
 
         let open_help_action = gio::SimpleAction::new("open-help", None);
         open_help_action.connect_activate(move |_action, _parameter| {
@@ -364,6 +282,175 @@ impl ProjectpadApplication {
             }
         });
         window.add_action(&open_help_action);
+    }
+
+    fn open_import_export_dlg() {
+        let vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+
+        let header_bar = adw::HeaderBar::builder()
+            .show_end_title_buttons(false)
+            .show_start_title_buttons(false)
+            .build();
+
+        let cancel_btn = gtk::Button::builder().label("Cancel").build();
+        header_bar.pack_start(&cancel_btn);
+
+        let next_btn = gtk::Button::builder()
+            .label("Next")
+            .css_classes(["suggested-action"])
+            .build();
+        header_bar.pack_end(&next_btn);
+
+        vbox.append(&header_bar);
+
+        let stack = gtk::Stack::new();
+
+        let imp_exp_tab = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .margin_start(20)
+            .margin_end(20)
+            .margin_top(20)
+            .margin_bottom(20)
+            .spacing(10)
+            .build();
+
+        imp_exp_tab.append(
+            &gtk::Label::builder()
+                .label(
+                    "You can export any project to a single data file. The file can then be \
+                shared. The exported file is an encrypted 7zip file which can be either \
+                imported back in another projectpad instance, or used directly by the \
+                recipient as a textual description of the exported project. The \
+                7zip contains a human-readable YAML file.",
+                )
+                .wrap(true)
+                .build(),
+        );
+
+        let import_radio = gtk::CheckButton::builder()
+            .label("Import")
+            .active(true)
+            .build();
+        imp_exp_tab.append(&import_radio);
+
+        let export_radio = gtk::CheckButton::builder()
+            .group(&import_radio)
+            .label("Export")
+            .build();
+        imp_exp_tab.append(&export_radio);
+
+        stack.add_child(&imp_exp_tab);
+
+        vbox.append(&stack);
+
+        let dialog = adw::Dialog::builder()
+            .title("Import/Export")
+            .content_width(550)
+            .child(&vbox)
+            .build();
+
+        dialog.present(&common::main_win());
+
+        let dlg = dialog.clone();
+        cancel_btn.connect_clicked(move |_| {
+            dlg.close();
+        });
+
+        next_btn.connect_clicked(move |_| {});
+    }
+
+    fn open_move_project_item_dlg() {
+        let win = common::main_win();
+        let select_project_item_state =
+            glib::VariantDict::new(win.action_state("select-project-item").as_ref());
+
+        let project_id = select_project_item_state
+            .lookup::<i32>("project_id")
+            .unwrap()
+            .unwrap();
+
+        let m_project_item_type = select_project_item_state
+            .lookup::<Option<u8>>("item_type")
+            .unwrap()
+            .and_then(std::convert::identity)
+            .and_then(ProjectItemType::from_repr);
+
+        let m_project_item_id = select_project_item_state
+            .lookup::<Option<i32>>("item_id")
+            .unwrap()
+            .unwrap();
+        if m_project_item_id.is_none() {
+            // the current project has no project item at all
+            return;
+        }
+        let project_item_id = m_project_item_id.unwrap();
+        let project_item_type = m_project_item_type.unwrap();
+
+        let mpi = MoveProjectItem::new(project_id, project_item_id, project_item_type);
+        let vbox = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .build();
+
+        let header_bar = adw::HeaderBar::builder()
+            .show_end_title_buttons(false)
+            .show_start_title_buttons(false)
+            .build();
+
+        let cancel_btn = gtk::Button::builder().label("Cancel").build();
+        header_bar.pack_start(&cancel_btn);
+
+        let move_btn = gtk::Button::builder()
+            .label("Move")
+            .css_classes(["suggested-action"])
+            .build();
+        header_bar.pack_end(&move_btn);
+
+        vbox.append(&header_bar);
+
+        vbox.append(&mpi);
+
+        let dialog = adw::Dialog::builder()
+            .title("Move project item")
+            .content_width(450)
+            .child(&vbox)
+            .build();
+
+        dialog.present(&common::main_win());
+
+        let dlg = dialog.clone();
+        cancel_btn.connect_clicked(move |_| {
+            dlg.close();
+        });
+
+        let dlg = dialog.clone();
+        move_btn.connect_clicked(move |_| {
+            let to_project_id = mpi.project_id();
+            let move_receiver = Self::do_move_project_item(
+                project_item_id,
+                project_item_type,
+                mpi.project_id(),
+                EnvironmentType::from_repr(mpi.environment() as u8).unwrap(),
+            );
+            let dlg = dlg.clone();
+            glib::spawn_future_local(async move {
+                let move_res = move_receiver.recv().await.unwrap();
+                match move_res {
+                    Ok(_) => {
+                        dlg.close();
+                        ProjectItemList::display_project_item(
+                            Some(to_project_id),
+                            project_item_id,
+                            project_item_type,
+                        );
+                    }
+                    Err(e) => {
+                        common::simple_error_dlg("Error moving the item", Some(&e.to_string()));
+                    }
+                }
+            });
+        });
     }
 
     fn do_move_project_item(

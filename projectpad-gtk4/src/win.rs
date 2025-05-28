@@ -191,6 +191,10 @@ impl ProjectpadApplicationWindow {
                     );
                 }
                 menu_model.append(
+                    Some("Import/Export"),
+                    Some("win.import-export"),
+                );
+                menu_model.append(
                     Some("Help"),
                     Some("win.open-help"),
                 );

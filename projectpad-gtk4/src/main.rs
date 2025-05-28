@@ -12,6 +12,7 @@ mod sql_thread;
 pub mod string_sidecar_object;
 #[macro_use]
 pub mod sql_util;
+mod import_export_ui;
 mod win;
 
 fn main() -> glib::ExitCode {

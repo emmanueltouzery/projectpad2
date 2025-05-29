@@ -62,8 +62,19 @@ glib::wrapper! {
         @extends gtk::Widget, adw::PreferencesRow, adw::ActionRow;
 }
 
+/// by default we update the filename only for WidgetMode::Edit
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum UpdateFilenameProp {
+    Default,
+    Always,
+}
+
 impl FilePickerActionRow {
     pub fn new(widget_mode: WidgetMode) -> Self {
+        Self::new_ext(widget_mode, UpdateFilenameProp::Default)
+    }
+
+    pub fn new_ext(widget_mode: WidgetMode, update_filename_prop: UpdateFilenameProp) -> Self {
         let this = glib::Object::new::<Self>();
 
         // this.bind_property("text", this.upcast_ref::<adw::PreferencesRow>(), "text")
@@ -109,7 +120,9 @@ impl FilePickerActionRow {
                     file_dialog.save(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
                         if let Ok(f) = r {
                             if let Some(p) = f.path() {
-                                dbg!(&p);
+                                if update_filename_prop == UpdateFilenameProp::Always {
+                                    _s.set_filename(p.to_str().unwrap());
+                                }
                                 _s.emit_by_name::<()>("file-picked", &[&p.display().to_string()]);
                             }
                         }

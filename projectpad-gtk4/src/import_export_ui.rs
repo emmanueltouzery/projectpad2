@@ -1,9 +1,16 @@
+use std::{ffi::OsString, path::PathBuf, str::FromStr};
+
 use adw::prelude::*;
-use diesel::{prelude::*, select};
-use glib::SignalHandlerId;
+use diesel::prelude::*;
 use projectpadsql::models::Project;
 
-use crate::widgets::project_items::common;
+use crate::widgets::{
+    project_item::WidgetMode,
+    project_items::{
+        common,
+        file_picker_action_row::{FilePickerActionRow, UpdateFilenameProp},
+    },
+};
 
 pub fn open_import_export_dlg() {
     let vbox = gtk::Box::builder()
@@ -87,12 +94,12 @@ pub fn open_import_export_dlg() {
                 .css_classes(["suggested-action"])
                 .build();
             header_bar.pack_end(&export_btn);
-            switch_export_tab(&stack, export_btn);
+            switch_export_tab(&dialog, &stack, export_btn);
         }
     });
 }
 
-fn switch_export_tab(stack: &gtk::Stack, next: gtk::Button) {
+fn switch_export_tab(dialog: &adw::Dialog, stack: &gtk::Stack, next: gtk::Button) {
     let import_tab_box = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .margin_start(20)
@@ -116,7 +123,7 @@ fn switch_export_tab(stack: &gtk::Stack, next: gtk::Button) {
 
     let projects_scroll = gtk::ScrolledWindow::builder()
         .child(&projects_group2)
-        .height_request(300)
+        .height_request(250)
         .build();
 
     import_tab_box.append(&projects_scroll);
@@ -141,6 +148,15 @@ fn switch_export_tab(stack: &gtk::Stack, next: gtk::Button) {
     stack.add_child(&import_tab_box);
     stack.set_visible_child(&import_tab_box);
 
+    let target_file_group = adw::PreferencesGroup::builder()
+        .title("Export to file...")
+        .build();
+    let file_picker_row =
+        FilePickerActionRow::new_ext(WidgetMode::Show, UpdateFilenameProp::Always);
+    target_file_group.add(&file_picker_row);
+    import_tab_box.append(&target_file_group);
+
+    let d = dialog.clone();
     glib::spawn_future_local(async move {
         let projects = projects_recv.recv().await.unwrap().unwrap();
         let mut project_rows = vec![];
@@ -155,6 +171,7 @@ fn switch_export_tab(stack: &gtk::Stack, next: gtk::Button) {
                 pr.set_active(true);
             }
         });
+        let dlg = d.clone();
         next.connect_clicked(move |_| {
             if pass1.text() != pass2.text() {
                 common::simple_error_dlg(
@@ -177,6 +194,41 @@ fn switch_export_tab(stack: &gtk::Stack, next: gtk::Button) {
                     Some("No projects were selected for export"),
                 );
             }
+            match file_picker_row.filename() {
+                fname if fname.is_empty() => {
+                    common::simple_error_dlg(
+                        "Export failed",
+                        Some("Must pick a file to export to"),
+                    );
+                }
+
+                fname
+                    if PathBuf::from_str(&fname)
+                        .map_err(|e| e.to_string())
+                        .and_then(|pb| {
+                            pb.extension()
+                                .ok_or("File extension is not .7z".to_owned())
+                                .map(|ext| ext.to_owned())
+                        })
+                        == Ok(OsString::from_str("7z").unwrap()) =>
+                {
+                    do_export(&dlg, &fname, &selected_projects, &pass1.text());
+                }
+
+                // need to make sure the user picks a filename ending in .7z, or we get
+                // a subtle issue in the flatpak: when you enter filename /a/b/c in the
+                // file picker, flatpak gives us access to /a/b/c and NOTHING ELSE.
+                // attempting to write to /a/b/c.7z will fail, and we do want to have
+                // the extension...
+                _ => common::simple_error_dlg(
+                    "Export file",
+                    Some("Please pick a file to save to ending with .7z"),
+                ),
+            }
         });
     });
+}
+
+fn do_export(dialog: &adw::Dialog, target_fname: &str, selected_projects: &[i32], password: &str) {
+    gio::spawn_blocking(move || {});
 }

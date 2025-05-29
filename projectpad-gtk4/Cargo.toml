@@ -30,3 +30,7 @@ pulldown-cmark = { version = "0.8.0", default-features = false }
 sourceview5 = "0.8.0"
 graphene-rs = "0.19.2"
 gsk4 = "0.8.1"
+serde = "1.0.123"
+serde_derive = "1.0.123"
+serde_yaml = "0.8.17"
+regex = "1.4.3"

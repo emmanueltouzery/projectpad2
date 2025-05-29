@@ -165,7 +165,7 @@ impl ProjectItemList {
                 // project_item_type_u8 being none means it's a server item. therefore we're
                 // searching for a project item type of server in that case
                 && project_item_type_u8.unwrap_or(ProjectItemType::Server as u8)
-                    == item_model.property("project-item-type")
+                    == item_model.project_item_type()
             {
                 selected_index = Some(idx);
             }

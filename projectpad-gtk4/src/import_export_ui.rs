@@ -1,14 +1,18 @@
-use std::{ffi::OsString, path::PathBuf, str::FromStr};
+use itertools::Itertools;
+use std::{ffi::OsStr, path::PathBuf};
 
 use adw::prelude::*;
 use diesel::prelude::*;
 use projectpadsql::models::Project;
 
-use crate::widgets::{
-    project_item::WidgetMode,
-    project_items::{
-        common,
-        file_picker_action_row::{FilePickerActionRow, UpdateFilenameProp},
+use crate::{
+    export,
+    widgets::{
+        project_item::WidgetMode,
+        project_items::{
+            common,
+            file_picker_action_row::{FilePickerActionRow, UpdateFilenameProp},
+        },
     },
 };
 
@@ -184,7 +188,7 @@ fn switch_export_tab(dialog: &adw::Dialog, stack: &gtk::Stack, next: gtk::Button
             let mut idx = 0;
             for project_row in project_rows.iter() {
                 if project_row.is_active() {
-                    selected_projects.push(projects.get(idx).unwrap().id);
+                    selected_projects.push(projects.get(idx).unwrap().clone());
                 }
                 idx += 1;
             }
@@ -194,25 +198,16 @@ fn switch_export_tab(dialog: &adw::Dialog, stack: &gtk::Stack, next: gtk::Button
                     Some("No projects were selected for export"),
                 );
             }
-            match file_picker_row.filename() {
-                fname if fname.is_empty() => {
+            match PathBuf::from(&file_picker_row.filename()) {
+                pb if pb.as_os_str().is_empty() => {
                     common::simple_error_dlg(
                         "Export failed",
                         Some("Must pick a file to export to"),
                     );
                 }
 
-                fname
-                    if PathBuf::from_str(&fname)
-                        .map_err(|e| e.to_string())
-                        .and_then(|pb| {
-                            pb.extension()
-                                .ok_or("File extension is not .7z".to_owned())
-                                .map(|ext| ext.to_owned())
-                        })
-                        == Ok(OsString::from_str("7z").unwrap()) =>
-                {
-                    do_export(&dlg, &fname, &selected_projects, &pass1.text());
+                pb if pb.extension() == Some(OsStr::new("7z")) => {
+                    do_export(&dlg, pb, selected_projects, pass1.text().to_string());
                 }
 
                 // need to make sure the user picks a filename ending in .7z, or we get
@@ -229,6 +224,38 @@ fn switch_export_tab(dialog: &adw::Dialog, stack: &gtk::Stack, next: gtk::Button
     });
 }
 
-fn do_export(dialog: &adw::Dialog, target_fname: &str, selected_projects: &[i32], password: &str) {
-    gio::spawn_blocking(move || {});
+fn do_export(
+    dialog: &adw::Dialog,
+    target_fname: PathBuf,
+    selected_projects: Vec<Project>,
+    password: String,
+) {
+    let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+        export::export_projects(sql_conn, &selected_projects, &target_fname, &password)
+            .map_err(|e| e.to_string())
+    }));
+    let dlg = dialog.clone();
+    glib::spawn_future_local(async move {
+        let res_missing_dep_project_names = recv.recv().await.unwrap();
+        match res_missing_dep_project_names {
+            Err(e) => {
+                common::simple_error_dlg("Export error", Some(&e));
+            }
+            Ok(missing_dep_project_names) if !missing_dep_project_names.is_empty() => {
+                common::simple_error_dlg(
+                    "Export warning",
+                    Some(&format!(
+                        "Some dependent projects were not exported: {}",
+                        missing_dep_project_names.iter().join(", ")
+                    )),
+                );
+            }
+            Ok(_) => {
+                // TODO could open a dialog confirming the export was done, with
+                // a link to the export folder (same as we have in the preferences for
+                // the config file)
+                dlg.close();
+            }
+        }
+    });
 }

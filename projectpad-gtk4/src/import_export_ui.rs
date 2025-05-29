@@ -6,7 +6,7 @@ use diesel::prelude::*;
 use projectpadsql::models::Project;
 
 use crate::{
-    export,
+    export, import,
     widgets::{
         project_item::WidgetMode,
         project_items::{
@@ -99,6 +99,14 @@ pub fn open_import_export_dlg() {
                 .build();
             header_bar.pack_end(&export_btn);
             switch_export_tab(&dialog, &stack, export_btn);
+        } else if import_radio.is_active() {
+            btn.set_visible(false);
+            let import_btn = gtk::Button::builder()
+                .label("Import")
+                .css_classes(["suggested-action"])
+                .build();
+            header_bar.pack_end(&import_btn);
+            switch_import_tab(&dialog, &stack, import_btn);
         }
     });
 }
@@ -256,6 +264,64 @@ fn do_export(
                 // the config file)
                 dlg.close();
             }
+        }
+    });
+}
+
+fn switch_import_tab(dialog: &adw::Dialog, stack: &gtk::Stack, next: gtk::Button) {
+    let import_tab_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .margin_start(20)
+        .margin_end(20)
+        .margin_top(20)
+        .margin_bottom(20)
+        .spacing(10)
+        .build();
+
+    let prefs_group = adw::PreferencesGroup::builder()
+        .title("Import file and password")
+        .build();
+
+    // TODO filename filter for picker... *.7z only
+    let file_picker_row = FilePickerActionRow::new(WidgetMode::Edit);
+
+    prefs_group.add(&file_picker_row);
+
+    let pass = adw::PasswordEntryRow::builder().title("Password").build();
+    prefs_group.add(&pass);
+
+    import_tab_box.append(&prefs_group);
+
+    stack.add_child(&import_tab_box);
+    stack.set_visible_child(&import_tab_box);
+
+    let dlg = dialog.clone();
+    next.connect_clicked(move |_| match PathBuf::from(&file_picker_row.filename()) {
+        pb if pb.as_os_str().is_empty() => {
+            common::simple_error_dlg("Import failed", Some("Must pick a file to import from"));
+        }
+
+        pb => {
+            let pass_txt = pass.text();
+            let import_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                sql_conn
+                    .transaction(|sql_conn| {
+                        import::do_import(sql_conn, &pb.to_string_lossy(), &pass_txt)
+                    })
+                    .map_err(|e| e.to_string())
+            }));
+            let dlg = dlg.clone();
+            glib::spawn_future_local(async move {
+                let import_res = import_recv.recv().await.unwrap();
+                match import_res {
+                    Ok(_) => {
+                        dlg.close();
+                    }
+                    Err(e) => {
+                        common::simple_error_dlg("Import failed", Some(&e));
+                    }
+                }
+            });
         }
     });
 }

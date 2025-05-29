@@ -314,7 +314,7 @@ impl ProjectpadApplicationWindow {
                     level2.property("search-item-type"),
                     level2.property("server-id"),
                 );
-            } else if let Some(level1) = level2_item {
+            } else if let Some(level1) = level1_item {
                 Self::display_item_from_search(
                     w.clone(),
                     level1.property("project-id"),

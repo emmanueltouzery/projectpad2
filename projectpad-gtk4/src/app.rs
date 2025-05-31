@@ -14,7 +14,7 @@ use projectpadsql::models::{
     EnvironmentType, Project, Server, ServerDatabase, ServerLink, ServerWebsite,
 };
 
-use crate::sql_thread::SqlFunc;
+use crate::sql_thread::{self, SqlFunc};
 use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_item_list::ProjectItemList;
@@ -678,10 +678,11 @@ impl ProjectpadApplication {
             // self.run();
             // dbg!("after running the app");
             let app_clone = self.clone();
+            let sql_channel = self.get_sql_channel().clone();
             glib::spawn_future_local(async move {
                 let unlock_success = receiver.recv().await.unwrap();
                 if unlock_success {
-                    // TODO run_prepare_db
+                    Self::run_prepare_db(sql_channel);
                     // TODO request_update_welcome_status
 
                     app_clone.fetch_projects_and_populate_menu(RunMode::FirstRun, &channel2);
@@ -693,6 +694,15 @@ impl ProjectpadApplication {
         } else {
             // self.display_unlock_dialog();
         }
+    }
+
+    fn run_prepare_db(sql_channel: mpsc::Sender<SqlFunc>) {
+        sql_channel
+            .send(SqlFunc::new(|sql_conn| {
+                sql_thread::migrate_db_if_needed(sql_conn).unwrap();
+                sql_conn.batch_execute("PRAGMA foreign_keys = ON").unwrap();
+            }))
+            .unwrap();
     }
 
     pub fn project_id(&self) -> Option<i32> {
@@ -718,8 +728,6 @@ impl ProjectpadApplication {
         let (sender, receiver) = async_channel::bounded(1);
         sql_channel
             .send(SqlFunc::new(move |sql_conn| {
-                // TODO wrong place for that
-                sql_conn.batch_execute("PRAGMA foreign_keys = ON").unwrap();
                 use projectpadsql::schema::project::dsl::*;
                 let prjs = project.order(name.asc()).load::<Project>(sql_conn).unwrap();
                 sender.send_blocking(prjs).unwrap();

@@ -795,12 +795,15 @@ impl Note {
                 .tag_table()
                 .add(&text_tag_search_match());
             // https://stackoverflow.com/a/63351603/516188
-            // TODO don't hardcode sourceview to dark mode
             // dbg!(&sourceview5::StyleSchemeManager::default().scheme_ids());
-            buf.set_property(
-                "style-scheme",
-                sourceview5::StyleSchemeManager::default().scheme("Adwaita-dark"),
-            );
+            if let Some(settings) = gtk::Settings::default() {
+                if settings.is_gtk_application_prefer_dark_theme() {
+                    buf.set_property(
+                        "style-scheme",
+                        sourceview5::StyleSchemeManager::default().scheme("Adwaita-dark"),
+                    );
+                }
+            }
             buf.set_text(contents);
             let view = sourceview5::View::with_buffer(&buf);
             view.set_vexpand(true);

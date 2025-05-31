@@ -130,13 +130,11 @@ fn display_project_poi(
                         InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type")).unwrap(),
                     );
 
-                    let app = gio::Application::default()
-                        .and_downcast::<ProjectpadApplication>()
-                        .unwrap();
-                    let db_sender = app.get_sql_channel();
+                    let db_sender = common::app().get_sql_channel();
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
                         let project_poi_after_result = receiver.recv().await.unwrap();
+                        let app = common::app();
                         let window = app.imp().window.get().unwrap();
                         let win_binding = window.upgrade();
                         let win_binding_ref = win_binding.as_ref().unwrap();
@@ -244,9 +242,7 @@ pub fn save_project_poi(
     new_text: String,
     new_interest_type: InterestType,
 ) -> async_channel::Receiver<Result<ProjectPointOfInterest, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
+    let app = common::app();
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
     let project_id = app.project_id().unwrap();

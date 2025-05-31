@@ -335,15 +335,13 @@ fn display_server(
                         server_view_edit.auth_key_filename()
                     );
 
-                    let app = gio::Application::default()
-                        .and_downcast::<ProjectpadApplication>()
-                        .unwrap();
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
                         let server_after_result = receiver.recv().await.unwrap();
                         if let Err((title, msg)) = server_after_result {
                             common::simple_error_dlg(&title, msg.as_deref());
                         } else {
+                            let app = common::app();
                             let window = app.imp().window.get().unwrap();
                             let win_binding = window.upgrade();
                             let win_binding_ref = win_binding.as_ref().unwrap();
@@ -908,10 +906,7 @@ pub fn save_server_poi(
     new_interest_type: InterestType,
     new_run_on: RunOn,
 ) -> async_channel::Receiver<Result<ServerPointOfInterest, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    let db_sender = app.get_sql_channel();
+    let db_sender = common::app().get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
     db_sender
@@ -1032,10 +1027,7 @@ pub fn save_server_website(
     new_password: String,
     new_server_database_id: Option<i32>,
 ) -> async_channel::Receiver<Result<ServerWebsite, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    let db_sender = app.get_sql_channel();
+    let db_sender = common::app().get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
     db_sender
@@ -1155,10 +1147,7 @@ pub fn save_server_database(
     new_username: String,
     new_password: String,
 ) -> async_channel::Receiver<Result<ServerDatabase, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    let db_sender = app.get_sql_channel();
+    let db_sender = common::app().get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
     db_sender
@@ -1303,10 +1292,7 @@ fn prepare_add_server_note_dlg(
     let server_note = server_note.clone();
     let he = he.clone();
     save_btn.connect_clicked(move |_| {
-        let app = gio::Application::default()
-            .and_downcast::<ProjectpadApplication>()
-            .unwrap();
-        let db_sender = app.get_sql_channel();
+        let db_sender = common::app().get_sql_channel();
         let receiver = save_server_note(
             db_sender,
             server_id,
@@ -1343,10 +1329,7 @@ pub fn save_server_extra_user_account(
     new_username: String,
     new_password: String,
 ) -> async_channel::Receiver<Result<ServerExtraUserAccount, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    let db_sender = app.get_sql_channel();
+    let db_sender = common::app().get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
 
     let old_auth_key_filename_owned_str = old_auth_key_filename.unwrap_or("").to_owned();
@@ -1884,16 +1867,14 @@ fn display_server_note(
             save_btn.connect_clicked(move |_| {
                 let new_contents = note.get_contents_text();
 
-                let app = gio::Application::default()
-                    .and_downcast::<ProjectpadApplication>()
-                    .unwrap();
-                let db_sender = app.get_sql_channel();
+                let db_sender = common::app().get_sql_channel();
 
                 let receiver = save_server_note(db_sender.clone(), n.server_id, header_edit.group_name(), Some(n.id),
                     header_edit.title(), new_contents);
                 let dlg = dlg.clone();
                 glib::spawn_future_local(async move {
                     let project_note_after_result = receiver.recv().await.unwrap();
+                    let app = common::app();
                     let window = app.imp().window.get().unwrap();
                     let win_binding = window.upgrade();
                     let win_binding_ref = win_binding.as_ref().unwrap();
@@ -1977,9 +1958,7 @@ pub fn save_server(
     old_auth_key_filename: Option<&str>,
     new_auth_key_filename: String,
 ) -> async_channel::Receiver<Result<Server, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
+    let app = common::app();
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
     let project_id = app.project_id().unwrap();

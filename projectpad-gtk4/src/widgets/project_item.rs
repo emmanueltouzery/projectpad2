@@ -3,10 +3,9 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
-use crate::{
-    app::ProjectpadApplication,
-    widgets::{project_item_model::ProjectItemType, project_items::note},
-};
+use crate::widgets::{project_item_model::ProjectItemType, project_items::note};
+
+use super::project_items::common;
 
 mod imp {
     use std::{cell::Cell, sync::OnceLock};
@@ -108,7 +107,6 @@ impl WidgetMode {
 
 impl ProjectItem {
     pub fn refresh_item(&self) {
-        let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
         let item_id = self.imp().item_id.get();
 
         if item_id == -1 {
@@ -149,7 +147,7 @@ impl ProjectItem {
             let item_type = ProjectItemType::from_repr(self.imp().project_item_type.get());
             // TODO receive the item type besides the item_id and switch on item type here
             // also possibly receive the ProjectItem, telling me much more than the id
-            let db_sender = app.unwrap().get_sql_channel();
+            let db_sender = common::app().get_sql_channel();
 
             // reset the scroll, who knows what we were displaying before
             self.emit_by_name::<()>("request-scroll", &[&0f32]);

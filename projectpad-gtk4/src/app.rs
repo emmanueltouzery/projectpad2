@@ -15,6 +15,7 @@ use projectpadsql::models::{
 };
 
 use crate::sql_thread::{self, SqlFunc};
+use crate::unlock_db_dialog;
 use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_item_list::ProjectItemList;
@@ -45,6 +46,8 @@ mod imp {
         pub window: OnceCell<WeakRef<ProjectpadApplicationWindow>>,
 
         pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
+
+        pub is_new_db: RefCell<Option<bool>>,
     }
 
     #[glib::object_subclass]
@@ -129,6 +132,7 @@ impl ProjectpadApplication {
             // .property("resource-base-path", Some(config::PATH_ID))
             .build();
         app.imp().sql_channel.replace(Some(sql_channel));
+        app.imp().is_new_db.replace(Some(is_new_db));
 
         app.connect_startup(|_| Self::load_css());
 
@@ -439,9 +443,7 @@ impl ProjectpadApplication {
 
     fn do_delete_project(prj_id: i32) {
         let (sender, receiver) = async_channel::bounded(1);
-        let app = gio::Application::default()
-            .and_downcast::<ProjectpadApplication>()
-            .unwrap();
+        let app = common::app();
         app.get_sql_channel()
             .send(SqlFunc::new(move |sql_conn| {
                 use projectpadsql::schema::project::dsl as prj;
@@ -535,11 +537,11 @@ impl ProjectpadApplication {
             let insert_res = receiver.recv().await.unwrap();
             match insert_res {
                 Ok(_p_id) => {
-                    let app = gio::Application::default()
-                        .and_downcast::<ProjectpadApplication>()
-                        .unwrap();
                     // FirstRun will make sure another project gets selected
-                    app.fetch_projects_and_populate_menu(RunMode::FirstRun, &app.get_sql_channel());
+                    common::app().fetch_projects_and_populate_menu(
+                        RunMode::FirstRun,
+                        &app.get_sql_channel(),
+                    );
                 }
                 Err((msg, e)) => common::simple_error_dlg(msg, e.as_deref()),
             }
@@ -602,10 +604,8 @@ impl ProjectpadApplication {
             let has_prd = project_edit.env_prd();
 
             let (sender, receiver) = async_channel::bounded(1);
-            let app = gio::Application::default()
-                .and_downcast::<ProjectpadApplication>()
-                .unwrap();
-            app.get_sql_channel()
+            common::app()
+                .get_sql_channel()
                 .send(SqlFunc::new(move |sql_conn| {
                     if !(has_dev || has_stg || has_uat || has_prd) {
                         sender
@@ -645,6 +645,7 @@ impl ProjectpadApplication {
                 match insert_res {
                     Ok(prj) => {
                         dlg.close();
+                        let app = common::app();
                         app.fetch_projects_and_populate_menu(
                             RunMode::Normal,
                             &app.get_sql_channel(),
@@ -660,6 +661,7 @@ impl ProjectpadApplication {
     }
 
     fn unlock_db(&self) {
+        let is_new_db = self.imp().is_new_db.borrow().unwrap();
         if let Some(pass) = keyring_helpers::get_pass_from_keyring() {
             // https://gtk-rs.org/gtk4-rs/stable/latest/book/main_event_loop.html
             // Create channel that can hold at most 1 message at a time
@@ -672,28 +674,29 @@ impl ProjectpadApplication {
                 .unwrap();
 
             // The main loop executes the asynchronous block
-            let channel2 = self.imp().sql_channel.borrow().as_ref().unwrap().clone();
             // let w = self.imp().window.clone();
             // dbg!("running the app");
             // self.run();
             // dbg!("after running the app");
-            let app_clone = self.clone();
-            let sql_channel = self.get_sql_channel().clone();
             glib::spawn_future_local(async move {
                 let unlock_success = receiver.recv().await.unwrap();
                 if unlock_success {
-                    Self::run_prepare_db(sql_channel);
-                    // TODO request_update_welcome_status
-
-                    app_clone.fetch_projects_and_populate_menu(RunMode::FirstRun, &channel2);
+                    Self::load_app_after_unlock();
                 } else {
-                    // self.display_unlock_dialog();
+                    unlock_db_dialog::display_unlock_dialog(is_new_db);
                 }
                 // self.run();
             });
         } else {
-            // self.display_unlock_dialog();
+            unlock_db_dialog::display_unlock_dialog(is_new_db);
         }
+    }
+
+    pub fn load_app_after_unlock() {
+        let app = common::app();
+        let sql_channel = app.get_sql_channel();
+        Self::run_prepare_db(sql_channel.clone());
+        app.fetch_projects_and_populate_menu(RunMode::FirstRun, &sql_channel);
     }
 
     fn run_prepare_db(sql_channel: mpsc::Sender<SqlFunc>) {

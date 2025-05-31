@@ -173,13 +173,11 @@ fn display_server_link(
                         he.single_env(),
                     );
 
-                    let app = gio::Application::default()
-                        .and_downcast::<ProjectpadApplication>()
-                        .unwrap();
-                    let db_sender = app.get_sql_channel();
+                    let db_sender = common::app().get_sql_channel();
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
                         let project_poi_after_result = receiver.recv().await.unwrap();
+                        let app = common::app();
                         let window = app.imp().window.get().unwrap();
                         let win_binding = window.upgrade();
                         let win_binding_ref = win_binding.as_ref().unwrap();
@@ -365,9 +363,7 @@ pub fn save_server_link(
     new_server_group_name: Option<String>,
     new_env_type: EnvironmentType,
 ) -> async_channel::Receiver<Result<ServerLink, (String, Option<String>)>> {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
+    let app = common::app();
     let db_sender = app.get_sql_channel();
     let (sender, receiver) = async_channel::bounded(1);
     let project_id = app.project_id().unwrap();

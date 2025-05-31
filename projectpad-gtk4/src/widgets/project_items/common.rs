@@ -382,10 +382,7 @@ pub fn run_sqlfunc<T: Sync + Send + 'static>(
     sql_fn: Box<dyn Fn(&mut SqliteConnection) -> T + Send + 'static>,
 ) -> Receiver<T> {
     let (sender, receiver) = async_channel::bounded(1);
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    let db_sender = app.get_sql_channel();
+    let db_sender = app().get_sql_channel();
     db_sender
         .send(SqlFunc::new(move |sql_conn| {
             sender.send_blocking(sql_fn(sql_conn)).unwrap();
@@ -406,10 +403,14 @@ pub fn run_sqlfunc_and_then<T: Sync + Send + 'static>(
 }
 
 pub fn main_win() -> ProjectpadApplicationWindow {
-    let app = gio::Application::default()
-        .and_downcast::<ProjectpadApplication>()
-        .unwrap();
-    app.active_window()
+    app()
+        .active_window()
         .and_downcast::<ProjectpadApplicationWindow>()
+        .unwrap()
+}
+
+pub fn app() -> ProjectpadApplication {
+    gio::Application::default()
+        .and_downcast::<ProjectpadApplication>()
         .unwrap()
 }

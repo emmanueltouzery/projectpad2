@@ -175,10 +175,7 @@ impl ProjectpadApplicationWindow {
 
                 // w.change_action_state("select-project-item", &select_project_param.end());
 
-                let app = gio::Application::default()
-                    .and_downcast::<ProjectpadApplication>()
-                    .unwrap();
-                app.change_select_project_item_no_signal(select_project_param.end());
+                common::app().change_select_project_item_no_signal(select_project_param.end());
                 // end update the select project item info
 
                 let popover = &w.imp().app_popover_menu;

@@ -367,8 +367,7 @@ impl Note {
     }
 
     fn get_db_sender() -> mpsc::Sender<SqlFunc> {
-        let app = gio::Application::default().and_downcast::<ProjectpadApplication>();
-        app.unwrap().get_sql_channel()
+        common::app().get_sql_channel()
     }
 
     fn note_toc_menu(note: &NoteInfo) -> gtk::PopoverMenu {
@@ -518,11 +517,8 @@ impl Note {
         let start_iter = buf.start_iter();
         let end_iter = buf.end_iter();
         let new_contents = v.buffer().text(&start_iter, &end_iter, false);
-        let app = gio::Application::default()
-            .and_downcast::<ProjectpadApplication>()
-            .unwrap();
         let (sender, receiver) = async_channel::bounded(1);
-        let db_sender = app.get_sql_channel();
+        let db_sender = common::app().get_sql_channel();
         let title = header_edit.title();
         let group_name = header_edit.group_name();
         let has_dev = header_edit.property::<bool>("env_dev");
@@ -530,7 +526,7 @@ impl Note {
         let has_uat = header_edit.property::<bool>("env_uat");
         let has_prd = header_edit.property::<bool>("env_prd");
 
-        let win = app.imp().window.get().unwrap().upgrade().unwrap();
+        let win = common::app().imp().window.get().unwrap().upgrade().unwrap();
         let project_id = glib::VariantDict::new(win.action_state("select-project-item").as_ref())
             .lookup::<i32>("project_id")
             .unwrap()

@@ -358,9 +358,17 @@ fn add_actions(
 }
 
 pub fn simple_error_dlg(title: &str, details: Option<&str>) {
+    simple_error_dlg_callback(title, details, |_, _| {});
+}
+
+pub fn simple_error_dlg_callback<F>(title: &str, details: Option<&str>, callback: F)
+where
+    F: Fn(&adw::AlertDialog, &str) + 'static,
+{
     let dialog = adw::AlertDialog::new(Some(title), details);
     dialog.add_responses(&[("close", "_Close")]);
     dialog.set_default_response(Some("close"));
+    dialog.connect_response(None, callback);
     dialog.present(Some(&main_win()));
 }
 

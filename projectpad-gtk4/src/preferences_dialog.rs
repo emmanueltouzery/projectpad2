@@ -82,42 +82,7 @@ pub fn display_preferences_dialog() {
         .css_classes(["button", "destructive-action"])
         .build();
     remove_pass_row.connect_activated(|_| {
-        let pass_confirm = gtk::PasswordEntry::builder().show_peek_icon(true).build();
-
-        let dialog = adw::AlertDialog::builder()
-            .heading("Remove password from the keyring?")
-            .body("Enter the password to confirm that you wish to remove it from the OS keyring")
-            .extra_child(&pass_confirm)
-            .build();
-
-        // it sounds crazy that i have to do that to get it to activate
-        // the default button when the user presses enter but...
-        let controller = gtk::EventControllerKey::new();
-        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
-        let dlg = dialog.clone();
-        let pc = pass_confirm.clone();
-        controller.connect_key_pressed(move |_, keyval, _, _| {
-            if keyval == gdk::Key::Return {
-                dlg.close();
-                remove_password_from_keyring_proceed(&pc.text());
-                return glib::Propagation::Stop;
-            }
-            glib::Propagation::Proceed
-        });
-        pass_confirm.add_controller(controller);
-
-        dialog.add_responses(&[("cancel", "_Cancel"), ("remove", "_Remove")]);
-        dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
-        dialog.set_default_response(Some("cancel"));
-
-        dialog.set_focus(Some(&pass_confirm));
-
-        dialog.connect_response(None, move |_dlg, resp| {
-            if resp == "remove" {
-                remove_password_from_keyring_proceed(&pass_confirm.text());
-            }
-        });
-        dialog.present(Some(&common::main_win()));
+        display_dialog_confirm_remove_from_keyring("");
     });
     database_group.add(&remove_pass_row);
 
@@ -139,13 +104,63 @@ pub fn display_preferences_dialog() {
     dialog.present(Some(&common::main_win()));
 }
 
+fn display_dialog_confirm_remove_from_keyring(pass_confirm_text: &str) {
+    let pass_confirm = gtk::PasswordEntry::builder()
+        .text(pass_confirm_text)
+        .show_peek_icon(true)
+        .build();
+
+    let dialog = adw::AlertDialog::builder()
+        .heading("Remove password from the keyring?")
+        .body("Enter the password to confirm that you wish to remove it from the OS keyring")
+        .extra_child(&pass_confirm)
+        .build();
+
+    // it sounds crazy that i have to do that to get it to activate
+    // the default button when the user presses enter but...
+    let controller = gtk::EventControllerKey::new();
+    controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+    let dlg = dialog.clone();
+    let pc = pass_confirm.clone();
+    controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval == gdk::Key::Return {
+            dlg.close();
+            remove_password_from_keyring_proceed(&pc.text());
+            return glib::Propagation::Stop;
+        }
+        glib::Propagation::Proceed
+    });
+    pass_confirm.add_controller(controller);
+
+    dialog.add_responses(&[("cancel", "_Cancel"), ("remove", "_Remove")]);
+    dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
+    dialog.set_default_response(Some("cancel"));
+
+    dialog.set_focus(Some(&pass_confirm));
+
+    dialog.connect_response(None, move |_dlg, resp| {
+        if resp == "remove" {
+            remove_password_from_keyring_proceed(&pass_confirm.text());
+        }
+    });
+    dialog.present(Some(&common::main_win()));
+}
+
 fn remove_password_from_keyring_proceed(pass_confirm_text: &str) {
     if check_db_password(pass_confirm_text) {
         if let Err(e) = keyring_helpers::clear_pass_from_keyring() {
             common::simple_error_dlg("Removal from keyring failed", Some(&e.to_string()));
         }
     } else {
-        common::simple_error_dlg("Removal from keyring failed", Some("Wrong password"));
+        let pct = pass_confirm_text.to_owned();
+        common::simple_error_dlg_callback(
+            "Removal from keyring failed",
+            Some("Wrong password"),
+            move |_, _| {
+                // display the dialog again, with the password the user entered
+                display_dialog_confirm_remove_from_keyring(&pct);
+            },
+        );
     }
 }
 

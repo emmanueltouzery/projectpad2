@@ -1,6 +1,8 @@
 use adw::prelude::*;
+use diesel::prelude::*;
+use gtk::gdk;
 
-use crate::widgets::project_items::common;
+use crate::{keyring_helpers, widgets::project_items::common};
 
 pub fn display_preferences_dialog() {
     let vbox = gtk::Box::builder()
@@ -72,12 +74,51 @@ pub fn display_preferences_dialog() {
     database_group.add(&db_location_row);
 
     let change_pass_row = adw::ButtonRow::builder().title("Change password").build();
+    // TODO
     database_group.add(&change_pass_row);
 
     let remove_pass_row = adw::ButtonRow::builder()
         .title("Remove password from keyring")
         .css_classes(["button", "destructive-action"])
         .build();
+    remove_pass_row.connect_activated(|_| {
+        let pass_confirm = gtk::PasswordEntry::builder().show_peek_icon(true).build();
+
+        let dialog = adw::AlertDialog::builder()
+            .title("Remove password from the keyring?")
+            .body("Enter the password to confirm that you wish to remove it from the OS keyring")
+            .extra_child(&pass_confirm)
+            .build();
+
+        // it sounds crazy that i have to do that to get it to activate
+        // the default button when the user presses enter but...
+        let controller = gtk::EventControllerKey::new();
+        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+        let dlg = dialog.clone();
+        let pc = pass_confirm.clone();
+        controller.connect_key_pressed(move |_, keyval, _, _| {
+            if keyval == gdk::Key::Return {
+                dlg.close();
+                remove_password_from_keyring_proceed(&pc.text());
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+        pass_confirm.add_controller(controller);
+
+        dialog.add_responses(&[("cancel", "_Cancel"), ("remove", "_Remove")]);
+        dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
+        dialog.set_default_response(Some("cancel"));
+
+        dialog.set_focus(Some(&pass_confirm));
+
+        dialog.connect_response(None, move |_dlg, resp| {
+            if resp == "remove" {
+                remove_password_from_keyring_proceed(&pass_confirm.text());
+            }
+        });
+        dialog.present(Some(&common::main_win()));
+    });
     database_group.add(&remove_pass_row);
 
     contents_box.append(&database_group);
@@ -96,6 +137,22 @@ pub fn display_preferences_dialog() {
     });
 
     dialog.present(Some(&common::main_win()));
+}
+
+fn remove_password_from_keyring_proceed(pass_confirm_text: &str) {
+    if check_db_password(pass_confirm_text) {
+        if let Err(e) = keyring_helpers::clear_pass_from_keyring() {
+            common::simple_error_dlg("Removal from keyring failed", Some(&e.to_string()));
+        }
+    } else {
+        common::simple_error_dlg("Removal from keyring failed", Some("Wrong password"));
+    }
+}
+
+fn check_db_password(pass: &str) -> bool {
+    let mut db_conn =
+        SqliteConnection::establish(&projectpadsql::database_path().to_string_lossy()).unwrap();
+    projectpadsql::try_unlock_db(&mut db_conn, pass).is_ok()
 }
 
 fn copy_db_location_to_clipboard(db_location: &str) {

@@ -3,7 +3,6 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::app::ProjectpadApplication;
 use crate::search_engine;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_item::ProjectItem;
@@ -147,64 +146,68 @@ impl ProjectpadApplicationWindow {
         win.imp().project_item_list.connect_closure(
             "activate-item",
             false,
-            glib::closure_local!(@strong win as w =>
-                                 move |_project_item_list: ProjectItemList, item_id: i32, project_item_type: u8, sub_item_id: i32, title: String| {
-                let _freeze_guard = w.imp().project_item.freeze_notify(); // https://github.com/gtk-rs/gtk-rs-core/issues/1339
-                w.imp().project_item.set_properties(
-                    &[
-                    ("item-id", &item_id),
-                    ("sub-item-id", &sub_item_id),
-                    ("project-item-type", &project_item_type),
+            glib::closure_local!(
+                #[strong(rename_to = w)]
+                win,
+                move |_project_item_list: ProjectItemList,
+                      item_id: i32,
+                      project_item_type: u8,
+                      sub_item_id: i32,
+                      title: String| {
+                    let _freeze_guard = w.imp().project_item.freeze_notify(); // https://github.com/gtk-rs/gtk-rs-core/issues/1339
+                    w.imp().project_item.set_properties(&[
+                        ("item-id", &item_id),
+                        ("sub-item-id", &sub_item_id),
+                        ("project-item-type", &project_item_type),
                     ]);
-                w.imp().project_item_header_label.set_label(&title);
+                    w.imp().project_item_header_label.set_label(&title);
 
-                // update the select project item info
-                let win = common::main_win();
-                let select_project_item_state =
-                    glib::VariantDict::new(win.action_state("select-project-item").as_ref());
+                    // update the select project item info
+                    let win = common::main_win();
+                    let select_project_item_state =
+                        glib::VariantDict::new(win.action_state("select-project-item").as_ref());
 
-                let project_id = select_project_item_state
-                    .lookup::<i32>("project_id")
-                    .unwrap()
-                    .unwrap();
+                    let project_id = select_project_item_state
+                        .lookup::<i32>("project_id")
+                        .unwrap()
+                        .unwrap();
 
-                let select_project_param = glib::VariantDict::new(None);
-                select_project_param.insert("project_id", project_id);
-                select_project_param.insert("item_id", Some(item_id));
-                select_project_param.insert("item_type", Some(project_item_type));
+                    let select_project_param = glib::VariantDict::new(None);
+                    select_project_param.insert("project_id", project_id);
+                    select_project_param.insert("item_id", Some(item_id));
+                    select_project_param.insert("item_type", Some(project_item_type));
 
-                // w.change_action_state("select-project-item", &select_project_param.end());
+                    // w.change_action_state("select-project-item", &select_project_param.end());
 
-                common::app().change_select_project_item_no_signal(select_project_param.end());
-                // end update the select project item info
+                    common::app().change_select_project_item_no_signal(select_project_param.end());
+                    // end update the select project item info
 
-                let popover = &w.imp().app_popover_menu;
-                let menu_model = gio::Menu::new();
-                // if: possible the project is empty, no project items at all
-                if item_id > 0 {
-                    menu_model.append(
-                        Some(&format!("Move '{title}'...")),
-                        Some("win.move-project-item"),
-                    );
+                    let popover = &w.imp().app_popover_menu;
+                    let menu_model = gio::Menu::new();
+                    // if: possible the project is empty, no project items at all
+                    if item_id > 0 {
+                        menu_model.append(
+                            Some(&format!("Move '{title}'...")),
+                            Some("win.move-project-item"),
+                        );
+                    }
+                    menu_model.append(Some("Import/Export"), Some("win.import-export"));
+                    menu_model.append(Some("Help"), Some("win.open-help"));
+                    popover.set_menu_model(Some(&menu_model));
                 }
-                menu_model.append(
-                    Some("Import/Export"),
-                    Some("win.import-export"),
-                );
-                menu_model.append(
-                    Some("Help"),
-                    Some("win.open-help"),
-                );
-                popover.set_menu_model(Some(&menu_model));
-            }),
-            );
+            ),
+        );
         win.imp().project_item.connect_closure(
             "request-scroll",
             false,
-            glib::closure_local!(@strong win as w => move |_project_item: ProjectItem, offset: f32| {
-              let vadj = w.imp().project_scrolled_window.vadjustment();
-              vadj.set_value(offset.into());
-            }),
+            glib::closure_local!(
+                #[strong(rename_to = w)]
+                win,
+                move |_project_item: ProjectItem, offset: f32| {
+                    let vadj = w.imp().project_scrolled_window.vadjustment();
+                    vadj.set_value(offset.into());
+                }
+            ),
         );
 
         win.imp()
@@ -213,37 +216,47 @@ impl ProjectpadApplicationWindow {
             .connect_closure(
                 "value-changed",
                 true,
-                glib::closure_local!(@strong win as w => move |adj: gtk::Adjustment| {
-                    let should_reveal = adj.value() > 0.0;
-                    let tb = w.imp().project_toolbar_view.clone();
+                glib::closure_local!(
+                    #[strong(rename_to = w)]
+                    win,
+                    move |adj: gtk::Adjustment| {
+                        let should_reveal = adj.value() > 0.0;
+                        let tb = w.imp().project_toolbar_view.clone();
 
-                    // debounce the showing/hiding of the top bar, otherwise it can glitch
-                    // to show/hide very fast when you're on the edge
-                    if let Some(id) = w.imp().timer_id.borrow().as_ref() {
-                        id.abort();
+                        // debounce the showing/hiding of the top bar, otherwise it can glitch
+                        // to show/hide very fast when you're on the edge
+                        if let Some(id) = w.imp().timer_id.borrow().as_ref() {
+                            id.abort();
+                        }
+                        w.imp()
+                            .timer_id
+                            .replace(Some(glib::spawn_future_local(async move {
+                                glib::timeout_future(Duration::from_millis(300)).await;
+                                tb.set_reveal_top_bars(should_reveal);
+                            })));
                     }
-                    w.imp().timer_id.replace(Some( glib::spawn_future_local(async move {
-                        glib::timeout_future(Duration::from_millis(300)).await;
-                        tb.set_reveal_top_bars(should_reveal);
-                    })));
-                }),
+                ),
             );
 
         win.imp().search_entry.connect_show(|entry| {
             entry.grab_focus();
         });
 
-        win.imp()
-            .search_toggle_btn
-            .connect_toggled(glib::clone!(@weak win as w => move |_| {
+        win.imp().search_toggle_btn.connect_toggled(glib::clone!(
+            #[strong(rename_to = w)]
+            win,
+            move |_| {
                 Self::search_toggled(&w);
-            }));
+            }
+        ));
 
-        win.imp().search_entry.connect_search_changed(
-            glib::clone!(@weak win as w => move |_entry| {
+        win.imp().search_entry.connect_search_changed(glib::clone!(
+            #[strong(rename_to = w)]
+            win,
+            move |_entry| {
                 w.trigger_search();
-            }),
-        );
+            }
+        ));
 
         let w0 = win.clone();
         let key_controller = gtk::EventControllerKey::new();
@@ -325,11 +338,24 @@ impl ProjectpadApplicationWindow {
         win.imp().search_item_list.connect_closure(
             "activate-item",
             false,
-            glib::closure_local!(@strong win as w => move |_search_item_list: SearchItemList,
-                                   project_id: i32, item_id: i32, search_item_type: u8, server_id: i32| {
-              Self::display_item_from_search(w.clone(), project_id, item_id, search_item_type, server_id);
-            }),
-            );
+            glib::closure_local!(
+                #[strong(rename_to = w)]
+                win,
+                move |_search_item_list: SearchItemList,
+                      project_id: i32,
+                      item_id: i32,
+                      search_item_type: u8,
+                      server_id: i32| {
+                    Self::display_item_from_search(
+                        w.clone(),
+                        project_id,
+                        item_id,
+                        search_item_type,
+                        server_id,
+                    );
+                }
+            ),
+        );
 
         // hide top bar when the mouse is over it, so the user can
         // trigger actions underneath it (esp since we make it not take

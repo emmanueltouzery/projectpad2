@@ -392,7 +392,7 @@ impl ProjectpadApplication {
             .child(&vbox)
             .build();
 
-        dialog.present(&common::main_win());
+        dialog.present(Some(&common::main_win()));
 
         let dlg = dialog.clone();
         cancel_btn.connect_clicked(move |_| {
@@ -705,7 +705,7 @@ impl ProjectpadApplication {
             });
         });
 
-        dialog.present(&common::main_win());
+        dialog.present(Some(&common::main_win()));
     }
 
     fn unlock_db(&self) {

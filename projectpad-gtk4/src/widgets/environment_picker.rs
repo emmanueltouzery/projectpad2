@@ -133,66 +133,75 @@ pub fn dropdown_get_factory<D: DropDownLike>(
 
     let item_to_signal_id_clone = item_to_signal_id.clone();
     list_item_factory.connect_bind(move |_factory, list_item_obj| {
-            let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
-            let str_obj = list_item.item();
+        let list_item = list_item_obj.downcast_ref::<gtk::ListItem>().unwrap();
+        let str_obj = list_item.item();
 
-            let item_info_b = item_to_info_clone.borrow();
-            let item_info = item_info_b.get(list_item).unwrap();
-            let check_mark = item_info.check_mark.clone();
+        let item_info_b = item_to_info_clone.borrow();
+        let item_info = item_info_b.get(list_item).unwrap();
+        let check_mark = item_info.check_mark.clone();
 
-            let str_val = if str_obj.as_ref().unwrap().is::<gtk::StringObject>() { 
-                str_obj
-                    .as_ref()
-                    .unwrap()
-                    .downcast_ref::<gtk::StringObject>()
-                    .unwrap()
-                    .string().as_str().to_owned()
-            } else {
-                str_obj
-                    .as_ref()
-                    .unwrap()
-                    .downcast_ref::<StringSidecarObject>()
-                    .unwrap()
-                    .string()
-                    .as_str()
-                    .to_owned()
-            };
-            let desc = match str_val.as_str() {
-                "PRD" => "Production environment",
-                "UAT" => "User Acceptance Testing environment",
-                "STG" => "Staging environment",
-                "DEV" => "Development environment",
-                _ => unreachable!(),
-            };
-            item_info.first_label.set_label(str_val.as_str());
-            item_info.first_label.set_css_classes(&["caption-heading", match str_val.as_str() {
+        let str_val = if str_obj.as_ref().unwrap().is::<gtk::StringObject>() {
+            str_obj
+                .as_ref()
+                .unwrap()
+                .downcast_ref::<gtk::StringObject>()
+                .unwrap()
+                .string()
+                .as_str()
+                .to_owned()
+        } else {
+            str_obj
+                .as_ref()
+                .unwrap()
+                .downcast_ref::<StringSidecarObject>()
+                .unwrap()
+                .string()
+                .as_str()
+                .to_owned()
+        };
+        let desc = match str_val.as_str() {
+            "PRD" => "Production environment",
+            "UAT" => "User Acceptance Testing environment",
+            "STG" => "Staging environment",
+            "DEV" => "Development environment",
+            _ => unreachable!(),
+        };
+        item_info.first_label.set_label(str_val.as_str());
+        item_info.first_label.set_css_classes(&[
+            "caption-heading",
+            match str_val.as_str() {
                 "PRD" => "project-item-prod",
                 "UAT" => "project-item-uat",
                 "STG" => "project-item-staging",
                 "DEV" => "project-item-dev",
                 _ => unreachable!(),
-            }]);
-            item_info.second_label.set_label(desc);
+            },
+        ]);
+        item_info.second_label.set_label(desc);
 
-            check_mark.set_opacity(if dropdown_clone.selected_item() == str_obj {
-                1.0
-            } else {
-                0.0
-            });
-
-            let signal_id = dropdown_clone.connect_closure(
-                "notify::selected-item",
-                false,
-                glib::closure_local!(@strong check_mark as cm, @strong str_obj as o => move |dd: D, _item: glib::ParamSpec| {
-                    cm.set_opacity(if dd.selected_item() == o {
-                        1.0
-                    } else {
-                        0.0
-                    });
-                }),
-            );
-            item_to_signal_id_clone.borrow_mut().insert(list_item.clone(), signal_id);
+        check_mark.set_opacity(if dropdown_clone.selected_item() == str_obj {
+            1.0
+        } else {
+            0.0
         });
+
+        let signal_id = dropdown_clone.connect_closure(
+            "notify::selected-item",
+            false,
+            glib::closure_local!(
+                #[strong(rename_to = cm)]
+                check_mark,
+                #[strong(rename_to = o)]
+                str_obj,
+                move |dd: D, _item: glib::ParamSpec| {
+                    cm.set_opacity(if dd.selected_item() == o { 1.0 } else { 0.0 });
+                }
+            ),
+        );
+        item_to_signal_id_clone
+            .borrow_mut()
+            .insert(list_item.clone(), signal_id);
+    });
 
     let dropdown_clone2 = dropdown.clone();
     list_item_factory.connect_unbind(move |_factory, list_item_obj| {

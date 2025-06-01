@@ -1,5 +1,4 @@
 use crate::{
-    app::ProjectpadApplication,
     notes, perform_insert_or_update,
     sql_thread::SqlFunc,
     sql_util,
@@ -307,15 +306,28 @@ fn display_server(
 
     let pgn = channel_data.project_group_names.clone();
     let ae = channel_data.project.allowed_envs();
-    edit_btn.connect_closure("clicked", false,
-            glib::closure_local!(@strong channel_data.server as s, @strong pgn as pgn_, @strong ae as ae_, @strong vbox as v => move |_b: gtk::Button| {
-                let (_, header_edit, vbox, server_view_edit) = server_contents(&s, &pgn_, WidgetMode::Edit, None, &ae_);
+    edit_btn.connect_closure(
+        "clicked",
+        false,
+        glib::closure_local!(
+            #[strong(rename_to = s)]
+            channel_data.server,
+            #[strong(rename_to = pgn_)]
+            pgn,
+            #[strong(rename_to = ae_)]
+            ae,
+            #[strong(rename_to = v)]
+            vbox,
+            move |_b: gtk::Button| {
+                let (_, header_edit, vbox, server_view_edit) =
+                    server_contents(&s, &pgn_, WidgetMode::Edit, None, &ae_);
 
-                let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
+                let (dlg, save_btn) =
+                    display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
                 let he = header_edit.unwrap().clone();
                 let old_auth_key = s.auth_key.clone();
                 let old_auth_key_filename = s.auth_key_filename.clone();
-                save_btn.connect_clicked(move|_| {
+                save_btn.connect_clicked(move |_| {
                     let receiver = save_server(
                         Some(s.id),
                         he.group_name(),
@@ -327,12 +339,14 @@ fn display_server(
                         server_view_edit.password(),
                         server_view_edit.text(),
                         ServerType::from_str(&server_view_edit.property::<String>("server_type"))
-                        .unwrap(),
-                        ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
+                            .unwrap(),
+                        ServerAccessType::from_str(
+                            &server_view_edit.property::<String>("access_type"),
+                        )
                         .unwrap(),
                         old_auth_key.as_deref(),
                         old_auth_key_filename.as_deref(),
-                        server_view_edit.auth_key_filename()
+                        server_view_edit.auth_key_filename(),
                     );
 
                     let dlg = dlg.clone();
@@ -347,14 +361,19 @@ fn display_server(
                             let win_binding_ref = win_binding.as_ref().unwrap();
                             // let pi = &win_binding_ref.imp().project_item;
                             // let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                            ProjectItemList::display_project_item(None, s.id, ProjectItemType::Server);
+                            ProjectItemList::display_project_item(
+                                None,
+                                s.id,
+                                ProjectItemType::Server,
+                            );
                             // load_and_display_server(pi_bin, db_sender, s.id, None, pi);
                             dlg.close();
                         }
                     });
                 });
-            }),
-        );
+            }
+        ),
+    );
 
     add_server_items(&channel_data, true, server_item_id, &vbox, project_item);
 
@@ -410,7 +429,7 @@ fn delete_server(project_id: i32, server_id: i32) {
                 let dialog = adw::AlertDialog::new(Some(msg), details.as_deref());
                 dialog.add_responses(&[("close", "_Close")]);
                 dialog.set_default_response(Some("close"));
-                dialog.present(&common::main_win());
+                dialog.present(Some(&common::main_win()));
             }
         }),
     );
@@ -487,17 +506,22 @@ pub fn server_view_edit_contents(server: &Server, widget_mode: WidgetMode) -> Se
 
 fn connect_save_auth_key<T: ObjectExt>(obj: &T, auth_key: Vec<u8>) {
     obj.connect_closure(
-            "save-auth-key-to-disk",
-            false,
-            glib::closure_local!(@strong auth_key as contents => move |_: T, path: String| {
+        "save-auth-key-to-disk",
+        false,
+        glib::closure_local!(
+            #[strong(rename_to = contents)]
+            auth_key,
+            move |_: T, path: String| {
                 if let Err(e) = std::fs::write(path, &contents) {
-                    let dialog = adw::AlertDialog::new(Some("Error saving auth key"), Some(&format!("{e}")));
+                    let dialog =
+                        adw::AlertDialog::new(Some("Error saving auth key"), Some(&format!("{e}")));
                     dialog.add_responses(&[("close", "_Close")]);
                     dialog.set_default_response(Some("close"));
-                    dialog.present(&common::main_win());
+                    dialog.present(Some(&common::main_win()));
                 }
-            }),
-        );
+            }
+        ),
+    );
 }
 
 pub fn add_server_items(
@@ -819,7 +843,7 @@ fn display_add_server_item_dialog(server_id: i32, server_group_names: Vec<String
         );
     });
 
-    dialog.present(&common::main_win());
+    dialog.present(Some(&common::main_win()));
 }
 
 fn prepare_add_server_poi_dlg(
@@ -1419,18 +1443,44 @@ fn display_server_website(
     let delete_btn = add_group_edit_suffix(
         &server_item1,
         read_write,
-        glib::closure_local!(@strong w as w1, @strong db_ as db1, @strong vbox as v => move |_b: gtk::Button| {
-            let item_box = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-            let (header, server_item, server_website_view_edit) = server_website_contents(
-                &server_group_names, &w1, db1.as_ref(), WidgetMode::Edit);
-            item_box.append(&header.clone().unwrap());
-            item_box.append(&server_item);
+        glib::closure_local!(
+            #[strong(rename_to = w1)]
+            w,
+            #[strong(rename_to = db1)]
+            db_,
+            #[strong(rename_to = v)]
+            vbox,
+            move |_b: gtk::Button| {
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                let (header, server_item, server_website_view_edit) = server_website_contents(
+                    &server_group_names,
+                    &w1,
+                    db1.as_ref(),
+                    WidgetMode::Edit,
+                );
+                item_box.append(&header.clone().unwrap());
+                item_box.append(&server_item);
 
-            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Website", item_box, 600, 600, DialogClamp::Yes);
-            server_website_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_website_view_edit, server_id, Some(www_id));
-        }),
+                let (dlg, save_btn) = display_item_edit_dialog(
+                    &v,
+                    "Edit Website",
+                    item_box,
+                    600,
+                    600,
+                    DialogClamp::Yes,
+                );
+                server_website_connect_save(
+                    &save_btn,
+                    &dlg,
+                    header.as_ref().unwrap(),
+                    &server_website_view_edit,
+                    server_id,
+                    Some(www_id),
+                );
+            }
+        ),
     );
 
     let www_name = &w.desc;
@@ -1438,27 +1488,39 @@ fn display_server_website(
     delete_btn.connect_closure(
         "clicked",
         false,
-        glib::closure_local!(@strong www_name as www_n, @strong www_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
-            confirm_delete(
-                "Delete Server Website",
-                &format!(
-                    "Do you want to delete '{}'? This action cannot be undone.",
-                    www_n
-                ),
-                Box::new(move || {
-                    run_sqlfunc_and_then(
-                        Box::new(move |sql_conn| {
-                            use projectpadsql::schema::server_website::dsl as srv_www;
-                            sql_util::delete_row(sql_conn, srv_www::server_website, w_id)
-                                .unwrap();
-                        }),
-                        Box::new(move |_| {
-                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
-                        }),
-                    );
-                }),
-            )
-        }),
+        glib::closure_local!(
+            #[strong(rename_to = www_n)]
+            www_name,
+            #[strong(rename_to = w_id)]
+            www_id,
+            #[strong(rename_to = sid)]
+            server_id,
+            move |_b: gtk::Button| {
+                confirm_delete(
+                    "Delete Server Website",
+                    &format!(
+                        "Do you want to delete '{}'? This action cannot be undone.",
+                        www_n
+                    ),
+                    Box::new(move || {
+                        run_sqlfunc_and_then(
+                            Box::new(move |sql_conn| {
+                                use projectpadsql::schema::server_website::dsl as srv_www;
+                                sql_util::delete_row(sql_conn, srv_www::server_website, w_id)
+                                    .unwrap();
+                            }),
+                            Box::new(move |_| {
+                                ProjectItemList::display_project_item(
+                                    None,
+                                    sid,
+                                    ProjectItemType::Server,
+                                );
+                            }),
+                        );
+                    }),
+                )
+            }
+        ),
     );
 }
 
@@ -1526,17 +1588,38 @@ fn display_server_database(
     let delete_btn = add_group_edit_suffix(
         &server_item1,
         read_write,
-        glib::closure_local!(@strong db as w1, @strong vbox as v => move |_b: gtk::Button| {
-            let item_box = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-            let (header, server_item, server_database_view_edit) = server_database_contents(&server_group_names, &websites, &w1, WidgetMode::Edit);
-            item_box.append(&header.clone().unwrap());
-            item_box.append(&server_item);
+        glib::closure_local!(
+            #[strong(rename_to = w1)]
+            db,
+            #[strong(rename_to = v)]
+            vbox,
+            move |_b: gtk::Button| {
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                let (header, server_item, server_database_view_edit) =
+                    server_database_contents(&server_group_names, &websites, &w1, WidgetMode::Edit);
+                item_box.append(&header.clone().unwrap());
+                item_box.append(&server_item);
 
-            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Database", item_box, 600, 600, DialogClamp::Yes);
-            server_database_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_database_view_edit, server_id, Some(db_id));
-        }),
+                let (dlg, save_btn) = display_item_edit_dialog(
+                    &v,
+                    "Edit Database",
+                    item_box,
+                    600,
+                    600,
+                    DialogClamp::Yes,
+                );
+                server_database_connect_save(
+                    &save_btn,
+                    &dlg,
+                    header.as_ref().unwrap(),
+                    &server_database_view_edit,
+                    server_id,
+                    Some(db_id),
+                );
+            }
+        ),
     );
 
     let db_name = &db.desc;
@@ -1544,27 +1627,39 @@ fn display_server_database(
     delete_btn.connect_closure(
         "clicked",
         false,
-        glib::closure_local!(@strong db_name as db_n, @strong db_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
-            confirm_delete(
-                "Delete Server Database",
-                &format!(
-                    "Do you want to delete '{}'? This action cannot be undone.",
-                    db_n
-                ),
-                Box::new(move || {
-                    run_sqlfunc_and_then(
-                        Box::new(move |sql_conn| {
-                            use projectpadsql::schema::server_database::dsl as srv_db;
-                            sql_util::delete_row(sql_conn, srv_db::server_database, w_id)
-                                .unwrap();
-                        }),
-                        Box::new(move |_| {
-                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
-                        }),
-                    );
-                }),
-            )
-        }),
+        glib::closure_local!(
+            #[strong(rename_to = db_n)]
+            db_name,
+            #[strong(rename_to = w_id)]
+            db_id,
+            #[strong(rename_to = sid)]
+            server_id,
+            move |_b: gtk::Button| {
+                confirm_delete(
+                    "Delete Server Database",
+                    &format!(
+                        "Do you want to delete '{}'? This action cannot be undone.",
+                        db_n
+                    ),
+                    Box::new(move || {
+                        run_sqlfunc_and_then(
+                            Box::new(move |sql_conn| {
+                                use projectpadsql::schema::server_database::dsl as srv_db;
+                                sql_util::delete_row(sql_conn, srv_db::server_database, w_id)
+                                    .unwrap();
+                            }),
+                            Box::new(move |_| {
+                                ProjectItemList::display_project_item(
+                                    None,
+                                    sid,
+                                    ProjectItemType::Server,
+                                );
+                            }),
+                        );
+                    }),
+                )
+            }
+        ),
     );
 }
 
@@ -1633,17 +1728,32 @@ fn display_server_poi(
     let delete_btn = add_group_edit_suffix(
         &server_item1,
         read_write,
-        glib::closure_local!(@strong poi as p, @strong vbox as v => move |_b: gtk::Button| {
-            let item_box = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-            let (header, server_item, server_poi_view_edit) = server_poi_contents(&server_group_names, &p, WidgetMode::Edit);
-            item_box.append(&header.clone().unwrap());
-            item_box.append(&server_item);
+        glib::closure_local!(
+            #[strong(rename_to = p)]
+            poi,
+            #[strong(rename_to = v)]
+            vbox,
+            move |_b: gtk::Button| {
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                let (header, server_item, server_poi_view_edit) =
+                    server_poi_contents(&server_group_names, &p, WidgetMode::Edit);
+                item_box.append(&header.clone().unwrap());
+                item_box.append(&server_item);
 
-            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
-            server_poi_connect_save(&save_btn, &dlg, header.as_ref().unwrap(), &server_poi_view_edit, server_id, Some(poi_id));
-        }),
+                let (dlg, save_btn) =
+                    display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
+                server_poi_connect_save(
+                    &save_btn,
+                    &dlg,
+                    header.as_ref().unwrap(),
+                    &server_poi_view_edit,
+                    server_id,
+                    Some(poi_id),
+                );
+            }
+        ),
     );
 
     let poi_name = &poi.desc;
@@ -1651,27 +1761,43 @@ fn display_server_poi(
     delete_btn.connect_closure(
         "clicked",
         false,
-        glib::closure_local!(@strong poi_name as poi_n, @strong poi_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
-            confirm_delete(
-                "Delete Server POI",
-                &format!(
-                    "Do you want to delete '{}'? This action cannot be undone.",
-                    poi_n
-                ),
-                Box::new(move || {
-                    run_sqlfunc_and_then(
-                        Box::new(move |sql_conn| {
-                            use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
-                            sql_util::delete_row(sql_conn, srv_poi::server_point_of_interest, w_id)
+        glib::closure_local!(
+            #[strong(rename_to = poi_n)]
+            poi_name,
+            #[strong(rename_to = w_id)]
+            poi_id,
+            #[strong(rename_to = sid)]
+            server_id,
+            move |_b: gtk::Button| {
+                confirm_delete(
+                    "Delete Server POI",
+                    &format!(
+                        "Do you want to delete '{}'? This action cannot be undone.",
+                        poi_n
+                    ),
+                    Box::new(move || {
+                        run_sqlfunc_and_then(
+                            Box::new(move |sql_conn| {
+                                use projectpadsql::schema::server_point_of_interest::dsl as srv_poi;
+                                sql_util::delete_row(
+                                    sql_conn,
+                                    srv_poi::server_point_of_interest,
+                                    w_id,
+                                )
                                 .unwrap();
-                        }),
-                        Box::new(move |_| {
-                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
-                        }),
-                    );
-                }),
-            )
-        }),
+                            }),
+                            Box::new(move |_| {
+                                ProjectItemList::display_project_item(
+                                    None,
+                                    sid,
+                                    ProjectItemType::Server,
+                                );
+                            }),
+                        );
+                    }),
+                )
+            }
+        ),
     );
 }
 
@@ -1739,21 +1865,42 @@ fn display_server_extra_user_account(
     let delete_btn = add_group_edit_suffix(
         &server_item1,
         read_write,
-        glib::closure_local!(@strong user as u, @strong vbox as v => move |_b: gtk::Button| {
-            let item_box = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-            let (header, server_item, server_extra_user_view_edit) = server_extra_user_account_contents(&server_group_names, &u, WidgetMode::Edit);
-            item_box.append(&header.clone().unwrap());
-            item_box.append(&server_item);
+        glib::closure_local!(
+            #[strong(rename_to = u)]
+            user,
+            #[strong(rename_to = v)]
+            vbox,
+            move |_b: gtk::Button| {
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                let (header, server_item, server_extra_user_view_edit) =
+                    server_extra_user_account_contents(&server_group_names, &u, WidgetMode::Edit);
+                item_box.append(&header.clone().unwrap());
+                item_box.append(&server_item);
 
-            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit User Account", item_box, 600, 600, DialogClamp::Yes);
-            let old_auth_key = u.auth_key.clone();
-            let old_auth_key_filename = u.auth_key_filename.clone();
-            server_extra_user_account_connect_save(
-                &save_btn, &dlg, header.as_ref().unwrap(), &server_extra_user_view_edit,
-                server_id, Some(user_id), old_auth_key, old_auth_key_filename);
-        }),
+                let (dlg, save_btn) = display_item_edit_dialog(
+                    &v,
+                    "Edit User Account",
+                    item_box,
+                    600,
+                    600,
+                    DialogClamp::Yes,
+                );
+                let old_auth_key = u.auth_key.clone();
+                let old_auth_key_filename = u.auth_key_filename.clone();
+                server_extra_user_account_connect_save(
+                    &save_btn,
+                    &dlg,
+                    header.as_ref().unwrap(),
+                    &server_extra_user_view_edit,
+                    server_id,
+                    Some(user_id),
+                    old_auth_key,
+                    old_auth_key_filename,
+                );
+            }
+        ),
     );
 
     let user_name = &user.desc;
@@ -1761,7 +1908,14 @@ fn display_server_extra_user_account(
     delete_btn.connect_closure(
         "clicked",
         false,
-        glib::closure_local!(@strong user_name as user_n, @strong user_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
+        glib::closure_local!(
+            #[strong(rename_to = user_n)]
+            user_name,
+            #[strong(rename_to = w_id)]
+            user_id,
+            #[strong(rename_to = sid)]
+            server_id,
+            move |_b: gtk::Button| {
             confirm_delete(
                 "Delete Server Extra User Account",
                 &format!(
@@ -1855,36 +2009,56 @@ fn display_server_note(
     let delete_btn = add_group_edit_suffix(
         &server_item1,
         read_write,
-        glib::closure_local!(@strong note as n, @strong vbox as v => move |_b: gtk::Button| {
-            let item_box = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-            let (header_edit, note) = server_note_contents_edit(&n, &server_group_names, &item_box);
-            item_box.set_margin_start(30);
-            item_box.set_margin_end(30);
+        glib::closure_local!(
+            #[strong(rename_to = n)]
+            note,
+            #[strong(rename_to = v)]
+            vbox,
+            move |_b: gtk::Button| {
+                let item_box = gtk::Box::builder()
+                    .orientation(gtk::Orientation::Vertical)
+                    .build();
+                let (header_edit, note) =
+                    server_note_contents_edit(&n, &server_group_names, &item_box);
+                item_box.set_margin_start(30);
+                item_box.set_margin_end(30);
 
-            let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Note", item_box, 6000, 6000, DialogClamp::No);
-            save_btn.connect_clicked(move |_| {
-                let new_contents = note.get_contents_text();
+                let (dlg, save_btn) = display_item_edit_dialog(
+                    &v,
+                    "Edit Note",
+                    item_box,
+                    6000,
+                    6000,
+                    DialogClamp::No,
+                );
+                save_btn.connect_clicked(move |_| {
+                    let new_contents = note.get_contents_text();
 
-                let db_sender = common::app().get_sql_channel();
+                    let db_sender = common::app().get_sql_channel();
 
-                let receiver = save_server_note(db_sender.clone(), n.server_id, header_edit.group_name(), Some(n.id),
-                    header_edit.title(), new_contents);
-                let dlg = dlg.clone();
-                glib::spawn_future_local(async move {
-                    let project_note_after_result = receiver.recv().await.unwrap();
-                    let app = common::app();
-                    let window = app.imp().window.get().unwrap();
-                    let win_binding = window.upgrade();
-                    let win_binding_ref = win_binding.as_ref().unwrap();
-                    let pi = &win_binding_ref.imp().project_item;
-                    let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                    load_and_display_server(pi_bin, db_sender, n.server_id, Some(n.id), pi);
-                    dlg.close();
+                    let receiver = save_server_note(
+                        db_sender.clone(),
+                        n.server_id,
+                        header_edit.group_name(),
+                        Some(n.id),
+                        header_edit.title(),
+                        new_contents,
+                    );
+                    let dlg = dlg.clone();
+                    glib::spawn_future_local(async move {
+                        let project_note_after_result = receiver.recv().await.unwrap();
+                        let app = common::app();
+                        let window = app.imp().window.get().unwrap();
+                        let win_binding = window.upgrade();
+                        let win_binding_ref = win_binding.as_ref().unwrap();
+                        let pi = &win_binding_ref.imp().project_item;
+                        let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
+                        load_and_display_server(pi_bin, db_sender, n.server_id, Some(n.id), pi);
+                        dlg.close();
+                    });
                 });
-            });
-        }),
+            }
+        ),
     );
 
     let note_name = &note.title;
@@ -1893,27 +2067,39 @@ fn display_server_note(
     delete_btn.connect_closure(
         "clicked",
         false,
-        glib::closure_local!(@strong note_name as note_n, @strong note_id as w_id, @strong server_id as sid => move |_b: gtk::Button| {
-            confirm_delete(
-                "Delete Server Note",
-                &format!(
-                    "Do you want to delete '{}'? This action cannot be undone.",
-                    note_n
-                ),
-                Box::new(move || {
-                    run_sqlfunc_and_then(
-                        Box::new(move |sql_conn| {
-                            use projectpadsql::schema::server_note::dsl as srv_note;
-                            sql_util::delete_row(sql_conn, srv_note::server_note, w_id)
-                                .unwrap();
-                        }),
-                        Box::new(move |_| {
-                            ProjectItemList::display_project_item(None, sid, ProjectItemType::Server);
-                        }),
-                    );
-                }),
-            )
-        }),
+        glib::closure_local!(
+            #[strong(rename_to = note_n)]
+            note_name,
+            #[strong(rename_to = w_id)]
+            note_id,
+            #[strong(rename_to = sid)]
+            server_id,
+            move |_b: gtk::Button| {
+                confirm_delete(
+                    "Delete Server Note",
+                    &format!(
+                        "Do you want to delete '{}'? This action cannot be undone.",
+                        note_n
+                    ),
+                    Box::new(move || {
+                        run_sqlfunc_and_then(
+                            Box::new(move |sql_conn| {
+                                use projectpadsql::schema::server_note::dsl as srv_note;
+                                sql_util::delete_row(sql_conn, srv_note::server_note, w_id)
+                                    .unwrap();
+                            }),
+                            Box::new(move |_| {
+                                ProjectItemList::display_project_item(
+                                    None,
+                                    sid,
+                                    ProjectItemType::Server,
+                                );
+                            }),
+                        );
+                    }),
+                )
+            }
+        ),
     );
 }
 

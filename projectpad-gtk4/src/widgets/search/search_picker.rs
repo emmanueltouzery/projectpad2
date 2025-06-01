@@ -107,17 +107,24 @@ impl SearchPicker {
         self.imp().search_item_list.connect_closure(
             "select-item",
             false,
-            glib::closure_local!(@strong self as s => move |_search_item_list: SearchItemList,
-                                   project_id: i32, item_id: i32, search_item_type: u8, server_id: i32| {
-                let _freeze_guard = s.freeze_notify(); // https://github.com/gtk-rs/gtk-rs-core/issues/1339
-                s.set_properties(&[
-                    ("selected-item-project-id", &project_id),
-                    ("selected-item-item-id", &item_id),
-                    ("selected-item-search-item-type", &search_item_type),
-                    ("selected-item-server-id", &server_id)
-                ]);
-            }),
-            );
+            glib::closure_local!(
+                #[strong(rename_to = s)]
+                self,
+                move |_search_item_list: SearchItemList,
+                      project_id: i32,
+                      item_id: i32,
+                      search_item_type: u8,
+                      server_id: i32| {
+                    let _freeze_guard = s.freeze_notify(); // https://github.com/gtk-rs/gtk-rs-core/issues/1339
+                    s.set_properties(&[
+                        ("selected-item-project-id", &project_id),
+                        ("selected-item-item-id", &item_id),
+                        ("selected-item-search-item-type", &search_item_type),
+                        ("selected-item-server-id", &server_id),
+                    ]);
+                }
+            ),
+        );
     }
 
     fn get_selection(&self) -> Option<(SearchItemType, i32)> {

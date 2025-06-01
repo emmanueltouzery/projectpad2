@@ -85,22 +85,27 @@ impl PasswordActionRow {
         widget.connect_closure(
             "clicked",
             false,
-            glib::closure_local!(@strong this as s => move |b: gtk::Button| {
-                if b.icon_name() == Some("view-reveal-symbolic".into()) {
-                    s.set_property("show_password", true);
-                    // force subtitle refresh since the hide_password changed
-                    s.upcast_ref::<adw::ActionRow>().set_subtitle(&s.property::<String>("text"));
-                    // ar.set_subtitle(&st);
-                    b.set_icon_name("view-conceal-symbolic");
-                } else {
-                    s.set_property("show_password", false);
-                    // force subtitle refresh since the hide_password changed
-                    // s.set_property("subtitle", s.property::<String>("subtitle"));
-                    s.upcast_ref::<adw::ActionRow>().set_subtitle("●●●●");
-                    // ar.set_subtitle("●●●●");
-                    b.set_icon_name("view-reveal-symbolic");
+            glib::closure_local!(
+                #[strong(rename_to = s)]
+                this,
+                move |b: gtk::Button| {
+                    if b.icon_name() == Some("view-reveal-symbolic".into()) {
+                        s.set_property("show_password", true);
+                        // force subtitle refresh since the hide_password changed
+                        s.upcast_ref::<adw::ActionRow>()
+                            .set_subtitle(&s.property::<String>("text"));
+                        // ar.set_subtitle(&st);
+                        b.set_icon_name("view-conceal-symbolic");
+                    } else {
+                        s.set_property("show_password", false);
+                        // force subtitle refresh since the hide_password changed
+                        // s.set_property("subtitle", s.property::<String>("subtitle"));
+                        s.upcast_ref::<adw::ActionRow>().set_subtitle("●●●●");
+                        // ar.set_subtitle("●●●●");
+                        b.set_icon_name("view-reveal-symbolic");
+                    }
                 }
-            }),
+            ),
         );
         this.add_suffix(&widget);
 

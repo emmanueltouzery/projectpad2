@@ -134,33 +134,37 @@ impl ServerWebsiteViewEdit {
             projectpad_item_action_row.set_item_id(self.database_id());
             projectpad_item_action_row.set_text(self.database_desc());
             projectpad_item_action_row.connect_closure(
-            "item-picked",
-            false,
-            glib::closure_local!(@strong self as s => move |item_action_row: ProjectpadItemActionRow, item_id: i32| {
-                let db_name_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
-                    if item_id <= 0 {
-                        "".to_string()
-                    } else {
-                    use projectpadsql::schema::server_database::dsl as srv_db;
+                "item-picked",
+                false,
+                glib::closure_local!(
+                    #[strong(rename_to = s)]
+                    self,
+                    move |item_action_row: ProjectpadItemActionRow, item_id: i32| {
+                        let db_name_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                            if item_id <= 0 {
+                                "".to_string()
+                            } else {
+                                use projectpadsql::schema::server_database::dsl as srv_db;
 
-                    srv_db::server_database
-                        .filter(srv_db::id.eq(&item_id))
-                        .select(srv_db::desc)
-                        .first::<String>(sql_conn)
-                        .unwrap()
+                                srv_db::server_database
+                                    .filter(srv_db::id.eq(&item_id))
+                                    .select(srv_db::desc)
+                                    .first::<String>(sql_conn)
+                                    .unwrap()
+                            }
+                        }));
+                        let s = s.clone();
+                        glib::spawn_future_local(async move {
+                            let db_name = db_name_recv.recv().await.unwrap();
+                            let _guard = s.freeze_notify();
+                            item_action_row.set_item_id(item_id);
+                            item_action_row.set_text(db_name.clone());
+                            s.set_database_id(item_id);
+                            s.set_database_desc(db_name);
+                        });
                     }
-                }));
-                let s = s.clone();
-                glib::spawn_future_local(async move {
-                    let db_name = db_name_recv.recv().await.unwrap();
-                    let _guard = s.freeze_notify();
-                    item_action_row.set_item_id(item_id);
-                    item_action_row.set_text(db_name.clone());
-                    s.set_database_id(item_id);
-                    s.set_database_desc(db_name);
-                });
-            }),
-        );
+                ),
+            );
             server_item0.add(&projectpad_item_action_row);
         }
 

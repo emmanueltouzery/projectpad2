@@ -78,7 +78,7 @@ pub fn display_item_edit_dialog(
     cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
         dlg.close();
     });
-    dialog.present(v);
+    dialog.present(Some(v));
 
     (dialog, save_btn)
 }
@@ -124,7 +124,7 @@ pub fn ask_user(title: &str, msg: &str, parent: &gtk::Widget, handle_save: Box<d
         .content_height(150)
         .child(&contents_box)
         .build();
-    dialog.present(parent);
+    dialog.present(Some(parent));
     entry.grab_focus();
 
     let dlg = dialog.clone();
@@ -361,7 +361,7 @@ pub fn simple_error_dlg(title: &str, details: Option<&str>) {
     let dialog = adw::AlertDialog::new(Some(title), details);
     dialog.add_responses(&[("close", "_Close")]);
     dialog.set_default_response(Some("close"));
-    dialog.present(&main_win());
+    dialog.present(Some(&main_win()));
 }
 
 pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + 'static>) {
@@ -375,7 +375,7 @@ pub fn confirm_delete(title: &str, msg: &str, delete_fn: Box<dyn Fn() + Send + '
             delete_fn();
         }
     });
-    dialog.present(&main_win());
+    dialog.present(Some(&main_win()));
 }
 
 pub fn run_sqlfunc<T: Sync + Send + 'static>(

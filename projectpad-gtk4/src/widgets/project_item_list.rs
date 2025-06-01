@@ -237,27 +237,29 @@ impl ProjectItemList {
             .project_item_list
             .model()
             .unwrap()
-            .connect_selection_changed(
-                glib::clone!(@weak self as s  => move |sel_model, _idx, _items_count| {
-                let idx = sel_model
-                    .downcast_ref::<gtk::SingleSelection>()
-                    .unwrap()
-                    .selected();
-                let model = sel_model.item(idx).unwrap();
-                s.emit_by_name::<()>(
-                    "activate-item",
-                    &[
-                        &model.property_value("id").get::<i32>().unwrap(),
-                        &model
-                            .property_value("project-item-type")
-                            .get::<u8>()
-                            .unwrap(),
+            .connect_selection_changed(glib::clone!(
+                #[strong(rename_to = s)]
+                self,
+                move |sel_model, _idx, _items_count| {
+                    let idx = sel_model
+                        .downcast_ref::<gtk::SingleSelection>()
+                        .unwrap()
+                        .selected();
+                    let model = sel_model.item(idx).unwrap();
+                    s.emit_by_name::<()>(
+                        "activate-item",
+                        &[
+                            &model.property_value("id").get::<i32>().unwrap(),
+                            &model
+                                .property_value("project-item-type")
+                                .get::<u8>()
+                                .unwrap(),
                             &glib::Value::from(-1),
-                        &model.property_value("title").get::<String>().unwrap(),
-                    ],
-                )
-                }),
-            );
+                            &model.property_value("title").get::<String>().unwrap(),
+                        ],
+                    )
+                }
+            ));
     }
 
     fn get_item_model(project: &Project, project_item: &ProjectItem) -> ProjectItemModel {
@@ -702,7 +704,7 @@ impl ProjectItemList {
             dlg.close();
         });
 
-        dialog.present(&common::main_win());
+        dialog.present(Some(&common::main_win()));
     }
 
     fn prepare_add_server_dlg(

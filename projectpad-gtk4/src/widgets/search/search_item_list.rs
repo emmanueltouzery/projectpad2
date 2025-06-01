@@ -121,14 +121,20 @@ impl SearchItemList {
             Some(&gtk::BuilderRustScope::new()),
             "/com/github/emmanueltouzery/projectpad2/src/widgets/search/search_item_header_row.ui",
         )));
-        self.imp().search_item_list.connect_activate(
-            clone!(@strong self as this => move |list, item_idx| {
+        self.imp().search_item_list.connect_activate(clone!(
+            #[strong(rename_to = this)]
+            self,
+            move |list, item_idx| {
                 let gtk_model: gtk::SingleSelection = list.model().unwrap().downcast().unwrap();
                 let model: SearchItemListModel = gtk_model.model().unwrap().downcast().unwrap();
-                let (project_id, item_id, item_type, sub_id) = model.get_search_item(item_idx).unwrap();
-                this.emit_by_name::<()>("activate-item", &[&project_id, &item_id, &item_type, &sub_id]);
-            }),
-        );
+                let (project_id, item_id, item_type, sub_id) =
+                    model.get_search_item(item_idx).unwrap();
+                this.emit_by_name::<()>(
+                    "activate-item",
+                    &[&project_id, &item_id, &item_type, &sub_id],
+                );
+            }
+        ));
     }
 
     pub fn set_search_items(

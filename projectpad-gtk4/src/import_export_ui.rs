@@ -84,7 +84,7 @@ pub fn open_import_export_dlg() {
         .child(&vbox)
         .build();
 
-    dialog.present(&common::main_win());
+    dialog.present(Some(&common::main_win()));
 
     let dlg = dialog.clone();
     cancel_btn.connect_clicked(move |_| {

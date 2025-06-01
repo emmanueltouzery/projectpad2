@@ -9,7 +9,6 @@ use projectpadsql::{
 };
 
 use crate::{
-    app::ProjectpadApplication,
     perform_insert_or_update,
     search_engine::SearchItemsType,
     sql_thread::SqlFunc,
@@ -127,49 +126,80 @@ fn display_server_link(
     delete_btn.connect_closure(
         "clicked",
         false,
-        glib::closure_local!(@strong poi_name as server_l, @strong poi_id as p_id, @strong project_id as pid => move |_b: gtk::Button| {
-            confirm_delete("Delete Server Link", &format!("Do you want to delete '{}'? This action cannot be undone.", server_l),
-            Box::new(move || {
-                run_sqlfunc_and_then(
-                    Box::new(move |sql_conn| {
-                        use projectpadsql::schema::server_link::dsl as srv_link;
-                        sql_util::delete_row(sql_conn, srv_link::server_link, p_id)
-                            .unwrap();
-                        }),
-                        Box::new(move |_| {
-                            ProjectItemList::display_project(pid);
-                        }),
-                );
-            }))
-        })
+        glib::closure_local!(
+            #[strong(rename_to = server_l)]
+            poi_name,
+            #[strong(rename_to = p_id)]
+            poi_id,
+            #[strong(rename_to = pid)]
+            project_id,
+            move |_b: gtk::Button| {
+                confirm_delete(
+                    "Delete Server Link",
+                    &format!(
+                        "Do you want to delete '{}'? This action cannot be undone.",
+                        server_l
+                    ),
+                    Box::new(move || {
+                        run_sqlfunc_and_then(
+                            Box::new(move |sql_conn| {
+                                use projectpadsql::schema::server_link::dsl as srv_link;
+                                sql_util::delete_row(sql_conn, srv_link::server_link, p_id)
+                                    .unwrap();
+                            }),
+                            Box::new(move |_| {
+                                ProjectItemList::display_project(pid);
+                            }),
+                        );
+                    }),
+                )
+            }
+        ),
     );
 
     let pgn = project_group_names.to_vec();
     let ae = channel_data.project.allowed_envs();
     edit_btn.connect_closure(
-            "clicked",
-            false,
-            glib::closure_local!(@strong server_link as p, @strong pgn as pgn_, @strong ae as ae_, @strong vbox as v => move |_b: gtk::Button| {
-                let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) = server_link_contents_edit(&p, &pgn_, &ae_);
+        "clicked",
+        false,
+        glib::closure_local!(
+            #[strong(rename_to = p)]
+            server_link,
+            #[strong(rename_to = pgn_)]
+            pgn,
+            #[strong(rename_to = ae_)]
+            ae,
+            #[strong(rename_to = v)]
+            vbox,
+            move |_b: gtk::Button| {
+                let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) =
+                    server_link_contents_edit(&p, &pgn_, &ae_);
 
-                let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
+                let (dlg, save_btn) = display_item_edit_dialog(
+                    &v,
+                    "Edit Server Link",
+                    vbox,
+                    600,
+                    600,
+                    DialogClamp::Yes,
+                );
                 let he = maybe_header_edit.unwrap().clone();
                 let p_id = p.id;
-                save_btn.connect_clicked(move|_| {
+                save_btn.connect_clicked(move |_| {
                     let receiver = save_server_link(
                         Some(p_id),
                         he.property("group_name"),
                         he.property("title"),
                         server_link_view_edit.selected_item_item_id(),
                         server_group_dropdown
-                        .selected_item()
-                        .map(|o| {
-                            o.downcast_ref::<gtk::StringObject>()
-                                .unwrap()
-                                .string()
-                                .to_string()
-                        })
-                        .filter(|s| s != server_link::NO_GROUP),
+                            .selected_item()
+                            .map(|o| {
+                                o.downcast_ref::<gtk::StringObject>()
+                                    .unwrap()
+                                    .string()
+                                    .to_string()
+                            })
+                            .filter(|s| s != server_link::NO_GROUP),
                         he.single_env(),
                     );
 
@@ -183,12 +213,17 @@ fn display_server_link(
                         let win_binding_ref = win_binding.as_ref().unwrap();
                         let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
                         // load_and_display_project_poi(pi_bin, db_sender, poi.id);
-                        ProjectItemList::display_project_item(None, server_link.id, ProjectItemType::ServerLink);
+                        ProjectItemList::display_project_item(
+                            None,
+                            server_link.id,
+                            ProjectItemType::ServerLink,
+                        );
                         dlg.close();
                     });
                 });
-            }),
-        );
+            }
+        ),
+    );
 
     parent.set_child(Some(&vbox));
 }

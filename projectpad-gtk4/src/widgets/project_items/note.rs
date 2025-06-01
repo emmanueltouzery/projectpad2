@@ -20,7 +20,6 @@ use projectpadsql::{
 };
 
 use crate::{
-    app::ProjectpadApplication,
     notes::{self, ItemDataInfo},
     sql_thread::SqlFunc,
     widgets::{
@@ -301,21 +300,39 @@ impl Note {
             delete_btn.unwrap().connect_closure(
                 "clicked",
                 false,
-                glib::closure_local!(@strong note_name as note_n, @strong note_id as n_id, @strong project_id as pid => move |_b: gtk::Button| {
-                    confirm_delete("Delete Project Note", &format!("Do you want to delete '{}'? This action cannot be undone.", note_n),
-                    Box::new(move || {
-                        run_sqlfunc_and_then(
-                            Box::new(move |sql_conn| {
-                                use projectpadsql::schema::project_note::dsl as prj_note;
-                                sql_util::delete_row(sql_conn, prj_note::project_note, n_id)
-                                    .unwrap();
-                                }),
-                                Box::new(move |_| {
-                                    ProjectItemList::display_project(pid);
-                                }),
-                        );
-                    }))
-                })
+                glib::closure_local!(
+                    #[strong(rename_to = note_n)]
+                    note_name,
+                    #[strong(rename_to = n_id)]
+                    note_id,
+                    #[strong(rename_to = pid)]
+                    project_id,
+                    move |_b: gtk::Button| {
+                        confirm_delete(
+                            "Delete Project Note",
+                            &format!(
+                                "Do you want to delete '{}'? This action cannot be undone.",
+                                note_n
+                            ),
+                            Box::new(move || {
+                                run_sqlfunc_and_then(
+                                    Box::new(move |sql_conn| {
+                                        use projectpadsql::schema::project_note::dsl as prj_note;
+                                        sql_util::delete_row(
+                                            sql_conn,
+                                            prj_note::project_note,
+                                            n_id,
+                                        )
+                                        .unwrap();
+                                    }),
+                                    Box::new(move |_| {
+                                        ProjectItemList::display_project(pid);
+                                    }),
+                                );
+                            }),
+                        )
+                    }
+                ),
             );
         });
     }
@@ -449,16 +466,26 @@ impl Note {
             let s = self.clone();
 
             edit_btn.connect_closure(
-                    "clicked",
-                    false,
-                    glib::closure_local!(@strong s as _s,
-                                         @strong t as _t,
-                                         @strong c as _c,
-                                         @strong g as _g,
-                                         @strong a as _a,
-                                         @strong ae as _ae,
-                                         @strong tv_var as tv,
-                                         @strong vbox as v => move |_b: gtk::Button| {
+                "clicked",
+                false,
+                glib::closure_local!(
+                    #[strong(rename_to = _s)]
+                    s,
+                    #[strong(rename_to = _t)]
+                    t,
+                    #[strong(rename_to = _c)]
+                    c,
+                    #[strong(rename_to = _g)]
+                    g,
+                    #[strong(rename_to = _a)]
+                    a,
+                    #[strong(rename_to = _ae)]
+                    ae,
+                    #[strong(rename_to = tv)]
+                    tv_var,
+                    #[strong(rename_to = v)]
+                    vbox,
+                    move |_b: gtk::Button| {
                         let n = NoteInfo {
                             id: note.id,
                             title: &_t,
@@ -467,38 +494,52 @@ impl Note {
                             display_header: note.display_header,
                             group_name: _g.as_deref(),
                             all_group_names: &_a,
-                            allowed_envs: &_ae
+                            allowed_envs: &_ae,
                         };
-                        let (_, vbox, project_item_header_edit) = s.note_contents(n.clone(),  WidgetMode::Edit);
+                        let (_, vbox, project_item_header_edit) =
+                            s.note_contents(n.clone(), WidgetMode::Edit);
                         vbox.set_margin_start(30);
                         vbox.set_margin_end(30);
 
-                        let (dialog, save_btn) = display_item_edit_dialog(&v, "Edit Note", vbox, 6000, 6000, DialogClamp::No);
+                        let (dialog, save_btn) = display_item_edit_dialog(
+                            &v,
+                            "Edit Note",
+                            vbox,
+                            6000,
+                            6000,
+                            DialogClamp::No,
+                        );
                         let ttv = tv.clone();
                         let project_note_id = note.id;
                         let h_e = project_item_header_edit.clone();
-                        save_btn.connect_clicked(move |_| {
-                            match (&*ttv.borrow(), &h_e) {
-                                ( Some(v), Some(header_edit) ) => {
-                                    let receiver = Self::save_project_note(v, header_edit, Some(project_note_id));
-                                    let d = dialog.clone();
-                                    glib::spawn_future_local(async move {
-                                        let project_note_after_result = receiver.recv().await.unwrap();
+                        save_btn.connect_clicked(move |_| match (&*ttv.borrow(), &h_e) {
+                            (Some(v), Some(header_edit)) => {
+                                let receiver =
+                                    Self::save_project_note(v, header_edit, Some(project_note_id));
+                                let d = dialog.clone();
+                                glib::spawn_future_local(async move {
+                                    let project_note_after_result = receiver.recv().await.unwrap();
 
-                                        match project_note_after_result {
-                                            Ok(_note) => {
-                                                d.close();
-                                                ProjectItemList::display_project_item(None, project_note_id, ProjectItemType::ProjectNote);
-                                            }
-                                            Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
+                                    match project_note_after_result {
+                                        Ok(_note) => {
+                                            d.close();
+                                            ProjectItemList::display_project_item(
+                                                None,
+                                                project_note_id,
+                                                ProjectItemType::ProjectNote,
+                                            );
                                         }
-                                    });
-                                },
-                                _ => panic!()
+                                        Err((title, msg)) => {
+                                            common::simple_error_dlg(&title, msg.as_deref())
+                                        }
+                                    }
+                                });
                             }
+                            _ => panic!(),
                         });
-                    }),
-                    );
+                    }
+                ),
+            );
             self.set_child(Some(&vbox));
         } else {
             // server note, the parent handles the editing

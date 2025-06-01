@@ -9,7 +9,6 @@ use projectpadsql::{
 };
 
 use crate::{
-    app::ProjectpadApplication,
     perform_insert_or_update,
     sql_thread::SqlFunc,
     sql_util,
@@ -93,7 +92,14 @@ fn display_project_poi(
     delete_btn.connect_closure(
         "clicked",
         false,
-        glib::closure_local!(@strong poi_name as poi_n, @strong poi_id as p_id, @strong project_id as pid => move |_b: gtk::Button| {
+        glib::closure_local!(
+            #[strong(rename_to = poi_n)]
+            poi_name,
+            #[strong(rename_to = p_id)]
+            poi_id,
+            #[strong(rename_to = pid)]
+            project_id,
+            move |_b: gtk::Button| {
             confirm_delete("Delete POI", &format!("Do you want to delete '{}'? This action cannot be undone.", poi_n),
             Box::new(move || {
                 run_sqlfunc_and_then(
@@ -113,21 +119,41 @@ fn display_project_poi(
     let pgn = project_group_names.to_vec();
     let ae = allowed_envs.to_owned();
     edit_btn.connect_closure(
-            "clicked",
-            false,
-            glib::closure_local!(@strong poi as p, @strong pgn as pgn_, @strong vbox as v, @strong ae as ae_ => move |_b: gtk::Button| {
-                let (maybe_header_edit, project_poi_view_edit, _, vbox) = project_poi_contents(&p, &pgn_, WidgetMode::Edit, &ae_);
+        "clicked",
+        false,
+        glib::closure_local!(
+            #[strong(rename_to = p)]
+            poi,
+            #[strong(rename_to = pgn_)]
+            pgn,
+            #[strong(rename_to = v)]
+            vbox,
+            #[strong(rename_to = ae_)]
+            ae,
+            move |_b: gtk::Button| {
+                let (maybe_header_edit, project_poi_view_edit, _, vbox) =
+                    project_poi_contents(&p, &pgn_, WidgetMode::Edit, &ae_);
 
-                let (dlg, save_btn) = display_item_edit_dialog(&v, "Edit project POI", vbox, 600, 600, DialogClamp::Yes);
+                let (dlg, save_btn) = display_item_edit_dialog(
+                    &v,
+                    "Edit project POI",
+                    vbox,
+                    600,
+                    600,
+                    DialogClamp::Yes,
+                );
                 let he = maybe_header_edit.unwrap().clone();
-                save_btn.connect_clicked(move|_| {
+                save_btn.connect_clicked(move |_| {
                     let receiver = save_project_poi(
                         Some(poi.id),
                         he.property("group_name"),
                         he.property("title"),
                         project_poi_view_edit.property("path"),
                         project_poi_view_edit.property("text"),
-                        InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type")).unwrap(),
+                        InterestType::from_str(
+                            &project_poi_view_edit.property::<String>("interest_type"),
+                        )
+                        .unwrap(),
                     );
 
                     let db_sender = common::app().get_sql_channel();
@@ -140,12 +166,17 @@ fn display_project_poi(
                         let win_binding_ref = win_binding.as_ref().unwrap();
                         let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
                         // load_and_display_project_poi(pi_bin, db_sender, poi.id);
-                        ProjectItemList::display_project_item(None, poi.id, ProjectItemType::ProjectPointOfInterest);
+                        ProjectItemList::display_project_item(
+                            None,
+                            poi.id,
+                            ProjectItemType::ProjectPointOfInterest,
+                        );
                         dlg.close();
                     });
                 });
-            }),
-        );
+            }
+        ),
+    );
 
     parent.set_child(Some(&vbox));
 }

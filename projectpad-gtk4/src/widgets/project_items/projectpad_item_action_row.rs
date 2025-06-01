@@ -97,30 +97,45 @@ impl ProjectpadItemActionRow {
         widget.connect_closure(
             "clicked",
             false,
-            glib::closure_local!(@strong this as s => move |_: gtk::Button| {
-                // let app = gio::Application::default()
-                //     .expect("Failed to retrieve application singleton")
-                //     .downcast::<ProjectpadApplication>()
-                //     .unwrap();
-                // let window = app.imp().window.get().unwrap();
-                // let win_binding = window.upgrade();
-                // let win_binding_ref = win_binding.as_ref().unwrap();
-                // let file_dialog = gtk::FileDialog::builder().build();
-                if widget_mode == WidgetMode::Edit {
-                    s.open_item_picker_dlg();
-                } else {
-                    let search_item_type = SearchItemType::from_repr(s.search_item_type());
-                    let item_id = s.item_id();
-                    let project_id_server_id_recv = common::run_sqlfunc(Box::new(move |sql_conn| {
-                        Self::query_get_item_project_id_server_id(sql_conn, search_item_type, Some(item_id).filter(|i| *i > 0))
-                    }));
-                    glib::spawn_future_local(async move {
-                        let (project_id, server_id) = project_id_server_id_recv.recv().await.unwrap();
-                        ProjectpadApplicationWindow::display_item_from_search(
-                            common::main_win(), project_id, item_id, search_item_type.unwrap() as u8, server_id);
-                    });
+            glib::closure_local!(
+                #[strong(rename_to = s)]
+                this,
+                move |_: gtk::Button| {
+                    // let app = gio::Application::default()
+                    //     .expect("Failed to retrieve application singleton")
+                    //     .downcast::<ProjectpadApplication>()
+                    //     .unwrap();
+                    // let window = app.imp().window.get().unwrap();
+                    // let win_binding = window.upgrade();
+                    // let win_binding_ref = win_binding.as_ref().unwrap();
+                    // let file_dialog = gtk::FileDialog::builder().build();
+                    if widget_mode == WidgetMode::Edit {
+                        s.open_item_picker_dlg();
+                    } else {
+                        let search_item_type = SearchItemType::from_repr(s.search_item_type());
+                        let item_id = s.item_id();
+                        let project_id_server_id_recv =
+                            common::run_sqlfunc(Box::new(move |sql_conn| {
+                                Self::query_get_item_project_id_server_id(
+                                    sql_conn,
+                                    search_item_type,
+                                    Some(item_id).filter(|i| *i > 0),
+                                )
+                            }));
+                        glib::spawn_future_local(async move {
+                            let (project_id, server_id) =
+                                project_id_server_id_recv.recv().await.unwrap();
+                            ProjectpadApplicationWindow::display_item_from_search(
+                                common::main_win(),
+                                project_id,
+                                item_id,
+                                search_item_type.unwrap() as u8,
+                                server_id,
+                            );
+                        });
+                    }
                 }
-            }),
+            ),
         );
         this.add_suffix(&widget);
 
@@ -133,12 +148,16 @@ impl ProjectpadItemActionRow {
             delete_widget.connect_closure(
                 "clicked",
                 false,
-                glib::closure_local!(@strong this as s => move |_b: gtk::Button| {
-                    s.set_text("");
-                    s.set_item_id(0);
-                    let item_id = 0;
-                    s.emit_by_name::<()>("item-picked", &[&item_id]);
-                }),
+                glib::closure_local!(
+                    #[strong(rename_to = s)]
+                    this,
+                    move |_b: gtk::Button| {
+                        s.set_text("");
+                        s.set_item_id(0);
+                        let item_id = 0;
+                        s.emit_by_name::<()>("item-picked", &[&item_id]);
+                    }
+                ),
             );
         }
 
@@ -277,6 +296,6 @@ impl ProjectpadItemActionRow {
             s.emit_by_name::<()>("item-picked", &[&db_id]);
         });
 
-        dialog.present(&common::main_win());
+        dialog.present(Some(&common::main_win()));
     }
 }

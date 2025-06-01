@@ -11,12 +11,15 @@ includedir_codegen = "0.6.0"
 
 
 [dependencies]
-gtk = { version = "0.8.1", package = "gtk4", features = ["v4_14"] }
-cairo-rs = "0.19.4"
-pango = "0.19.3"
-glib = "0.19.4"
-gio = "0.19.4"
-adw = { version = "0.6.0", package = "libadwaita", features = ["v1_5"] }
+gtk = { version = "^0.9", package = "gtk4", features = ["v4_14"] }
+cairo-rs = "^0.20"
+pango = "^0.20"
+glib = "^0.20"
+gio = "^0.20"
+adw = { version = "^0.7", package = "libadwaita", features = ["v1_5"] }
+gsk4 = "^0.9"
+graphene-rs = "^0.20"
+sourceview5 = "^0.9"
 projectpadsql = { path = "../projectpadsql" }
 diesel = { version = "2.0.4", features = ["sqlite"] }
 includedir = "0.6.0"
@@ -27,9 +30,6 @@ itertools = "0.10.0"
 strum = "0.25.0"
 strum_macros = "0.25.3"
 pulldown-cmark = { version = "0.8.0", default-features = false }
-sourceview5 = "0.8.0"
-graphene-rs = "0.19.2"
-gsk4 = "0.8.1"
 serde = "1.0.123"
 serde_derive = "1.0.123"
 serde_yaml = "0.8.17"

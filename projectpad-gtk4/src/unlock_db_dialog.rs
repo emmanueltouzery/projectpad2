@@ -110,7 +110,7 @@ pub fn display_unlock_dialog(is_new_db: bool) {
         gio::Application::default().unwrap().quit();
     }))));
 
-    dialog.set_focus_widget(Some(&password));
+    dialog.set_focus(Some(&password));
     dialog.set_default_widget(Some(&next_btn));
 
     let d = dialog.clone();
@@ -162,5 +162,5 @@ pub fn display_unlock_dialog(is_new_db: bool) {
         });
     });
 
-    dialog.present(&common::main_win());
+    dialog.present(Some(&common::main_win()));
 }

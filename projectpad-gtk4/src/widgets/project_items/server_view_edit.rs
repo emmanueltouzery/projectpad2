@@ -162,9 +162,13 @@ impl ServerViewEdit {
                 auth_key_entry.connect_closure(
                     "file-picked",
                     false,
-                    glib::closure_local!(@strong self as s => move |_: FilePickerActionRow, p: String| {
-                        s.emit_by_name::<()>("save-auth-key-to-disk", &[&p]);
-                    }),
+                    glib::closure_local!(
+                        #[strong(rename_to = s)]
+                        self,
+                        move |_: FilePickerActionRow, p: String| {
+                            s.emit_by_name::<()>("save-auth-key-to-disk", &[&p]);
+                        }
+                    ),
                 );
             }
 

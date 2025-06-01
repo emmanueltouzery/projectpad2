@@ -3,7 +3,7 @@ use glib::*;
 use gtk::subclass::prelude::*;
 
 use crate::{
-    app::{self, ProjectpadApplication},
+    app::{self},
     widgets::project_item::WidgetMode,
 };
 
@@ -99,36 +99,51 @@ impl FilePickerActionRow {
         widget.connect_closure(
             "clicked",
             false,
-            glib::closure_local!(@strong this as s => move |b: gtk::Button| {
-                let app = app::get();
-                let window = app.imp().window.get().unwrap();
-                let win_binding = window.upgrade();
-                let win_binding_ref = win_binding.as_ref().unwrap();
-                let file_dialog = gtk::FileDialog::builder().build();
-                if b.icon_name() == Some("document-open-symbolic".into()) {
-                    let _s = s.clone();
-                    file_dialog.open(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
-                        if let Ok(f) = r {
-                            if let Some(p) = f.path() {
-                                // TODO a little crappy unwrap, could be invalid filename
-                                _s.set_filename(p.to_str().unwrap());
-                            }
-                        }
-                    });
-                } else {
-                    let _s = s.clone();
-                    file_dialog.save(Some(win_binding_ref), None::<&gio::Cancellable>, move |r| {
-                        if let Ok(f) = r {
-                            if let Some(p) = f.path() {
-                                if update_filename_prop == UpdateFilenameProp::Always {
-                                    _s.set_filename(p.to_str().unwrap());
+            glib::closure_local!(
+                #[strong(rename_to = s)]
+                this,
+                move |b: gtk::Button| {
+                    let app = app::get();
+                    let window = app.imp().window.get().unwrap();
+                    let win_binding = window.upgrade();
+                    let win_binding_ref = win_binding.as_ref().unwrap();
+                    let file_dialog = gtk::FileDialog::builder().build();
+                    if b.icon_name() == Some("document-open-symbolic".into()) {
+                        let _s = s.clone();
+                        file_dialog.open(
+                            Some(win_binding_ref),
+                            None::<&gio::Cancellable>,
+                            move |r| {
+                                if let Ok(f) = r {
+                                    if let Some(p) = f.path() {
+                                        // TODO a little crappy unwrap, could be invalid filename
+                                        _s.set_filename(p.to_str().unwrap());
+                                    }
                                 }
-                                _s.emit_by_name::<()>("file-picked", &[&p.display().to_string()]);
-                            }
-                        }
-                    });
+                            },
+                        );
+                    } else {
+                        let _s = s.clone();
+                        file_dialog.save(
+                            Some(win_binding_ref),
+                            None::<&gio::Cancellable>,
+                            move |r| {
+                                if let Ok(f) = r {
+                                    if let Some(p) = f.path() {
+                                        if update_filename_prop == UpdateFilenameProp::Always {
+                                            _s.set_filename(p.to_str().unwrap());
+                                        }
+                                        _s.emit_by_name::<()>(
+                                            "file-picked",
+                                            &[&p.display().to_string()],
+                                        );
+                                    }
+                                }
+                            },
+                        );
+                    }
                 }
-            }),
+            ),
         );
         this.add_suffix(&widget);
 
@@ -141,9 +156,13 @@ impl FilePickerActionRow {
             delete_widget.connect_closure(
                 "clicked",
                 false,
-                glib::closure_local!(@strong this as s => move |_b: gtk::Button| {
-                    s.set_filename("");
-                }),
+                glib::closure_local!(
+                    #[strong(rename_to = s)]
+                    this,
+                    move |_b: gtk::Button| {
+                        s.set_filename("");
+                    }
+                ),
             );
         }
 

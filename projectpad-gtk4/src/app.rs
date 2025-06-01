@@ -20,7 +20,7 @@ use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_item_list::ProjectItemList;
 use crate::widgets::project_item_model::ProjectItemType;
-use crate::widgets::project_items::common;
+use crate::widgets::project_items::common::{self, run_sqlfunc};
 use crate::win::ProjectpadApplicationWindow;
 use crate::{import_export_ui, keyring_helpers, perform_insert_or_update, sql_util};
 
@@ -116,7 +116,10 @@ glib::wrapper! {
         // @implements gio::ActionMap, gio::ActionGroup;
 }
 
-#[derive(PartialEq, Eq)]
+// here first run is not about the first time we run the app (when there's no
+// db yet), but the first time we display the list of projects in a particular
+// app run (when we must setup actions and so on)
+#[derive(PartialEq, Eq, Copy, Clone)]
 enum RunMode {
     FirstRun,
     Normal,
@@ -166,10 +169,55 @@ impl ProjectpadApplication {
         action.set_state(&select_project_item);
     }
 
-    fn setup_actions(&self, window: &ProjectpadApplicationWindow, cur_project: Option<&Project>) {
+    fn setup_actions_and_populate_menu(
+        &self,
+        run_mode: RunMode,
+        window: &ProjectpadApplicationWindow,
+        cur_project: Option<&Project>,
+        prjs: &[Project],
+    ) {
+        if let Some(prj) = cur_project {
+            self.do_setup_actions_and_populate_menu(run_mode, window, prj.id, prjs);
+        } else {
+            // first startup, no project, create a default one
+            let recv = run_sqlfunc(Box::new(|sql_conn| {
+                use projectpadsql::schema::project::dsl as prj;
+                let changeset = (
+                    prj::name.eq("Default project"),
+                    prj::has_prod.eq(true),
+                    // TODO the icon is actually not-null in SQL...
+                    prj::icon.eq(Some(vec![])),
+                );
+                perform_insert_or_update!(sql_conn, None, prj::project, prj::id, changeset, Project,)
+            }));
+            let s = self.clone();
+            let w = window.clone();
+            let mut prjs_c = prjs.to_vec().clone();
+            glib::spawn_future_local(async move {
+                let insert_res = recv.recv().await.unwrap();
+                match insert_res {
+                    Ok(p) => {
+                        let p_id = p.id;
+                        prjs_c.push(p);
+                        s.do_setup_actions_and_populate_menu(run_mode, &w, p_id, &prjs_c);
+                    }
+                    Err(e) => {
+                        common::simple_error_dlg("Error creating default project", e.1.as_deref())
+                    }
+                }
+            });
+        }
+    }
+
+    fn do_setup_actions_and_populate_menu(
+        &self,
+        run_mode: RunMode,
+        window: &ProjectpadApplicationWindow,
+        cur_project_id: i32,
+        prjs: &[Project],
+    ) {
         let select_project_variant = glib::VariantDict::new(None);
-        select_project_variant.insert("project_id", cur_project.unwrap().id); // TODO first startup
-                                                                              // if no projects
+        select_project_variant.insert("project_id", cur_project_id);
         select_project_variant.insert("item_id", None::<i32>);
         select_project_variant.insert("item_type", None::<u8>);
         select_project_variant.insert("server_id", None::<i32>);
@@ -188,8 +236,6 @@ impl ProjectpadApplication {
             w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
         });
         let select_project_item_action = gio::SimpleAction::new_stateful(
-            // probably rename this to select-project-item, then uncomment the select-project just
-            // above, and have it trigger this, but with the default item id
             "select-project-item",
             Some(&glib::VariantDict::static_variant_type()),
             &select_project_variant.to_variant(),
@@ -286,6 +332,8 @@ impl ProjectpadApplication {
             }
         });
         window.add_action(&open_help_action);
+
+        self.populate_menu(run_mode, prjs);
     }
 
     fn open_move_project_item_dlg() {
@@ -742,88 +790,93 @@ impl ProjectpadApplication {
         // the current project change (or indeed if the project list changes)
         let project_id_maybe = self.project_id();
 
-        let app_clone = self.clone();
         glib::spawn_future_local(async move {
             let prjs = receiver.recv().await.unwrap();
             let app = get();
             let window = app.imp().window.get().unwrap();
             let win_binding = window.upgrade();
             let win_binding_ref = win_binding.as_ref().unwrap();
-            let popover = &win_binding_ref.imp().project_popover_menu;
-            let menu_model = gio::Menu::new();
-            let select_project_variant = glib::VariantDict::new(None);
             if run_mode == RunMode::FirstRun && project_id_maybe.is_none() {
                 // first run only
-                app_clone.setup_actions(&win_binding_ref, prjs.first());
-            }
-
-            let w = app_clone.imp().window.get().unwrap().upgrade().unwrap();
-
-            if run_mode == RunMode::FirstRun && !prjs.is_empty() {
-                select_project_variant.insert("project_id", prjs.first().unwrap().id);
-                select_project_variant.insert("item_id", None::<i32>);
-                select_project_variant.insert("item_type", None::<u8>);
-                select_project_variant.insert("search_item_type", None::<u8>);
-                w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
-            }
-
-            for prj in prjs.iter() {
-                select_project_variant.insert("project_id", prj.id);
-                select_project_variant.insert("item_id", None::<i32>);
-                select_project_variant.insert("item_type", None::<u8>);
-                select_project_variant.insert("search_item_type", None::<u8>);
-                // tie this menu to a gsimpleaction without state but with a parameter, which is
-                // the project to activate
-                menu_model.append(
-                    Some(&prj.name),
-                    Some(&gio::Action::print_detailed_name(
-                        "win.select-project",
-                        Some(&prj.id.to_variant()),
-                    )),
-                );
-            }
-
-            let cur_project_maybe = if let Some(project_id) = project_id_maybe {
-                let cur_prj = prjs.iter().find(|p| p.id == project_id);
-                if cur_prj.is_none() {
-                    // happens when we delete the current project
-                    prjs.first()
-                } else {
-                    cur_prj
-                }
+                app.setup_actions_and_populate_menu(run_mode, win_binding_ref, prjs.first(), &prjs);
             } else {
-                prjs.first()
-            };
-            if let Some(cur_project) = cur_project_maybe {
-                let project_actions_menu_model = gio::Menu::new();
-
-                project_actions_menu_model.append(Some("Add project"), Some("win.add-project"));
-                project_actions_menu_model.append(
-                    Some(&format!("Edit project: {}", cur_project.name)),
-                    Some(&gio::Action::print_detailed_name(
-                        "win.edit-project",
-                        Some(&cur_project.id.to_variant()),
-                    )),
-                );
-                let delete_project_variant = glib::VariantDict::new(None);
-                delete_project_variant.insert("project_id", cur_project.id);
-                delete_project_variant.insert("project_name", cur_project.name.to_owned());
-                project_actions_menu_model.append(
-                    Some(&format!("Delete project: {}", cur_project.name)),
-                    Some(&gio::Action::print_detailed_name(
-                        "win.delete-project",
-                        Some(&delete_project_variant.end()),
-                    )),
-                );
-
-                menu_model.append_section(Some("Project actions"), &project_actions_menu_model);
+                app.populate_menu(run_mode, &prjs);
             }
-            // also add project, delete project, plus menu separator
-            // the separator is possibly a section: https://gtk-rs.org/gtk-rs-core/stable/0.16/docs/gio/struct.Menu.html
-            popover.set_menu_model(Some(&menu_model));
-
-            win_binding_ref.display_active_project_item();
         });
+    }
+
+    fn populate_menu(&self, run_mode: RunMode, prjs: &[Project]) {
+        let w = self.imp().window.get().unwrap().upgrade().unwrap();
+        let popover = &w.imp().project_popover_menu;
+        let project_id_maybe = self.project_id();
+
+        let menu_model = gio::Menu::new();
+        let select_project_variant = glib::VariantDict::new(None);
+
+        if run_mode == RunMode::FirstRun && !prjs.is_empty() {
+            select_project_variant.insert("project_id", prjs.first().unwrap().id);
+            select_project_variant.insert("item_id", None::<i32>);
+            select_project_variant.insert("item_type", None::<u8>);
+            select_project_variant.insert("search_item_type", None::<u8>);
+            w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
+        }
+
+        for prj in prjs.iter() {
+            select_project_variant.insert("project_id", prj.id);
+            select_project_variant.insert("item_id", None::<i32>);
+            select_project_variant.insert("item_type", None::<u8>);
+            select_project_variant.insert("search_item_type", None::<u8>);
+            // tie this menu to a gsimpleaction without state but with a parameter, which is
+            // the project to activate
+            menu_model.append(
+                Some(&prj.name),
+                Some(&gio::Action::print_detailed_name(
+                    "win.select-project",
+                    Some(&prj.id.to_variant()),
+                )),
+            );
+        }
+
+        let cur_project_maybe = if let Some(project_id) = project_id_maybe {
+            let cur_prj = prjs.iter().find(|p| p.id == project_id);
+            if cur_prj.is_none() {
+                // happens when we delete the current project
+                prjs.first()
+            } else {
+                cur_prj
+            }
+        } else {
+            prjs.first()
+        };
+        if let Some(cur_project) = cur_project_maybe {
+            let project_actions_menu_model = gio::Menu::new();
+
+            project_actions_menu_model.append(Some("Add project"), Some("win.add-project"));
+            project_actions_menu_model.append(
+                Some(&format!("Edit project: {}", cur_project.name)),
+                Some(&gio::Action::print_detailed_name(
+                    "win.edit-project",
+                    Some(&cur_project.id.to_variant()),
+                )),
+            );
+            let delete_project_variant = glib::VariantDict::new(None);
+            delete_project_variant.insert("project_id", cur_project.id);
+            delete_project_variant.insert("project_name", cur_project.name.to_owned());
+            project_actions_menu_model.append(
+                Some(&format!("Delete project: {}", cur_project.name)),
+                Some(&gio::Action::print_detailed_name(
+                    "win.delete-project",
+                    Some(&delete_project_variant.end()),
+                )),
+            );
+
+            menu_model.append_section(Some("Project actions"), &project_actions_menu_model);
+        }
+        // also add project, delete project, plus menu separator
+        // the separator is possibly a section: https://gtk-rs.org/gtk-rs-core/stable/0.16/docs/gio/struct.Menu.html
+        popover.set_menu_model(Some(&menu_model));
+
+        w.display_active_project_item();
     }
 
     fn load_css() {

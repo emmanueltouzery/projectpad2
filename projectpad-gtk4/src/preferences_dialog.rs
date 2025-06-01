@@ -85,7 +85,7 @@ pub fn display_preferences_dialog() {
         let pass_confirm = gtk::PasswordEntry::builder().show_peek_icon(true).build();
 
         let dialog = adw::AlertDialog::builder()
-            .title("Remove password from the keyring?")
+            .heading("Remove password from the keyring?")
             .body("Enter the password to confirm that you wish to remove it from the OS keyring")
             .extra_child(&pass_confirm)
             .build();

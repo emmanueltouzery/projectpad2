@@ -6,6 +6,7 @@ use diesel::prelude::*;
 use projectpadsql::models::Project;
 
 use crate::{
+    app::RunMode,
     export, import,
     widgets::{
         project_item::WidgetMode,
@@ -193,12 +194,10 @@ fn switch_export_tab(dialog: &adw::Dialog, stack: &gtk::Stack, next: gtk::Button
                 return;
             }
             let mut selected_projects = vec![];
-            let mut idx = 0;
-            for project_row in project_rows.iter() {
+            for (idx, project_row) in project_rows.iter().enumerate() {
                 if project_row.is_active() {
                     selected_projects.push(projects.get(idx).unwrap().clone());
                 }
-                idx += 1;
             }
             if selected_projects.is_empty() {
                 common::simple_error_dlg(
@@ -262,6 +261,9 @@ fn do_export(
                 // TODO could open a dialog confirming the export was done, with
                 // a link to the export folder (same as we have in the preferences for
                 // the config file)
+                common::app()
+                    .get_toast_overlay()
+                    .add_toast(adw::Toast::new("Export successfully performed"));
                 dlg.close();
             }
         }
@@ -315,6 +317,13 @@ fn switch_import_tab(dialog: &adw::Dialog, stack: &gtk::Stack, next: gtk::Button
                 let import_res = import_recv.recv().await.unwrap();
                 match import_res {
                     Ok(_) => {
+                        let app = common::app();
+                        app.fetch_projects_and_populate_menu(
+                            RunMode::Normal,
+                            &app.get_sql_channel(),
+                        );
+                        app.get_toast_overlay()
+                            .add_toast(adw::Toast::new("Import successfully performed"));
                         dlg.close();
                     }
                     Err(e) => {

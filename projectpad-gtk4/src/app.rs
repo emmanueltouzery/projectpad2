@@ -120,7 +120,7 @@ glib::wrapper! {
 // db yet), but the first time we display the list of projects in a particular
 // app run (when we must setup actions and so on)
 #[derive(PartialEq, Eq, Copy, Clone)]
-enum RunMode {
+pub enum RunMode {
     FirstRun,
     Normal,
 }
@@ -233,7 +233,7 @@ impl ProjectpadApplication {
             select_project_variant.insert("item_id", None::<i32>);
             select_project_variant.insert("item_type", None::<u8>);
             select_project_variant.insert("search_item_type", None::<u8>);
-            w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
+            w.change_action_state("select-project-item", &select_project_variant.end());
         });
         let select_project_item_action = gio::SimpleAction::new_stateful(
             "select-project-item",
@@ -771,7 +771,7 @@ impl ProjectpadApplication {
         project_state.lookup::<i32>("project_id").unwrap()
     }
 
-    fn fetch_projects_and_populate_menu(
+    pub fn fetch_projects_and_populate_menu(
         &self,
         run_mode: RunMode,
         sql_channel: &mpsc::Sender<SqlFunc>,
@@ -818,7 +818,7 @@ impl ProjectpadApplication {
             select_project_variant.insert("item_id", None::<i32>);
             select_project_variant.insert("item_type", None::<u8>);
             select_project_variant.insert("search_item_type", None::<u8>);
-            w.change_action_state("select-project-item", &dbg!(select_project_variant.end()));
+            w.change_action_state("select-project-item", &select_project_variant.end());
         }
 
         for prj in prjs.iter() {

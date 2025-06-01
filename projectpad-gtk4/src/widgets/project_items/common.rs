@@ -150,7 +150,7 @@ pub fn copy_to_clipboard(text: &str) {
 
 pub struct SuffixAction {
     pub icon: &'static str,
-    pub action: Rc<Box<dyn Fn() -> ()>>,
+    pub action: Rc<Box<dyn Fn()>>,
 }
 
 impl SuffixAction {

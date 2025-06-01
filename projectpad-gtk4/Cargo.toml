@@ -16,7 +16,7 @@ cairo-rs = "^0.20"
 pango = "^0.20"
 glib = "^0.20"
 gio = "^0.20"
-adw = { version = "^0.7", package = "libadwaita", features = ["v1_5"] }
+adw = { version = "^0.7", package = "libadwaita", features = ["v1_6"] }
 gsk4 = "^0.9"
 graphene-rs = "^0.20"
 sourceview5 = "^0.9"

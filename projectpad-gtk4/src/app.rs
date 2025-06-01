@@ -15,7 +15,6 @@ use projectpadsql::models::{
 };
 
 use crate::sql_thread::{self, SqlFunc};
-use crate::unlock_db_dialog;
 use crate::widgets::move_project_item::MoveProjectItem;
 use crate::widgets::project_edit::ProjectEdit;
 use crate::widgets::project_item_list::ProjectItemList;
@@ -23,6 +22,7 @@ use crate::widgets::project_item_model::ProjectItemType;
 use crate::widgets::project_items::common::{self, run_sqlfunc};
 use crate::win::ProjectpadApplicationWindow;
 use crate::{import_export_ui, keyring_helpers, perform_insert_or_update, sql_util};
+use crate::{preferences_dialog, unlock_db_dialog};
 
 mod imp {
     use std::cell::{OnceCell, RefCell};
@@ -321,6 +321,12 @@ impl ProjectpadApplication {
             import_export_ui::open_import_export_dlg();
         });
         window.add_action(&import_export_action);
+
+        let prefs_action = gio::SimpleAction::new("preferences", None);
+        prefs_action.connect_activate(move |_action, _parameter| {
+            preferences_dialog::display_preferences_dialog();
+        });
+        window.add_action(&prefs_action);
 
         let open_help_action = gio::SimpleAction::new("open-help", None);
         open_help_action.connect_activate(move |_action, _parameter| {

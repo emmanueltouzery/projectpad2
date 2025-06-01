@@ -16,6 +16,7 @@ mod export;
 mod import;
 mod import_export_dtos;
 mod import_export_ui;
+mod preferences_dialog;
 mod unlock_db_dialog;
 mod win;
 

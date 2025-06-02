@@ -68,7 +68,7 @@ pub fn display_preferences_dialog() {
     database_group.add(&db_location_row);
 
     let change_pass_row = adw::ButtonRow::builder().title("Change password").build();
-    // TODO
+    change_pass_row.connect_activated(|_| display_dialog_change_password());
     database_group.add(&change_pass_row);
 
     let remove_pass_row = adw::ButtonRow::builder()
@@ -89,6 +89,95 @@ pub fn display_preferences_dialog() {
         .content_width(450)
         .child(&vbox)
         .build();
+
+    dialog.present(Some(&common::main_win()));
+}
+
+fn display_dialog_change_password() {
+    let vbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+
+    let header_bar = adw::HeaderBar::builder()
+        .show_end_title_buttons(false)
+        .show_start_title_buttons(false)
+        .build();
+
+    let cancel_btn = gtk::Button::builder().label("Cancel").build();
+    header_bar.pack_start(&cancel_btn);
+
+    let change_btn = gtk::Button::builder()
+        .label("Change")
+        .css_classes(["suggested-action"])
+        .build();
+    header_bar.pack_end(&change_btn);
+
+    vbox.append(&header_bar);
+
+    let contents_vbox = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(10)
+        .margin_top(20)
+        .margin_bottom(20)
+        .margin_start(20)
+        .margin_end(20)
+        .build();
+
+    let cur_pass_group = adw::PreferencesGroup::builder()
+        .title("Current password")
+        .build();
+    let cur_pass_entry = adw::PasswordEntryRow::builder()
+        .title("Current password")
+        .build();
+    cur_pass_group.add(&cur_pass_entry);
+    contents_vbox.append(&cur_pass_group);
+
+    let new_pass_group = adw::PreferencesGroup::builder()
+        .title("New password")
+        .build();
+    let new_pass_entry = adw::PasswordEntryRow::builder()
+        .title("New password")
+        .build();
+    new_pass_group.add(&new_pass_entry);
+    let new_pass_confirm_entry = adw::PasswordEntryRow::builder()
+        .title("New password confirm")
+        .build();
+    new_pass_group.add(&new_pass_confirm_entry);
+    contents_vbox.append(&new_pass_group);
+    vbox.append(&contents_vbox);
+
+    let dialog = adw::Dialog::builder()
+        .child(&vbox)
+        .title("Change password")
+        .content_width(450)
+        .build();
+
+    let dlg = dialog.clone();
+    cancel_btn.connect_clicked(move |_| {
+        dlg.close();
+    });
+
+    change_btn.connect_clicked(move |_| {
+        if new_pass_entry.text().is_empty() {
+            // prevent empty passwords in projectpad2, because moving between
+            // plaintext and encrypted sqlcipher databases is non-trivial
+            // https://www.zetetic.net/sqlcipher/sqlcipher-api/index.html#sqlcipher_export
+            common::simple_error_dlg(
+                "Password change error",
+                Some("The password must not be empty"),
+            );
+            return;
+        }
+        if new_pass_entry.text() != new_pass_confirm_entry.text() {
+            common::simple_error_dlg(
+                "Password change error",
+                Some("New and confirm passwords don't match"),
+            );
+            return;
+        }
+        // TODO check old password
+        // TODO set new password, update keyring if needed
+    });
 
     dialog.present(Some(&common::main_win()));
 }

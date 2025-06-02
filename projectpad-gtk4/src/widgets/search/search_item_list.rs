@@ -4,6 +4,7 @@ use gtk::prelude::ObjectExt;
 use gtk::prelude::StaticType;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
+use projectpadsql::models::EnvironmentType;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
@@ -12,7 +13,7 @@ use projectpadsql::models::{
 use crate::search_engine::SearchResult;
 
 use super::search_item_list_model::SearchItemListModel;
-use super::search_item_model::{Env, SearchItemModel, SearchItemType};
+use super::search_item_model::{SearchItemModel, SearchItemType};
 
 mod imp {
     use std::{cell::RefCell, rc::Rc, sync::OnceLock};
@@ -276,7 +277,8 @@ impl SearchItemList {
             project.id,
             SearchItemType::Project,
             project.name.clone(),
-            Env::Prod, // TODO
+            // there'll always a project item under, nevermind all the possible envs of the project
+            None,
             None,
         )
     }
@@ -288,7 +290,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::Server,
             server.desc.clone(),
-            Env::Prod, // TODO
+            Some(server.environment),
             Some(project.name.to_owned()),
         )
     }
@@ -300,7 +302,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::ServerWebsite,
             item.desc.clone(),
-            Env::Prod, // TODO
+            None,
             Some(project.name.to_owned()),
         )
     }
@@ -312,7 +314,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::ServerNote,
             item.title.clone(),
-            Env::Prod, // TODO
+            None,
             Some(project.name.to_owned()),
         )
     }
@@ -327,7 +329,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::ServerExtraUserAccount,
             item.desc.clone(),
-            Env::Prod, // TODO
+            None,
             Some(project.name.to_owned()),
         )
     }
@@ -339,7 +341,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::ServerDatabase,
             item.desc.clone(),
-            Env::Prod, // TODO
+            None,
             Some(project.name.to_owned()),
         )
     }
@@ -351,7 +353,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::ServerPoi,
             item.desc.clone(),
-            Env::Prod, // TODO
+            None,
             Some(project.name.to_owned()),
         )
     }
@@ -363,7 +365,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::ServerLink,
             item.desc.clone(),
-            Env::Prod, // TODO
+            None,
             Some(project.name.to_owned()),
         )
     }
@@ -375,7 +377,15 @@ impl SearchItemList {
             project.id,
             SearchItemType::ProjectNote,
             item.title.clone(),
-            Env::Prod, // TODO
+            Some(if item.has_prod {
+                EnvironmentType::EnvProd
+            } else if item.has_uat {
+                EnvironmentType::EnvUat
+            } else if item.has_stage {
+                EnvironmentType::EnvStage
+            } else {
+                EnvironmentType::EnvDevelopment
+            }),
             Some(project.name.to_owned()),
         )
     }
@@ -387,7 +397,7 @@ impl SearchItemList {
             project.id,
             SearchItemType::ProjectPointOfInterest,
             item.desc.clone(),
-            Env::Prod, // TODO
+            None,
             Some(project.name.to_owned()),
         )
     }

@@ -1,6 +1,7 @@
 use glib::prelude::*;
 use glib::*;
 use gtk::subclass::prelude::*;
+use projectpadsql::models::EnvironmentType;
 use strum_macros::FromRepr;
 
 use crate::widgets::project_item_model::ProjectItemType;
@@ -75,32 +76,25 @@ glib::wrapper! {
     pub struct SearchItemModel(ObjectSubclass<imp::SearchItemModel>);
 }
 
-pub enum Env {
-    Dev,
-    Staging,
-    Uat,
-    Prod,
-}
-
-fn env_to_css(val: &Env) -> Vec<String> {
+fn env_to_css(val: &EnvironmentType) -> Vec<String> {
     vec![
         match val {
-            Env::Dev => "project-item-dev",
-            Env::Staging => "project-item-staging",
-            Env::Uat => "project-item-uat",
-            Env::Prod => "project-item-prod",
+            EnvironmentType::EnvDevelopment => "project-item-dev",
+            EnvironmentType::EnvStage => "project-item-staging",
+            EnvironmentType::EnvUat => "project-item-uat",
+            EnvironmentType::EnvProd => "project-item-prod",
         }
         .to_string(),
         "caption-heading".to_string(),
     ]
 }
 
-fn env_to_desc(val: &Env) -> String {
+fn env_to_desc(val: &EnvironmentType) -> String {
     match val {
-        Env::Dev => "DEV",
-        Env::Staging => "STG",
-        Env::Uat => "UAT",
-        Env::Prod => "PRD",
+        EnvironmentType::EnvDevelopment => "DEV",
+        EnvironmentType::EnvStage => "STG",
+        EnvironmentType::EnvUat => "UAT",
+        EnvironmentType::EnvProd => "PRD",
     }
     .to_string()
 }
@@ -112,7 +106,7 @@ impl SearchItemModel {
         project_id: i32,
         search_item_type: SearchItemType,
         title: String,
-        environment: Env,
+        environment: Option<EnvironmentType>,
         group_name: Option<String>,
     ) -> Self {
         let icon = Self::get_search_item_type_icon(search_item_type);
@@ -123,8 +117,20 @@ impl SearchItemModel {
             .property("search-item-type", search_item_type as u8)
             .property("title", title)
             .property("icon", icon)
-            .property("env-desc", env_to_desc(&environment))
-            .property("env-classes", env_to_css(&environment))
+            .property(
+                "env-desc",
+                &match &environment {
+                    Some(e) => env_to_desc(e),
+                    _ => "".to_owned(),
+                },
+            )
+            .property(
+                "env-classes",
+                &match &environment {
+                    Some(e) => env_to_css(e),
+                    _ => vec![],
+                },
+            )
             .property("group-name", group_name.unwrap_or("".to_string()))
             .build()
     }

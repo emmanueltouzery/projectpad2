@@ -1,4 +1,5 @@
 use adw::prelude::*;
+use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use gtk::gdk;
 
@@ -157,6 +158,7 @@ fn display_dialog_change_password() {
         dlg.close();
     });
 
+    let dlg = dialog.clone();
     change_btn.connect_clicked(move |_| {
         if new_pass_entry.text().is_empty() {
             // prevent empty passwords in projectpad2, because moving between
@@ -175,11 +177,56 @@ fn display_dialog_change_password() {
             );
             return;
         }
-        // TODO check old password
-        // TODO set new password, update keyring if needed
+        let cur_pass_text = cur_pass_entry.text();
+        let new_pass_text = new_pass_entry.text();
+        let receiver = common::run_sqlfunc(Box::new(move |sql_conn| {
+            projectpadsql::try_unlock_db(sql_conn, &cur_pass_text)
+        }));
+        // TODO i don't like this nesting of async actions... can be done better fs
+        let dlg = dlg.clone();
+        glib::spawn_future_local(async move {
+            let res = receiver.recv().await.unwrap();
+            if let Err(msg) = res {
+                common::simple_error_dlg("Error checking the password", Some(&msg))
+            } else {
+                let npt = new_pass_text.clone();
+                let receiver =
+                    common::run_sqlfunc(Box::new(move |sql_conn| set_db_password(sql_conn, &npt)));
+                let new_pass_text = new_pass_text.clone();
+                let dlg = dlg.clone();
+                glib::spawn_future_local(async move {
+                    let res = receiver.recv().await.unwrap();
+                    if let Err(msg) = res {
+                        common::simple_error_dlg("Error changing the database password", Some(&msg))
+                    } else if keyring_helpers::get_pass_from_keyring().is_some() {
+                        if let Err(e) = keyring_helpers::set_pass_in_keyring(&new_pass_text) {
+                            common::simple_error_dlg(
+                                "Error updating the password in the keyring",
+                                Some(&e),
+                            )
+                        } else {
+                            dlg.close();
+                            common::app()
+                                .get_toast_overlay()
+                                .add_toast(adw::Toast::new("Password updated"));
+                        }
+                    }
+                });
+            }
+        });
     });
 
     dialog.present(Some(&common::main_win()));
+}
+
+fn set_db_password(db_conn: &mut SqliteConnection, pass: &str) -> Result<(), String> {
+    db_conn
+        .batch_execute(&format!(
+            "PRAGMA rekey='{}';",
+            projectpadsql::key_escape_param_value(pass)
+        ))
+        .map(|_| ())
+        .map_err(|x| x.to_string())
 }
 
 fn display_dialog_confirm_remove_from_keyring(pass_confirm_text: &str) {

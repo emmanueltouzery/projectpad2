@@ -9,13 +9,7 @@ pub fn display_preferences_dialog() {
         .orientation(gtk::Orientation::Vertical)
         .build();
 
-    let header_bar = adw::HeaderBar::builder()
-        .show_end_title_buttons(false)
-        .show_start_title_buttons(false)
-        .build();
-
-    let close_btn = gtk::Button::builder().label("Close").build();
-    header_bar.pack_end(&close_btn);
+    let header_bar = adw::HeaderBar::builder().build();
 
     vbox.append(&header_bar);
 
@@ -95,11 +89,6 @@ pub fn display_preferences_dialog() {
         .content_width(450)
         .child(&vbox)
         .build();
-
-    let dlg = dialog.clone();
-    close_btn.connect_clicked(move |_| {
-        dlg.close();
-    });
 
     dialog.present(Some(&common::main_win()));
 }

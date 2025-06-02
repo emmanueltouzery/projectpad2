@@ -339,6 +339,18 @@ impl ProjectpadApplication {
         });
         window.add_action(&open_help_action);
 
+        let open_about_action = gio::SimpleAction::new("about", None);
+        open_about_action.connect_activate(move |_action, _parameter| {
+            adw::AboutDialog::builder()
+                .application_name("Projectpad")
+                .application_icon("com.github.emmanueltouzery.projectpad")
+                .version("3.0.0")
+                .website("https://github.com/emmanueltouzery/projectpad2")
+                .build()
+                .present(Some(&common::main_win()));
+        });
+        window.add_action(&open_about_action);
+
         self.populate_menu(run_mode, prjs);
     }
 

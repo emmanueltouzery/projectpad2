@@ -194,6 +194,7 @@ impl ProjectpadApplicationWindow {
                     menu_model.append(Some("Import/Export"), Some("win.import-export"));
                     menu_model.append(Some("Preferences"), Some("win.preferences"));
                     menu_model.append(Some("Help"), Some("win.open-help"));
+                    menu_model.append(Some("About Projectpad"), Some("win.about"));
                     popover.set_menu_model(Some(&menu_model));
                 }
             ),

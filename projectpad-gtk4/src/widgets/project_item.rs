@@ -98,10 +98,7 @@ pub enum WidgetMode {
 
 impl WidgetMode {
     pub fn get_edit_mode(&self) -> bool {
-        match &self {
-            WidgetMode::Show => false,
-            _ => true,
-        }
+        !matches!(&self, WidgetMode::Show)
     }
 }
 
@@ -160,7 +157,7 @@ impl ProjectItem {
                         db_sender,
                         item_id,
                         sub_item_id,
-                        &self,
+                        self,
                     )
                 }
                 Some(ProjectItemType::ProjectNote) => {
@@ -169,7 +166,7 @@ impl ProjectItem {
                     // TODO call in the other order, it crashes. could put edit_mode in the ctor, but
                     // it feels even worse (would like not to rebuild the widget every time...)
                     // move to set_properties with freeze_notify
-                    note.set_project_note_id(&item_id);
+                    note.set_project_note_id(item_id);
                     note.set_edit_mode(false);
                     self.imp().project_item.set_child(Some(
                         // &note::Note::new().set_note_id(&glib::Value::from(item_id)),

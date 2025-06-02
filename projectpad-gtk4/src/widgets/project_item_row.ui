@@ -45,7 +45,7 @@
         <child>
           <object class="GtkLabel">
             <style>
-              <class name="project-item-stg" />
+              <class name="project-item-staging" />
               <class name="caption-heading" />
             </style>
             <property name="label">STG</property>

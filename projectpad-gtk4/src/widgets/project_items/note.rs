@@ -1070,8 +1070,7 @@ impl Note {
             gio::SimpleAction::new("reveal-password", Some(&i32::static_variant_type()));
         let tv2 = self.imp().text_view.clone();
         let tp = toast_parent.clone();
-        reveal_password_action.connect_activate(move |action, parameter| {
-            // println!("{} / {:#?}", action, parameter);
+        reveal_password_action.connect_activate(move |_action, parameter| {
             let password_index = parameter.unwrap().get::<i32>().unwrap() as usize;
             if let Some((_, note_metadata)) = &*tv2.borrow() {
                 if let Some(p) = note_metadata.note_passwords.get(password_index) {

@@ -94,7 +94,6 @@ impl ServerViewEdit {
 
         let ip = self.ip();
         let is_retired = self.is_retired();
-        let server_type = ServerType::from_str(&self.server_type()).unwrap();
         let access_type = ServerAccessType::from_str(&self.access_type()).unwrap();
         let username = self.username();
         let password = self.password();

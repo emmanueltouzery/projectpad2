@@ -21,7 +21,6 @@ use crate::{
         },
     },
 };
-use gtk::subclass::prelude::*;
 
 use super::{
     common::{self},
@@ -71,7 +70,7 @@ fn display_project_poi(
     project_group_names: &[String],
     allowed_envs: &[EnvironmentType],
 ) {
-    let (maybe_header_edit, project_poi_view_edit, header_box, vbox) =
+    let (_maybe_header_edit, _project_poi_view_edit, header_box, vbox) =
         project_poi_contents(&poi, project_group_names, WidgetMode::Show, allowed_envs);
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
@@ -156,22 +155,18 @@ fn display_project_poi(
                         .unwrap(),
                     );
 
-                    let db_sender = common::app().get_sql_channel();
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
-                        let project_poi_after_result = receiver.recv().await.unwrap();
-                        let app = common::app();
-                        let window = app.imp().window.get().unwrap();
-                        let win_binding = window.upgrade();
-                        let win_binding_ref = win_binding.as_ref().unwrap();
-                        let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                        // load_and_display_project_poi(pi_bin, db_sender, poi.id);
-                        ProjectItemList::display_project_item(
-                            None,
-                            poi.id,
-                            ProjectItemType::ProjectPointOfInterest,
-                        );
-                        dlg.close();
+                        if let Err(e) = receiver.recv().await.unwrap() {
+                            common::simple_error_dlg(&e.0, e.1.as_deref());
+                        } else {
+                            ProjectItemList::display_project_item(
+                                None,
+                                poi.id,
+                                ProjectItemType::ProjectPointOfInterest,
+                            );
+                            dlg.close();
+                        }
                     });
                 });
             }

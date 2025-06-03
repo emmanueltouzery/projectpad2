@@ -197,7 +197,7 @@ pub fn run_channel_data_query(sql_conn: &mut SqliteConnection, server_id: i32) -
     let mut group_start_indices = HashMap::new();
 
     let mut grouped_items = vec![];
-    grouped_items.extend(items.iter().filter(|i| i.group_name() == None));
+    grouped_items.extend(items.iter().filter(|i| i.group_name().is_none()));
     for group_name in &group_names {
         group_start_indices.insert(grouped_items.len() as i32, group_name.to_string());
         grouped_items.extend(
@@ -251,7 +251,7 @@ fn display_server(
     server_item_id: Option<i32>,
     project_item: &ProjectItem,
 ) {
-    let (header_box, header_edit, vbox, _) = server_contents(
+    let (header_box, _header_edit, vbox, _) = server_contents(
         &channel_data.server,
         &channel_data.project_group_names,
         WidgetMode::Show,
@@ -355,18 +355,11 @@ fn display_server(
                         if let Err((title, msg)) = server_after_result {
                             common::simple_error_dlg(&title, msg.as_deref());
                         } else {
-                            let app = common::app();
-                            let window = app.imp().window.get().unwrap();
-                            let win_binding = window.upgrade();
-                            let win_binding_ref = win_binding.as_ref().unwrap();
-                            // let pi = &win_binding_ref.imp().project_item;
-                            // let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
                             ProjectItemList::display_project_item(
                                 None,
                                 s.id,
                                 ProjectItemType::Server,
                             );
-                            // load_and_display_server(pi_bin, db_sender, s.id, None, pi);
                             dlg.close();
                         }
                     });
@@ -488,12 +481,7 @@ pub fn server_view_edit_contents(server: &Server, widget_mode: WidgetMode) -> Se
     server_view_edit.set_server_type(server.server_type.to_string());
     server_view_edit.set_password(server.password.clone());
     server_view_edit.set_text(server.text.clone());
-    server_view_edit.set_auth_key_filename(
-        server
-            .auth_key_filename
-            .clone()
-            .unwrap_or_else(|| "".to_string()),
-    );
+    server_view_edit.set_auth_key_filename(server.auth_key_filename.clone().unwrap_or_default());
 
     if let Some(auth_key) = server.auth_key.as_ref() {
         let auth_key_owned = auth_key.to_vec();
@@ -588,7 +576,7 @@ pub fn add_server_items(
                     .websites_for_databases
                     .get(&u.id)
                     .cloned()
-                    .unwrap_or_else(|| vec![]),
+                    .unwrap_or_else(Vec::new),
                 &cur_parent,
             ),
         }
@@ -1971,11 +1959,7 @@ fn server_extra_user_account_contents(
     let server_user_view_edit = ServerExtraUserAccountViewEdit::new();
     server_user_view_edit.set_username(user.username.to_string());
     server_user_view_edit.set_password(user.password.to_string());
-    server_user_view_edit.set_auth_key_filename(
-        user.auth_key_filename
-            .clone()
-            .unwrap_or_else(|| "".to_string()),
-    );
+    server_user_view_edit.set_auth_key_filename(user.auth_key_filename.clone().unwrap_or_default());
 
     if let Some(auth_key) = user.auth_key.as_ref() {
         let auth_key_owned = auth_key.to_vec();
@@ -2046,7 +2030,9 @@ fn display_server_note(
                     );
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
-                        let project_note_after_result = receiver.recv().await.unwrap();
+                        if let Err(e) = receiver.recv().await.unwrap() {
+                            common::simple_error_dlg(&e.0, e.1.as_deref());
+                        }
                         let app = common::app();
                         let window = app.imp().window.get().unwrap();
                         let win_binding = window.upgrade();
@@ -2109,7 +2095,7 @@ fn save_auth_key_get_new_vals<'a>(
     old_auth_key_owned: Option<Vec<u8>>,
 ) -> (Option<Cow<'a, str>>, std::io::Result<Option<Vec<u8>>>) {
     if new_auth_key_filename != old_auth_key_filename_owned_str {
-        if new_auth_key_filename == "" {
+        if new_auth_key_filename.is_empty() {
             (None, Ok(None))
         } else {
             (
@@ -2117,12 +2103,12 @@ fn save_auth_key_get_new_vals<'a>(
                     .file_name()
                     .and_then(|s| s.to_str())
                     .map(|s| Cow::Owned(s.to_string())),
-                std::fs::read(&new_auth_key_filename).map(|v| Some(v)),
+                std::fs::read(new_auth_key_filename).map(Some),
             )
         }
     } else {
         (
-            Some(Cow::Borrowed(&old_auth_key_filename_owned_str)),
+            Some(Cow::Borrowed(old_auth_key_filename_owned_str)),
             Ok(old_auth_key_owned.clone()),
         )
     }

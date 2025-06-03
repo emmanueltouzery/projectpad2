@@ -2,7 +2,6 @@ use diesel::prelude::*;
 use std::sync::mpsc;
 
 use adw::prelude::*;
-use adw::subclass::prelude::*;
 use projectpadsql::{
     get_project_group_names, get_server_group_names,
     models::{EnvironmentType, Project, Server, ServerLink},
@@ -203,22 +202,18 @@ fn display_server_link(
                         he.single_env(),
                     );
 
-                    let db_sender = common::app().get_sql_channel();
                     let dlg = dlg.clone();
                     glib::spawn_future_local(async move {
-                        let project_poi_after_result = receiver.recv().await.unwrap();
-                        let app = common::app();
-                        let window = app.imp().window.get().unwrap();
-                        let win_binding = window.upgrade();
-                        let win_binding_ref = win_binding.as_ref().unwrap();
-                        let pi_bin = &win_binding_ref.imp().project_item.imp().project_item;
-                        // load_and_display_project_poi(pi_bin, db_sender, poi.id);
-                        ProjectItemList::display_project_item(
-                            None,
-                            server_link.id,
-                            ProjectItemType::ServerLink,
-                        );
-                        dlg.close();
+                        if let Err(e) = receiver.recv().await.unwrap() {
+                            common::simple_error_dlg(&e.0, e.1.as_deref());
+                        } else {
+                            ProjectItemList::display_project_item(
+                                None,
+                                server_link.id,
+                                ProjectItemType::ServerLink,
+                            );
+                            dlg.close();
+                        }
                     });
                 });
             }
@@ -325,7 +320,7 @@ pub fn server_link_contents_show(
         .orientation(gtk::Orientation::Vertical)
         .spacing(20)
         .build();
-    let (maybe_header_edit, header_box) = project_item_header(
+    let (_maybe_header_edit, header_box) = project_item_header(
         &vbox,
         &server_link.desc,
         server_link.group_name.as_deref(),
@@ -378,7 +373,7 @@ pub fn server_link_contents_show(
             .map(|item| item.get_id())
     });
     server::add_server_items(
-        &channel_data,
+        channel_data,
         // making this screen refresh when the server is edited is messy.
         // just prevent it.
         false,

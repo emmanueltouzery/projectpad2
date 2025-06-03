@@ -11,10 +11,10 @@ use crate::widgets::search::search_item_list::SearchItemList;
 use crate::widgets::search::search_item_model::SearchItemType;
 
 use super::widgets::project_item_list::ProjectItemList;
+use adw::prelude::*;
 use adw::subclass::prelude::*;
 use diesel::prelude::*;
 use glib::subclass;
-use gtk::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 use gtk::{gdk, glib};
 use projectpadsql::models::Project;

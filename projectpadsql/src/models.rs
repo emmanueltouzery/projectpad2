@@ -56,23 +56,19 @@ impl Project {
     Ord,
     Serialize,
     Deserialize,
+    Default,
 )]
 #[diesel(sql_type = Varchar)]
 #[repr(u8)]
 pub enum ServerType {
     SrvDatabase = 1,
+    #[default]
     SrvApplication = 0,
     SrvHttpOrProxy = 2,
     SrvMonitoring = 3,
     SrvReporting = 4,
 }
 
-impl Default for ServerType {
-    fn default() -> Self {
-        ServerType::SrvApplication
-    }
-}
-
 #[derive(
     Debug,
     Clone,
@@ -89,22 +85,18 @@ impl Default for ServerType {
     Ord,
     Serialize,
     Deserialize,
+    Default,
 )]
 #[diesel(sql_type = Varchar)]
 #[repr(u8)]
 pub enum ServerAccessType {
+    #[default]
     SrvAccessSsh = 1,
     SrvAccessRdp = 0,
     SrvAccessWww = 3,
     SrvAccessSshTunnel = 2,
 }
 
-impl Default for ServerAccessType {
-    fn default() -> Self {
-        ServerAccessType::SrvAccessSsh
-    }
-}
-
 #[derive(
     Debug,
     Clone,
@@ -120,21 +112,17 @@ impl Default for ServerAccessType {
     Ord,
     Serialize,
     Deserialize,
+    Hash,
+    Default,
 )]
 #[diesel(sql_type = Varchar)]
-#[derive(Hash)]
 #[repr(u8)]
 pub enum EnvironmentType {
+    #[default]
     EnvDevelopment = 1,
     EnvStage = 2,
     EnvUat = 4,
     EnvProd = 8,
-}
-
-impl Default for EnvironmentType {
-    fn default() -> Self {
-        EnvironmentType::EnvDevelopment
-    }
 }
 
 #[derive(
@@ -153,10 +141,12 @@ impl Default for EnvironmentType {
     Ord,
     Serialize,
     Deserialize,
+    Default,
 )]
 #[diesel(sql_type = Varchar)]
 #[repr(u8)]
 pub enum InterestType {
+    #[default]
     PoiApplication = 0,
     PoiLogFile = 5,
     PoiConfigFile = 4,
@@ -165,12 +155,6 @@ pub enum InterestType {
     PoiBackupArchive = 1,
 }
 
-impl Default for InterestType {
-    fn default() -> Self {
-        InterestType::PoiApplication
-    }
-}
-
 #[derive(
     Debug,
     Clone,
@@ -185,18 +169,14 @@ impl Default for InterestType {
     Display,
     Serialize,
     Deserialize,
+    Default,
 )]
 #[diesel(sql_type = Varchar)]
 #[repr(u8)]
 pub enum RunOn {
+    #[default]
     RunOnServer = 1,
     RunOnClient = 0,
-}
-
-impl Default for RunOn {
-    fn default() -> Self {
-        RunOn::RunOnServer
-    }
 }
 
 macro_rules! simple_enum {
@@ -206,7 +186,7 @@ macro_rules! simple_enum {
             DB: Backend,
             String: FromSql<Varchar, DB>,
         {
-            fn from_sql(bytes: diesel::backend::RawValue<DB>) -> diesel::deserialize::Result<Self> {
+            fn from_sql(bytes: <DB as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
                 Ok(<$x>::from_str(&String::from_sql(bytes)?)?)
             }
         }

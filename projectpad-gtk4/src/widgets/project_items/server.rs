@@ -74,16 +74,6 @@ impl ServerItem {
             ServerItem::Database(d) => d.id,
         }
     }
-
-    pub fn server_id(&self) -> i32 {
-        match self {
-            ServerItem::Website(w) => w.server_id,
-            ServerItem::PointOfInterest(p) => p.server_id,
-            ServerItem::Note(n) => n.server_id,
-            ServerItem::ExtraUserAccount(u) => u.server_id,
-            ServerItem::Database(d) => d.server_id,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -91,7 +81,6 @@ pub struct ChannelData {
     pub project: Project,
     pub server: Server,
     pub server_items: Vec<ServerItem>,
-    pub group_start_indices: HashMap<i32, String>,
     pub databases_for_websites: HashMap<i32, ServerDatabase>,
     pub websites_for_databases: HashMap<i32, Vec<ServerWebsite>>,
     pub project_group_names: Vec<String>,
@@ -194,12 +183,10 @@ pub fn run_channel_data_query(sql_conn: &mut SqliteConnection, server_id: i32) -
     };
 
     let group_names: BTreeSet<&str> = items.iter().filter_map(|i| i.group_name()).collect();
-    let mut group_start_indices = HashMap::new();
 
     let mut grouped_items = vec![];
     grouped_items.extend(items.iter().filter(|i| i.group_name().is_none()));
     for group_name in &group_names {
-        group_start_indices.insert(grouped_items.len() as i32, group_name.to_string());
         grouped_items.extend(
             items
                 .iter()
@@ -214,7 +201,6 @@ pub fn run_channel_data_query(sql_conn: &mut SqliteConnection, server_id: i32) -
         project,
         server,
         server_items: grouped_items.into_iter().cloned().collect(),
-        group_start_indices,
         databases_for_websites,
         websites_for_databases,
         project_group_names,

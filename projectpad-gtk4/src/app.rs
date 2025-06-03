@@ -137,8 +137,6 @@ impl ProjectpadApplication {
 
         // Start running gtk::Application
         app.run()
-
-        // glib::ExitCode::SUCCESS // TODO
     }
 
     pub fn get_sql_channel(&self) -> mpsc::Sender<SqlFunc> {

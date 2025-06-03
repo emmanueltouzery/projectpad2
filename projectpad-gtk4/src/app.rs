@@ -6,8 +6,6 @@ use async_channel::Receiver;
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
 use gio::subclass::prelude::ApplicationImpl;
-use glib::Properties;
-use gtk::subclass::prelude::DerivedObjectProperties;
 use gtk::CssProvider;
 use gtk::{gdk, gio, glib};
 use projectpadsql::models::{
@@ -37,12 +35,8 @@ mod imp {
 
     use super::*;
 
-    #[derive(Properties, Default)]
-    #[properties(wrapper_type = super::ProjectpadApplication)]
+    #[derive(Default)]
     pub struct ProjectpadApplication {
-        #[property(get)]
-        pub rb_server: RefCell<Option<String>>, // TODO remove
-        //
         pub window: OnceCell<WeakRef<ProjectpadApplicationWindow>>,
 
         pub sql_channel: RefCell<Option<mpsc::Sender<SqlFunc>>>,
@@ -57,7 +51,6 @@ mod imp {
         type Type = super::ProjectpadApplication;
     }
 
-    #[glib::derived_properties]
     impl ObjectImpl for ProjectpadApplication {}
 
     impl ApplicationImpl for ProjectpadApplication {

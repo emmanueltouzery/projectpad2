@@ -145,7 +145,6 @@ impl ServerViewEdit {
         );
         server_item0.add(&password);
 
-        // dbg!(&auth_key_filename);
         if widget_mode == WidgetMode::Edit || auth_key_filename.is_some() {
             let auth_key_entry = FilePickerActionRow::new(widget_mode);
             auth_key_entry.set_title("Authentication key");
@@ -184,43 +183,49 @@ impl ServerViewEdit {
         );
         server_item0.add(&text);
 
-        let server_type_row = common::combo_row(
-            self.upcast_ref::<glib::Object>(),
-            "server_type",
-            widget_mode,
-            "Server Type",
-            &[
-                "Application",
-                "Database",
-                "HTTP server or proxy",
-                "Monitoring",
-                "Reporting",
-            ],
-            |v| ServerType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
-            |i| {
-                ServerType::from_repr(TryInto::<u8>::try_into(i).unwrap())
-                    .unwrap()
-                    .to_string()
-                    .to_value()
-            },
-        );
-        server_item0.add(&server_type_row);
+        // nothing wrong with displaying server type & access type in view
+        // mode, but they take vertical space, and the server type is visible
+        // through the icon, the access type partly so and most of the time
+        // it's clear which is the access type.
+        if widget_mode == WidgetMode::Edit {
+            let server_type_row = common::combo_row(
+                self.upcast_ref::<glib::Object>(),
+                "server_type",
+                widget_mode,
+                "Server Type",
+                &[
+                    "Application",
+                    "Database",
+                    "HTTP server or proxy",
+                    "Monitoring",
+                    "Reporting",
+                ],
+                |v| ServerType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
+                |i| {
+                    ServerType::from_repr(TryInto::<u8>::try_into(i).unwrap())
+                        .unwrap()
+                        .to_string()
+                        .to_value()
+                },
+            );
+            server_item0.add(&server_type_row);
 
-        let access_type_row = common::combo_row(
-            self.upcast_ref::<glib::Object>(),
-            "access_type",
-            widget_mode,
-            "Access Type",
-            &["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"],
-            |v| ServerAccessType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
-            |i| {
-                ServerAccessType::from_repr(TryInto::<u8>::try_into(i).unwrap())
-                    .unwrap()
-                    .to_string()
-                    .to_value()
-            },
-        );
-        server_item0.add(&access_type_row);
+            let access_type_row = common::combo_row(
+                self.upcast_ref::<glib::Object>(),
+                "access_type",
+                widget_mode,
+                "Access Type",
+                &["Remote Desktop (RDP)", "SSH", "SSH Tunnel", "Website"],
+                |v| ServerAccessType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
+                |i| {
+                    ServerAccessType::from_repr(TryInto::<u8>::try_into(i).unwrap())
+                        .unwrap()
+                        .to_string()
+                        .to_value()
+                },
+            );
+            server_item0.add(&access_type_row);
+        }
 
         vbox.append(&server_item0);
 

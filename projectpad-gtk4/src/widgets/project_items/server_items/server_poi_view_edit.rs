@@ -61,8 +61,7 @@ glib::wrapper! {
 
 impl ServerPoiViewEdit {
     pub fn new() -> Self {
-        let this = glib::Object::new::<Self>();
-        this
+        glib::Object::new::<Self>()
     }
 
     // call this after setting all the properties
@@ -107,44 +106,50 @@ impl ServerPoiViewEdit {
             .sync_create()
             .build();
 
-        let interest_type_row = common::combo_row(
-            self.upcast_ref::<glib::Object>(),
-            "interest_type",
-            widget_mode,
-            "Interest Type",
-            &[
-                "Application",
-                "Backup/archive",
-                "Command to run",
-                "Command to run (terminal)",
-                "Config file",
-                "Log file",
-            ],
-            |v| InterestType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
-            |i| {
-                InterestType::from_repr(TryInto::<u8>::try_into(i).unwrap())
-                    .unwrap()
-                    .to_string()
-                    .to_value()
-            },
-        );
-        server_item0.add(&interest_type_row);
+        // nothing wrong with displaying interest type & run on in view
+        // mode, but they take vertical space, and the interest type is visible
+        // through the subtitle for the whole server poi, and the run on
+        // is more important for ppcli.
+        if widget_mode == WidgetMode::Edit {
+            let interest_type_row = common::combo_row(
+                self.upcast_ref::<glib::Object>(),
+                "interest_type",
+                widget_mode,
+                "Interest Type",
+                &[
+                    "Application",
+                    "Backup/archive",
+                    "Command to run",
+                    "Command to run (terminal)",
+                    "Config file",
+                    "Log file",
+                ],
+                |v| InterestType::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
+                |i| {
+                    InterestType::from_repr(TryInto::<u8>::try_into(i).unwrap())
+                        .unwrap()
+                        .to_string()
+                        .to_value()
+                },
+            );
+            server_item0.add(&interest_type_row);
 
-        let run_on_row = common::combo_row(
-            self.upcast_ref::<glib::Object>(),
-            "run_on",
-            widget_mode,
-            "Run on",
-            &["Client", "Server"],
-            |v| RunOn::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
-            |i| {
-                RunOn::from_repr(TryInto::<u8>::try_into(i).unwrap())
-                    .unwrap()
-                    .to_string()
-                    .to_value()
-            },
-        );
-        server_item0.add(&run_on_row);
+            let run_on_row = common::combo_row(
+                self.upcast_ref::<glib::Object>(),
+                "run_on",
+                widget_mode,
+                "Run on",
+                &["Client", "Server"],
+                |v| RunOn::from_str(&v.get::<String>().unwrap()).unwrap() as u8 as u32,
+                |i| {
+                    RunOn::from_repr(TryInto::<u8>::try_into(i).unwrap())
+                        .unwrap()
+                        .to_string()
+                        .to_value()
+                },
+            );
+            server_item0.add(&run_on_row);
+        }
 
         vbox.append(&server_item0);
 

@@ -70,8 +70,7 @@ glib::wrapper! {
 
 impl ServerWebsiteViewEdit {
     pub fn new() -> Self {
-        let this = glib::Object::new::<Self>();
-        this
+        glib::Object::new::<Self>()
     }
 
     // call this after setting all the properties
@@ -132,7 +131,12 @@ impl ServerWebsiteViewEdit {
                 .set_search_items_type(SearchItemsType::ServerDbsOnly.to_string());
             projectpad_item_action_row.set_search_item_type(SearchItemType::ServerDatabase as u8);
             projectpad_item_action_row.set_item_id(self.database_id());
-            projectpad_item_action_row.set_text(self.database_desc());
+            let db_desc = self.database_desc();
+            projectpad_item_action_row.set_text(if db_desc.is_empty() {
+                "Database"
+            } else {
+                &db_desc
+            });
             projectpad_item_action_row.connect_closure(
                 "item-picked",
                 false,

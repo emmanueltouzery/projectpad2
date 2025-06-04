@@ -108,15 +108,16 @@ impl SearchItemModel {
         title: String,
         environment: Option<EnvironmentType>,
         group_name: Option<String>,
+        custom_icon: Option<&'static str>,
     ) -> Self {
-        let icon = Self::get_search_item_type_icon(search_item_type);
+        let search_item_type_icon = Self::get_search_item_type_icon(search_item_type);
         Object::builder()
             .property("id", id)
             .property("project-id", project_id)
             .property("server-id", server_id.unwrap_or(-1))
             .property("search-item-type", search_item_type as u8)
             .property("title", title)
-            .property("icon", icon)
+            .property("icon", custom_icon.unwrap_or(search_item_type_icon))
             .property(
                 "env-desc",
                 &match &environment {

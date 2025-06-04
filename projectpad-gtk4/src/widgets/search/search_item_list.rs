@@ -11,6 +11,8 @@ use projectpadsql::models::{
 };
 
 use crate::search_engine::SearchResult;
+use crate::widgets::project_items::project_poi;
+use crate::widgets::project_items::server;
 
 use super::search_item_list_model::SearchItemListModel;
 use super::search_item_model::{SearchItemModel, SearchItemType};
@@ -280,6 +282,7 @@ impl SearchItemList {
             // there'll always a project item under, nevermind all the possible envs of the project
             None,
             None,
+            None,
         )
     }
 
@@ -292,6 +295,7 @@ impl SearchItemList {
             server.desc.clone(),
             Some(server.environment),
             Some(project.name.to_owned()),
+            Some(server::custom_icon(server)),
         )
     }
 
@@ -304,6 +308,7 @@ impl SearchItemList {
             item.desc.clone(),
             None,
             Some(project.name.to_owned()),
+            None,
         )
     }
 
@@ -316,6 +321,7 @@ impl SearchItemList {
             item.title.clone(),
             None,
             Some(project.name.to_owned()),
+            None,
         )
     }
 
@@ -331,6 +337,7 @@ impl SearchItemList {
             item.desc.clone(),
             None,
             Some(project.name.to_owned()),
+            None,
         )
     }
 
@@ -343,6 +350,7 @@ impl SearchItemList {
             item.desc.clone(),
             None,
             Some(project.name.to_owned()),
+            None,
         )
     }
 
@@ -355,6 +363,7 @@ impl SearchItemList {
             item.desc.clone(),
             None,
             Some(project.name.to_owned()),
+            Some(server::server_poi_custom_icon(item)),
         )
     }
 
@@ -367,6 +376,7 @@ impl SearchItemList {
             item.desc.clone(),
             None,
             Some(project.name.to_owned()),
+            None,
         )
     }
 
@@ -387,6 +397,7 @@ impl SearchItemList {
                 EnvironmentType::EnvDevelopment
             }),
             Some(project.name.to_owned()),
+            None,
         )
     }
 
@@ -399,6 +410,7 @@ impl SearchItemList {
             item.desc.clone(),
             None,
             Some(project.name.to_owned()),
+            Some(project_poi::custom_icon(item)),
         )
     }
 }

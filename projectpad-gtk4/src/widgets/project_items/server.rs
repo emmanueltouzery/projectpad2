@@ -76,6 +76,33 @@ impl ServerItem {
     }
 }
 
+pub fn custom_icon(srv: &Server) -> &'static str {
+    match srv.server_type {
+        ServerType::SrvDatabase => "database-symbolic",
+        ServerType::SrvReporting => "reporting-symbolic",
+        ServerType::SrvMonitoring => "monitoring-symbolic",
+        ServerType::SrvHttpOrProxy => "globe-symbolic",
+        ServerType::SrvApplication => {
+            if srv.access_type == ServerAccessType::SrvAccessRdp {
+                "windows-symbolic"
+            } else {
+                "server-symbolic"
+            }
+        }
+    }
+}
+
+pub fn server_poi_custom_icon(server_poi: &ServerPointOfInterest) -> &'static str {
+    match server_poi.interest_type {
+        InterestType::PoiLogFile => "log-file-symbolic",
+        InterestType::PoiConfigFile => "config-file-symbolic",
+        InterestType::PoiApplication => "cog-symbolic",
+        InterestType::PoiCommandToRun => "terminal-symbolic",
+        InterestType::PoiCommandTerminal => "terminal-symbolic",
+        InterestType::PoiBackupArchive => "archive-symbolic",
+    }
+}
+
 #[derive(Debug)]
 pub struct ChannelData {
     pub project: Project,

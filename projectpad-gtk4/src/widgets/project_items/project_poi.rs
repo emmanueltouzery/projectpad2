@@ -29,6 +29,17 @@ use super::{
     project_poi_view_edit::ProjectPoiViewEdit,
 };
 
+pub fn custom_icon(poi: &ProjectPointOfInterest) -> &'static str {
+    match poi.interest_type {
+        InterestType::PoiLogFile => "log-symbolic",
+        InterestType::PoiConfigFile => "config-file-symbolic",
+        InterestType::PoiApplication => "cog-symbolic",
+        InterestType::PoiCommandToRun => "terminal-symbolic",
+        InterestType::PoiCommandTerminal => "terminal-symbolic",
+        InterestType::PoiBackupArchive => "archive-symbolic",
+    }
+}
+
 pub fn load_and_display_project_poi(
     parent: &adw::Bin,
     db_sender: mpsc::Sender<SqlFunc>,

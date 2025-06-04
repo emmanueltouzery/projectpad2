@@ -271,19 +271,7 @@ impl ProjectItemList {
                 srv.desc.clone(),
                 HashSet::from([srv.environment]),
                 srv.group_name.clone(),
-                Some(match srv.server_type {
-                    ServerType::SrvDatabase => "database-symbolic",
-                    ServerType::SrvReporting => "reporting-symbolic",
-                    ServerType::SrvMonitoring => "monitoring-symbolic",
-                    ServerType::SrvHttpOrProxy => "globe-symbolic",
-                    ServerType::SrvApplication => {
-                        if srv.access_type == ServerAccessType::SrvAccessRdp {
-                            "windows-symbolic"
-                        } else {
-                            "server-symbolic"
-                        }
-                    }
-                }),
+                Some(server::custom_icon(srv)),
             ),
             //     markup: if srv.is_retired {
             //         format!("<i>{}</i>", glib::markup_escape_text(&srv.desc))
@@ -315,14 +303,7 @@ impl ProjectItemList {
                 poi.desc.clone(),
                 HashSet::new(),
                 poi.group_name.clone(),
-                Some(match poi.interest_type {
-                    InterestType::PoiLogFile => "log-symbolic",
-                    InterestType::PoiConfigFile => "config-file-symbolic",
-                    InterestType::PoiApplication => "cog-symbolic",
-                    InterestType::PoiCommandToRun => "terminal-symbolic",
-                    InterestType::PoiCommandTerminal => "terminal-symbolic",
-                    InterestType::PoiBackupArchive => "archive-symbolic",
-                }),
+                Some(project_poi::custom_icon(poi)),
             ),
         }
     }

@@ -7,6 +7,16 @@
           <class name="list-item-box" />
         </style>
         <child>
+          <object class="GtkLabel">
+            <binding name="visible">
+              <lookup name="is-server-item" type="SearchItemModel">
+                <lookup name="item">GtkListItem</lookup>
+              </lookup>
+            </binding>
+            <property name="width-request">15</property>
+          </object>
+        </child>
+        <child>
           <object class="GtkImage">
             <binding name="icon-name">
               <lookup name="icon" type="SearchItemModel">

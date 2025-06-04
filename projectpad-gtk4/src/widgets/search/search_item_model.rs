@@ -59,6 +59,8 @@ mod imp {
         group_name: Rc<RefCell<String>>,
         #[property(get, set)]
         search_item_type: Rc<RefCell<u8>>,
+        #[property(get, set)]
+        is_server_item: Rc<RefCell<bool>>,
     }
 
     #[glib::object_subclass]
@@ -133,6 +135,17 @@ impl SearchItemModel {
                 },
             )
             .property("group-name", group_name.unwrap_or("".to_string()))
+            .property(
+                "is-server-item",
+                match search_item_type {
+                    SearchItemType::ServerPoi => true,
+                    SearchItemType::ServerNote => true,
+                    SearchItemType::ServerWebsite => true,
+                    SearchItemType::ServerExtraUserAccount => true,
+                    SearchItemType::ServerDatabase => true,
+                    _ => false,
+                },
+            )
             .build()
     }
 

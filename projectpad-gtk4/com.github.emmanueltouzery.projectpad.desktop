@@ -2,7 +2,7 @@
 Comment=
 Terminal=false
 Name=Projectpad
-Exec=projectpad
+Exec=projectpad-gtk4
 Categories=Utility
 Type=Application
 Icon=com.github.emmanueltouzery.projectpad

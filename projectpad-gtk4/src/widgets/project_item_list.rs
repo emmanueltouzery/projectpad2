@@ -271,22 +271,25 @@ impl ProjectItemList {
                 srv.desc.clone(),
                 HashSet::from([srv.environment]),
                 srv.group_name.clone(),
+                Some(match srv.server_type {
+                    ServerType::SrvDatabase => "database-symbolic",
+                    ServerType::SrvReporting => "reporting-symbolic",
+                    ServerType::SrvMonitoring => "monitoring-symbolic",
+                    ServerType::SrvHttpOrProxy => "globe-symbolic",
+                    ServerType::SrvApplication => {
+                        if srv.access_type == ServerAccessType::SrvAccessRdp {
+                            "windows-symbolic"
+                        } else {
+                            "server-symbolic"
+                        }
+                    }
+                }),
             ),
             //     markup: if srv.is_retired {
             //         format!("<i>{}</i>", glib::markup_escape_text(&srv.desc))
             //     } else {
             //         glib::markup_escape_text(&srv.desc).to_string()
             //     },
-            //     group_name: srv.group_name.as_ref().cloned(),
-            //     icon: match (srv.server_type, srv.access_type) {
-            //         (ServerType::SrvDatabase, _) => Icon::DATABASE,
-            //         (ServerType::SrvReporting, _) => Icon::REPORTING,
-            //         (ServerType::SrvMonitoring, _) => Icon::MONITORING,
-            //         (ServerType::SrvHttpOrProxy, _) => Icon::HTTP,
-            //         (_, ServerAccessType::SrvAccessRdp) => Icon::WINDOWS,
-            //         (_, _) => Icon::SERVER,
-            //     },
-            // },
             ProjectItem::ServerLink(link) => ProjectItemModel::new(
                 project,
                 link.id,
@@ -294,11 +297,8 @@ impl ProjectItemList {
                 link.desc.clone(),
                 HashSet::from([link.environment]),
                 link.group_name.clone(),
+                None,
             ),
-            //     markup: glib::markup_escape_text(&link.desc).to_string(),
-            //     group_name: link.group_name.as_ref().cloned(),
-            //     icon: Icon::SERVER_LINK,
-            // },
             ProjectItem::ProjectNote(note) => ProjectItemModel::new(
                 project,
                 note.id,
@@ -306,11 +306,8 @@ impl ProjectItemList {
                 note.title.clone(),
                 Note::get_envs(note),
                 note.group_name.clone(),
+                None,
             ),
-            //     markup: glib::markup_escape_text(&note.title).to_string(),
-            //     group_name: note.group_name.as_ref().cloned(),
-            //     icon: Icon::NOTE,
-            // },
             ProjectItem::ProjectPointOfInterest(poi) => ProjectItemModel::new(
                 project,
                 poi.id,
@@ -318,16 +315,15 @@ impl ProjectItemList {
                 poi.desc.clone(),
                 HashSet::new(),
                 poi.group_name.clone(),
-            ), // markup: glib::markup_escape_text(&poi.desc).to_string(),
-               // group_name: poi.group_name.as_ref().cloned(),
-               // icon: match poi.interest_type {
-               //     InterestType::PoiLogFile => Icon::LOG_FILE,
-               //     InterestType::PoiConfigFile => Icon::CONFIG_FILE,
-               //     InterestType::PoiApplication => Icon::COG,
-               //     InterestType::PoiCommandToRun => Icon::TERMINAL,
-               //     InterestType::PoiCommandTerminal => Icon::TERMINAL,
-               //     InterestType::PoiBackupArchive => Icon::ARCHIVE,
-               // },
+                Some(match poi.interest_type {
+                    InterestType::PoiLogFile => "log-symbolic",
+                    InterestType::PoiConfigFile => "config-file-symbolic",
+                    InterestType::PoiApplication => "cog-symbolic",
+                    InterestType::PoiCommandToRun => "terminal-symbolic",
+                    InterestType::PoiCommandTerminal => "terminal-symbolic",
+                    InterestType::PoiBackupArchive => "archive-symbolic",
+                }),
+            ),
         }
     }
 

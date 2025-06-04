@@ -77,9 +77,10 @@ impl ProjectItemModel {
         title: String,
         environments: HashSet<EnvironmentType>,
         group_name: Option<String>,
+        custom_icon: Option<&'static str>,
     ) -> Self {
         let has_all_envs = Self::project_get_envs(project).is_subset(&environments);
-        let icon = project_item_type.get_icon();
+        let project_item_type_icon = project_item_type.get_icon();
         Object::builder()
             .property("id", id)
             .property("project-item-type", project_item_type as u8)
@@ -101,7 +102,7 @@ impl ProjectItemModel {
                 !has_all_envs && environments.contains(&EnvironmentType::EnvProd),
             )
             .property("group-name", group_name.unwrap_or("".to_string()))
-            .property("icon", icon)
+            .property("icon", custom_icon.unwrap_or(project_item_type_icon))
             .build()
     }
 

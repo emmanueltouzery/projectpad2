@@ -3,5 +3,6 @@ Comment=
 Terminal=false
 Name=Projectpad
 Exec=projectpad
+Categories=Utility
 Type=Application
 Icon=com.github.emmanueltouzery.projectpad

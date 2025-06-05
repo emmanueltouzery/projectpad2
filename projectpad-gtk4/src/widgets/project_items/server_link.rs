@@ -240,6 +240,7 @@ pub fn server_link_contents_edit(
     let (maybe_header_edit, header_box) = project_item_header(
         &vbox,
         &server_link.desc,
+        None,
         server_link.group_name.as_deref(),
         ProjectItemType::ServerLink,
         common::EnvOrEnvs::Env(server_link.environment),
@@ -323,6 +324,7 @@ pub fn server_link_contents_show(
     let (_maybe_header_edit, header_box) = project_item_header(
         &vbox,
         &server_link.desc,
+        None,
         server_link.group_name.as_deref(),
         ProjectItemType::ServerLink,
         common::EnvOrEnvs::Env(server_link.environment),

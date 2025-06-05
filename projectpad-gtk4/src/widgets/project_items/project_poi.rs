@@ -3,6 +3,8 @@ use diesel::prelude::*;
 use std::str::FromStr;
 use std::sync::mpsc;
 
+use crate::widgets::project_items::project_poi;
+
 use projectpadsql::{
     get_project_group_names,
     models::{EnvironmentType, InterestType, Project, ProjectPointOfInterest},
@@ -204,6 +206,7 @@ pub fn project_poi_contents(
     let (maybe_header_edit, header_box) = project_item_header(
         &vbox,
         &poi.desc,
+        Some(project_poi::custom_icon(poi)),
         poi.group_name.as_deref(),
         ProjectItemType::ProjectPointOfInterest,
         common::EnvOrEnvs::None,
@@ -233,6 +236,7 @@ pub enum DisplayHeaderMode {
 pub fn project_item_header(
     vbox: &gtk::Box,
     desc: &str,
+    icon: Option<&'static str>,
     group_name: Option<&str>,
     project_item_type: ProjectItemType,
     env_info: common::EnvOrEnvs,
@@ -244,7 +248,7 @@ pub fn project_item_header(
 ) -> (Option<ItemHeaderEdit>, gtk::Box) {
     if widget_mode == WidgetMode::Edit {
         let project_item_header = ItemHeaderEdit::new(
-            project_item_type.get_icon(),
+            icon.unwrap_or(project_item_type.get_icon()),
             group_name,
             project_group_names,
             env_info,
@@ -259,7 +263,7 @@ pub fn project_item_header(
             project_item_header.header_box(),
         )
     } else {
-        let project_item_header = ItemHeaderView::new(project_item_type);
+        let project_item_header = ItemHeaderView::new(project_item_type, icon);
         project_item_header.set_title(desc);
         if display_header_mode == DisplayHeaderMode::Yes {
             vbox.append(&project_item_header);

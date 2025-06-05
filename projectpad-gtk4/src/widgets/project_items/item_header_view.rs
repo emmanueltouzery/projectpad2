@@ -74,12 +74,12 @@ glib::wrapper! {
 }
 
 impl ItemHeaderView {
-    pub fn new(project_item_type: ProjectItemType) -> Self {
+    pub fn new(project_item_type: ProjectItemType, icon: Option<&'static str>) -> Self {
         let this = glib::Object::new::<Self>();
 
         this.imp()
             .header_icon
-            .set_icon_name(Some(&project_item_type.get_icon()));
+            .set_icon_name(icon.or(Some(project_item_type.get_icon())));
 
         // TODO add this through the UI file not the code
         let title_label = gtk::Label::builder()

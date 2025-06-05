@@ -654,6 +654,7 @@ impl Note {
         let (maybe_project_item_header_edit, header_box) = project_item_header(
             &vbox,
             &note.title,
+            None,
             note.group_name,
             ProjectItemType::ProjectNote,
             note.env,

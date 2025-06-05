@@ -467,6 +467,7 @@ pub fn server_contents(
     let (project_item_header_edit, header_box) = project_item_header(
         &vbox,
         &server.desc,
+        Some(custom_icon(server)),
         server.group_name.as_deref(),
         ProjectItemType::Server,
         common::EnvOrEnvs::Env(server.environment),

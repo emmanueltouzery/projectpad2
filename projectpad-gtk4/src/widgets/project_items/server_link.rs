@@ -168,20 +168,12 @@ fn display_server_link(
             pgn,
             #[strong(rename_to = ae_)]
             ae,
-            #[strong(rename_to = v)]
-            vbox,
             move |_b: gtk::Button| {
                 let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) =
                     server_link_contents_edit(&p, &pgn_, &ae_);
 
-                let (dlg, save_btn) = display_item_edit_dialog(
-                    &v,
-                    "Edit Server Link",
-                    vbox,
-                    600,
-                    600,
-                    DialogClamp::Yes,
-                );
+                let (dlg, save_btn) =
+                    display_item_edit_dialog("Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
                 let he = maybe_header_edit.unwrap().clone();
                 let p_id = p.id;
                 save_btn.connect_clicked(move |_| {

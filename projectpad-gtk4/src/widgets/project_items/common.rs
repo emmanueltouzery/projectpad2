@@ -35,7 +35,6 @@ pub enum DialogClamp {
 }
 
 pub fn display_item_edit_dialog(
-    v: &gtk::Box,
     title: &str,
     item_box: gtk::Box,
     width: i32,
@@ -78,7 +77,7 @@ pub fn display_item_edit_dialog(
     cancel_btn.connect_clicked(move |_btn: &gtk::Button| {
         dlg.close();
     });
-    dialog.present(Some(v));
+    dialog.present(Some(&main_win()));
 
     (dialog, save_btn)
 }

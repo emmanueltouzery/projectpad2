@@ -62,6 +62,10 @@ mod imp {
             let key_controller = gtk::EventControllerKey::new();
             key_controller.connect_key_pressed(move |_controller, keyval, _keycode, state| {
                 if let Some(k) = keyval.to_unicode() {
+                    if state == gdk::ModifierType::CONTROL_MASK && k == 'e' {
+                        common::main_win().trigger_edit();
+                    }
+
                     if Self::is_plaintext_key(state, keyval)
                         && !w.imp().search_toggle_btn.is_active()
                     {

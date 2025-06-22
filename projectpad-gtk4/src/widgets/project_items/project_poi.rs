@@ -138,22 +138,14 @@ fn display_project_poi(
             poi,
             #[strong(rename_to = pgn_)]
             pgn,
-            #[strong(rename_to = v)]
-            vbox,
             #[strong(rename_to = ae_)]
             ae,
             move |_b: gtk::Button| {
                 let (maybe_header_edit, project_poi_view_edit, _, vbox) =
                     project_poi_contents(&p, &pgn_, WidgetMode::Edit, &ae_);
 
-                let (dlg, save_btn) = display_item_edit_dialog(
-                    &v,
-                    "Edit project POI",
-                    vbox,
-                    600,
-                    600,
-                    DialogClamp::Yes,
-                );
+                let (dlg, save_btn) =
+                    display_item_edit_dialog("Edit project POI", vbox, 600, 600, DialogClamp::Yes);
                 let he = maybe_header_edit.unwrap().clone();
                 save_btn.connect_clicked(move |_| {
                     let receiver = save_project_poi(

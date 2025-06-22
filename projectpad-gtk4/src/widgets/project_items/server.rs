@@ -318,7 +318,7 @@ fn display_server(
     );
 
     let pgn = channel_data.project_group_names.clone();
-    let ae = channel_data.project.allowed_envs();
+    let prj = channel_data.project.clone();
     edit_btn.connect_closure(
         "clicked",
         false,
@@ -327,56 +327,10 @@ fn display_server(
             channel_data.server,
             #[strong(rename_to = pgn_)]
             pgn,
-            #[strong(rename_to = ae_)]
-            ae,
-            #[strong(rename_to = v)]
-            vbox,
+            #[strong(rename_to = prj_)]
+            prj,
             move |_b: gtk::Button| {
-                let (_, header_edit, vbox, server_view_edit) =
-                    server_contents(&s, &pgn_, WidgetMode::Edit, None, &ae_);
-
-                let (dlg, save_btn) =
-                    display_item_edit_dialog(&v, "Edit Server", vbox, 600, 600, DialogClamp::Yes);
-                let he = header_edit.unwrap().clone();
-                let old_auth_key = s.auth_key.clone();
-                let old_auth_key_filename = s.auth_key_filename.clone();
-                save_btn.connect_clicked(move |_| {
-                    let receiver = save_server(
-                        Some(s.id),
-                        he.group_name(),
-                        he.single_env(),
-                        server_view_edit.is_retired(),
-                        he.title(),
-                        server_view_edit.ip(),
-                        server_view_edit.username(),
-                        server_view_edit.password(),
-                        server_view_edit.text(),
-                        ServerType::from_str(&server_view_edit.property::<String>("server_type"))
-                            .unwrap(),
-                        ServerAccessType::from_str(
-                            &server_view_edit.property::<String>("access_type"),
-                        )
-                        .unwrap(),
-                        old_auth_key.as_deref(),
-                        old_auth_key_filename.as_deref(),
-                        server_view_edit.auth_key_filename(),
-                    );
-
-                    let dlg = dlg.clone();
-                    glib::spawn_future_local(async move {
-                        let server_after_result = receiver.recv().await.unwrap();
-                        if let Err((title, msg)) = server_after_result {
-                            common::simple_error_dlg(&title, msg.as_deref());
-                        } else {
-                            ProjectItemList::display_project_item(
-                                None,
-                                s.id,
-                                ProjectItemType::Server,
-                            );
-                            dlg.close();
-                        }
-                    });
-                });
+                open_server_edit(&prj_, &pgn_, &s);
             }
         ),
     );
@@ -384,6 +338,48 @@ fn display_server(
     add_server_items(&channel_data, true, server_item_id, &vbox, project_item);
 
     parent.set_child(Some(&vbox));
+}
+
+pub fn open_server_edit(prj: &Project, project_group_names: &[String], s: &Server) {
+    let ae = prj.allowed_envs();
+    let (_, header_edit, vbox, server_view_edit) =
+        server_contents(s, &project_group_names, WidgetMode::Edit, None, &ae);
+
+    let (dlg, save_btn) = display_item_edit_dialog("Edit Server", vbox, 600, 600, DialogClamp::Yes);
+    let he = header_edit.unwrap().clone();
+    let old_auth_key = s.auth_key.clone();
+    let old_auth_key_filename = s.auth_key_filename.clone();
+    let s_id = s.id;
+    save_btn.connect_clicked(move |_| {
+        let receiver = save_server(
+            Some(s_id),
+            he.group_name(),
+            he.single_env(),
+            server_view_edit.is_retired(),
+            he.title(),
+            server_view_edit.ip(),
+            server_view_edit.username(),
+            server_view_edit.password(),
+            server_view_edit.text(),
+            ServerType::from_str(&server_view_edit.property::<String>("server_type")).unwrap(),
+            ServerAccessType::from_str(&server_view_edit.property::<String>("access_type"))
+                .unwrap(),
+            old_auth_key.as_deref(),
+            old_auth_key_filename.as_deref(),
+            server_view_edit.auth_key_filename(),
+        );
+
+        let dlg = dlg.clone();
+        glib::spawn_future_local(async move {
+            let server_after_result = receiver.recv().await.unwrap();
+            if let Err((title, msg)) = server_after_result {
+                common::simple_error_dlg(&title, msg.as_deref());
+            } else {
+                ProjectItemList::display_project_item(None, s_id, ProjectItemType::Server);
+                dlg.close();
+            }
+        });
+    });
 }
 
 fn delete_server(project_id: i32, server_id: i32) {
@@ -1450,8 +1446,6 @@ fn display_server_website(
             w,
             #[strong(rename_to = db1)]
             db_,
-            #[strong(rename_to = v)]
-            vbox,
             move |_b: gtk::Button| {
                 let item_box = gtk::Box::builder()
                     .orientation(gtk::Orientation::Vertical)
@@ -1465,14 +1459,8 @@ fn display_server_website(
                 item_box.append(&header.clone().unwrap());
                 item_box.append(&server_item);
 
-                let (dlg, save_btn) = display_item_edit_dialog(
-                    &v,
-                    "Edit Website",
-                    item_box,
-                    600,
-                    600,
-                    DialogClamp::Yes,
-                );
+                let (dlg, save_btn) =
+                    display_item_edit_dialog("Edit Website", item_box, 600, 600, DialogClamp::Yes);
                 server_website_connect_save(
                     &save_btn,
                     &dlg,
@@ -1593,8 +1581,6 @@ fn display_server_database(
         glib::closure_local!(
             #[strong(rename_to = w1)]
             db,
-            #[strong(rename_to = v)]
-            vbox,
             move |_b: gtk::Button| {
                 let item_box = gtk::Box::builder()
                     .orientation(gtk::Orientation::Vertical)
@@ -1604,14 +1590,8 @@ fn display_server_database(
                 item_box.append(&header.clone().unwrap());
                 item_box.append(&server_item);
 
-                let (dlg, save_btn) = display_item_edit_dialog(
-                    &v,
-                    "Edit Database",
-                    item_box,
-                    600,
-                    600,
-                    DialogClamp::Yes,
-                );
+                let (dlg, save_btn) =
+                    display_item_edit_dialog("Edit Database", item_box, 600, 600, DialogClamp::Yes);
                 server_database_connect_save(
                     &save_btn,
                     &dlg,
@@ -1733,8 +1713,6 @@ fn display_server_poi(
         glib::closure_local!(
             #[strong(rename_to = p)]
             poi,
-            #[strong(rename_to = v)]
-            vbox,
             move |_b: gtk::Button| {
                 let item_box = gtk::Box::builder()
                     .orientation(gtk::Orientation::Vertical)
@@ -1745,7 +1723,7 @@ fn display_server_poi(
                 item_box.append(&server_item);
 
                 let (dlg, save_btn) =
-                    display_item_edit_dialog(&v, "Edit POI", item_box, 600, 600, DialogClamp::Yes);
+                    display_item_edit_dialog("Edit POI", item_box, 600, 600, DialogClamp::Yes);
                 server_poi_connect_save(
                     &save_btn,
                     &dlg,
@@ -1870,8 +1848,6 @@ fn display_server_extra_user_account(
         glib::closure_local!(
             #[strong(rename_to = u)]
             user,
-            #[strong(rename_to = v)]
-            vbox,
             move |_b: gtk::Button| {
                 let item_box = gtk::Box::builder()
                     .orientation(gtk::Orientation::Vertical)
@@ -1882,7 +1858,6 @@ fn display_server_extra_user_account(
                 item_box.append(&server_item);
 
                 let (dlg, save_btn) = display_item_edit_dialog(
-                    &v,
                     "Edit User Account",
                     item_box,
                     600,
@@ -2010,8 +1985,6 @@ fn display_server_note(
         glib::closure_local!(
             #[strong(rename_to = n)]
             note,
-            #[strong(rename_to = v)]
-            vbox,
             move |_b: gtk::Button| {
                 let item_box = gtk::Box::builder()
                     .orientation(gtk::Orientation::Vertical)
@@ -2021,14 +1994,8 @@ fn display_server_note(
                 item_box.set_margin_start(30);
                 item_box.set_margin_end(30);
 
-                let (dlg, save_btn) = display_item_edit_dialog(
-                    &v,
-                    "Edit Note",
-                    item_box,
-                    6000,
-                    6000,
-                    DialogClamp::No,
-                );
+                let (dlg, save_btn) =
+                    display_item_edit_dialog("Edit Note", item_box, 6000, 6000, DialogClamp::No);
                 save_btn.connect_clicked(move |_| {
                     let new_contents = note.get_contents_text();
 

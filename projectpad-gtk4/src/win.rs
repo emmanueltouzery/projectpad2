@@ -7,6 +7,7 @@ use crate::search_engine;
 use crate::sql_thread::SqlFunc;
 use crate::widgets::project_item::ProjectItem;
 use crate::widgets::project_items::common;
+use crate::widgets::project_items::server;
 use crate::widgets::search::search_item_list::SearchItemList;
 use crate::widgets::search::search_item_model::SearchItemType;
 
@@ -17,7 +18,9 @@ use diesel::prelude::*;
 use glib::subclass;
 use gtk::subclass::widget::CompositeTemplate;
 use gtk::{gdk, glib};
+use projectpadsql::get_project_group_names;
 use projectpadsql::models::Project;
+use projectpadsql::models::Server;
 
 mod imp {
     use std::cell::RefCell;
@@ -450,10 +453,7 @@ impl ProjectpadApplicationWindow {
     pub fn display_active_project_item(&self) {
         let project_state =
             glib::VariantDict::new(self.action_state("select-project-item").as_ref());
-        let project_id =
-            // i32::try_from(project_state.lookup::<i64>("project_id").unwrap().unwrap()).unwrap();
-            project_state.lookup::<i32>("project_id").unwrap().unwrap();
-        // let server_id = project_state.lookup::<i32>("server_id").unwrap().unwrap();
+        let project_id = project_state.lookup::<i32>("project_id").unwrap().unwrap();
         let item_id = project_state
             .lookup::<Option<i32>>("item_id")
             .unwrap()
@@ -551,5 +551,51 @@ impl ProjectpadApplicationWindow {
 
     pub fn get_toast_overlay(&self) -> adw::ToastOverlay {
         self.imp().toast_overlay.get()
+    }
+
+    pub fn trigger_edit(&self) {
+        let project_state =
+            glib::VariantDict::new(self.action_state("select-project-item").as_ref());
+        let search_item_type = project_state
+            .lookup::<Option<u8>>("item_type")
+            .unwrap()
+            .and_then(std::convert::identity)
+            .and_then(SearchItemType::from_repr);
+
+        let project_id = project_state.lookup::<i32>("project_id").unwrap().unwrap();
+
+        let item_id = project_state
+            .lookup::<Option<i32>>("item_id")
+            .unwrap()
+            .unwrap();
+
+        match search_item_type {
+            Some(SearchItemType::Server) => {
+                self.trigger_edit_server(project_id, item_id.unwrap());
+            }
+            _ => {}
+        }
+    }
+
+    fn trigger_edit_server(&self, project_id: i32, server_id: i32) {
+        let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+            use projectpadsql::schema::project::dsl as prj;
+            use projectpadsql::schema::server::dsl as srv;
+            let project = prj::project
+                .filter(prj::id.eq(project_id))
+                .first::<Project>(sql_conn)
+                .unwrap();
+            let project_group_names = get_project_group_names(sql_conn, project_id);
+            let server = srv::server
+                .filter(srv::id.eq(server_id))
+                .first::<Server>(sql_conn)
+                .unwrap();
+            (project, project_group_names, server)
+        }));
+
+        glib::spawn_future_local(async move {
+            let (project, pgn, server) = recv.recv().await.unwrap();
+            server::open_server_edit(&project, &pgn, &server);
+        });
     }
 }

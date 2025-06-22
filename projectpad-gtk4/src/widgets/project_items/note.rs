@@ -483,8 +483,6 @@ impl Note {
                     ae,
                     #[strong(rename_to = tv)]
                     tv_var,
-                    #[strong(rename_to = v)]
-                    vbox,
                     move |_b: gtk::Button| {
                         let n = NoteInfo {
                             id: note.id,
@@ -502,7 +500,6 @@ impl Note {
                         vbox.set_margin_end(30);
 
                         let (dialog, save_btn) = display_item_edit_dialog(
-                            &v,
                             "Edit Note",
                             vbox,
                             6000,

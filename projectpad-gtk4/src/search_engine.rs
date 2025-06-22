@@ -1,9 +1,9 @@
 use diesel::prelude::*;
+use itertools::Itertools;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
-use std::collections::HashSet;
 use strum_macros::{Display, EnumString};
 
 pub const PROJECT_FILTER_PREFIX: &str = "prj:";
@@ -15,16 +15,22 @@ pub enum SearchItemsType {
     ServersOnly,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum MatchConfidence {
+    Normal,
+    High,
+}
+
 #[derive(Debug)]
 pub struct SearchResult {
     pub projects: Vec<Project>,
-    pub project_notes: Vec<ProjectNote>,
+    pub project_notes: Vec<(ProjectNote, MatchConfidence)>,
     pub project_pois: Vec<ProjectPointOfInterest>,
     pub server_links: Vec<ServerLink>,
-    pub servers: Vec<Server>,
+    pub servers: Vec<(Server, MatchConfidence)>,
     pub server_databases: Vec<ServerDatabase>,
     pub server_extra_users: Vec<ServerExtraUserAccount>,
-    pub server_notes: Vec<ServerNote>,
+    pub server_notes: Vec<(ServerNote, MatchConfidence)>,
     pub server_pois: Vec<ServerPointOfInterest>,
     pub server_websites: Vec<ServerWebsite>,
     pub reset_scroll: bool,
@@ -56,8 +62,8 @@ pub fn run_search_filter(
     let (
         prjs,
         project_pois,
-        project_notes,
-        server_notes,
+        project_notes_with_confidence,
+        server_notes_with_confidence,
         server_links,
         server_pois,
         server_extra_users,
@@ -90,24 +96,92 @@ pub fn run_search_filter(
     };
 
     // bubble up to the toplevel...
-    let mut all_server_ids = servers.iter().map(|s| s.id).collect::<HashSet<_>>();
-    all_server_ids.extend(server_websites.iter().map(|sw| sw.server_id));
-    all_server_ids.extend(server_notes.iter().map(|sn| sn.server_id));
-    all_server_ids.extend(server_links.iter().map(|sl| sl.linked_server_id));
-    all_server_ids.extend(server_extra_users.iter().map(|sl| sl.server_id));
-    all_server_ids.extend(server_pois.iter().map(|sl| sl.server_id));
-    all_server_ids.extend(server_databases.iter().map(|sl| sl.server_id));
-    let all_servers = load_servers_by_id(sql_conn, &all_server_ids);
-
-    let mut all_project_ids = all_servers
+    let mut all_server_ids_with_confidence = servers
         .iter()
-        .map(|s| s.project_id)
-        .collect::<HashSet<_>>();
-    all_project_ids.extend(prjs.iter().map(|p| p.id));
-    all_project_ids.extend(project_pois.iter().map(|ppoi| ppoi.project_id));
-    all_project_ids.extend(project_notes.iter().map(|pn| pn.project_id));
-    all_project_ids.extend(server_links.iter().map(|pn| pn.project_id));
-    let all_projects = load_projects_by_id(sql_conn, &all_project_ids);
+        .map(|s| (s.id, MatchConfidence::Normal))
+        .collect::<Vec<_>>();
+    all_server_ids_with_confidence.extend(
+        server_websites
+            .iter()
+            .map(|sw| (sw.server_id, MatchConfidence::Normal)),
+    );
+    all_server_ids_with_confidence.extend(
+        server_notes_with_confidence
+            .iter()
+            .map(|(sn, c)| (sn.server_id, *c)),
+    );
+    all_server_ids_with_confidence.extend(
+        server_links
+            .iter()
+            .map(|sl| (sl.linked_server_id, MatchConfidence::Normal)),
+    );
+    all_server_ids_with_confidence.extend(
+        server_extra_users
+            .iter()
+            .map(|sl| (sl.server_id, MatchConfidence::Normal)),
+    );
+    all_server_ids_with_confidence.extend(
+        server_pois
+            .iter()
+            .map(|sl| (sl.server_id, MatchConfidence::Normal)),
+    );
+    all_server_ids_with_confidence.extend(
+        server_databases
+            .iter()
+            .map(|sl| (sl.server_id, MatchConfidence::Normal)),
+    );
+    // if a server id is referenced multiple times, keep only
+    // the reference with the highest confidence, sort by confidence
+    all_server_ids_with_confidence.sort_by_key(|(_s, c)| std::cmp::Reverse(*c));
+    let all_servers_with_confidence = all_server_ids_with_confidence
+        .into_iter()
+        .unique_by(|(s, _)| *s)
+        .map(|(s_id, c)| {
+            use projectpadsql::schema::server::dsl::*;
+            (
+                server
+                    .filter(id.eq(s_id))
+                    .first::<Server>(sql_conn)
+                    .unwrap(),
+                c,
+            )
+        })
+        .collect_vec();
+
+    let mut all_project_ids_with_confidence = all_servers_with_confidence
+        .iter()
+        .map(|(s, c)| (s.project_id, *c))
+        .collect_vec();
+    all_project_ids_with_confidence.extend(prjs.iter().map(|p| (p.id, MatchConfidence::Normal)));
+    all_project_ids_with_confidence.extend(
+        project_pois
+            .iter()
+            .map(|ppoi| (ppoi.project_id, MatchConfidence::Normal)),
+    );
+    all_project_ids_with_confidence.extend(
+        project_notes_with_confidence
+            .iter()
+            .map(|(pn, c)| (pn.project_id, *c)),
+    );
+    all_project_ids_with_confidence.extend(
+        server_links
+            .iter()
+            .map(|pn| (pn.project_id, MatchConfidence::Normal)),
+    );
+    // if a server id is referenced multiple times, keep only
+    // the reference with the highest confidence, sort by confidence
+    all_project_ids_with_confidence.sort_by_key(|(_s, c)| std::cmp::Reverse(*c));
+    let all_projects = all_project_ids_with_confidence
+        .into_iter()
+        .unique_by(|(p, _)| *p)
+        .map(|(p_id, _c)| {
+            use projectpadsql::schema::project::dsl::*;
+            project
+                .filter(id.eq(p_id))
+                .first::<Project>(sql_conn)
+                .unwrap()
+        })
+        .collect_vec();
     let filtered_projects = match &project_pattern {
         None => all_projects,
         Some(prj) => all_projects
@@ -117,10 +191,10 @@ pub fn run_search_filter(
     };
     SearchResult {
         projects: filtered_projects,
-        project_notes,
+        project_notes: project_notes_with_confidence,
         project_pois,
-        servers: all_servers,
-        server_notes,
+        servers: all_servers_with_confidence,
+        server_notes: server_notes_with_confidence,
         server_links,
         server_pois,
         server_databases,
@@ -154,7 +228,10 @@ fn filter_project_pois(
         .unwrap()
 }
 
-fn filter_project_notes(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ProjectNote> {
+fn filter_project_notes(
+    db_conn: &mut SqliteConnection,
+    filter: &str,
+) -> Vec<(ProjectNote, MatchConfidence)> {
     use projectpadsql::schema::project_note::dsl::*;
     project_note
         .filter(
@@ -165,9 +242,28 @@ fn filter_project_notes(db_conn: &mut SqliteConnection, filter: &str) -> Vec<Pro
         )
         .load::<ProjectNote>(db_conn)
         .unwrap()
+        .into_iter()
+        .map(|pn| {
+            // TODO ugly to remove the % here.. make that the caller doesn't
+            // append them, or provides both the sql and original filter
+            let c = if pn
+                .title
+                .to_lowercase()
+                .contains(&filter.replace("%", "").to_lowercase())
+            {
+                MatchConfidence::High
+            } else {
+                MatchConfidence::Normal
+            };
+            (pn, c)
+        })
+        .collect()
 }
 
-fn filter_server_notes(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ServerNote> {
+fn filter_server_notes(
+    db_conn: &mut SqliteConnection,
+    filter: &str,
+) -> Vec<(ServerNote, MatchConfidence)> {
     use projectpadsql::schema::server_note::dsl::*;
     server_note
         .filter(
@@ -178,6 +274,22 @@ fn filter_server_notes(db_conn: &mut SqliteConnection, filter: &str) -> Vec<Serv
         )
         .load::<ServerNote>(db_conn)
         .unwrap()
+        .into_iter()
+        .map(|sn| {
+            // TODO ugly to remove the % here.. make that the caller doesn't
+            // append them, or provides both the sql and original filter
+            let c = if sn
+                .title
+                .to_lowercase()
+                .contains(&filter.replace("%", "").to_lowercase())
+            {
+                MatchConfidence::High
+            } else {
+                MatchConfidence::Normal
+            };
+            (sn, c)
+        })
+        .collect()
 }
 
 fn filter_server_links(db_conn: &mut SqliteConnection, filter: &str) -> Vec<ServerLink> {
@@ -259,23 +371,6 @@ fn filter_server_websites(
                 .or(db::name.like(filter).escape('\\')),
         )
         .load::<(ServerWebsite, Option<ServerDatabase>)>(db_conn)
-        .unwrap()
-}
-
-fn load_projects_by_id(db_conn: &mut SqliteConnection, ids: &HashSet<i32>) -> Vec<Project> {
-    use projectpadsql::schema::project::dsl::*;
-    project
-        .filter(id.eq_any(ids))
-        .order(name.asc())
-        .load::<Project>(db_conn)
-        .unwrap()
-}
-
-fn load_servers_by_id(db_conn: &mut SqliteConnection, ids: &HashSet<i32>) -> Vec<Server> {
-    use projectpadsql::schema::server::dsl::*;
-    server
-        .filter(id.eq_any(ids))
-        .load::<Server>(db_conn)
         .unwrap()
 }
 
@@ -406,7 +501,7 @@ mod tests {
 
         // should also include the server on which the user is...
         assert_eq!(1, search_result.servers.len());
-        assert_eq!("My server", search_result.servers.get(0).unwrap().desc);
+        assert_eq!("My server", search_result.servers.get(0).unwrap().0.desc);
 
         // should also include the project on which the server is...
         assert_eq!(1, search_result.projects.len());

@@ -4,12 +4,14 @@ use gtk::prelude::ObjectExt;
 use gtk::prelude::StaticType;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
+use itertools::Itertools;
 use projectpadsql::models::EnvironmentType;
 use projectpadsql::models::{
     Project, ProjectNote, ProjectPointOfInterest, Server, ServerDatabase, ServerExtraUserAccount,
     ServerLink, ServerNote, ServerPointOfInterest, ServerWebsite,
 };
 
+use crate::search_engine::MatchConfidence;
 use crate::search_engine::SearchResult;
 use crate::widgets::project_items::project_poi;
 use crate::widgets::project_items::server;
@@ -148,71 +150,56 @@ impl SearchItemList {
         let mut list_store = SearchItemListModel::new();
         for project in &search_result.projects {
             list_store.append(&Self::get_project_model(project));
-            for server in search_result
-                .servers
-                .iter()
-                .filter(|s| s.project_id == project.id)
-            {
-                list_store.append(&Self::get_server_model(server, project));
-                for server_website in search_result
-                    .server_websites
-                    .iter()
-                    .filter(|sw| sw.server_id == server.id)
-                {
-                    list_store.append(&Self::get_server_website_model(server_website, project));
-                }
-                for server_note in search_result
-                    .server_notes
-                    .iter()
-                    .filter(|sn| sn.server_id == server.id)
-                {
-                    list_store.append(&Self::get_server_note_model(server_note, project));
-                }
-                for server_user in search_result
-                    .server_extra_users
-                    .iter()
-                    .filter(|su| su.server_id == server.id)
-                {
-                    list_store.append(&Self::get_server_extra_user_account_model(
-                        server_user,
-                        project,
-                    ));
-                }
-                for server_db in search_result
-                    .server_databases
-                    .iter()
-                    .filter(|sd| sd.server_id == server.id)
-                {
-                    list_store.append(&Self::get_server_database_model(server_db, project));
-                }
-                for server_poi in search_result
-                    .server_pois
-                    .iter()
-                    .filter(|sp| sp.server_id == server.id)
-                {
-                    list_store.append(&Self::get_server_poi_model(server_poi, project));
-                }
-            }
+
+            let mut search_item_models_and_conf = vec![];
+            self.project_display_servers(
+                project,
+                &search_result.servers,
+                &mut search_item_models_and_conf,
+                &search_result,
+            );
             for server_link in search_result
                 .server_links
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                list_store.append(&Self::get_server_link_model(server_link, project));
+                search_item_models_and_conf.push((
+                    Self::get_server_link_model(server_link, project),
+                    MatchConfidence::Normal,
+                    vec![],
+                ));
             }
-            for project_note in search_result
+            for (project_note, conf) in search_result
                 .project_notes
                 .iter()
-                .filter(|s| s.project_id == project.id)
+                .filter(|(s, _c)| s.project_id == project.id)
             {
-                list_store.append(&Self::get_project_note_model(project_note, project));
+                search_item_models_and_conf.push((
+                    Self::get_project_note_model(project_note, project),
+                    *conf,
+                    vec![],
+                ));
             }
             for project_poi in search_result
                 .project_pois
                 .iter()
                 .filter(|s| s.project_id == project.id)
             {
-                list_store.append(&Self::get_project_poi_model(project_poi, project));
+                search_item_models_and_conf.push((
+                    Self::get_project_poi_model(project_poi, project),
+                    MatchConfidence::Normal,
+                    vec![],
+                ));
+            }
+            // sort by confidence then display
+            // dbg!(&search_item_models_and_conf);
+            search_item_models_and_conf.sort_by_key(|(_sim, c, _children)| std::cmp::Reverse(*c));
+            // dbg!(&search_item_models_and_conf);
+            for (sim, _conf, children) in search_item_models_and_conf.iter() {
+                list_store.append(sim);
+                for child in children.iter() {
+                    list_store.append(child);
+                }
             }
         }
 
@@ -260,6 +247,83 @@ impl SearchItemList {
                 );
                 ControlFlow::Break
             });
+        }
+    }
+
+    fn project_display_servers(
+        &mut self,
+        project: &Project,
+        servers: &[(Server, MatchConfidence)],
+        parent_search_item_models_and_conf: &mut Vec<(
+            SearchItemModel,
+            MatchConfidence,
+            Vec<SearchItemModel>,
+        )>,
+        search_result: &SearchResult,
+    ) {
+        for (server, server_confidence) in
+            servers.iter().filter(|(s, _c)| s.project_id == project.id)
+        {
+            let mut server_search_item_models_and_conf = vec![];
+            let server_model = Self::get_server_model(server, project);
+            for server_website in search_result
+                .server_websites
+                .iter()
+                .filter(|sw| sw.server_id == server.id)
+            {
+                server_search_item_models_and_conf.push((
+                    Self::get_server_website_model(server_website, project),
+                    MatchConfidence::Normal,
+                ));
+            }
+            for (server_note, conf) in search_result
+                .server_notes
+                .iter()
+                .filter(|(sn, _c)| sn.server_id == server.id)
+            {
+                server_search_item_models_and_conf
+                    .push((Self::get_server_note_model(server_note, project), *conf));
+            }
+            for server_user in search_result
+                .server_extra_users
+                .iter()
+                .filter(|su| su.server_id == server.id)
+            {
+                server_search_item_models_and_conf.push((
+                    Self::get_server_extra_user_account_model(server_user, project),
+                    MatchConfidence::Normal,
+                ));
+            }
+            for server_db in search_result
+                .server_databases
+                .iter()
+                .filter(|sd| sd.server_id == server.id)
+            {
+                server_search_item_models_and_conf.push((
+                    Self::get_server_database_model(server_db, project),
+                    MatchConfidence::Normal,
+                ));
+            }
+            for server_poi in search_result
+                .server_pois
+                .iter()
+                .filter(|sp| sp.server_id == server.id)
+            {
+                server_search_item_models_and_conf.push((
+                    Self::get_server_poi_model(server_poi, project),
+                    MatchConfidence::Normal,
+                ));
+            }
+            // sort by confidence then display
+            server_search_item_models_and_conf.sort_by_key(|(_sim, c)| std::cmp::Reverse(*c));
+            parent_search_item_models_and_conf.push((
+                server_model,
+                *server_confidence,
+                server_search_item_models_and_conf
+                    .into_iter()
+                    .map(|(sim, _c)| sim)
+                    .collect_vec(),
+            ));
         }
     }
 

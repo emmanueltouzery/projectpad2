@@ -31,7 +31,7 @@ use super::{
     server,
 };
 
-pub const NO_GROUP: &'static str = "No group";
+pub const NO_GROUP: &str = "No group";
 
 pub fn load_and_display_server_link(
     parent: &adw::Bin,
@@ -169,50 +169,54 @@ fn display_server_link(
             #[strong(rename_to = ae_)]
             ae,
             move |_b: gtk::Button| {
-                let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) =
-                    server_link_contents_edit(&p, &pgn_, &ae_);
-
-                let (dlg, save_btn) =
-                    display_item_edit_dialog("Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
-                let he = maybe_header_edit.unwrap().clone();
-                let p_id = p.id;
-                save_btn.connect_clicked(move |_| {
-                    let receiver = save_server_link(
-                        Some(p_id),
-                        he.property("group_name"),
-                        he.property("title"),
-                        server_link_view_edit.selected_item_item_id(),
-                        server_group_dropdown
-                            .selected_item()
-                            .map(|o| {
-                                o.downcast_ref::<gtk::StringObject>()
-                                    .unwrap()
-                                    .string()
-                                    .to_string()
-                            })
-                            .filter(|s| s != server_link::NO_GROUP),
-                        he.single_env(),
-                    );
-
-                    let dlg = dlg.clone();
-                    glib::spawn_future_local(async move {
-                        if let Err(e) = receiver.recv().await.unwrap() {
-                            common::simple_error_dlg(&e.0, e.1.as_deref());
-                        } else {
-                            ProjectItemList::display_project_item(
-                                None,
-                                server_link.id,
-                                ProjectItemType::ServerLink,
-                            );
-                            dlg.close();
-                        }
-                    });
-                });
+                open_server_link_edit(&pgn_, &ae_, &p);
             }
         ),
     );
 
     parent.set_child(Some(&vbox));
+}
+
+pub fn open_server_link_edit(
+    project_group_names: &[String],
+    allowed_envs: &[EnvironmentType],
+    server_link: &ServerLink,
+) {
+    let (maybe_header_edit, server_link_view_edit, server_group_dropdown, _, vbox) =
+        server_link_contents_edit(server_link, project_group_names, allowed_envs);
+
+    let (dlg, save_btn) =
+        display_item_edit_dialog("Edit Server Link", vbox, 600, 600, DialogClamp::Yes);
+    let he = maybe_header_edit.unwrap().clone();
+    let sl_id = server_link.id;
+    save_btn.connect_clicked(move |_| {
+        let receiver = save_server_link(
+            Some(sl_id),
+            he.property("group_name"),
+            he.property("title"),
+            server_link_view_edit.selected_item_item_id(),
+            server_group_dropdown
+                .selected_item()
+                .map(|o| {
+                    o.downcast_ref::<gtk::StringObject>()
+                        .unwrap()
+                        .string()
+                        .to_string()
+                })
+                .filter(|s| s != server_link::NO_GROUP),
+            he.single_env(),
+        );
+
+        let dlg = dlg.clone();
+        glib::spawn_future_local(async move {
+            if let Err(e) = receiver.recv().await.unwrap() {
+                common::simple_error_dlg(&e.0, e.1.as_deref());
+            } else {
+                ProjectItemList::display_project_item(None, sl_id, ProjectItemType::ServerLink);
+                dlg.close();
+            }
+        });
+    });
 }
 
 pub fn server_link_contents_edit(

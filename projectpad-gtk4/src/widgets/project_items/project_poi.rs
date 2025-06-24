@@ -155,7 +155,7 @@ pub fn open_project_poi_edit(
     poi: &ProjectPointOfInterest,
 ) {
     let (maybe_header_edit, project_poi_view_edit, _, vbox) =
-        project_poi_contents(&poi, project_group_names, WidgetMode::Edit, allowed_envs);
+        project_poi_contents(poi, project_group_names, WidgetMode::Edit, allowed_envs);
 
     let (dlg, save_btn) =
         display_item_edit_dialog("Edit project POI", vbox, 600, 600, DialogClamp::Yes);

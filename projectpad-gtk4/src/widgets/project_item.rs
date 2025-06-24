@@ -6,10 +6,10 @@ use gtk::subclass::widget::CompositeTemplate;
 use crate::widgets::project_items::server;
 use crate::widgets::{project_item_model::ProjectItemType, project_items::note};
 use projectpadsql::get_project_group_names;
-use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server};
+use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server, ServerLink};
 
 use super::project_items::note::{Note, NoteInfo};
-use super::project_items::project_poi;
+use super::project_items::{project_poi, server_link};
 use super::{project_items::common, search::search_item_model::SearchItemType};
 
 use diesel::prelude::*;
@@ -232,8 +232,32 @@ impl ProjectItem {
             Some(SearchItemType::ProjectPointOfInterest) => {
                 self.trigger_edit_project_poi(project_id, item_id.unwrap());
             }
+            Some(SearchItemType::ServerLink) => {
+                self.trigger_edit_server_link(project_id, item_id.unwrap());
+            }
             _ => {}
         }
+    }
+    fn trigger_edit_server_link(&self, project_id: i32, server_link_id: i32) {
+        let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+            use projectpadsql::schema::project::dsl as prj;
+            use projectpadsql::schema::server_link::dsl as lnk;
+            let project = prj::project
+                .filter(prj::id.eq(project_id))
+                .first::<Project>(sql_conn)
+                .unwrap();
+            let project_group_names = get_project_group_names(sql_conn, project_id);
+            let server_link = lnk::server_link
+                .filter(lnk::id.eq(server_link_id))
+                .first::<ServerLink>(sql_conn)
+                .unwrap();
+            (project.allowed_envs(), project_group_names, server_link)
+        }));
+
+        glib::spawn_future_local(async move {
+            let (ae, pgn, server_link) = recv.recv().await.unwrap();
+            server_link::open_server_link_edit(&pgn, &ae, &server_link);
+        });
     }
 
     fn trigger_edit_project_poi(&self, project_id: i32, poi_id: i32) {

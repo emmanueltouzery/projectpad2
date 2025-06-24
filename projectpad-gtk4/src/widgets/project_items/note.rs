@@ -36,6 +36,7 @@ use super::{
     project_poi::{project_item_header, DisplayHeaderMode},
 };
 
+/// NoteInfo abstracts between ProjectNote and ServerNote
 #[derive(Clone, Default)]
 pub struct NoteInfo<'a> {
     pub id: i32,
@@ -44,8 +45,19 @@ pub struct NoteInfo<'a> {
     pub contents: &'a str,
     pub display_header: bool,
     pub group_name: Option<&'a str>,
-    pub all_group_names: &'a [String],
-    pub allowed_envs: &'a [EnvironmentType],
+}
+
+impl NoteInfo<'_> {
+    pub fn from_project_note(project_note: &ProjectNote) -> NoteInfo {
+        NoteInfo {
+            id: project_note.id,
+            title: &project_note.title,
+            env: EnvOrEnvs::Envs(Note::get_envs(project_note)),
+            contents: &project_note.contents,
+            display_header: true,
+            group_name: project_note.group_name.as_deref(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -109,16 +121,18 @@ mod imp {
                     note.load_and_display_project_note(note.imp().project_note_id.get());
                 } else {
                     // note that both IDs will be 0 when creating a new note
-                    note.display_note_contents(NoteInfo {
-                        id: 0,
-                        title: "",
-                        env: EnvOrEnvs::None,
-                        contents: "",
-                        display_header: false,
-                        group_name: None,
-                        all_group_names: &[],
-                        allowed_envs: &[],
-                    });
+                    note.display_note_contents(
+                        &[],
+                        &[],
+                        NoteInfo {
+                            id: 0,
+                            title: "",
+                            env: EnvOrEnvs::None,
+                            contents: "",
+                            display_header: false,
+                            group_name: None,
+                        },
+                    );
                 }
             });
             let _ = self
@@ -253,7 +267,7 @@ impl Note {
         });
         toolbar.append(&quote_btn);
 
-        return toolbar;
+        toolbar
     }
 
     fn load_and_display_project_note(&self, note_id: i32) {
@@ -283,16 +297,11 @@ impl Note {
         let p = self.clone();
         glib::spawn_future_local(async move {
             let (project_note, project, project_group_names) = receiver.recv().await.unwrap();
-            let delete_btn = p.display_note_contents(NoteInfo {
-                id: project_note.id,
-                title: &project_note.title,
-                env: EnvOrEnvs::Envs(Self::get_envs(&project_note)),
-                contents: &project_note.contents,
-                display_header: true,
-                group_name: project_note.group_name.as_deref(),
-                all_group_names: &project_group_names,
-                allowed_envs: &project.allowed_envs(),
-            });
+            let delete_btn = p.display_note_contents(
+                &project_group_names,
+                &project.allowed_envs(),
+                NoteInfo::from_project_note(&project_note),
+            );
 
             let note_name = project_note.title;
             let note_id = project_note.id;
@@ -370,16 +379,18 @@ impl Note {
         let p = self.clone();
         glib::spawn_future_local(async move {
             let channel_data = receiver.recv().await.unwrap();
-            p.display_note_contents(NoteInfo {
-                id: channel_data.id,
-                title: &channel_data.title,
-                env: EnvOrEnvs::None,
-                contents: &channel_data.contents,
-                display_header: false,
-                group_name: None,
-                all_group_names: &[],
-                allowed_envs: &[], // server note
-            });
+            p.display_note_contents(
+                &[],
+                &[],
+                NoteInfo {
+                    id: channel_data.id,
+                    title: &channel_data.title,
+                    env: EnvOrEnvs::None,
+                    contents: &channel_data.contents,
+                    display_header: false,
+                    group_name: None,
+                },
+            );
         });
     }
 
@@ -416,7 +427,12 @@ impl Note {
             .build()
     }
 
-    fn display_note_contents(&self, note: NoteInfo) -> Option<gtk::Button> {
+    fn display_note_contents(
+        &self,
+        project_group_names: &[String],
+        allowed_envs: &[EnvironmentType],
+        note: NoteInfo,
+    ) -> Option<gtk::Button> {
         let widget_mode = if self.edit_mode() {
             WidgetMode::Edit
         } else {
@@ -425,7 +441,12 @@ impl Note {
         let mut maybe_delete_btn = None;
         if note.display_header {
             // project note, we handle the editing
-            let (header_box, vbox, _) = self.note_contents(note.clone(), WidgetMode::Show);
+            let (header_box, vbox, _) = self.note_contents(
+                note.clone(),
+                project_group_names,
+                allowed_envs,
+                WidgetMode::Show,
+            );
 
             let toc_menu = Self::note_toc_menu(&note);
             let toc_btn = gtk::MenuButton::builder()
@@ -460,10 +481,9 @@ impl Note {
             let t = note.title.to_owned();
             let c = note.contents.to_owned();
             let g = note.group_name.map(|g| g.to_owned());
-            let a = note.all_group_names.to_vec();
-            let ae = note.allowed_envs.to_owned();
-            let tv_var = self.imp().text_edit.clone();
+            let ae = allowed_envs.to_owned();
             let s = self.clone();
+            let pgn = project_group_names.to_owned();
 
             edit_btn.connect_closure(
                 "clicked",
@@ -478,11 +498,7 @@ impl Note {
                     #[strong(rename_to = _g)]
                     g,
                     #[strong(rename_to = _a)]
-                    a,
-                    #[strong(rename_to = _ae)]
                     ae,
-                    #[strong(rename_to = tv)]
-                    tv_var,
                     move |_b: gtk::Button| {
                         let n = NoteInfo {
                             id: note.id,
@@ -491,59 +507,65 @@ impl Note {
                             contents: &_c,
                             display_header: note.display_header,
                             group_name: _g.as_deref(),
-                            all_group_names: &_a,
-                            allowed_envs: &_ae,
                         };
-                        let (_, vbox, project_item_header_edit) =
-                            s.note_contents(n.clone(), WidgetMode::Edit);
-                        vbox.set_margin_start(30);
-                        vbox.set_margin_end(30);
-
-                        let (dialog, save_btn) = display_item_edit_dialog(
-                            "Edit Note",
-                            vbox,
-                            6000,
-                            6000,
-                            DialogClamp::No,
-                        );
-                        let ttv = tv.clone();
-                        let project_note_id = note.id;
-                        let h_e = project_item_header_edit.clone();
-                        save_btn.connect_clicked(move |_| match (&*ttv.borrow(), &h_e) {
-                            (Some(v), Some(header_edit)) => {
-                                let receiver =
-                                    Self::save_project_note(v, header_edit, Some(project_note_id));
-                                let d = dialog.clone();
-                                glib::spawn_future_local(async move {
-                                    let project_note_after_result = receiver.recv().await.unwrap();
-
-                                    match project_note_after_result {
-                                        Ok(_note) => {
-                                            d.close();
-                                            ProjectItemList::display_project_item(
-                                                None,
-                                                project_note_id,
-                                                ProjectItemType::ProjectNote,
-                                            );
-                                        }
-                                        Err((title, msg)) => {
-                                            common::simple_error_dlg(&title, msg.as_deref())
-                                        }
-                                    }
-                                });
-                            }
-                            _ => panic!(),
-                        });
+                        _s.trigger_edit_server_note(&pgn, &_a, &n);
                     }
                 ),
             );
             self.set_child(Some(&vbox));
         } else {
             // server note, the parent handles the editing
-            let vbox = self.note_contents(note, widget_mode).1;
+            let vbox = self
+                .note_contents(note, &project_group_names, &allowed_envs, widget_mode)
+                .1;
             self.set_child(Some(&vbox));
         }
         maybe_delete_btn
+    }
+
+    pub fn trigger_edit_server_note(
+        &self,
+        project_group_names: &[String],
+        allowed_envs: &[EnvironmentType],
+        note: &NoteInfo,
+    ) {
+        let (_, vbox, project_item_header_edit) = self.note_contents(
+            note.clone(),
+            &project_group_names,
+            allowed_envs,
+            WidgetMode::Edit,
+        );
+        vbox.set_margin_start(30);
+        vbox.set_margin_end(30);
+
+        let (dialog, save_btn) =
+            display_item_edit_dialog("Edit Note", vbox, 6000, 6000, DialogClamp::No);
+
+        let ttv = self.imp().text_edit.clone();
+        let project_note_id = note.id;
+        let h_e = project_item_header_edit.clone();
+        save_btn.connect_clicked(move |_| match (&*ttv.borrow(), &h_e) {
+            (Some(v), Some(header_edit)) => {
+                let receiver = Self::save_project_note(v, header_edit, Some(project_note_id));
+                let d = dialog.clone();
+                glib::spawn_future_local(async move {
+                    let project_note_after_result = receiver.recv().await.unwrap();
+
+                    match project_note_after_result {
+                        Ok(_note) => {
+                            d.close();
+                            ProjectItemList::display_project_item(
+                                None,
+                                project_note_id,
+                                ProjectItemType::ProjectNote,
+                            );
+                        }
+                        Err((title, msg)) => common::simple_error_dlg(&title, msg.as_deref()),
+                    }
+                });
+            }
+            _ => panic!(),
+        });
     }
 
     pub fn save_project_note(
@@ -621,6 +643,8 @@ impl Note {
     pub fn note_contents(
         &self,
         note: NoteInfo,
+        project_group_names: &[String],
+        allowed_envs: &[EnvironmentType],
         widget_mode: WidgetMode,
     ) -> (gtk::Box, gtk::Box, Option<ItemHeaderEdit>) {
         let (note_view, scrolled_window) =
@@ -655,7 +679,7 @@ impl Note {
             note.group_name,
             ProjectItemType::ProjectNote,
             note.env,
-            note.all_group_names,
+            project_group_names,
             widget_mode,
             if note.display_header {
                 DisplayHeaderMode::Yes
@@ -663,7 +687,7 @@ impl Note {
                 DisplayHeaderMode::No
             },
             None,
-            note.allowed_envs,
+            allowed_envs,
         );
 
         vbox.append(&note_view);

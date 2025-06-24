@@ -636,14 +636,13 @@ impl ProjectItemList {
                 let mut n = NoteInfo::default();
                 n.env = EnvOrEnvs::Envs(HashSet::new());
                 n.display_header = true;
-                n.all_group_names = &project_group_names;
-                n.allowed_envs = &ae;
                 n
             };
             dlg.set_title("Add Project Note");
             dlg.set_content_width(6000);
             dlg.set_content_height(6000);
-            let (_, dlg_child, note_header) = note.note_contents(note_info, WidgetMode::Edit);
+            let (_, dlg_child, note_header) =
+                note.note_contents(note_info, &project_group_names, &ae, WidgetMode::Edit);
             dlg_child.set_margin_start(30);
             dlg_child.set_margin_end(30);
             s.add_named(&dlg_child, Some("second"));
@@ -898,13 +897,11 @@ impl ProjectItemList {
         project_item_id: i32,
         project_item_type: ProjectItemType,
     ) {
-        let app = app::get();
-
-        let w = app.imp().window.get().unwrap().upgrade().unwrap();
+        let w = common::main_win();
         let select_project_variant = glib::VariantDict::new(None);
         select_project_variant.insert(
             "project_id",
-            project_id.unwrap_or_else(|| app.project_id().unwrap()),
+            project_id.unwrap_or_else(|| common::app().project_id().unwrap()),
         );
         select_project_variant.insert("item_id", Some(project_item_id));
         select_project_variant.insert("item_type", Some(project_item_type as u8));

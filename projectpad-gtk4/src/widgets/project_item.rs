@@ -3,9 +3,15 @@ use glib::*;
 use gtk::subclass::prelude::*;
 use gtk::subclass::widget::CompositeTemplate;
 
+use crate::widgets::project_items::server;
 use crate::widgets::{project_item_model::ProjectItemType, project_items::note};
+use projectpadsql::get_project_group_names;
+use projectpadsql::models::{Project, ProjectNote, Server};
 
-use super::project_items::common;
+use super::project_items::note::{Note, NoteInfo};
+use super::{project_items::common, search::search_item_model::SearchItemType};
+
+use diesel::prelude::*;
 
 mod imp {
     use std::{cell::Cell, sync::OnceLock};
@@ -197,5 +203,85 @@ impl ProjectItem {
                 None => panic!(),
             }
         }
+    }
+
+    pub fn trigger_item_edit(&self) {
+        let w = common::main_win();
+        let project_state = glib::VariantDict::new(w.action_state("select-project-item").as_ref());
+        let search_item_type = project_state
+            .lookup::<Option<u8>>("item_type")
+            .unwrap()
+            .and_then(std::convert::identity)
+            .and_then(SearchItemType::from_repr);
+
+        let project_id = project_state.lookup::<i32>("project_id").unwrap().unwrap();
+
+        let item_id = project_state
+            .lookup::<Option<i32>>("item_id")
+            .unwrap()
+            .unwrap();
+
+        match search_item_type {
+            Some(SearchItemType::Server) => {
+                self.trigger_edit_server(project_id, item_id.unwrap());
+            }
+            Some(SearchItemType::ProjectNote) => {
+                if let Some(pi_child) = self.imp().project_item.child() {
+                    if let Ok(note) = pi_child.downcast::<Note>() {
+                        let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                            use projectpadsql::schema::project::dsl as prj;
+                            use projectpadsql::schema::project_note::dsl as pnote;
+
+                            let project = prj::project
+                                .filter(prj::id.eq(project_id))
+                                .first::<Project>(sql_conn)
+                                .unwrap();
+
+                            let prj_note = pnote::project_note
+                                .filter(pnote::id.eq(item_id.unwrap()))
+                                .first::<ProjectNote>(sql_conn)
+                                .unwrap();
+                            (
+                                get_project_group_names(sql_conn, project_id),
+                                project.allowed_envs(),
+                                prj_note,
+                            )
+                        }));
+
+                        glib::spawn_future_local(async move {
+                            let (pgn, ae, prj_note) = recv.recv().await.unwrap();
+                            note.trigger_edit_server_note(
+                                &pgn,
+                                &ae,
+                                &NoteInfo::from_project_note(&prj_note),
+                            );
+                        });
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn trigger_edit_server(&self, project_id: i32, server_id: i32) {
+        let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+            use projectpadsql::schema::project::dsl as prj;
+            use projectpadsql::schema::server::dsl as srv;
+            let project = prj::project
+                .filter(prj::id.eq(project_id))
+                .first::<Project>(sql_conn)
+                .unwrap();
+            let project_group_names = get_project_group_names(sql_conn, project_id);
+            let server = srv::server
+                .filter(srv::id.eq(server_id))
+                .first::<Server>(sql_conn)
+                .unwrap();
+            (project, project_group_names, server)
+        }));
+
+        glib::spawn_future_local(async move {
+            let (project, pgn, server) = recv.recv().await.unwrap();
+            server::open_server_edit(&project, &pgn, &server);
+        });
     }
 }

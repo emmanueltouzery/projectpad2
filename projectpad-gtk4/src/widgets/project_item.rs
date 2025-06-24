@@ -226,38 +226,7 @@ impl ProjectItem {
                 self.trigger_edit_server(project_id, item_id.unwrap());
             }
             Some(SearchItemType::ProjectNote) => {
-                if let Some(pi_child) = self.imp().project_item.child() {
-                    if let Ok(note) = pi_child.downcast::<Note>() {
-                        let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
-                            use projectpadsql::schema::project::dsl as prj;
-                            use projectpadsql::schema::project_note::dsl as pnote;
-
-                            let project = prj::project
-                                .filter(prj::id.eq(project_id))
-                                .first::<Project>(sql_conn)
-                                .unwrap();
-
-                            let prj_note = pnote::project_note
-                                .filter(pnote::id.eq(item_id.unwrap()))
-                                .first::<ProjectNote>(sql_conn)
-                                .unwrap();
-                            (
-                                get_project_group_names(sql_conn, project_id),
-                                project.allowed_envs(),
-                                prj_note,
-                            )
-                        }));
-
-                        glib::spawn_future_local(async move {
-                            let (pgn, ae, prj_note) = recv.recv().await.unwrap();
-                            note.trigger_edit_server_note(
-                                &pgn,
-                                &ae,
-                                &NoteInfo::from_project_note(&prj_note),
-                            );
-                        });
-                    }
-                }
+                self.trigger_edit_project_note(project_id, item_id.unwrap());
             }
             _ => {}
         }
@@ -283,5 +252,40 @@ impl ProjectItem {
             let (project, pgn, server) = recv.recv().await.unwrap();
             server::open_server_edit(&project, &pgn, &server);
         });
+    }
+
+    fn trigger_edit_project_note(&self, project_id: i32, item_id: i32) {
+        if let Some(pi_child) = self.imp().project_item.child() {
+            if let Ok(note) = pi_child.downcast::<Note>() {
+                let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                    use projectpadsql::schema::project::dsl as prj;
+                    use projectpadsql::schema::project_note::dsl as pnote;
+
+                    let project = prj::project
+                        .filter(prj::id.eq(project_id))
+                        .first::<Project>(sql_conn)
+                        .unwrap();
+
+                    let prj_note = pnote::project_note
+                        .filter(pnote::id.eq(item_id))
+                        .first::<ProjectNote>(sql_conn)
+                        .unwrap();
+                    (
+                        get_project_group_names(sql_conn, project_id),
+                        project.allowed_envs(),
+                        prj_note,
+                    )
+                }));
+
+                glib::spawn_future_local(async move {
+                    let (pgn, ae, prj_note) = recv.recv().await.unwrap();
+                    note.trigger_edit_server_note(
+                        &pgn,
+                        &ae,
+                        &NoteInfo::from_project_note(&prj_note),
+                    );
+                });
+            }
+        }
     }
 }

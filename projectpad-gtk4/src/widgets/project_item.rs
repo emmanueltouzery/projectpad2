@@ -6,9 +6,10 @@ use gtk::subclass::widget::CompositeTemplate;
 use crate::widgets::project_items::server;
 use crate::widgets::{project_item_model::ProjectItemType, project_items::note};
 use projectpadsql::get_project_group_names;
-use projectpadsql::models::{Project, ProjectNote, Server};
+use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server};
 
 use super::project_items::note::{Note, NoteInfo};
+use super::project_items::project_poi;
 use super::{project_items::common, search::search_item_model::SearchItemType};
 
 use diesel::prelude::*;
@@ -228,8 +229,33 @@ impl ProjectItem {
             Some(SearchItemType::ProjectNote) => {
                 self.trigger_edit_project_note(project_id, item_id.unwrap());
             }
+            Some(SearchItemType::ProjectPointOfInterest) => {
+                self.trigger_edit_project_poi(project_id, item_id.unwrap());
+            }
             _ => {}
         }
+    }
+
+    fn trigger_edit_project_poi(&self, project_id: i32, poi_id: i32) {
+        let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+            use projectpadsql::schema::project::dsl as prj;
+            use projectpadsql::schema::project_point_of_interest::dsl as ppoi;
+            let project = prj::project
+                .filter(prj::id.eq(project_id))
+                .first::<Project>(sql_conn)
+                .unwrap();
+            let project_group_names = get_project_group_names(sql_conn, project_id);
+            let poi = ppoi::project_point_of_interest
+                .filter(ppoi::id.eq(poi_id))
+                .first::<ProjectPointOfInterest>(sql_conn)
+                .unwrap();
+            (project.allowed_envs(), project_group_names, poi)
+        }));
+
+        glib::spawn_future_local(async move {
+            let (ae, pgn, poi) = recv.recv().await.unwrap();
+            project_poi::open_project_poi_edit(&pgn, &ae, &poi);
+        });
     }
 
     fn trigger_edit_server(&self, project_id: i32, server_id: i32) {

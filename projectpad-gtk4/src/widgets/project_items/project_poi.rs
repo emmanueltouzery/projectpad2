@@ -141,44 +141,51 @@ fn display_project_poi(
             #[strong(rename_to = ae_)]
             ae,
             move |_b: gtk::Button| {
-                let (maybe_header_edit, project_poi_view_edit, _, vbox) =
-                    project_poi_contents(&p, &pgn_, WidgetMode::Edit, &ae_);
-
-                let (dlg, save_btn) =
-                    display_item_edit_dialog("Edit project POI", vbox, 600, 600, DialogClamp::Yes);
-                let he = maybe_header_edit.unwrap().clone();
-                save_btn.connect_clicked(move |_| {
-                    let receiver = save_project_poi(
-                        Some(poi.id),
-                        he.property("group_name"),
-                        he.property("title"),
-                        project_poi_view_edit.property("path"),
-                        project_poi_view_edit.property("text"),
-                        InterestType::from_str(
-                            &project_poi_view_edit.property::<String>("interest_type"),
-                        )
-                        .unwrap(),
-                    );
-
-                    let dlg = dlg.clone();
-                    glib::spawn_future_local(async move {
-                        if let Err(e) = receiver.recv().await.unwrap() {
-                            common::simple_error_dlg(&e.0, e.1.as_deref());
-                        } else {
-                            ProjectItemList::display_project_item(
-                                None,
-                                poi.id,
-                                ProjectItemType::ProjectPointOfInterest,
-                            );
-                            dlg.close();
-                        }
-                    });
-                });
+                open_project_poi_edit(&pgn_, &ae_, &p);
             }
         ),
     );
 
     parent.set_child(Some(&vbox));
+}
+
+pub fn open_project_poi_edit(
+    project_group_names: &[String],
+    allowed_envs: &[EnvironmentType],
+    poi: &ProjectPointOfInterest,
+) {
+    let (maybe_header_edit, project_poi_view_edit, _, vbox) =
+        project_poi_contents(&poi, project_group_names, WidgetMode::Edit, allowed_envs);
+
+    let (dlg, save_btn) =
+        display_item_edit_dialog("Edit project POI", vbox, 600, 600, DialogClamp::Yes);
+    let he = maybe_header_edit.unwrap().clone();
+    let poi_id = poi.id;
+    save_btn.connect_clicked(move |_| {
+        let receiver = save_project_poi(
+            Some(poi_id),
+            he.property("group_name"),
+            he.property("title"),
+            project_poi_view_edit.property("path"),
+            project_poi_view_edit.property("text"),
+            InterestType::from_str(&project_poi_view_edit.property::<String>("interest_type"))
+                .unwrap(),
+        );
+
+        let dlg = dlg.clone();
+        glib::spawn_future_local(async move {
+            if let Err(e) = receiver.recv().await.unwrap() {
+                common::simple_error_dlg(&e.0, e.1.as_deref());
+            } else {
+                ProjectItemList::display_project_item(
+                    None,
+                    poi_id,
+                    ProjectItemType::ProjectPointOfInterest,
+                );
+                dlg.close();
+            }
+        });
+    });
 }
 
 pub fn project_poi_contents(

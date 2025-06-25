@@ -546,7 +546,7 @@ pub fn add_server_items(
         if server_item.group_name().is_none() {
             cur_parent = vbox.clone();
         }
-        match server_item {
+        let focusable_child = match server_item {
             ServerItem::Website(w) => display_server_website(
                 channel_data.server.id,
                 read_write,
@@ -589,7 +589,7 @@ pub fn add_server_items(
                     .unwrap_or_else(Vec::new),
                 &cur_parent,
             ),
-        }
+        };
         if Some(server_item.get_id()) == focused_server_item_id {
             let me = cur_parent.last_child().unwrap().clone();
             let v = vbox.clone();
@@ -599,6 +599,9 @@ pub fn add_server_items(
                 // TODO crappy but doesn't work without the wait..
                 // try glib::idle_add_local instead
                 glib::timeout_future(Duration::from_millis(50)).await;
+                if let Some(fc) = focusable_child {
+                    fc.grab_focus();
+                }
                 pi.emit_by_name::<()>(
                     "request-scroll",
                     &[&me
@@ -1424,6 +1427,7 @@ fn add_group_edit_suffix(
     delete_btn
 }
 
+/// returns the widget to focus when selected after a search
 fn display_server_website(
     server_id: i32,
     read_write: bool,
@@ -1431,7 +1435,7 @@ fn display_server_website(
     w: &ServerWebsite,
     db: Option<&ServerDatabase>,
     vbox: &gtk::Box,
-) {
+) -> Option<gtk::Widget> {
     let (_, server_item1, _) =
         server_website_contents(&server_group_names, w, db, WidgetMode::Show);
     vbox.append(&server_item1);
@@ -1512,6 +1516,7 @@ fn display_server_website(
             }
         ),
     );
+    Some(server_item1.upcast())
 }
 
 fn server_website_contents(
@@ -1540,6 +1545,8 @@ fn server_website_contents(
 
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Website")
+        // will get focused after being selected from the search screen
+        .focusable(true)
         .build();
 
     if widget_mode == WidgetMode::Show {
@@ -1562,6 +1569,7 @@ fn server_website_contents(
     (item_header_edit, server_item1, server_website_view_edit)
 }
 
+/// returns the widget to focus when selected after a search
 fn display_server_database(
     server_id: i32,
     read_write: bool,
@@ -1569,7 +1577,7 @@ fn display_server_database(
     db: &ServerDatabase,
     websites: Vec<ServerWebsite>,
     vbox: &gtk::Box,
-) {
+) -> Option<gtk::Widget> {
     let (_, server_item1, _) =
         server_database_contents(&server_group_names, &websites, db, WidgetMode::Show);
     vbox.append(&server_item1);
@@ -1643,6 +1651,7 @@ fn display_server_database(
             }
         ),
     );
+    Some(server_item1.upcast())
 }
 
 fn server_database_contents(
@@ -1671,6 +1680,8 @@ fn server_database_contents(
 
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Database")
+        // will get focused after being selected from the search screen
+        .focusable(true)
         .build();
 
     if widget_mode == WidgetMode::Show {
@@ -1696,13 +1707,14 @@ fn server_database_contents(
     (item_header_edit, server_item1, server_database_view_edit)
 }
 
+/// returns the widget to focus when selected after a search
 fn display_server_poi(
     server_id: i32,
     read_write: bool,
     server_group_names: Vec<String>,
     poi: &ServerPointOfInterest,
     vbox: &gtk::Box,
-) {
+) -> Option<gtk::Widget> {
     let (_, server_item1, _) = server_poi_contents(&server_group_names, poi, WidgetMode::Show);
     vbox.append(&server_item1);
 
@@ -1779,6 +1791,7 @@ fn display_server_poi(
             }
         ),
     );
+    Some(server_item1.upcast())
 }
 
 fn server_poi_contents(
@@ -1812,7 +1825,8 @@ fn server_poi_contents(
         InterestType::PoiBackupArchive => "Backup/Archive",
         InterestType::PoiCommandTerminal => "Command to run",
     };
-    let server_item1 = adw::PreferencesGroup::builder().build();
+    // will get focused after being selected from the search screen
+    let server_item1 = adw::PreferencesGroup::builder().focusable(true).build();
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_description(Some(desc));
@@ -1830,13 +1844,14 @@ fn server_poi_contents(
     (item_header_edit, server_item1, server_poi_view_edit)
 }
 
+/// returns the widget to focus when selected after a search
 fn display_server_extra_user_account(
     server_id: i32,
     read_write: bool,
     server_group_names: Vec<String>,
     user: &ServerExtraUserAccount,
     vbox: &gtk::Box,
-) {
+) -> Option<gtk::Widget> {
     let (_, server_item1, _) =
         server_extra_user_account_contents(&server_group_names, user, WidgetMode::Show);
     vbox.append(&server_item1);
@@ -1914,6 +1929,7 @@ fn display_server_extra_user_account(
             )
         }),
     );
+    Some(server_item1.upcast())
 }
 
 fn server_extra_user_account_contents(
@@ -1939,7 +1955,11 @@ fn server_extra_user_account_contents(
         None
     };
 
-    let server_item1 = adw::PreferencesGroup::builder().description("User").build();
+    let server_item1 = adw::PreferencesGroup::builder()
+        .description("User")
+        // will get focused after being selected from the search screen
+        .focusable(true)
+        .build();
 
     if widget_mode == WidgetMode::Show {
         server_item1.set_title(&glib::markup_escape_text(&user.desc));
@@ -1968,13 +1988,14 @@ fn truncate(s: &str, max_chars: usize) -> &str {
     }
 }
 
+/// returns the widget to focus when selected after a search
 fn display_server_note(
     note: &ServerNote,
     read_write: bool,
     server_group_names: Vec<String>,
     vbox: &gtk::Box,
     focused_server_item_id: Option<i32>,
-) {
+) -> Option<gtk::Widget> {
     let server_item1 = server_note_contents_show(note, focused_server_item_id, vbox);
     // let (note_view, note_view_scrolled_window) =
     //     note::get_note_contents_widget(&note.contents, widget_mode);
@@ -2068,6 +2089,7 @@ fn display_server_note(
             }
         ),
     );
+    Some(server_item1.upcast())
 }
 
 fn save_auth_key_get_new_vals<'a>(
@@ -2245,6 +2267,8 @@ fn server_note_contents_show(
     let server_item1 = adw::PreferencesGroup::builder()
         .description("Note")
         .title(&note.title)
+        // will get focused after being selected from the search screen
+        .focusable(true)
         .build();
     vbox.append(&server_item1);
 

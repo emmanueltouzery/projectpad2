@@ -363,7 +363,7 @@ impl ProjectpadApplication {
             adw::AboutDialog::builder()
                 .application_name("Projectpad")
                 .application_icon("com.github.emmanueltouzery.projectpad")
-                .version("3.0.0")
+                .version("3.0.1")
                 .website("https://github.com/emmanueltouzery/projectpad2")
                 .build()
                 .present(Some(&common::main_win()));

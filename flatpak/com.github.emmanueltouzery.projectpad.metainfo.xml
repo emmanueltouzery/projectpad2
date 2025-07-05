@@ -40,6 +40,17 @@
     <content_attribute id="social-chat">none</content_attribute>
   </content_rating>
   <releases>
+    <release version="3.0.1" date="2025-07-05">
+      <description>
+        <ul>
+          <li>Smarter sorting for search results</li>
+          <li>Control-E shortcut to edit the current item</li>
+          <li>Control-Y shortcut to copy any visible password</li>
+          <li>Focus the closest widget when opening search results</li>
+          <li>Shortcuts dialog</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.0.0" date="2025-06-04">
       <description>
         <ul>

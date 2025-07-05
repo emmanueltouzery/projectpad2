@@ -139,11 +139,15 @@ pub fn ask_user(title: &str, msg: &str, parent: &gtk::Widget, handle_save: Box<d
 }
 
 pub fn copy_to_clipboard(text: &str) {
+    copy_to_clipboard_msg(text, "Copied to the clipboard");
+}
+
+pub fn copy_to_clipboard_msg(text: &str, message: &str) {
     if let Some(display) = gdk::Display::default() {
         display.clipboard().set_text(text);
 
         let toast_overlay = app::get().get_toast_overlay();
-        toast_overlay.add_toast(adw::Toast::new("Copied to the clipboard"));
+        toast_overlay.add_toast(adw::Toast::new(message));
     }
 }
 

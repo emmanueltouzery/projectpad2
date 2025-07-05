@@ -553,4 +553,8 @@ impl ProjectpadApplicationWindow {
     pub fn trigger_edit(&self) {
         self.imp().project_item.trigger_item_edit();
     }
+
+    pub fn trigger_copy_visible_pass(&self) {
+        self.imp().project_item.trigger_copy_visible_pass();
+    }
 }

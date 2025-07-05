@@ -9,6 +9,7 @@ use projectpadsql::get_project_group_names;
 use projectpadsql::models::{Project, ProjectNote, ProjectPointOfInterest, Server, ServerLink};
 
 use super::project_items::note::{Note, NoteInfo};
+use super::project_items::server_items::server_item_copy_dialog;
 use super::project_items::{project_poi, server_link};
 use super::{project_items::common, search::search_item_model::SearchItemType};
 
@@ -238,6 +239,7 @@ impl ProjectItem {
             _ => {}
         }
     }
+
     fn trigger_edit_server_link(&self, project_id: i32, server_link_id: i32) {
         let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
             use projectpadsql::schema::project::dsl as prj;
@@ -333,6 +335,105 @@ impl ProjectItem {
                         &pgn,
                         &ae,
                         &NoteInfo::from_project_note(&prj_note),
+                    );
+                });
+            }
+        }
+    }
+
+    pub fn trigger_copy_visible_pass(&self) {
+        let w = common::main_win();
+        let project_state = glib::VariantDict::new(w.action_state("select-project-item").as_ref());
+        let search_item_type = project_state
+            .lookup::<Option<u8>>("item_type")
+            .unwrap()
+            .and_then(std::convert::identity)
+            .and_then(SearchItemType::from_repr);
+
+        let m_item_id = project_state
+            .lookup::<Option<i32>>("item_id")
+            .unwrap()
+            .unwrap();
+
+        if let Some(item_id) = m_item_id {
+            if let Some(SearchItemType::Server) = search_item_type {
+                let recv = common::run_sqlfunc(Box::new(move |sql_conn| {
+                    use projectpadsql::schema::server::dsl as srv;
+                    use projectpadsql::schema::server_database::dsl as db;
+                    use projectpadsql::schema::server_extra_user_account::dsl as usr;
+                    use projectpadsql::schema::server_website::dsl as www;
+                    let server = srv::server
+                        .filter(srv::id.eq(item_id))
+                        .first::<Server>(sql_conn)
+                        .unwrap();
+
+                    let server_www_passwords = www::server_website
+                        .filter(www::server_id.eq(item_id).and(www::password.is_not_null()))
+                        .select((www::desc, www::password))
+                        .load::<(String, String)>(sql_conn)
+                        .unwrap();
+
+                    let server_db_passwords = db::server_database
+                        .filter(db::server_id.eq(item_id).and(db::password.is_not_null()))
+                        .select((db::desc, db::password))
+                        .load::<(String, String)>(sql_conn)
+                        .unwrap();
+
+                    let server_usr_passwords = usr::server_extra_user_account
+                        .filter(usr::server_id.eq(item_id).and(usr::password.is_not_null()))
+                        .select((usr::desc, usr::password))
+                        .load::<(String, String)>(sql_conn)
+                        .unwrap();
+
+                    (
+                        server.password,
+                        server_www_passwords,
+                        server_db_passwords,
+                        server_usr_passwords,
+                    )
+                }));
+                glib::spawn_future_local(async move {
+                    let (srv_pass, www_passes, db_passes, usr_passes) = recv.recv().await.unwrap();
+                    let pass_count = if srv_pass.is_empty() { 0 } else { 1 }
+                        + www_passes.len()
+                        + db_passes.len()
+                        + usr_passes.len();
+                    if pass_count == 0 {
+                        return;
+                    }
+                    if pass_count == 1 {
+                        if !srv_pass.is_empty() {
+                            common::copy_to_clipboard(&srv_pass);
+                        }
+                        if www_passes.len() == 1 {
+                            let pass_info = &www_passes[0];
+                            common::copy_to_clipboard_msg(
+                                &pass_info.1,
+                                &format!("Copied website password: {}", pass_info.0),
+                            );
+                        }
+                        if db_passes.len() == 1 {
+                            let pass_info = &db_passes[0];
+                            common::copy_to_clipboard_msg(
+                                &pass_info.1,
+                                &format!("Copied database password: {}", pass_info.0),
+                            );
+                        }
+                        if usr_passes.len() == 1 {
+                            let pass_info = &usr_passes[0];
+                            common::copy_to_clipboard_msg(
+                                &pass_info.1,
+                                &format!("Copied extra user password: {}", pass_info.0),
+                            );
+                        }
+                        return;
+                    }
+                    // more than one password to copy, ask the user which one
+                    server_item_copy_dialog::display_copy_server_password_dialog(
+                        &srv_pass,
+                        &www_passes,
+                        &db_passes,
+                        &usr_passes,
                     );
                 });
             }

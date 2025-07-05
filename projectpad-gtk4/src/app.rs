@@ -65,6 +65,9 @@ mod imp {
                     if state == gdk::ModifierType::CONTROL_MASK && k == 'e' {
                         common::main_win().trigger_edit();
                     }
+                    if state == gdk::ModifierType::CONTROL_MASK && k == 'y' {
+                        common::main_win().trigger_copy_visible_pass();
+                    }
 
                     if Self::is_plaintext_key(state, keyval)
                         && !w.imp().search_toggle_btn.is_active()

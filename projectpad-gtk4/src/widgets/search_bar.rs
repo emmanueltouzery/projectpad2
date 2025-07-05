@@ -86,7 +86,6 @@ impl SearchBar {
 
         let t1 = this.clone();
         search_entry.connect_activate(move |se| {
-            dbg!("enter!!");
             t1.emit_by_name::<()>("next-pressed", &[&se.text()]);
         });
 

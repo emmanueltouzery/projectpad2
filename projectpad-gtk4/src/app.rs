@@ -22,6 +22,8 @@ use crate::win::ProjectpadApplicationWindow;
 use crate::{import_export_ui, keyring_helpers, perform_insert_or_update, sql_util};
 use crate::{preferences_dialog, unlock_db_dialog};
 
+const SHORTCUTS_UI: &str = include_str!("shortcuts.ui");
+
 mod imp {
     use std::cell::{OnceCell, RefCell};
 
@@ -67,6 +69,14 @@ mod imp {
                     }
                     if state == gdk::ModifierType::CONTROL_MASK && k == 'y' {
                         common::main_win().trigger_copy_visible_pass();
+                    }
+
+                    if state == gdk::ModifierType::CONTROL_MASK
+                        && k == 's'
+                        && !w.imp().search_toggle_btn.is_active()
+                    {
+                        w.imp().search_toggle_btn.set_active(true);
+                        return glib::Propagation::Stop; // Stop further handling
                     }
 
                     if Self::is_plaintext_key(state, keyval)
@@ -336,6 +346,17 @@ impl ProjectpadApplication {
             }
         });
         window.add_action(&open_help_action);
+
+        let open_about_action = gio::SimpleAction::new("open-shortcuts", None);
+        open_about_action.connect_activate(move |_action, _parameter| {
+            let win = gtk::Builder::from_string(SHORTCUTS_UI)
+                .object::<gtk::Window>("shortcuts")
+                .unwrap();
+            win.set_title(Some("Keyboard Shortcuts"));
+            win.set_transient_for(Some(&common::main_win()));
+            win.set_visible(true);
+        });
+        window.add_action(&open_about_action);
 
         let open_about_action = gio::SimpleAction::new("about", None);
         open_about_action.connect_activate(move |_action, _parameter| {

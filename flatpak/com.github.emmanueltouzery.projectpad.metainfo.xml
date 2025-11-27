@@ -150,4 +150,9 @@
   <developer_name>Emmanuel Touzery</developer_name>
   <update_contact>etouzery@gmail.com</update_contact>
   <launchable type="desktop-id">com.github.emmanueltouzery.projectpad.desktop</launchable>
+  <keywords>
+    <keyword>password manager</keyword>
+    <keyword>secret credentials</keyword>
+    <keyword>server info management</keyword>
+  </keywords>
 </component>

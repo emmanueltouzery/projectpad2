@@ -50,7 +50,10 @@ mod imp {
 
     impl SectionModelImpl for ProjectItemListModel {
         fn section(&self, position: u32) -> (u32, u32) {
-            self.index_to_group.borrow()[&position]
+            let map = self.index_to_group.borrow();
+            // if the index we're given is not at the start of a group, return
+            // info for the first group. This wasn't needed until I believe gtk 4.20 (4.18 was fine)
+            map.get(&position).or_else(|| map.get(&0)).copied().unwrap()
         }
     }
 }

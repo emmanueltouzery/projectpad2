@@ -40,6 +40,13 @@
     <content_attribute id="social-chat">none</content_attribute>
   </content_rating>
   <releases>
+    <release version="3.0.2" date="2026-06-27">
+      <description>
+        <ul>
+          <li>Fix crash with gtk 4.20</li>
+        </ul>
+      </description>
+    </release>
     <release version="3.0.1" date="2025-07-05">
       <description>
         <ul>
